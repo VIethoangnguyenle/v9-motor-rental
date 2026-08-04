@@ -259,6 +259,31 @@ chỉ `"types": ["bun"]` trong `tsconfig.json` của từng workspace mới đ�
 workspace nào chạy trên runtime nào, thay vì để một dòng ở base ngầm áp lên cả hai frontend
 vốn không chạy trên Bun.
 
+### 4.12 Hàng rào phải được probe, không được tin
+
+Bài học đắt nhất của phiên scaffold. Trong quá trình dựng, `eslint-plugin-boundaries` đã **suy
+thoái im lặng ba lần** — mỗi lần đều `exit 0`, đều trông như đang bảo vệ, và đều không kiểm tra gì:
+
+| Lần | Nguyên nhân | Hậu quả nếu không phát hiện |
+|---|---|---|
+| Task 2 | Resolver mặc định không nhận đuôi `.ts` | Rule vô hiệu trên **toàn bộ** codebase TypeScript |
+| Task 2 | `index.ts` không khớp element type nào | Composition root — nơi vi phạm hay tích tụ nhất — được miễn hoàn toàn |
+| Task 11 | `checkAllOrigins: false` bỏ qua import kiểu package specifier | `import "@v9/db"` lọt; chỉ `import "../../../db/src"` bị chặn |
+
+Lần thứ ba nguy hiểm nhất: **không ai viết đường dẫn tương đối xuyên package.** Người ta viết
+`@v9/db`. Hàng rào canh con đường không ai đi và bỏ ngỏ con đường mọi người đi. TypeScript cũng
+không cứu được, vì `@v9/db` là dependency đã khai của `apps/api` nên `tsc` hoàn toàn im lặng.
+
+**Luật rút ra, áp cho mọi phiên sau:** một config linter "chạy được và exit 0" **không chứng minh
+điều gì** về việc nó đang bảo vệ cái gì. Chỉ có probe vi phạm thật mới chứng minh được. Vì vậy
+Task 11 giữ vĩnh viễn một bộ probe: sáu vi phạm phải nổ, hai import hợp lệ phải im. Chạy lại bộ
+đó sau mỗi lần đụng `eslint.config.js`, sau mỗi lần nâng phiên bản plugin, và bất cứ khi nào một
+phiên mới nghi ngờ hàng rào.
+
+Hệ quả cho cách làm việc: khi giao việc cho subagent, **yêu cầu bằng chứng probe chứ đừng nhận
+báo cáo suông**. Cả ba lỗ hổng trên đều lộ ra vì có bước bắt buộc "tạo vi phạm, chạy lint, dán
+lỗi thật vào báo cáo" — không cái nào lộ ra qua việc đọc config.
+
 ## 5. Repo map
 
 ```
