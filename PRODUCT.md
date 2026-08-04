@@ -13,11 +13,11 @@ web
 - **Dân chơi mô tô phân khối lớn người Việt tại TP.HCM.** Biết xe, biết mình muốn con nào. Thuê để đi tour, đi phượt cuối tuần, hoặc chạy thử trước khi mua. Đánh giá shop qua chất lượng và tình trạng xe.
 - **Khách du lịch nước ngoài.** Thường thuê ngắn ngày, không quen địa hình và luật giao thông Việt Nam, không đọc được tiếng Việt. Cần biết thủ tục giấy tờ trước khi tới nơi.
 
-**Nhân sự vận hành shop** (dùng `apps/admin`): vai trò `OWNER` và `STAFF`. `SALES` đã đặt chỗ trong hệ thống nhưng **chưa dùng** — chưa quyết vai trò đó làm gì.
+**Nhân sự vận hành shop** (dùng `apps/staff` cho vận hành, Directus cho dữ liệu gốc): vai trò `OWNER` và `STAFF`. `SALES` đã đặt chỗ trong hệ thống nhưng **chưa dùng** — chưa quyết vai trò đó làm gì.
 
 ## Product Purpose
 
-Hệ quản lý cho một shop cho thuê mô tô phân khối lớn ở TP.HCM, gồm ba phần: API, app quản trị nội bộ, và site công khai cho khách.
+Hệ quản lý cho một shop cho thuê mô tô phân khối lớn ở TP.HCM: API, app vận hành cho chủ và nhân viên, site công khai cho khách, và Directus cho dữ liệu gốc.
 
 Site công khai cho khách **xem mẫu xe và gửi yêu cầu thuê**. Khách **không tự chốt đơn** — yêu cầu đi vào hệ thống, nhân viên tiếp nhận và chốt thành đơn thuê thật trong `apps/staff`.
 
@@ -25,7 +25,9 @@ Thành công nghĩa là khách gửi được yêu cầu ngoài giờ làm việ
 
 ## Positioning
 
-Shop nhỏ, đội xe thật, giao xe tận nơi. Khác biệt không nằm ở giá mà ở việc khách **thấy đúng con xe mình sẽ nhận** — ảnh thật của từng chiếc, không phải ảnh catalogue của hãng — và biết chắc nó còn trống trong ngày mình cần.
+Shop nhỏ, đội xe thật, giao xe tận nơi. Khác biệt không nằm ở giá mà ở việc khách **thấy đúng con xe mình sẽ nhận** — ảnh thật của từng chiếc, không phải ảnh catalogue của hãng.
+
+*Lưu ý:* web **không** hiển thị tình trạng còn trống theo thời gian thực. Khách gửi yêu cầu, nhân viên xác nhận xe và thời gian.
 
 ## Operating Context
 
@@ -82,11 +84,11 @@ Người dùng đặt ràng buộc thị giác rõ khi khởi tạo dự án: h�
 
 ## Product Principles
 
-1. **Chống đặt trùng là ràng buộc, không phải tính năng.** Nó nằm ở tầng dữ liệu và không được phép có đường vòng. Mọi luồng đặt xe — của khách hay của nhân viên — đều đi qua nó.
+1. **Chống đặt trùng là ràng buộc, không phải tính năng.** Nó nằm ở tầng dữ liệu và không được phép có đường vòng. Đơn thuê chỉ được tạo bởi nhân viên qua `apps/staff`, và luồng đó đi qua ràng buộc này.
 2. **Khách thấy đúng chiếc xe mình sẽ nhận.** Ảnh thật của từng xe, tình trạng thật, không phải ảnh hãng. Đây là thứ shop nhỏ làm được mà chuỗi lớn không làm.
 3. **Bằng chứng bảo vệ cả hai phía.** Ảnh lúc giao và lúc nhận tồn tại để bảo vệ khách khỏi bị đổ oan, chứ không chỉ để bảo vệ shop.
 4. **Khách du lịch nước ngoài là người dùng thật, không phải trường hợp biên.** Thủ tục giấy tờ và tiếng Anh là nhu cầu đã xác nhận, chỉ là chưa tới lượt làm.
-5. **Web không thay thế Zalo/Fanpage.** Khách vẫn nhắn tin, và điều đó ổn. Web tồn tại để khách chốt được đơn lúc không ai trực.
+5. **Web không thay thế Zalo/Fanpage.** Khách vẫn nhắn tin, và điều đó ổn. Web tồn tại để khách **gửi được yêu cầu** lúc không ai trực, và để yêu cầu đó không bị trôi mất trong hộp tin nhắn.
 
 ## Accessibility & Inclusion
 
