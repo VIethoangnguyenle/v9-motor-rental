@@ -1,0 +1,30 @@
+{
+  "name": "v9-motor-rental",
+  "private": true,
+  "type": "module",
+  "workspaces": ["apps/*", "packages/*"],
+  "engines": { "bun": ">=1.3.10" },
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "build": "bun run --filter '*' build",
+    "test": "bun test",
+    "typecheck": "bun run --filter '*' typecheck",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "bun run --filter @v9/db generate",
+    "db:custom": "bun run --filter @v9/db custom",
+    "db:migrate": "bun run --filter @v9/db migrate",
+    "bench": "bun run apps/api/scripts/bench.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "1.3.10",
+    "eslint": "10.8.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-boundaries": "7.1.0",
+    "prettier": "3.9.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.66.0"
+  }
+}
