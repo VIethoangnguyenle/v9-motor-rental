@@ -37,3 +37,6 @@ coverage/
 
 # serena
 .serena/cache/
+
+# impeccable ghi hook cho Codex CLI vào đây, nội dung hard-code path máy local
+.codex/

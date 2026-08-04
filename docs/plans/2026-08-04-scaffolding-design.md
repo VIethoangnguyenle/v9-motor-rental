@@ -149,7 +149,9 @@ Driver: `drizzle-orm/bun-sql` trên `Bun.SQL` native (đã verify export tồn t
 `drizzle-orm@0.45.2`: `./bun-sql`, `./bun-sql/driver`, `./bun-sql/session`, `./bun-sql/migrator`).
 
 **Rủi ro đã nêu và người dùng vẫn chọn**: adapter `bun-sql` trẻ hơn `postgres-js`, edge case
-transaction và pool còn đang chín; và nó buộc chạy Bun ở mọi môi trường, mất đường lùi Node.
+transaction và pool còn đang chín; và nó buộc **`apps/api`** chạy trên Bun ở mọi môi trường,
+mất đường lùi Node cho riêng service đó. (`apps/admin` và `apps/web` không bị ảnh hưởng —
+runtime của chúng vẫn là Node, xem mục 9.)
 **Giảm thiểu**: driver bị nhốt trong **đúng một file** `apps/api/src/db.ts`. Đổi về
 `drizzle-orm/postgres-js` là sửa một file, không service nào phải đổi. Việc adapter chạy thật
 nằm trong danh sách verify của phiên implement, không tin vào README.
