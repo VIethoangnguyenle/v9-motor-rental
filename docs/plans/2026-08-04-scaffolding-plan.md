@@ -1,5 +1,32 @@
 # V9 Motor Rental — Scaffolding Implementation Plan
 
+> ## ✅ ĐÃ THỰC THI XONG — 2026-08-05
+>
+> **17/17 task hoàn thành.** Checkbox bên dưới **cố ý không tick**: nhiều bước đã bị thay đổi
+> trong lúc thực thi, nên tick hết sẽ khẳng định sai rằng mọi thứ diễn ra đúng như viết ban đầu.
+> Nguồn sự thật về code là repo; file này là bản ghi *ý định*, đọc kèm các mục "Kết quả thực tế".
+>
+> **Những chỗ thực tế lệch khỏi plan** (mỗi chỗ đều có ghi chú tại task tương ứng):
+>
+> | Task | Lệch |
+> |---|---|
+> | 2 | Config lint draft chưa đủ; 6 thay đổi bắt buộc, gồm 2 bug của `eslint-plugin-boundaries` |
+> | 3 | Phải thêm `"types": ["bun"]` — TS không tự nạp `@types/bun` trong layout của bun |
+> | 5 | `packages/shared` có **hai** dependency chứ không phải một; `treaty` ràng buộc `T extends Elysia<…>` |
+> | 7 | `drizzle-kit migrate` không hỗ trợ `bun-sql` → tự viết migrator |
+> | 8 | `routes/` không được chạm `db.ts`/`env.ts` → tách `services/health.ts`; bỏ macro `requireRole` |
+> | 9 | **Viết lại hoàn toàn**: Next → Vite + TanStack (người dùng đổi giữa chừng) |
+> | 11 | Vá lỗ hổng `boundaries` bỏ sót import kiểu `@v9/*` |
+> | 13 | Pattern 2-stage `deps` hỏng với isolated linker của bun; Next build crash trên Bun+musl |
+>
+> **Hai hạng mục hoãn có chủ ý:**
+> - **`DESIGN.md`** (Task 16) — `/impeccable init` chỉ sinh `PRODUCT.md`. Thế giới thị giác cần
+>   một màn hình thật để thiết kế (= business feature, bị §2 design doc cấm) và cần asset logo
+>   thật. Để phiên làm giao diện.
+> - **Deploy lên VPS** (Task 14) — người dùng gác lại. Workflow đã có, job `build` xanh, 3 image
+>   đã trên GHCR. Còn thiếu: `ssh-copy-id`, `ROOT_DOMAIN`+`CADDY_EMAIL`, bootstrap `~/v9-motor-rental`,
+>   `docker login ghcr.io` trên VPS. Chi tiết trong Agent Memory.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Dựng monorepo bun workspaces chạy được đầu-cuối cho V9 Motor Rental — API health có type xuyên suốt tới hai frontend, Postgres + MinIO qua Docker, CI/CD GitHub, và bộ CLAUDE.md để các phiên AI sau không phải đoán. Không một business feature nào.
