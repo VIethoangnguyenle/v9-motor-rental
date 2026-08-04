@@ -1,0 +1,20 @@
+{
+  "version": "0.2",
+  "language": "en,vi",
+  "words": [
+    "elysia",
+    "elysiajs",
+    "drizzle",
+    "tstzrange",
+    "gist",
+    "btree",
+    "minio",
+    "caddy",
+    "ghcr",
+    "treaty",
+    "typebox",
+    "bunfig",
+    "impeccable"
+  ],
+  "ignorePaths": ["node_modules/**", "bun.lock", ".next/**", "dist/**"]
+}
