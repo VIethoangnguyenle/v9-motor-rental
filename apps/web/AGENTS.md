@@ -7,3 +7,64 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+---
+
+# apps/web — luật của repo
+
+> Nội dung phía trên cặp marker `nextjs-agent-rules` do `next dev` tự sinh và tự ghi lại.
+> Đừng sửa nó. Phần dưới đây là của chúng ta và sẽ sống sót.
+>
+> `CLAUDE.md` trong thư mục này chỉ là con trỏ `@AGENTS.md` — cũng do Next sinh. Nội dung thật ở đây.
+
+Luật chung của repo ở [`../../CLAUDE.md`](../../CLAUDE.md). Đọc file đó trước.
+
+Next 16 App Router, `output: "standalone"`. Site công khai cho khách thuê xe.
+
+## SEO là lý do app này dùng Next
+
+Đây là điều duy nhất phân biệt nó với `apps/admin` (Vite SPA). Ưu tiên SSG/ISR; tránh
+`force-dynamic` trừ khi có lý do viết ra thành chữ. Trang chủ hiện dùng `revalidate = 60`.
+
+## UI phải tôn trọng DESIGN.md
+
+[`../../DESIGN.md`](../../DESIGN.md) và [`../../PRODUCT.md`](../../PRODUCT.md) là ràng buộc thiết
+kế của app này. Khán giả: dân chơi mô tô phân khối lớn người Việt ở TP.HCM **cộng** khách du lịch
+nước ngoài. Vibe moto-garage — tối, nhiều ảnh, typography đậm.
+
+**Cấm rõ**: thẩm mỹ SaaS generic — gradient tím, Inter ở mọi nơi, card lồng card.
+
+`impeccable` áp dụng cho app này (không phải cho `apps/admin`, nơi ưu tiên chức năng).
+
+## i18n mới là seam, chưa phải hệ thống
+
+`messages/vi.json` + `NEXT_PUBLIC_DEFAULT_LOCALE`. **Chưa cài `next-intl`** — hiện có đúng một
+ngôn ngữ, dựng bộ máy routing đa ngôn ngữ lúc này là chi phí không có người trả. Thêm khi thật sự
+có tiếng Anh, không sớm hơn.
+
+## ⚠️ Build không cần API, nhưng hỏng im lặng nếu API chết
+
+Với `revalidate = 60`, Next fetch `/health` ngay lúc `next build`. Nếu API không tới được, Eden
+trả `{data: null, error}` chứ không ném lỗi — **build vẫn thành công** và nướng chuỗi lỗi vào HTML
+tĩnh. Trang deploy ra hiển thị trạng thái lỗi cho tới khi ISR revalidate sau 60 giây kể từ request
+thật đầu tiên.
+
+Không phải lỗi build, nhưng là một phút xấu xí sau mỗi lần deploy. Biết trước để không đi debug
+nhầm chỗ.
+
+## Khác biệt với apps/admin
+
+| | `apps/web` | `apps/admin` |
+|---|---|---|
+| Framework | Next 16 | Vite |
+| Mô hình | server-first (RSC) | client-first (SPA + TanStack Query) |
+| Biến env | `process.env.NEXT_PUBLIC_*`, đọc lúc chạy | `import.meta.env.VITE_*`, nướng lúc build |
+| JSX | `jsx: "preserve"` | `jsx: "react-jsx"` |
+| SEO | quan trọng | vô nghĩa |
+
+## Chạy
+
+```bash
+bun run --filter @v9/web dev
+bun run --filter @v9/web build    # -> .next/standalone
+```
