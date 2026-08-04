@@ -319,7 +319,9 @@ export default tseslint.config(
 
 - [ ] **Step 5: Cài dependency còn thiếu**
 
-Run: `bun add -D @eslint/js@10.0.1`
+Run: `bun add -D @eslint/js@10.0.1 eslint-import-resolver-node@0.4.0`
+
+`eslint-import-resolver-node` **phải khai tường minh**, đừng dựa vào việc nó tình cờ có mặt như transitive dependency. Nó là thứ duy nhất làm `boundaries` resolve được import `.ts`; nếu một lần `bun install` nào đó làm nó biến mất, hàng rào **suy thoái im lặng** — lint vẫn exit 0, chỉ là không còn kiểm tra gì. Chuyện này đã xảy ra thật ở Task 9, phát hiện nhờ IDE báo `unable to load resolver "node"` trong khi CLI vẫn xanh.
 Expected: thêm vào `devDependencies`.
 
 `@eslint/js` **không** đi cùng số hiệu với `eslint`. `eslint` đang ở 10.8.0 nhưng `@eslint/js` mới nhất chỉ là 10.0.1 — hai package đã tách version. Đừng "sửa" cho khớp nhau.
@@ -1316,7 +1318,7 @@ Giữ nguyên `NEXT_PUBLIC_API_URL` — `apps/web` vẫn dùng nó.
   },
   "devDependencies": {
     "@types/react": "19.2.18",
-    "@types/react-dom": "19.2.18",
+    "@types/react-dom": "19.2.4",
     "@v9/api": "workspace:*",
     "@vitejs/plugin-react": "6.0.5",
     "vite": "8.2.0"
@@ -1521,7 +1523,7 @@ git commit -m "feat(admin): vite + tanstack router/query, trang health qua Eden 
   },
   "devDependencies": {
     "@types/react": "19.2.18",
-    "@types/react-dom": "19.2.18",
+    "@types/react-dom": "19.2.4",
     "@v9/api": "workspace:*"
   }
 }

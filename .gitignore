@@ -40,3 +40,6 @@ coverage/
 
 # impeccable ghi hook cho Codex CLI vào đây, nội dung hard-code path máy local
 .codex/
+
+# artifact của gstack /browse skill
+.gstack/
