@@ -31,7 +31,8 @@ là deliverable ngang hàng với code, không phải phụ lục.
 ## 3. Quyết định đã khoá từ đầu (người dùng đặt ra, không mở lại)
 
 Runtime Bun + Elysia, TypeBox validation, Eden Treaty cho type xuyên suốt · Next.js App Router
-`output: "standalone"` cho cả admin và web · PostgreSQL + Drizzle, migration là file SQL trong
+`output: "standalone"` ~~cho cả admin và web~~ **chỉ cho `apps/web`** (xem §4.10 — người dùng
+đổi ngày 2026-08-05) · PostgreSQL + Drizzle, migration là file SQL trong
 `packages/db` · monorepo bun workspaces · `packages/shared` giữ **toàn bộ** domain logic pricing
 và availability dạng pure function có unit test, frontend không được implement lại ·
 MinIO cho ảnh xe và ảnh check-in · Docker Compose cho cả dev và prod, có Caddy auto-HTTPS ·
@@ -178,11 +179,59 @@ Người dùng chủ động đè ràng buộc "no CI" trong spec gốc.
 `docker compose -f compose.prod.yaml pull && up -d`. (GHCR bắt buộc chữ thường ở phần owner —
 tài khoản viết là `VIethoangnguyenle` nhưng tên image phải là `viethoangnguyenle`.)
 
-Secrets cần: `SSH_HOST`, `SSH_USER`, `SSH_KEY`. GHCR dùng `GITHUB_TOKEN` sẵn có.
+Secrets cần: `SSH_HOST`, `SSH_USER`, `SSH_KEY`. Thêm một **repository variable** `ROOT_DOMAIN`
+(để ở variable chứ không phải secret vì tên miền không bí mật) — build của `apps/admin` cần nó.
+GHCR dùng `GITHUB_TOKEN` sẵn có.
+
+**Hệ quả của việc `apps/admin` là SPA tĩnh:** Vite nướng `VITE_API_URL` thẳng vào bundle lúc
+build. Khác hẳn `apps/api` và `apps/web` vốn đọc env lúc chạy. Đổi API URL của admin **bắt buộc
+phải build lại image** — khai biến trong `compose.prod.yaml` hoàn toàn vô tác dụng. Vì vậy
+`deploy.yml` phải truyền `--build-arg VITE_API_URL=...` cho riêng image admin.
 
 > **Đã ghi nhận**: token `gh` hiện tại có scope `gist, read:org, repo` — **thiếu `workflow`**.
 > Không vỡ vì git protocol đang là SSH nên push file workflow vẫn qua. Chỉ vỡ nếu sau này
 > chuyển sang push HTTPS; khi đó phải thêm scope `workflow`.
+
+### 4.10 `apps/admin` chuyển sang TanStack, `apps/web` giữ Next
+
+**Thay đổi sau khi design doc đã duyệt** (2026-08-05, giữa lúc thực thi Task 3). Người dùng
+yêu cầu frontend dùng TanStack. "TanStack" là một họ sản phẩm nên đã hỏi rõ mức độ; chốt phương án
+tách đôi:
+
+| App | Stack | Vì sao |
+|---|---|---|
+| `apps/admin` | Vite + TanStack Router + TanStack Query, build ra SPA tĩnh | Dashboard nội bộ. **SEO không có nghĩa gì** ở đây, nên ràng buộc SSG/ISR vốn là lý do chọn Next không áp dụng. Router type-safe của TanStack ghép với Eden Treaty tự nhiên hơn App Router. |
+| `apps/web` | Next 16 App Router, `output: "standalone"`, SSG/ISR | **SEO là lý do Next được chọn ngay từ đầu.** Không có gì thay đổi lý do đó. |
+
+**Giá phải trả, ghi rõ để không ai ngạc nhiên sau:** hai framework trong một repo, hai cách build,
+hai Dockerfile khác hẳn nhau. Một lập trình viên chuyển giữa hai app phải đổi mô hình tư duy —
+`apps/web` là server-first (RSC, fetch trong server component), `apps/admin` là client-first
+(SPA, mọi thứ qua TanStack Query).
+
+**Không đổi:** `packages/shared` vẫn là nguồn duy nhất của domain logic cho cả hai. Eden Treaty
+vẫn dùng `createApiClient<App>()` từ `@v9/shared/client` y như §4.1 — TanStack Query **bọc lên
+trên** Eden chứ không thay nó, nên `queryFn` chỉ là gọi `api.<route>.get()`. Đồ thị phụ thuộc ở
+§6 giữ nguyên: `apps/admin` vẫn chỉ được chạm `@v9/shared` và type-only `@v9/api`.
+
+**Đã loại.** Chỉ thêm TanStack Query lên Next (nhẹ nhất, nhưng không tận dụng được router
+type-safe cho dashboard) · TanStack Start thay Next cả hai (đảo quyết định đã khoá, và ISR của
+Start chưa chín bằng Next — trong khi SSG/ISR chính là yêu cầu đặt ra cho `apps/web`).
+
+### 4.11 Mọi workspace chạy trên Bun phải khai `"types": ["bun"]`
+
+Phát hiện khi chạy thật ở Task 3, không phải suy đoán. TypeScript **không tự nạp** `@types/bun`
+trong layout install của bun. Hệ quả dây chuyền: `bun:test` không có type → `typecheck` báo
+`TS2307` → `describe`/`it`/`expect` bị suy ra là `any` → type-aware lint nổ 30 lỗi
+`no-unsafe-call`.
+
+Đã kiểm chứng bằng cài lại sạch: thêm `bun-types` làm devDependency **không** giải quyết được;
+chỉ `"types": ["bun"]` trong `tsconfig.json` của từng workspace mới đủ. Áp dụng cho
+`packages/shared`, `packages/db`, `apps/api`. `apps/web` dùng type mặc định của Next;
+`apps/admin` dùng `"types": ["vite/client"]`.
+
+Đặt ở từng workspace chứ không đặt ở `tsconfig.base.json` là có chủ ý: nó khai báo tường minh
+workspace nào chạy trên runtime nào, thay vì để một dòng ở base ngầm áp lên cả hai frontend
+vốn không chạy trên Bun.
 
 ## 5. Repo map
 
@@ -233,8 +282,11 @@ sâu vào `src/` của package khác (chỉ qua entrypoint đã export).
 | @elysiajs/cors | 1.4.2 | |
 | drizzle-orm | 0.45.2 | export `./bun-sql` đã verify |
 | drizzle-kit | 0.31.10 | |
-| next | 16.3.0 | |
-| react · react-dom | 19.2.8 | |
+| next | 16.3.0 | **chỉ `apps/web`** |
+| react · react-dom | 19.2.8 | cả hai frontend |
+| vite · @vitejs/plugin-react | 8.2.0 · 6.0.5 | **chỉ `apps/admin`** |
+| @tanstack/react-router | 1.170.18 | `apps/admin` |
+| @tanstack/react-query | 5.101.4 | `apps/admin` |
 | eslint | 10.8.0 | |
 | typescript-eslint | 8.66.0 | peer `typescript >=4.8.4 <6.1.0` |
 | eslint-plugin-boundaries | 7.1.0 | peer `eslint >=6` |
@@ -314,10 +366,19 @@ availability — không tạo index thứ hai.
 tạo bảng tạm có exclusion constraint đúng dạng sẽ dùng sau, khẳng định INSERT chồng lấn bị chặn,
 rồi ROLLBACK. Chứng minh extension dùng được thật mà không commit một dòng business schema nào.
 
-### 8.4 `apps/admin` và `apps/web`
+### 8.4 `apps/web` — Next 16
 
-Cả hai: Next 16 App Router, `output: "standalone"`, một trang placeholder gọi `/health` qua Eden
-client typed và render kết quả. `apps/web` bật SSG/ISR; `apps/admin` không cần.
+Next 16 App Router, `output: "standalone"`, một trang placeholder gọi `/health` qua Eden client
+typed và render kết quả. Bật SSG/ISR vì SEO quan trọng.
+
+### 8.5 `apps/admin` — Vite + TanStack
+
+SPA tĩnh: Vite + `@vitejs/plugin-react`, TanStack Router (route khai bằng code, **không** dùng
+file-based routing plugin ở phiên scaffold — một route thì bộ máy sinh route là chi phí không có
+người trả), TanStack Query bọc lên Eden client. Một trang placeholder gọi `/health` và render
+kết quả, đi qua `useQuery` để chứng minh đường dây Query → Eden → API chạy thật.
+
+`"types": ["vite/client"]` trong tsconfig. Build ra `dist/` tĩnh, không cần Node runtime.
 
 **i18n**: hard-code `vi`. Seam là `messages/vi.json` + `NEXT_PUBLIC_DEFAULT_LOCALE`. Chưa cài
 next-intl — thêm khi thật sự có tiếng Anh, không dựng máy móc cho một locale.
@@ -328,12 +389,20 @@ next-intl — thêm khi thật sự có tiếng Anh, không dựng máy móc cho
 bucket `vehicles` và `checkins` rồi thoát. `docker compose up -d` rồi `bun run dev` chạy api, admin,
 web trên host.
 
-**Prod** — `compose.prod.yaml`: sáu service + `caddy`.
-Multi-stage: builder `oven/bun` (install + build) → runtime `apps/api` dùng `oven/bun`;
-runtime `apps/admin` và `apps/web` dùng `node:22-alpine` chạy `.next/standalone`.
+**Prod** — `compose.prod.yaml`: sáu service + `caddy`. Ba image, ba runtime khác nhau:
 
-Dùng Node cho runtime Next là lựa chọn boring có chủ ý: `output: "standalone"` sinh `server.js`
-nhắm Node. Đây không phải chỗ để thử nghiệm — chỗ thử nghiệm đã dùng hết cho driver `bun-sql`.
+| Service | Builder | Runtime | Vì sao |
+|---|---|---|---|
+| `api` | `oven/bun` | `oven/bun` | driver `bun-sql` bắt buộc chạy Bun (§4.8) |
+| `web` | `oven/bun` | `node:22-alpine` chạy `.next/standalone` | `output: "standalone"` sinh `server.js` nhắm Node |
+| `admin` | `oven/bun` | `caddy:2-alpine` phục vụ tĩnh | SPA tĩnh, không có server-side runtime nào để chạy |
+
+Dùng Node cho runtime Next là lựa chọn boring có chủ ý — đây không phải chỗ để thử nghiệm, chỗ
+thử nghiệm đã dùng hết cho driver `bun-sql`.
+
+Image `admin` cần Caddyfile riêng bên trong với `try_files {path} /index.html`, nếu không mọi
+đường dẫn sâu của TanStack Router sẽ 404 khi người dùng F5. Đây là lỗi kinh điển của SPA tĩnh và
+chỉ lộ ra khi reload, không lộ khi điều hướng trong app.
 
 **Caddy**: `v9.<domain>` → web, `admin.<domain>` → admin, `api.<domain>` → api. Auto-HTTPS.
 

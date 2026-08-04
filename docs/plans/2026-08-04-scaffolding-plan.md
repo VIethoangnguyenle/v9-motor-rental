@@ -384,9 +384,12 @@ Config đã commit (`eefa2c6` + `300c2a9`) là bản có thẩm quyền; đừng
 ```json
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "types": ["bun"] },
   "include": ["src/**/*"]
 }
 ```
+
+`"types": ["bun"]` là **bắt buộc**, không phải trang trí. TypeScript không tự nạp `@types/bun` trong layout install của bun. Thiếu nó: `bun:test` không có type → `typecheck` báo `TS2307` → `describe`/`it`/`expect` thành `any` → type-aware lint nổ 30 lỗi `no-unsafe-call`. Đã kiểm chứng bằng cài lại sạch rằng thêm `bun-types` làm devDependency **không** giải quyết được.
 
 - [ ] **Step 3: Viết test thất bại — `packages/shared/src/domain/money.test.ts`**
 
@@ -680,9 +683,12 @@ git commit -m "feat(shared): createApiClient generic, không tạo chu trình v�
 ```json
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "types": ["bun"] },
   "include": ["src/**/*", "drizzle.config.ts"]
 }
 ```
+
+`"types": ["bun"]` bắt buộc — xem Task 3 Step 2.
 
 - [ ] **Step 3: Tạo `packages/db/drizzle.config.ts`**
 
@@ -977,9 +983,12 @@ git commit -m "feat(infra): compose dev postgres+minio+bucket init; test chứng
 ```json
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "types": ["bun"] },
   "include": ["src/**/*", "scripts/**/*"]
 }
 ```
+
+`"types": ["bun"]` bắt buộc — xem Task 3 Step 2. `apps/api` chạy trên Bun nên cần cả `Bun.SQL` lẫn `bun:test`.
 
 - [ ] **Step 3: Tạo `apps/api/src/env.ts`**
 
@@ -1217,118 +1226,141 @@ git commit -m "feat(api): elysia app, bun-sql driver, /health + /health/deep, se
 
 ---
 
-## Task 9: `apps/admin` — Next + Eden client
+## Task 9: `apps/admin` — Vite + TanStack Router + Query
+
+> **Đổi so với bản duyệt đầu.** Task này ban đầu là Next.js. Người dùng đổi ngày 2026-08-05:
+> `apps/admin` chuyển sang Vite + TanStack, `apps/web` giữ Next. Lý do và đánh đổi: §4.10 design doc.
 
 **Files:**
-- Create: `apps/admin/package.json`, `apps/admin/tsconfig.json`, `apps/admin/next.config.ts`
-- Create: `apps/admin/lib/api.ts`, `apps/admin/app/layout.tsx`, `apps/admin/app/page.tsx`
+- Modify: `.env.example`
+- Create: `apps/admin/package.json`, `apps/admin/tsconfig.json`, `apps/admin/vite.config.ts`, `apps/admin/index.html`
+- Create: `apps/admin/src/lib/api.ts`, `apps/admin/src/pages/health.tsx`, `apps/admin/src/router.tsx`, `apps/admin/src/main.tsx`
 
-- [ ] **Step 1: Tạo `apps/admin/package.json`**
+- [ ] **Step 1: Thêm biến env cho Vite vào `.env.example`**
+
+Vite **chỉ** phơi ra client những biến có tiền tố `VITE_`. `NEXT_PUBLIC_API_URL` sẽ không bao giờ tới được `apps/admin`. Thêm vào khối `── Frontends ──`:
+
+```bash
+# apps/admin dùng Vite: chỉ biến có tiền tố VITE_ mới tới được client bundle.
+VITE_API_URL=http://localhost:3001
+```
+
+Giữ nguyên `NEXT_PUBLIC_API_URL` — `apps/web` vẫn dùng nó.
+
+- [ ] **Step 2: Tạo `apps/admin/package.json`**
 
 ```json
 {
   "name": "@v9/admin",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev --port ${ADMIN_PORT:-3002}",
-    "build": "next build",
-    "start": "next start",
+    "dev": "vite --port ${ADMIN_PORT:-3002}",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port ${ADMIN_PORT:-3002}",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@tanstack/react-query": "5.101.4",
+    "@tanstack/react-router": "1.170.18",
     "@v9/shared": "workspace:*",
-    "next": "16.3.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.18",
-    "@v9/api": "workspace:*"
+    "@v9/api": "workspace:*",
+    "@vitejs/plugin-react": "6.0.5",
+    "vite": "8.2.0"
   }
 }
 ```
 
 `@v9/api` nằm ở `devDependencies` có chủ ý: frontend chỉ dùng nó cho `import type`, không có code runtime nào của API đi vào bundle.
 
-- [ ] **Step 2: Tạo `apps/admin/tsconfig.json`**
+- [ ] **Step 3: Tạo `apps/admin/tsconfig.json`**
 
 ```json
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "jsx": "preserve",
-    "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./*"] },
-    "exactOptionalPropertyTypes": false
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    "exactOptionalPropertyTypes": false,
+    "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*", "vite.config.ts"]
 }
 ```
 
-`exactOptionalPropertyTypes` bị tắt **chỉ ở tầng app React**, có chủ ý. Nó vẫn bật ở `packages/shared` và `packages/db` — nơi phân biệt "thiếu key" với "key = undefined" thật sự có giá trị cho domain logic. Nhưng trong JSX, mẫu `prop={cond ? value : undefined}` là phổ biến nhất, trong khi type của React và hầu hết thư viện khai `prop?: T` chứ không phải `prop?: T | undefined` — bật cờ này ở app sẽ tạo ra một loạt lỗi type không phản ánh bug nào. Đây là kết luận từ code review Task 1, không phải phỏng đoán.
+Ba điểm không được đổi:
+- `jsx: "react-jsx"` (không phải `"preserve"` như bên Next) — Vite không có bước tsc emit, nên tsc phải tự hiểu JSX.
+- `types: ["vite/client"]` để `import.meta.env` có type. Xem §4.11 design doc: TS không tự nạp type theo layout install của bun, phải khai tường minh.
+- `exactOptionalPropertyTypes: false` — cùng lý do như `apps/web`, cờ này đánh nhau với mẫu JSX `prop={cond ? value : undefined}`.
 
-- [ ] **Step 3: Tạo `apps/admin/next.config.ts`**
+- [ ] **Step 4: Tạo `apps/admin/vite.config.ts`**
 
 ```ts
-import type { NextConfig } from "next";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 
-const config: NextConfig = {
-  output: "standalone",
-  outputFileTracingRoot: `${import.meta.dirname}/../..`,
-};
-
-export default config;
+export default defineConfig({
+  plugins: [react()],
+});
 ```
 
-`outputFileTracingRoot` trỏ về root monorepo — thiếu nó, standalone build sẽ không gói được symlink của bun workspace và container sẽ chết lúc khởi động vì thiếu module.
+Cố ý không đặt `server.port` ở đây: đọc `process.env` trong file này sẽ cần `@types/node`, mà package này không có. Port truyền qua cờ `--port` trong script `dev`.
 
-- [ ] **Step 4: Tạo `apps/admin/lib/api.ts` — chỗ ghép Eden**
+- [ ] **Step 5: Tạo `apps/admin/index.html`**
+
+```html
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>V9 Motor Rental — Quản trị</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+- [ ] **Step 6: Tạo `apps/admin/src/lib/api.ts` — chỗ ghép Eden**
 
 ```ts
 import type { App } from "@v9/api";
 import { createApiClient } from "@v9/shared/client";
 
-export const api = createApiClient<App>(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001");
+export const api = createApiClient<App>(import.meta.env.VITE_API_URL ?? "http://localhost:3001");
 ```
 
-- [ ] **Step 5: Tạo `apps/admin/app/layout.tsx`**
+- [ ] **Step 7: Tạo `apps/admin/src/pages/health.tsx`**
 
 ```tsx
-import type { ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../lib/api";
 
-export const metadata = {
-  title: "V9 Motor Rental — Quản trị",
-  description: "Hệ quản lý nội bộ cho V9 Motor Rental",
-};
-
-export default function RootLayout({ children }: { children: ReactNode }) {
-  return (
-    <html lang={process.env.NEXT_PUBLIC_DEFAULT_LOCALE ?? "vi"}>
-      <body>{children}</body>
-    </html>
-  );
-}
-```
-
-- [ ] **Step 6: Tạo `apps/admin/app/page.tsx`**
-
-```tsx
-import { api } from "@/lib/api";
-
-export const dynamic = "force-dynamic";
-
-export default async function Page() {
-  const { data, error } = await api.health.get();
+export function HealthPage() {
+  const { data, error, isPending } = useQuery({
+    queryKey: ["health"],
+    queryFn: async () => {
+      const res = await api.health.get();
+      if (res.error) throw new Error(String(res.error.value));
+      return res.data;
+    },
+  });
 
   return (
     <main style={{ fontFamily: "monospace", padding: 24 }}>
       <h1>V9 Admin — scaffold</h1>
       <p>
         API health:{" "}
-        <strong>{error ? `lỗi: ${String(error.value)}` : data.status}</strong>
+        <strong>{isPending ? "đang tải…" : error ? `lỗi: ${error.message}` : data.status}</strong>
       </p>
       <p>Chưa có chức năng nghiệp vụ nào. Xem CLAUDE.md.</p>
     </main>
@@ -1336,23 +1368,81 @@ export default async function Page() {
 }
 ```
 
-`data.status` có type `"ok"` do Eden suy ra từ response schema TypeBox của `apps/api` — không khai báo type thủ công ở đâu cả. Đó chính là thứ tiêu chí #4 đòi.
+`data.status` có type `"ok"` do Eden suy ra từ response schema TypeBox của `apps/api`, đi xuyên qua `useQuery` — không khai type thủ công ở đâu cả. Đó chính là thứ tiêu chí #4 đòi, và là lý do TanStack Query phải **bọc lên** Eden chứ không thay nó.
 
-- [ ] **Step 7: Cài và verify**
+- [ ] **Step 8: Tạo `apps/admin/src/router.tsx`**
+
+```tsx
+import { Outlet, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
+import { HealthPage } from "./pages/health";
+
+// Route khai bằng code, không dùng file-based routing plugin: phiên scaffold có đúng
+// một route, dựng bộ máy sinh route lúc này là chi phí không có người trả.
+const rootRoute = createRootRoute({ component: () => <Outlet /> });
+
+const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/",
+  component: HealthPage,
+});
+
+export const router = createRouter({ routeTree: rootRoute.addChildren([indexRoute]) });
+
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router;
+  }
+}
+```
+
+Khối `declare module` là thứ làm cho router type-safe toàn cục — thiếu nó thì `Link` và `navigate` mất autocomplete và mất kiểm tra path.
+
+- [ ] **Step 9: Tạo `apps/admin/src/main.tsx`**
+
+```tsx
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { RouterProvider } from "@tanstack/react-router";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { router } from "./router";
+
+const queryClient = new QueryClient();
+
+const rootEl = document.getElementById("root");
+if (!rootEl) throw new Error("Không tìm thấy #root trong index.html");
+
+createRoot(rootEl).render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  </StrictMode>,
+);
+```
+
+- [ ] **Step 10: Cài và chạy dev**
 
 ```bash
 bun install
 bun run --filter @v9/admin dev
 ```
 
-Run: `curl -s localhost:3002 | grep -o "API health:.*ok" | head -1`
-Expected: chuỗi chứa `ok`.
+Run: `curl -s localhost:3002 | grep -c "root"`
+Expected: ≥ 1 (Vite trả về `index.html`; nội dung do JS render nên `curl` **không** thấy chữ "ok" — đó là bản chất SPA, không phải lỗi).
 
-- [ ] **Step 8: Commit**
+Để verify thật đường dây Query → Eden → API, cần `apps/api` đang chạy và mở trình duyệt, hoặc dùng `/browse`. Ghi lại cách bạn verify.
+
+- [ ] **Step 11: Verify build ra SPA tĩnh**
+
+Run: `bun run --filter @v9/admin build`
+Expected: `tsc --noEmit` sạch rồi `vite build` thành công; `ls apps/admin/dist/` có `index.html` và thư mục `assets/`.
+
+- [ ] **Step 12: Lint và commit**
 
 ```bash
-git add apps/admin package.json bun.lock
-git commit -m "feat(admin): next standalone + trang placeholder gọi /health qua Eden typed"
+bun run lint
+git add apps/admin .env.example package.json bun.lock
+git commit -m "feat(admin): vite + tanstack router/query, trang health qua Eden typed"
 ```
 
 ---
@@ -1752,7 +1842,22 @@ EXPOSE 3000
 CMD ["node", "apps/web/server.js"]
 ```
 
-- [ ] **Step 4: Tạo `apps/admin/Dockerfile`**
+- [ ] **Step 4: Tạo `apps/admin/Caddyfile` và `apps/admin/Dockerfile`**
+
+`apps/admin/Caddyfile`:
+
+```caddyfile
+:3002 {
+	root * /srv
+	encode gzip
+	try_files {path} /index.html
+	file_server
+}
+```
+
+`try_files {path} /index.html` là **bắt buộc**, không phải tối ưu. Thiếu nó, mọi đường dẫn sâu của TanStack Router sẽ 404 khi người dùng bấm F5 — lỗi kinh điển của SPA tĩnh, và nó **không lộ ra** khi điều hướng trong app, chỉ lộ khi reload hoặc mở link trực tiếp.
+
+`apps/admin/Dockerfile`:
 
 ```dockerfile
 FROM oven/bun:1.3.10-alpine AS builder
@@ -1764,19 +1869,19 @@ COPY packages/shared/package.json packages/shared/
 COPY packages/db/package.json packages/db/
 RUN bun install --frozen-lockfile
 COPY . .
-ENV NEXT_TELEMETRY_DISABLED=1
+# VITE_API_URL bị NƯỚNG VÀO BUNDLE lúc build, không đọc được lúc chạy.
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
 RUN bun run --filter @v9/admin build
 
-FROM node:22-alpine AS runtime
-WORKDIR /app
-ENV NODE_ENV=production
-COPY --from=builder /app/apps/admin/.next/standalone ./
-COPY --from=builder /app/apps/admin/.next/static ./apps/admin/.next/static
+# SPA tĩnh: không có server-side runtime nào để chạy, chỉ cần thứ phục vụ file.
+FROM caddy:2-alpine AS runtime
+COPY --from=builder /app/apps/admin/dist /srv
+COPY apps/admin/Caddyfile /etc/caddy/Caddyfile
 EXPOSE 3002
-CMD ["node", "apps/admin/server.js"]
 ```
 
-`apps/admin` không có `public/` nên không COPY — thêm dòng đó sẽ làm build fail.
+**Hệ quả phải nhớ:** Vite nướng `VITE_API_URL` thẳng vào bundle lúc build. Khác hẳn `apps/api` hay `apps/web` vốn đọc env lúc chạy. Nghĩa là **đổi API URL của admin bắt buộc phải build lại image** — đặt biến trong `compose.prod.yaml` sẽ không có tác dụng gì. Vì vậy `deploy.yml` ở Task 14 phải truyền `--build-arg VITE_API_URL=https://api.<domain>` khi build image admin.
 
 - [ ] **Step 5: Tạo `Caddyfile`**
 
@@ -1852,15 +1957,13 @@ services:
       timeout: 3s
       retries: 5
 
+  # SPA tĩnh. KHÔNG khai VITE_API_URL ở đây — Vite đã nướng nó vào bundle lúc build,
+  # đặt biến lúc chạy hoàn toàn vô tác dụng. Muốn đổi API URL thì build lại image.
   admin:
     image: ghcr.io/viethoangnguyenle/v9-motor-rental-admin:latest
     restart: unless-stopped
     depends_on:
       api: { condition: service_healthy }
-    environment:
-      NEXT_PUBLIC_API_URL: https://api.${ROOT_DOMAIN}
-      NEXT_PUBLIC_DEFAULT_LOCALE: ${NEXT_PUBLIC_DEFAULT_LOCALE}
-      PORT: "3002"
 
   web:
     image: ghcr.io/viethoangnguyenle/v9-motor-rental-web:latest
@@ -2001,6 +2104,11 @@ jobs:
           context: .
           file: apps/${{ matrix.app }}/Dockerfile
           push: true
+          # Chỉ apps/admin dùng ARG này. Vite nướng URL vào bundle lúc build nên
+          # nó PHẢI có mặt ở đây — đặt trong compose.prod.yaml không có tác dụng.
+          # api và web bỏ qua ARG không khai báo (chỉ sinh warning, không fail).
+          build-args: |
+            VITE_API_URL=https://api.${{ vars.ROOT_DOMAIN }}
           tags: |
             ghcr.io/viethoangnguyenle/v9-motor-rental-${{ matrix.app }}:latest
             ghcr.io/viethoangnguyenle/v9-motor-rental-${{ matrix.app }}:${{ github.sha }}
