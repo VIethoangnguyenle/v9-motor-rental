@@ -17,7 +17,7 @@
     "format:check": "prettier --check .",
     "db:generate": "bun run --filter @v9/db generate",
     "db:custom": "bun run --filter @v9/db custom",
-    "db:migrate": "bun run --filter @v9/db migrate",
+    "db:migrate": "bun --env-file=.env packages/db/scripts/migrate.ts",
     "bench": "bun run apps/api/scripts/bench.ts"
   },
   "devDependencies": {
