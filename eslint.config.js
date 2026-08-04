@@ -86,31 +86,109 @@ export default tseslint.config(
       // Renamed from the deprecated "boundaries/element-types" to "boundaries/dependencies" — same
       // factory function, same options schema, zero behaviour change, one fewer deprecation warning
       // per run. Verified via boundary probe that enforcement still fires after the rename.
+      //
+      // `rules` renamed to `policies` (the `rules` key still works but is deprecated and prints a
+      // warning — confirmed in node_modules/eslint-plugin-boundaries/dist/Settings/Rules.js,
+      // validateAndWarnRuleOptions: `options.policies ?? options.rules`). Entries migrated from
+      // legacy string selectors (`from: "type"`, `allow: ["type", ...]`) to the object-based
+      // selector syntax v7 wants (`from: { element: { type: "..." } }`,
+      // `allow: { to: { element: { type: "..." } } }` / `{ types: { anyOf: [...] } }` for
+      // multi-target allow lists) — exact shape confirmed against the README's own "Quick Example"
+      // (node_modules/eslint-plugin-boundaries/README.md) and against
+      // node_modules/eslint-plugin-boundaries/dist/Settings/Rules.js (ruleHasLegacySelectorSyntax /
+      // isLegacyEntitySelector, which flags bare strings and un-wrapped `{ type: "..." }` objects
+      // alike — only `{ element: { type: "..." } }` counts as non-legacy) and
+      // node_modules/.bun/@boundaries+elements@3.1.0/.../dist/index.d.ts (ElementSingleSelector:
+      // `type` matches only element.types[0], `types: { anyOf: [...] }` matches anywhere in
+      // element.types — used here for the "allow one of several types" rules to reproduce the old
+      // array semantics exactly). Behaviour is unchanged: same allow/disallow graph, verified by
+      // re-running all four boundary probes below after the migration.
       "boundaries/dependencies": [
         "error",
         {
           default: "disallow",
-          rules: [
-            { from: "shared-root", allow: ["shared-domain"] },
+          policies: [
             {
-              from: "api-root",
-              allow: ["api-root", "api-routes", "api-plugins", "api-infra", "shared-domain"],
+              from: { element: { type: "shared-root" } },
+              allow: { to: { element: { type: "shared-domain" } } },
             },
-            { from: "shared-domain", allow: ["shared-domain"] },
+            {
+              from: { element: { type: "api-root" } },
+              allow: {
+                to: {
+                  element: {
+                    types: {
+                      anyOf: [
+                        "api-root",
+                        "api-routes",
+                        "api-plugins",
+                        "api-infra",
+                        "shared-domain",
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+            {
+              from: { element: { type: "shared-domain" } },
+              allow: { to: { element: { type: "shared-domain" } } },
+            },
             // client.ts is fully isolated on purpose (cannot even import shared-domain, unlike
             // "frontend" which can import both): it's the Eden client factory, generic over the API
             // type, and must stay a dependency-free contract so packages/shared never gains a path
             // into apps/api. Do not "fix" this by adding allowed imports.
-            { from: "shared-client", allow: [] },
-            { from: "db", allow: ["db"] },
+            { from: { element: { type: "shared-client" } }, allow: [] },
             {
-              from: "api-routes",
-              allow: ["api-routes", "api-services", "api-plugins", "shared-domain"],
+              from: { element: { type: "db" } },
+              allow: { to: { element: { type: "db" } } },
             },
-            { from: "api-services", allow: ["api-services", "api-infra", "db", "shared-domain"] },
-            { from: "api-infra", allow: ["api-infra"] },
-            { from: "api-plugins", allow: ["api-plugins", "api-infra", "shared-domain"] },
-            { from: "frontend", allow: ["frontend", "shared-domain", "shared-client"] },
+            {
+              from: { element: { type: "api-routes" } },
+              allow: {
+                to: {
+                  element: {
+                    types: {
+                      anyOf: ["api-routes", "api-services", "api-plugins", "shared-domain"],
+                    },
+                  },
+                },
+              },
+            },
+            {
+              from: { element: { type: "api-services" } },
+              allow: {
+                to: {
+                  element: {
+                    types: { anyOf: ["api-services", "api-infra", "db", "shared-domain"] },
+                  },
+                },
+              },
+            },
+            {
+              from: { element: { type: "api-infra" } },
+              allow: { to: { element: { type: "api-infra" } } },
+            },
+            {
+              from: { element: { type: "api-plugins" } },
+              allow: {
+                to: {
+                  element: {
+                    types: { anyOf: ["api-plugins", "api-infra", "shared-domain"] },
+                  },
+                },
+              },
+            },
+            {
+              from: { element: { type: "frontend" } },
+              allow: {
+                to: {
+                  element: {
+                    types: { anyOf: ["frontend", "shared-domain", "shared-client"] },
+                  },
+                },
+              },
+            },
           ],
         },
       ],
