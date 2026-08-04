@@ -173,8 +173,10 @@ availability · `plugins/timing.ts` ghi `{route, ms, status}` có cấu trúc ·
 Người dùng chủ động đè ràng buộc "no CI" trong spec gốc.
 
 `ci.yml`: mọi push và PR chạy `bun install` → `lint` → `typecheck` → `test`.
-`deploy.yml`: push vào `main` chạy CI, build ba image, đẩy lên `ghcr.io/<owner>/v9-{api,admin,web}`,
-rồi SSH vào VPS chạy `docker compose -f compose.prod.yaml pull && up -d`.
+`deploy.yml`: push vào `main` chạy CI, build ba image, đẩy lên
+`ghcr.io/viethoangnguyenle/v9-motor-rental-{api,admin,web}`, rồi SSH vào VPS chạy
+`docker compose -f compose.prod.yaml pull && up -d`. (GHCR bắt buộc chữ thường ở phần owner —
+tài khoản viết là `VIethoangnguyenle` nhưng tên image phải là `viethoangnguyenle`.)
 
 Secrets cần: `SSH_HOST`, `SSH_USER`, `SSH_KEY`. GHCR dùng `GITHUB_TOKEN` sẵn có.
 
@@ -407,7 +409,9 @@ Thêm ngoài 12 tiêu chí gốc, do phạm vi được mở rộng trong phiên
 - **Auth seam**: `plugins/auth.ts` trả 501 nếu bị enforce, export `Role` và `AuthContext`,
   không route nào enforce ở phiên này.
 - **Hàm mẫu shared**: `overlaps()` nửa khoảng `[start, end)`, cộng `formatVnd`.
-- **Repo GitHub**: tên `v9-rental`, **private**, tài khoản `VIethoangnguyenle`.
+- **Repo GitHub**: `git@github.com:VIethoangnguyenle/v9-motor-rental.git` (người dùng cung cấp).
+  Thư mục làm việc local là `v9-rental` — **tên local và tên remote cố ý khác nhau**, không phải nhầm.
+  Image GHCR vì vậy là `ghcr.io/viethoangnguyenle/v9-motor-rental-{api,admin,web}`.
 
 ## 14. Việc để lại cho phiên sau
 
