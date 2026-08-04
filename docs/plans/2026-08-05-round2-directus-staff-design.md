@@ -63,7 +63,8 @@ thành đơn thuê thật. Hệ quả:
 | `apps/api` | Bun + Elysia. Nơi duy nhất ghi dữ liệu nghiệp vụ. Export `type App` cho Eden. |
 | `apps/web` | Next 16, SSG/ISR. Xem mẫu xe, tạo request. **Không** chốt đơn. |
 | `apps/staff` | **Mới.** PWA (Vite + TanStack). Lịch, thống kê, lên đơn/bàn giao, khách hàng, tiếp nhận request. |
-| Directus | **Chỉ dữ liệu gốc**: danh mục xe, ảnh, bảng giá, tài khoản. Tra cứu dữ liệu thô. |
+| Directus | **Chỉ dữ liệu gốc**: danh mục xe, ảnh, bảng giá. Tra cứu dữ liệu thô. |
+| SuperTokens | **Mới.** Service xác thực self-host cho `apps/staff`. Schema riêng trong cùng Postgres. |
 | `packages/db` | Làm chủ schema. Migration là nguồn sự thật duy nhất. |
 | `packages/shared` | Không đổi. Domain logic thuần + Eden client factory. |
 | ~~`apps/admin`~~ | **Xoá.** |
@@ -167,27 +168,76 @@ Chi phí vận hành cũng lệch hẳn: tự host Supabase là khoảng chín c
 §4 dưới đây, kèm RLS ở tầng database. Nhưng đổi sang Supabase chỉ để giải việc đó là đảo bốn quyết
 định đã dựng xong, cho một vấn đề mà tự viết JWT trong Elysia giải được.
 
-## 4. Quyết định còn mở — `apps/staff` đăng nhập bằng gì
+## 4. `apps/staff` xác thực bằng SuperTokens
 
-Directus có hệ user/role riêng. `apps/api` có seam JWT chưa implement. Sắp có **hai hệ danh tính**.
+**Chốt 2026-08-05.** Thay cho ba phương án cân nhắc trước đó (Directus làm nhà cung cấp danh tính ·
+`apps/api` tự viết JWT · dùng chung bảng user), `apps/staff` dùng **SuperTokens** self-host.
 
-Ba đường, chưa chọn:
+### 4.1 Khả thi — đã kiểm chứng, không phải đọc tài liệu rồi đoán
 
-| Đường | Được | Mất |
-|---|---|---|
-| Directus làm nhà cung cấp danh tính | một nơi quản tài khoản | `apps/api` phải xác thực token của Directus, và phụ thuộc vào Directus để đăng nhập |
-| `apps/api` tự quản | độc lập, đơn giản, kiểm soát hoàn toàn | hai nơi quản tài khoản, nhân viên nhớ hai mật khẩu |
-| Dùng chung bảng user | một nguồn tài khoản duy nhất | phải khớp định dạng hash mật khẩu của Directus, ràng buộc chặt vào nội bộ của nó |
+`supertokens-node` không có adapter cho Elysia, nên câu hỏi sống còn là nó có chạy dưới Bun không.
+Đã thử thật:
 
-**Không chặn đợt này** — `apps/staff` dựng khung không cần đăng nhập. Phải giải trước khi làm tính
-năng thật, vì mọi màn hình đều cần biết ai đang thao tác.
+| Kiểm | Kết quả |
+|---|---|
+| `supertokens-node@24.0.3` cài được | ✅ |
+| Adapter framework có `custom` | ✅ (cạnh `express`, `fastify`, `koa`, `hapi`, `loopback`, `awsLambda`) |
+| `supertokens.init({ framework: "custom" })` chạy dưới Bun | ✅ in ra `init OK` |
+| `middleware()` trả về handler | ✅ |
+
+Framework `custom` phơi ra `PreParsedRequest` và `CollectingResponse` — lớp adapter theo chuẩn Web
+`Request`/`Response`, cùng thứ SuperTokens dùng cho Next App Router và edge runtime. Elysia cũng
+chạy trên `Request`/`Response`, nên đây là chỗ ghép tự nhiên, không phải chắp vá.
+
+`apps/api/src/plugins/auth.ts` — seam đã đánh dấu `// SEAM: JWT auth` từ đợt 1 — giờ có đích cụ
+thể: bọc `middleware()` của `custom` thành một Elysia plugin và cho `derive` trả `AuthContext` từ
+session của SuperTokens.
+
+### 4.2 Hệ quả hạ tầng
+
+SuperTokens core là **một service riêng** (image `supertokens-postgresql`), kết nối vào chính
+Postgres của ta và tự tạo bảng của nó.
+
+**Áp cùng luật với Directus (§3.2): schema riêng, role riêng, không có DDL lên `public`.**
+
+```sql
+CREATE ROLE supertokens_app LOGIN PASSWORD '...';
+CREATE SCHEMA supertokens AUTHORIZATION supertokens_app;
+REVOKE CREATE ON SCHEMA public FROM supertokens_app;
+```
+
+SuperTokens toàn quyền trong schema `supertokens`, và **không chạm được** vào bảng nghiệp vụ. Sau
+đợt này Postgres có ba vùng tách bạch: `public` (migration của ta làm chủ), `directus`, `supertokens`.
+
+### 4.3 Vẫn còn hai nơi đăng nhập — chấp nhận có ý thức
+
+Directus giữ hệ user riêng của nó. Nghĩa là:
+
+| Ai | Đăng nhập ở đâu |
+|---|---|
+| Chủ và nhân viên dùng `apps/staff` | SuperTokens |
+| Người nhập liệu vào Directus | tài khoản Directus |
+| Khách trên `apps/web` | **không cần đăng nhập** — chỉ gửi request |
+
+Chấp nhận được vì hai nhóm khác nhau và Directus chỉ có vài tài khoản back-office. Nếu sau này
+phiền, SuperTokens làm được OAuth2/OIDC provider và Directus nhận SSO — nhưng đó là việc thêm khi
+có nhu cầu thật, không làm trước.
+
+**`apps/web` không dùng SuperTokens.** Khách gửi request không cần tài khoản. Thêm đăng nhập vào
+luồng đó chỉ làm giảm số request nhận được.
+
+### 4.4 Đợt này làm tới đâu
+
+Dựng SuperTokens core chạy được, tạo schema và role, và ghép `middleware()` vào `apps/api` sau seam
+đã có. **Chưa** làm màn hình đăng nhập, chưa enforce trên route nào — vì chưa có route nghiệp vụ
+nào để bảo vệ. Mục tiêu là seam không còn là giấy: nó gọi được SuperTokens thật.
 
 ## 5. Non-goals đợt này
 
 - Không làm bốn tính năng của `apps/staff`: lịch, thống kê, lên đơn/bàn giao, quản lý khách hàng.
 - Không tạo schema nghiệp vụ (`vehicles`, `customers`, `rentals`, `booking_requests`).
 - Không quyết chính sách tính ngày thuê và bảng giá.
-- Không implement auth.
+- Không làm màn hình đăng nhập, không enforce auth trên route nào — chưa có route nghiệp vụ để bảo vệ.
 - **Không dựng khung dashboard thống kê.** Chưa có một đơn thuê nào tồn tại; vẽ biểu đồ trước khi
   có dữ liệu là cách chắc chắn nhất để thiết kế sai thứ mình chưa hiểu.
 
@@ -200,7 +250,8 @@ năng thật, vì mọi màn hình đều cần biết ai đang thao tác.
 | 3 | Directus vào `compose.yaml` + `compose.prod.yaml` + route Caddy; role Postgres theo §3.2; **verify bằng cách thử đổi schema và thấy nó bị từ chối** |
 | 4 | Thu hẹp `apps/web` về xem xe + tạo request |
 | 5 | Dựng khung `apps/staff` PWA — cài được, offline shell, gọi được `/health` |
-| 6 | Cập nhật CLAUDE.md, ghi ADR, verify lại toàn bộ |
+| 6 | SuperTokens core vào compose, schema + role riêng, ghép `middleware()` vào seam `apps/api` |
+| 7 | Cập nhật CLAUDE.md, ghi ADR, verify lại toàn bộ |
 
 ## 7. Tiêu chí "xong" cho đợt 2
 
@@ -217,7 +268,9 @@ Không tiêu chí nào được tuyên bố đạt nếu chưa chạy lệnh và
 | 7 | `apps/staff` gọi được `/health` qua Eden typed | mở app thật, thấy trạng thái |
 | 8 | Toàn bộ vẫn xanh | `bun test`, `bun run typecheck`, `bun run lint`, CI |
 | 9 | Bộ probe boundaries vẫn nổ | chạy lại bộ probe trong CLAUDE.md sau khi đổi `eslint.config.js` |
-| 10 | ADR đã ghi | `memory_recall` đọc lại được quyết định Directus và role Postgres |
+| 10 | SuperTokens core lên được và `apps/api` gọi tới nơi | endpoint của SuperTokens trả về qua Elysia, không phải 404 |
+| 11 | **SuperTokens KHÔNG đổi được schema `public`** | thử DDL bằng role `supertokens_app` → phải bị từ chối |
+| 12 | ADR đã ghi | `memory_recall` đọc lại được quyết định Directus, SuperTokens, và role Postgres |
 
 Tiêu chí **#3** là tiêu chí quan trọng nhất của đợt này. Nếu Directus vẫn đổi được schema thì luật
 "migration làm chủ" chỉ là chữ trên giấy, và toàn bộ kỷ luật migration của đợt 1 mất tác dụng.
