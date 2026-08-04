@@ -1,0 +1,10 @@
+{
+  "site": {
+    "title": "V9 Motor Rental",
+    "tagline": "Thuê mô tô phân khối lớn tại TP.HCM"
+  },
+  "scaffold": {
+    "notice": "Trang tạm. Chưa có nội dung nghiệp vụ.",
+    "apiHealth": "Trạng thái API"
+  }
+}
