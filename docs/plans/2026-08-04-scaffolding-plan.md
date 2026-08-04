@@ -1247,12 +1247,15 @@ git commit -m "feat(api): elysia app, bun-sql driver, /health + /health/deep, se
   "compilerOptions": {
     "jsx": "preserve",
     "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./*"] }
+    "paths": { "@/*": ["./*"] },
+    "exactOptionalPropertyTypes": false
   },
   "include": ["**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
 }
 ```
+
+`exactOptionalPropertyTypes` bị tắt **chỉ ở tầng app React**, có chủ ý. Nó vẫn bật ở `packages/shared` và `packages/db` — nơi phân biệt "thiếu key" với "key = undefined" thật sự có giá trị cho domain logic. Nhưng trong JSX, mẫu `prop={cond ? value : undefined}` là phổ biến nhất, trong khi type của React và hầu hết thư viện khai `prop?: T` chứ không phải `prop?: T | undefined` — bật cờ này ở app sẽ tạo ra một loạt lỗi type không phản ánh bug nào. Đây là kết luận từ code review Task 1, không phải phỏng đoán.
 
 - [ ] **Step 3: Tạo `apps/admin/next.config.ts`**
 
@@ -1383,12 +1386,15 @@ git commit -m "feat(admin): next standalone + trang placeholder gọi /health qu
   "compilerOptions": {
     "jsx": "preserve",
     "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./*"] }
+    "paths": { "@/*": ["./*"] },
+    "exactOptionalPropertyTypes": false
   },
   "include": ["**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
 }
 ```
+
+Lý do tắt `exactOptionalPropertyTypes` ở tầng app: xem Task 9 Step 2. Cờ này vẫn bật ở `packages/shared` và `packages/db`.
 
 - [ ] **Step 3: Tạo `apps/web/next.config.ts`**
 
@@ -1504,19 +1510,33 @@ git commit -m "feat(web): next standalone + ISR, seam i18n vi, trang placeholder
 **Files:**
 - Modify: các file bị lint/typecheck bắt lỗi
 
-- [ ] **Step 1: Chạy typecheck toàn workspace**
+- [ ] **Step 1: Trước hết, chứng minh `typecheck` không im lặng bỏ sót workspace nào**
+
+`bun run --filter '*' <script>` **bỏ qua không báo lỗi** những workspace không khai script đó, rồi vẫn exit 0. Nghĩa là `bun run typecheck` có thể "xanh" trong khi chưa hề kiểm tra một package nào. Không có bước này thì tiêu chí #11 là xanh giả.
+
+Run:
+```bash
+for f in apps/*/package.json packages/*/package.json; do
+  name=$(bun -e "console.log(require('./$f').name)")
+  has=$(bun -e "console.log(Boolean(require('./$f').scripts?.typecheck))")
+  echo "$name typecheck=$has"
+done
+```
+Expected: **5 dòng**, mỗi dòng `typecheck=true` — `@v9/api`, `@v9/admin`, `@v9/web`, `@v9/db`, `@v9/shared`. Bất kỳ dòng nào `false` hoặc thiếu dòng nào đều phải sửa `package.json` của workspace đó trước khi đi tiếp.
+
+- [ ] **Step 2: Chạy typecheck toàn workspace**
 
 Run: `bun run typecheck`
-Expected: exit 0 cho cả 5 workspace.
+Expected: exit 0, và trong output thấy đủ 5 tên workspace chạy qua.
 
 Nếu `apps/admin` hoặc `apps/web` báo thiếu type của Next, chạy `bun run --filter @v9/web build` một lần để Next sinh `.next/types`, rồi chạy lại.
 
-- [ ] **Step 2: Chạy lint toàn repo**
+- [ ] **Step 3: Chạy lint toàn repo**
 
 Run: `bun run lint`
 Expected: exit 0.
 
-- [ ] **Step 3: Cố tình vi phạm boundary để chứng minh luật có hiệu lực**
+- [ ] **Step 4: Cố tình vi phạm boundary để chứng minh luật có hiệu lực**
 
 ```bash
 echo 'import { db } from "../../../../apps/api/src/db";' >> packages/shared/src/domain/money.ts
@@ -1527,7 +1547,7 @@ Expected: **FAIL** với lỗi `boundaries/element-types` — `shared-domain` kh
 
 Bước này bắt buộc. Một linter được cấu hình nhưng không thực sự chặn còn nguy hiểm hơn không có linter, vì nó tạo cảm giác an toàn giả.
 
-- [ ] **Step 4: Hoàn tác vi phạm và xác nhận lint xanh lại**
+- [ ] **Step 5: Hoàn tác vi phạm và xác nhận lint xanh lại**
 
 ```bash
 git checkout packages/shared/src/domain/money.ts
@@ -1536,12 +1556,12 @@ bun run lint
 
 Expected: exit 0.
 
-- [ ] **Step 5: Chạy toàn bộ test**
+- [ ] **Step 6: Chạy toàn bộ test**
 
 Run: `bun test`
 Expected: PASS — 14 test của `shared`, 1 test của `db`.
 
-- [ ] **Step 6: Format và commit**
+- [ ] **Step 7: Format và commit**
 
 ```bash
 bun run format
@@ -2017,6 +2037,8 @@ Nội dung bắt buộc có, theo §11 design doc:
 8. **Cấm `drizzle-kit push`** — schema chỉ đi qua migration file.
 9. **Bốn design pattern backend** — copy §4.6: plugin có `name`, deps là tham số, domain trả discriminated union, transaction thuộc service + bắt `23P01` → 409.
 10. **Đánh đổi CI/deploy chạy song song** — ghi lại từ Task 14 Step 2.
+11. **Cạm bẫy `bun run --filter '*'`** — nó **im lặng bỏ qua** workspace không khai script tương ứng rồi vẫn exit 0. Hệ quả: `bun run typecheck` và `bun run test` ở root có thể xanh mà chưa hề kiểm tra một package nào. **Luật: mọi workspace mới bắt buộc phải khai `typecheck` trong `package.json` ngay khi được tạo.** Cách kiểm tra nằm ở Task 11 Step 1 của plan.
+12. **`exactOptionalPropertyTypes` bật ở `packages/*`, tắt ở `apps/{web,admin}`** — không phải quên, mà vì cờ này đánh nhau với mẫu JSX `prop={cond ? value : undefined}`. Đừng "sửa" bằng cách bật lại ở app hay tắt luôn ở base.
 
 - [ ] **Step 2: Viết `apps/api/CLAUDE.md`**
 
