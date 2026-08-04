@@ -336,6 +336,17 @@ git add eslint.config.js .prettierrc .prettierignore cspell.json package.json bu
 git commit -m "chore: eslint flat config với boundaries, prettier, cspell vi"
 ```
 
+### Kết quả thực tế — bản draft ở Step 4 **chưa đủ**
+
+Config đã commit (`eefa2c6` + `300c2a9`) là bản có thẩm quyền; đừng chép lại draft ở trên. Sáu thay đổi bắt buộc, tất cả đều phát hiện bằng cách chạy thật:
+
+1. **`@eslint/js@10.0.1`**, không phải `10.8.0` — package đó không tồn tại (đã sửa ở Step 5).
+2. **`import/resolver` thêm `.ts`/`.tsx`.** Thiếu nó, `eslint-import-resolver-node` không resolve được import không đuôi file, plugin phân loại đích là unknown và **im lặng bỏ qua** — toàn bộ luật boundaries thành no-op mà lint vẫn exit 0.
+3. **`mode: "full"` cho ba element một-file** (`shared-root`, `api-root`, `shared-client`, `api-infra`). Bản thay thế theo tài liệu `partialMatch: false` **hỏng** ở plugin 7.1.0 — nó vẫn nối hậu tố thư mục con nên không bao giờ khớp chính file đó. Đổi lấy một cảnh báo deprecated để có enforcement đúng.
+4. **Thêm element `shared-root` và `api-root`.** File không khớp element nào **không phải bị kiểm tra lỏng — mà được miễn hoàn toàn**: plugin không đăng ký visitor nào cho file nó không phân loại được, nên import *từ* file đó không bao giờ bị soi. `apps/api/src/index.ts` và `packages/shared/src/index.ts` đều rơi vào lỗ này. `api-root` **không được** với thẳng tới `db`.
+5. **Bật `boundaries/no-unknown-files: "error"`** để lần sau có file top-level không khớp gì thì nó đỏ ngay, thay vì lặng lẽ chui khỏi hàng rào.
+6. **Đổi tên rule `boundaries/element-types` → `boundaries/dependencies`** (cùng factory, cùng schema, không đổi hành vi) và **`boundaries/ignore: ["apps/api/scripts/**"]`** cho `bench.ts` — bench là công cụ vận hành, không phải một tầng kiến trúc; cho nó element type với allow rộng sẽ tạo lỗ hình cửa hậu ngay trong đồ thị.
+
 ---
 
 ## Task 3: `packages/shared` — money (TDD)
@@ -1533,10 +1544,24 @@ Expected: exit 0, và trong output thấy đủ 5 tên workspace chạy qua.
 
 Nếu `apps/admin` hoặc `apps/web` báo thiếu type của Next, chạy `bun run --filter @v9/web build` một lần để Next sinh `.next/types`, rồi chạy lại.
 
-- [ ] **Step 3: Chạy lint toàn repo**
+- [ ] **Step 3: Chạy lint toàn repo, và dọn deprecation của `eslint-plugin-boundaries`**
 
 Run: `bun run lint`
 Expected: exit 0.
+
+Tới bước này đã có file thật nên plugin sẽ phun **3 cảnh báo deprecation**, không phải 1 như lúc cây thư mục còn rỗng:
+
+```
+[boundaries][warning]: The 'mode' option in element descriptors is deprecated...
+[boundaries/dependencies] The 'rules' option is deprecated. Please use 'policies' instead.
+[boundaries/dependencies] Detected legacy selector syntax in 10 rule(s) at indices: 0..9.
+```
+
+Cảnh báo `mode` là **không bỏ được** (xem Task 2 — `partialMatch: false` hỏng ở 7.1.0). Hai cảnh báo còn lại thì bỏ được và **phải bỏ**: `rules:` → `policies:` cùng cú pháp selector mới. Lý do không để lại: ba cảnh báo mỗi lần lint sẽ dạy người ta lướt qua output của lint, và `rules:` nhiều khả năng bị gỡ ở major kế tiếp của plugin.
+
+Sau khi đổi, **bắt buộc chạy lại probe** ở Step 4 để chứng minh enforcement không mất — đổi schema mà không verify là đúng cách biến hàng rào thành trang trí.
+
+Expected sau khi sửa: exit 0, còn đúng **1** cảnh báo (`mode`).
 
 - [ ] **Step 4: Cố tình vi phạm boundary để chứng minh luật có hiệu lực**
 
