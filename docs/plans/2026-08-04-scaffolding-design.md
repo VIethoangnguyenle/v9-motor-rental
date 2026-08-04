@@ -295,17 +295,24 @@ TDD nghiêm bắt buộc cho mọi thứ trong `src/domain/`.
 ### 8.3 `packages/db`
 
 ```
-src/schema/*.ts         nguồn cho bảng thường
+src/schema/*.ts         nguồn cho bảng thường (phiên này: rỗng, chưa có bảng nghiệp vụ)
 migrations/
-├── 0000_init.sql       drizzle-kit generate
-├── 0001_btree_gist.sql drizzle-kit generate --custom
+├── 0000_btree_gist.sql drizzle-kit generate --custom
 └── meta/_journal.json
 drizzle.config.ts
 ```
 
-`0001_btree_gist.sql` chứa `CREATE EXTENSION IF NOT EXISTS btree_gist` và exclusion constraint
-`EXCLUDE USING gist (vehicle_id WITH =, period WITH &&)`. Index GiST sinh ra từ constraint này
-được dùng luôn cho tra cứu availability — không tạo index thứ hai.
+**Migration đầu tiên chỉ làm một việc: `CREATE EXTENSION IF NOT EXISTS btree_gist`.**
+
+Lý do phải nói rõ: exclusion constraint `EXCLUDE USING gist (vehicle_id WITH =, period WITH &&)`
+cần bảng `rentals` tồn tại, mà `rentals` là **business schema** — thứ §2 cấm ở phiên này.
+Nên phiên này chỉ bật extension; constraint sẽ đi cùng migration tạo bảng `rentals` ở phiên
+làm nghiệp vụ. Index GiST sinh ra từ constraint đó, khi có, được dùng luôn cho tra cứu
+availability — không tạo index thứ hai.
+
+Để `btree_gist` không chỉ "được bật trên giấy", test của `packages/db` sẽ mở một transaction,
+tạo bảng tạm có exclusion constraint đúng dạng sẽ dùng sau, khẳng định INSERT chồng lấn bị chặn,
+rồi ROLLBACK. Chứng minh extension dùng được thật mà không commit một dòng business schema nào.
 
 ### 8.4 `apps/admin` và `apps/web`
 
@@ -391,7 +398,7 @@ Không tiêu chí nào được tuyên bố đạt nếu chưa chạy lệnh và
 | 2 | `docker compose up` lên postgres + minio, api nối được cả hai | `docker compose up -d`, `docker compose ps` healthy; `curl /health/deep` trả ok cho cả pg và minio |
 | 3 | `GET /health` trả `{status:"ok"}` qua Elysia + TypeBox, export type Eden | `curl -s localhost:$API_PORT/health`; `bun run typecheck` thấy `App` export được |
 | 4 | admin và web render placeholder và gọi `/health` qua Eden client typed | build cả hai, mở trang, thấy trạng thái health render ra |
-| 5 | `packages/db` có drizzle config + migration đầu bật `btree_gist`; `bun run db:migrate` chạy | `bun run db:migrate`; `\dx` thấy `btree_gist`; `\d` thấy exclusion constraint |
+| 5 | `packages/db` có drizzle config + migration đầu bật `btree_gist`; `bun run db:migrate` chạy | `bun run db:migrate`; `\dx` thấy `btree_gist`; test rollback chứng minh exclusion constraint chặn được overlap thật |
 | 6 | `packages/shared` có pure function mẫu + test pass; `bun test` pass ở root | `bun test` |
 | 7 | CLAUDE.md root đủ nội dung mục 11; mỗi app có CLAUDE.md trỏ về root | đọc lại từng file đối chiếu mục 11 |
 | 8 | PRODUCT.md và DESIGN.md tồn tại, được `apps/web/CLAUDE.md` tham chiếu | `/impeccable init` rồi kiểm tra file và link |
