@@ -2045,6 +2045,13 @@ volumes:
   caddy-config:
 ```
 
+> **Đã kiểm chứng ở Task 10 — `next build` KHÔNG cần API chạy, nhưng hỏng im lặng.**
+> Với `revalidate = 60`, Next fetch `/health` ngay lúc build. Nếu API không tới được, Eden trả
+> `{data: null, error}` chứ không ném lỗi, nên build **vẫn thành công** và nướng chuỗi lỗi vào
+> HTML tĩnh. Trang deploy ra hiển thị trạng thái lỗi cho tới khi ISR revalidate sau 60 giây kể từ
+> request thật đầu tiên. Không phải lỗi build, nhưng là một phút xấu xí sau mỗi lần deploy —
+> biết trước để không đi debug nhầm chỗ.
+
 - [ ] **Step 7: Verify build ba image ở local**
 
 ```bash
@@ -2227,7 +2234,11 @@ Nội dung bắt buộc có, theo §11 design doc:
 
 Ngắn, trỏ về root. Phải có: luồng `route → service → db` và cấm mũi tên ngược · `src/db.ts` là chỗ duy nhất biết driver, đổi driver chỉ sửa file đó · bắt buộc bắt `23P01` → 409 khi có bảng `rentals` · mọi route phải khai `response` schema TypeBox (Elysia dùng nó cho đường serialize nhanh) · mọi plugin phải có `name` · perf budget · seam auth tìm bằng `grep -rn "SEAM: JWT auth"`.
 
-- [ ] **Step 3: Viết `apps/web/CLAUDE.md`**
+- [ ] **Step 3: Viết nội dung web vào `apps/web/AGENTS.md`, KHÔNG phải `CLAUDE.md`**
+
+Next 16 tự sinh hai file này khi chạy `next dev`: `apps/web/CLAUDE.md` chỉ chứa một dòng `@AGENTS.md`, còn nội dung thật nằm trong `AGENTS.md` giữa hai marker `<!-- BEGIN:nextjs-agent-rules -->` … `<!-- END:nextjs-agent-rules -->`. Next **ghi lại khối đó mỗi lần `next dev`**.
+
+Vì vậy: giữ nguyên `CLAUDE.md` làm con trỏ, và viết nội dung của ta vào `AGENTS.md` **bên ngoài** cặp marker. Đánh nhau với cơ chế này chỉ tạo ra một diff bẩn tái sinh sau mỗi lần chạy dev.
 
 Ngắn, trỏ về root. Phải có: **UI phải tôn trọng `DESIGN.md` và `PRODUCT.md` ở root** (link tương đối) · SEO quan trọng → ưu tiên SSG/ISR, tránh `force-dynamic` trừ khi có lý do viết ra · i18n hiện là seam một file `messages/vi.json`, thêm next-intl chỉ khi thật sự có ngôn ngữ thứ hai · `impeccable` áp dụng cho app này.
 

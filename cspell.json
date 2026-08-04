@@ -1,6 +1,6 @@
 {
   "version": "0.2",
-  "language": "en,vi",
+  "language": "en",
   "words": [
     "elysia",
     "elysiajs",
@@ -14,7 +14,20 @@
     "treaty",
     "typebox",
     "bunfig",
-    "impeccable"
+    "impeccable",
+    "tanstack",
+    "vite",
+    "errno",
+    "savepoint"
   ],
-  "ignorePaths": ["node_modules/**", "bun.lock", ".next/**", "dist/**"]
+  "ignoreRegExpList": ["/[A-Za-zÀ-ỹ]*[À-ỹ][A-Za-zÀ-ỹ]*/gu"],
+  "ignorePaths": [
+    "node_modules/**",
+    "bun.lock",
+    ".next/**",
+    "dist/**",
+    "docs/**",
+    "**/messages/*.json",
+    "**/*.test.ts"
+  ]
 }
