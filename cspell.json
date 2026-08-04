@@ -18,7 +18,17 @@
     "tanstack",
     "vite",
     "errno",
-    "savepoint"
+    "savepoint",
+    "directus",
+    "supertokens",
+    "psql",
+    "varchar",
+    "sqlstate",
+    "pgcrypto",
+    "nspname",
+    "rolname",
+    "schemaname",
+    "tablename"
   ],
   "ignoreRegExpList": ["/[A-Za-zÀ-ỹ]*[À-ỹ][A-Za-zÀ-ỹ]*/gu"],
   "ignorePaths": [
@@ -27,7 +37,12 @@
     ".next/**",
     "dist/**",
     "docs/**",
+    "**/CLAUDE.md",
+    "**/AGENTS.md",
+    "PRODUCT.md",
+    "DESIGN.md",
     "**/messages/*.json",
-    "**/*.test.ts"
+    "**/*.test.ts",
+    "**/*.sql"
   ]
 }
