@@ -338,19 +338,28 @@ src/
 ├── plugins/
 │   ├── auth.ts         SEAM JWT — chưa implement
 │   └── timing.ts       onAfterResponse → {route, ms, status}
-├── routes/
-│   └── health.ts       GET /health · GET /health/deep
-└── services/           nơi duy nhất gọi Drizzle và mở transaction
+├── services/
+│   └── health.ts       checkPostgres() · checkMinio()  ← nơi duy nhất chạm hạ tầng
+└── routes/
+    └── health.ts       GET /health · GET /health/deep  ← chỉ HTTP + schema
 ```
+
+**`routes/` KHÔNG được import `db.ts` hay `env.ts`.** ESLint chặn thật: `api-routes` chỉ được
+chạm `api-routes`, `api-services`, `api-plugins`, `shared-domain`. Bản duyệt đầu đặt
+`checkPostgres`/`checkMinio` ngay trong `routes/health.ts` — sai, và hàng rào boundaries bắt được
+trước khi kịp viết một dòng. Mọi thứ chạm Postgres hay MinIO đi vào `services/`.
 
 `GET /health` trả đúng `{ status: "ok" }` với response schema TypeBox.
 `GET /health/deep` kiểm tra thật cả Postgres lẫn MinIO và trả trạng thái từng cái. Tách ra vì
 health check của Caddy không nên kéo theo query DB mỗi lần.
 
-**Auth seam.** `plugins/auth.ts` đọc header `Authorization: Bearer`, hiện trả **501** nếu bị
-enforce, và export sẵn `type Role = "OWNER" | "STAFF" | "SALES"` cùng `type AuthContext`.
-Phiên này **không route nào** enforce. File mở đầu bằng comment `// SEAM: JWT auth` để tìm được
-bằng grep.
+**Auth seam.** `plugins/auth.ts` đọc header `Authorization: Bearer` và export sẵn
+`type Role = "OWNER" | "STAFF" | "SALES"` cùng `type AuthContext`. Phiên này **không route nào**
+enforce. File mở đầu bằng comment `// SEAM: JWT auth` để tìm được bằng grep.
+
+Macro `requireRole` trong bản duyệt đầu bị **bỏ**: không route nào dùng nó ở phiên này, và một
+macro chưa bao giờ được chạy thì tệ hơn là không có — nó trông như đã được kiểm chứng trong khi
+không. Seam đúng nghĩa là type cộng điểm móc, không phải cơ chế phân quyền chưa ai gọi.
 
 ### 8.2 `packages/shared`
 
