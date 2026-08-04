@@ -147,6 +147,22 @@ SOLID vẫn có, ở dạng function một trách nhiệm và tham số, không 
    (`exclusion_violation`) và dịch thành **409**. Đây là mặt trái của quyết định chống
    double-booking ở tầng DB: không bắt mã này thì va chạm booking rơi ra ngoài dưới dạng 500.
 
+   > **Cách bắt — kiểm chứng thực nghiệm ở Task 7, đừng đoán lại:**
+   >
+   > **SQLSTATE nằm ở `.errno`, KHÔNG phải `.code`.** Bun.SQL bọc lỗi server-side thành
+   > `PostgresError` với `.code` luôn bằng `"ERR_POSTGRES_SERVER_ERROR"` cho *mọi* lỗi Postgres.
+   > Viết `if (e.code === "23P01")` cho ra một điều kiện **không bao giờ đúng**, và nó im lặng —
+   > va chạm booking sẽ thành 500, còn unit test không bắt được vì phải có Postgres thật mới lộ.
+   >
+   > ```ts
+   > if ((e as { errno?: string }).errno === "23P01") return { ok: false, reason: "overlap" };
+   > ```
+   >
+   > **Lỗi trong transaction làm hỏng cả transaction.** Sau một câu lệnh lỗi, mọi câu sau đều bị
+   > từ chối với `current transaction is aborted`. Nếu service cần *thử* insert rồi xử lý va chạm
+   > mà vẫn dùng tiếp transaction đó, phải bọc câu có thể lỗi trong `tx.savepoint(...)` —
+   > nó phát `SAVEPOINT` / `ROLLBACK TO SAVEPOINT` và gỡ độc cho transaction ngoài.
+
 ### 4.7 Lint / format — ESLint 9 flat + Prettier
 
 Chọn ESLint thay Biome vì hai thứ Biome không có và đáng tiền ở codebase async nhiều:

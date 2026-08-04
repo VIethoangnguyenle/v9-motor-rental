@@ -2216,7 +2216,7 @@ Nội dung bắt buộc có, theo §11 design doc:
 6. **Perf budget** — bảng p95, cộng câu "vượt budget là fail, không phải góp ý".
 7. **Luật pin TypeScript** — đang ở 6.0.3; **không nâng lên 7** cho tới khi `typescript-eslint` nới peer `<6.1.0`; nâng sớm sẽ giết type-aware lint.
 8. **Cấm `drizzle-kit push`** — schema chỉ đi qua migration file.
-9. **Bốn design pattern backend** — copy §4.6: plugin có `name`, deps là tham số, domain trả discriminated union, transaction thuộc service + bắt `23P01` → 409.
+9. **Bốn design pattern backend** — copy §4.6: plugin có `name`, deps là tham số, domain trả discriminated union, transaction thuộc service + bắt `23P01` → 409. **Kèm nguyên khối cảnh báo về `.errno` và `tx.savepoint()`** — đây là hai thứ đắt nhất mà phiên scaffold học được, và cả hai đều hỏng một cách im lặng nếu làm sai.
 10. **Đánh đổi CI/deploy chạy song song** — ghi lại từ Task 14 Step 2.
 11. **Cạm bẫy `bun run --filter '*'`** — nó **im lặng bỏ qua** workspace không khai script tương ứng rồi vẫn exit 0. Hệ quả: `bun run typecheck` và `bun run test` ở root có thể xanh mà chưa hề kiểm tra một package nào. **Luật: mọi workspace mới bắt buộc phải khai `typecheck` trong `package.json` ngay khi được tạo.** Cách kiểm tra nằm ở Task 11 Step 1 của plan.
 12. **`exactOptionalPropertyTypes` bật ở `packages/*`, tắt ở `apps/{web,admin}`** — không phải quên, mà vì cờ này đánh nhau với mẫu JSX `prop={cond ? value : undefined}`. Đừng "sửa" bằng cách bật lại ở app hay tắt luôn ở base.
