@@ -319,8 +319,10 @@ export default tseslint.config(
 
 - [ ] **Step 5: Cài dependency còn thiếu**
 
-Run: `bun add -D @eslint/js@10.8.0`
+Run: `bun add -D @eslint/js@10.0.1`
 Expected: thêm vào `devDependencies`.
+
+`@eslint/js` **không** đi cùng số hiệu với `eslint`. `eslint` đang ở 10.8.0 nhưng `@eslint/js` mới nhất chỉ là 10.0.1 — hai package đã tách version. Đừng "sửa" cho khớp nhau.
 
 - [ ] **Step 6: Verify lint chạy được**
 
