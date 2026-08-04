@@ -1,0 +1,119 @@
+name: v9-rental-prod
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    # Không publish port ra host — chỉ Caddy được expose 80/443 ra ngoài,
+    # mọi service khác chỉ giao tiếp qua network nội bộ của compose.
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/${MINIO_BUCKET_VEHICLES} &&
+      mc mb --ignore-existing local/${MINIO_BUCKET_CHECKINS} &&
+      echo 'buckets sẵn sàng'
+      "
+
+  api:
+    image: ghcr.io/viethoangnguyenle/v9-motor-rental-api:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_BUCKET_VEHICLES: ${MINIO_BUCKET_VEHICLES}
+      MINIO_BUCKET_CHECKINS: ${MINIO_BUCKET_CHECKINS}
+      API_PORT: "3001"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  web:
+    image: ghcr.io/viethoangnguyenle/v9-motor-rental-web:latest
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_API_URL: https://api.${ROOT_DOMAIN}
+      PORT: "3000"
+
+  admin:
+    image: ghcr.io/viethoangnguyenle/v9-motor-rental-admin:latest
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    # KHÔNG set VITE_API_URL ở đây: Vite nướng biến này vào bundle JS lúc
+    # `docker build --build-arg VITE_API_URL=...`, không đọc process.env lúc
+    # container chạy. Set nó ở runtime là no-op và đánh lừa người đọc sau —
+    # muốn đổi API URL của admin thì phải build lại image với build-arg mới.
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+      - admin
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      ROOT_DOMAIN: ${ROOT_DOMAIN}
+      CADDY_EMAIL: ${CADDY_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+# Migration story: image api chứa packages/db (schema + migrations) nhưng
+# compose không tự chạy migration lúc boot — apply thủ công (hoặc từ CI/CD)
+# sau khi stack lên bằng:
+#   docker compose -f compose.prod.yaml exec api bun packages/db/scripts/migrate.ts
+# Cố ý tách khỏi CMD của container api: chạy migration mỗi lần container
+# restart/scale là nguy hiểm (race condition khi nhiều replica cùng migrate).
+
+volumes:
+  postgres-data:
+  minio-data:
+  caddy-data:
+  caddy-config:

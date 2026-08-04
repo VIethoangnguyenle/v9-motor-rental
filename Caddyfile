@@ -1,0 +1,15 @@
+{
+	email {$CADDY_EMAIL}
+}
+
+v9.{$ROOT_DOMAIN} {
+	reverse_proxy web:3000
+}
+
+admin.{$ROOT_DOMAIN} {
+	reverse_proxy admin:3002
+}
+
+api.{$ROOT_DOMAIN} {
+	reverse_proxy api:3001
+}
