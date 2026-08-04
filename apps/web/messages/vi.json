@@ -4,7 +4,12 @@
     "tagline": "Thuê mô tô phân khối lớn tại TP.HCM"
   },
   "scaffold": {
-    "notice": "Trang tạm. Chưa có nội dung nghiệp vụ.",
+    "notice": "Trang tạm. Danh sách xe và form gửi yêu cầu chưa làm.",
     "apiHealth": "Trạng thái API"
+  },
+  "booking": {
+    "cta": "Gửi yêu cầu thuê",
+    "afterSubmit": "Đã nhận yêu cầu. Shop sẽ liên hệ với bạn để xác nhận xe và thời gian.",
+    "note": "Gửi yêu cầu chưa phải là đặt xe. Shop xác nhận rồi mới có đơn."
   }
 }

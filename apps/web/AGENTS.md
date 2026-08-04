@@ -21,6 +21,30 @@ Luật chung của repo ở [`../../CLAUDE.md`](../../CLAUDE.md). Đọc file đ
 
 Next 16 App Router, `output: "standalone"`. Site công khai cho khách thuê xe.
 
+## ⚠️ App này KHÔNG chốt đơn — chỉ tạo yêu cầu
+
+Đây là ràng buộc sản phẩm quan trọng nhất của app, và nó dễ bị vi phạm bằng một câu copy vô ý.
+
+Khách **xem mẫu xe** và **gửi yêu cầu thuê**. Yêu cầu đi vào hệ thống; **nhân viên** tiếp nhận và
+chốt thành đơn thuê thật trong `apps/staff`. Web không đọc availability thời gian thực và không
+biết xe có còn trống hay không.
+
+**Hệ quả cho copy — luật cứng:** không câu nào trên app này được **hứa** rằng xe còn trống, rằng
+đơn đã được xác nhận, hay rằng ngày khách chọn đã được giữ. Đúng cách nói:
+
+> "Đã nhận yêu cầu. Shop sẽ liên hệ với bạn để xác nhận xe và thời gian."
+
+Sai — dù nghe hay hơn:
+
+> ~~"Đặt xe thành công! Xe của bạn đã được giữ cho ngày 12/8."~~
+
+Hứa sai ở đây tạo ra khách bực bội, và **không ai phát hiện cho tới lúc gọi điện**. Copy đã có
+sẵn trong `messages/vi.json` dưới khoá `booking` — dùng lại, đừng viết câu mới.
+
+**Hệ quả kỹ thuật:** vì không cần availability thời gian thực, trang danh sách và trang chi tiết
+xe tĩnh hoàn toàn được. Đó đúng là lý do Next được chọn. Xem §3.3 của
+[`../../docs/plans/2026-08-05-round2-directus-staff-design.md`](../../docs/plans/2026-08-05-round2-directus-staff-design.md).
+
 ## SEO là lý do app này dùng Next
 
 Đây là điều duy nhất phân biệt nó với `apps/staff` (Vite PWA). Ưu tiên SSG/ISR; tránh
