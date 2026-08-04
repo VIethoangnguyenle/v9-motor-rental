@@ -49,6 +49,33 @@ services:
       echo 'buckets sẵn sàng'
       "
 
+  # Chỉ dữ liệu gốc: danh mục xe, ảnh, bảng giá. KHÔNG làm vận hành (lịch,
+  # thống kê, bàn giao thuộc apps/staff — xem docs/plans/2026-08-05-round2-directus-staff-design.md §3.1).
+  # Kết nối Postgres bằng role directus_app: đọc/ghi dữ liệu ở public, KHÔNG
+  # có DDL — chặn schema drift ở tầng database, không phải config Directus.
+  # Xem packages/db/migrations/0001_service_roles.sql và §3.2 design doc.
+  directus:
+    image: directus/directus:11
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KEY: ${DIRECTUS_KEY}
+      SECRET: ${DIRECTUS_SECRET}
+      DB_CLIENT: pg
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_DATABASE: ${POSTGRES_DB}
+      DB_USER: directus_app
+      DB_PASSWORD: ${DIRECTUS_DB_PASSWORD}
+      DB_SEARCH_PATH: directus,public
+      ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD}
+      WEBSOCKETS_ENABLED: "false"
+    ports:
+      - "${DIRECTUS_PORT}:8055"
+
 volumes:
   postgres-data:
   minio-data:
