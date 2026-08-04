@@ -865,10 +865,45 @@ Expected: `postgres`, `minio` chạy; `minio-init` exit code 0.
 Run: `docker compose ps`
 Expected: `postgres` và `minio` trạng thái `healthy`; `minio-init` trạng thái `exited (0)`.
 
-- [ ] **Step 4: Chạy migration**
+- [ ] **Step 4: Thay `db:migrate` bằng migrator của bun-sql, rồi chạy**
+
+**Hai vấn đề đã kiểm chứng, phải sửa trước khi migration chạy được:**
+
+1. `bun run --filter @v9/db migrate` chạy với cwd là `packages/db`, mà bun chỉ nạp `.env` từ cwd — `DATABASE_URL` ở root không tới nơi. Lỗi thật: `DATABASE_URL chưa được set`.
+2. **`drizzle-kit migrate` không hỗ trợ `bun-sql`.** Nó đòi cài `pg`, `postgres`, `@neondatabase/serverless` hoặc `@vercel/postgres`. Đây là mâu thuẫn thật với §4.8 — driver runtime đã chốt là `bun-sql`.
+
+**Chốt: tự viết migrator bằng `drizzle-orm/bun-sql/migrator`** thay vì kéo thêm `postgres.js` vào chỉ để chạy migration. Lý do: giữ đúng **một** driver Postgres trong cả hệ thống, và migration chạy trên cùng driver với production — nếu `bun-sql` có khiếm khuyết thì nó lộ ra ngay lúc migrate, thay vì ẩn tới lúc chạy thật. `drizzle-kit` vẫn dùng cho `generate` và `--custom` (hai lệnh đó không cần driver).
+
+Tạo `packages/db/scripts/migrate.ts`:
+
+```ts
+import { SQL } from "bun";
+import { drizzle } from "drizzle-orm/bun-sql";
+import { migrate } from "drizzle-orm/bun-sql/migrator";
+
+const url = process.env.DATABASE_URL;
+if (!url) throw new Error("DATABASE_URL chưa được set — copy .env.example thành .env");
+
+const client = new SQL(url);
+const db = drizzle({ client });
+
+await migrate(db, { migrationsFolder: `${import.meta.dirname}/../migrations` });
+console.warn("migration đã apply xong");
+await client.close();
+```
+
+Thêm `"scripts/**/*"` vào `include` của `packages/db/tsconfig.json`.
+
+Đổi script `db:migrate` ở **root** `package.json` — chạy từ root nên `.env` nạp tự nhiên, không cần `--filter`:
+
+```json
+"db:migrate": "bun --env-file=.env packages/db/scripts/migrate.ts"
+```
 
 Run: `bun run db:migrate`
-Expected: drizzle-kit apply `0000_btree_gist`, không lỗi.
+Expected: apply `0000_btree_gist`, in ra `migration đã apply xong`, exit 0.
+
+Đây cũng là **lần tiếp xúc thật đầu tiên với `bun-sql`**. Nếu nó gãy ở đây, đường lùi đã ghi sẵn: đổi sang `drizzle-orm/postgres-js` — nhưng phải báo cáo rõ lỗi trước khi lùi, đừng lùi âm thầm.
 
 - [ ] **Step 5: Verify extension có thật trong DB**
 
