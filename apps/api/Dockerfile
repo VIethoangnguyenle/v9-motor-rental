@@ -25,7 +25,6 @@ COPY packages/shared packages/shared
 # apps/api không phụ thuộc chúng) khiến nó báo "lockfile had changes" và
 # fail. Chỉ cần manifest, không cần source, nên copy nhẹ hai dòng dưới.
 COPY apps/web/package.json apps/web/
-COPY apps/admin/package.json apps/admin/
 RUN bun install --frozen-lockfile
 ENV NODE_ENV=production
 EXPOSE 3001

@@ -76,23 +76,11 @@ services:
       NEXT_PUBLIC_API_URL: https://api.${ROOT_DOMAIN}
       PORT: "3000"
 
-  admin:
-    image: ghcr.io/viethoangnguyenle/v9-motor-rental-admin:latest
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_healthy
-    # KHÔNG set VITE_API_URL ở đây: Vite nướng biến này vào bundle JS lúc
-    # `docker build --build-arg VITE_API_URL=...`, không đọc process.env lúc
-    # container chạy. Set nó ở runtime là no-op và đánh lừa người đọc sau —
-    # muốn đổi API URL của admin thì phải build lại image với build-arg mới.
-
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
     depends_on:
       - web
-      - admin
       - api
     ports:
       - "80:80"

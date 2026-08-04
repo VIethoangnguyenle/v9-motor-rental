@@ -15,25 +15,27 @@ deliverable ngang hàng với code, không phải phụ lục.
 | Workspace | Vai trò |
 |---|---|
 | `apps/api` | Bun + Elysia + TypeBox. Export `type App` cho Eden Treaty. |
-| `apps/admin` | Vite + TanStack Router/Query, SPA tĩnh. Quản trị nội bộ. Role `OWNER`, `STAFF`; `SALES` để dành. |
+| `apps/staff` | Vite + TanStack Router/Query, **PWA**. Vận hành: lịch, thống kê, lên đơn/bàn giao, khách hàng. Role `OWNER`, `STAFF`; `SALES` để dành. |
+| Directus | **Chỉ dữ liệu gốc**: danh mục xe, ảnh, bảng giá. Không làm vận hành. |
+| SuperTokens | Xác thực cho `apps/staff`. Schema riêng trong cùng Postgres. |
 | `apps/web` | Next 16 App Router, `output: "standalone"`, SSG/ISR. Site công khai, **SEO quan trọng**. |
 | `packages/shared` | Domain logic thuần + Eden client factory. |
 | `packages/db` | Drizzle schema + migration SQL. |
 
-**Hai frontend dùng hai framework khác nhau, có chủ ý.** `apps/admin` là dashboard nội bộ nên SEO
-vô nghĩa; `apps/web` giữ Next vì SEO chính là lý do Next được chọn. Đừng "thống nhất" chúng.
+**Hai frontend dùng hai framework khác nhau, có chủ ý.** `apps/staff` là app vận hành nội bộ nên
+SEO vô nghĩa; `apps/web` giữ Next vì SEO chính là lý do Next được chọn. Đừng "thống nhất" chúng.
 
 ## Canonical commands
 
 ```bash
 bun install                  # cài, ở root
 docker compose up -d         # dev: postgres + minio (KHÔNG có app)
-bun run dev                  # api + admin + web chạy trên host
+bun run dev                  # api + web + staff chạy trên host
 bun run db:migrate           # apply migration (chạy từ root, không dùng --filter)
 bun run db:generate          # sinh migration cho bảng thường
 bun run db:custom            # migration trống để viết SQL tay
 bun test                     # bun test, toàn repo
-bun run typecheck            # cả 5 workspace
+bun run typecheck            # cả 4 workspace (5 khi có apps/staff)
 bun run lint                 # eslint, có ép ranh giới kiến trúc
 bun run format               # prettier
 bun run bench                # đo /health, exit 1 nếu vượt perf budget
@@ -140,14 +142,14 @@ Rồi vẫn exit 0. Nghĩa là `bun run typecheck` có thể xanh mà chưa ki�
 Ngoài ra `--filter` chạy với cwd là thư mục package, nên `.env` ở root không tới nơi. Lệnh nào
 cần env thì chạy từ root với `bun --env-file=.env ...`.
 
-### `exactOptionalPropertyTypes`: bật ở `packages/*`, tắt ở `apps/{web,admin}`
+### `exactOptionalPropertyTypes`: bật ở `packages/*`, tắt ở `apps/{web,staff}`
 
 Không phải quên. Cờ này đánh nhau với mẫu JSX `prop={cond ? value : undefined}` vì React khai
 `prop?: T` chứ không phải `prop?: T | undefined`. Đừng "sửa" theo hướng nào cả.
 
-### `apps/admin`: `VITE_API_URL` bị nướng vào bundle **lúc build**
+### `apps/staff`: `VITE_API_URL` bị nướng vào bundle **lúc build**
 
-Đặt biến đó lúc chạy trong compose **không có tác dụng gì**. Đổi API URL của admin bắt buộc phải
+Đặt biến đó lúc chạy trong compose **không có tác dụng gì**. Đổi API URL của staff bắt buộc phải
 build lại image. `deploy.yml` truyền nó qua `--build-arg`.
 
 ---
@@ -173,7 +175,7 @@ bun x eslint packages/shared/src/domain/__p.ts   # boundaries/dependencies
 rm packages/shared/src/domain/__p.ts
 
 # PHẢI im (mẫu Eden hợp lệ — import type bị xoá lúc build)
-bun x eslint apps/web/lib/api.ts apps/admin/src/lib/api.ts
+bun x eslint apps/web/lib/api.ts apps/staff/src/lib/api.ts
 ```
 
 Config linter "chạy được và exit 0" **không chứng minh điều gì**. Chỉ probe vi phạm thật mới chứng minh.
@@ -188,7 +190,7 @@ Config linter "chạy được và exit 0" **không chứng minh điều gì**. 
 | **Serena** | Cách **duy nhất** để điều hướng và sửa code theo ngữ nghĩa. Bắt buộc `find_symbol` / `find_referencing_symbols` **trước khi** sửa bất kỳ exported function hay shared type nào. Ưu tiên sửa ở mức symbol hơn ghi đè cả file. | Không đổi tên hay đổi signature khi chưa kiểm tra reference. |
 | **Agent Memory** | Là **ADR, không phải cache code**. **Đọc** lúc mở phiên và trước **mọi** đề xuất đổi schema hay API contract. **Ghi** quyết định + lý do, naming convention, gotcha phát hiện lúc debug. | Không lưu code snippet hay nội dung file — git và Serena lo phần đó. Nếu đề xuất mâu thuẫn với quyết định đã lưu, **nêu xung đột cho người**, không tự đè. |
 | **rtk** | Đã hook sẵn, không cần làm gì. Ưu tiên chạy test/git/docker qua bash để rtk nén output. | Không dán output dài vào context bằng tay. |
-| **impeccable** | `apps/web` là chính; audit nhẹ cho `apps/admin`. UI của `apps/web` phải tôn trọng `DESIGN.md`. | `apps/admin` ưu tiên chức năng — **không polish pass trừ khi được yêu cầu**. |
+| **impeccable** | `apps/web` là chính; audit nhẹ cho `apps/staff`. UI của `apps/web` phải tôn trọng `DESIGN.md`. | `apps/staff` ưu tiên chức năng — **không polish pass trừ khi được yêu cầu**. |
 
 ---
 

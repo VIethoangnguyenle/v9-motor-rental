@@ -64,7 +64,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        app: [api, admin, web]
+        app: [api, web]
     steps:
       - uses: actions/checkout@v4
 
@@ -83,7 +83,7 @@ jobs:
           push: true
           # Cả hai ARG được truyền cho MỌI app trong matrix, kể cả app không
           # khai báo ARG đó trong Dockerfile:
-          #   - apps/admin khai ARG VITE_API_URL (Vite nướng nó vào bundle JS
+          #   - apps/staff (sắp có) khai ARG VITE_API_URL (Vite nướng nó vào bundle JS
           #     lúc build — đặt runtime trong compose.prod.yaml vô tác dụng).
           #   - apps/web khai ARG NEXT_PUBLIC_API_URL.
           #   - apps/api không khai ARG nào trong hai cái này.

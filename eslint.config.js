@@ -111,7 +111,7 @@ export default tseslint.config(
         // deprecated `mode: "full"` is the one that actually performs a full-path match here.
         { type: "api-infra", pattern: "apps/api/src/{db,env}.ts", mode: "full" },
         { type: "api-plugins", pattern: "apps/api/src/plugins/**" },
-        { type: "frontend", pattern: "apps/{web,admin}/**" },
+        { type: "frontend", pattern: "apps/{web,staff}/**" },
       ],
       // apps/api/scripts/bench.ts is operational tooling, not a layer in the enforced app/service/db
       // architecture — it's expected to reach into services/db directly to benchmark them, and giving
@@ -229,7 +229,7 @@ export default tseslint.config(
                   },
                 },
                 // Eden Treaty typing (§4.1 docs/plans/2026-08-04-scaffolding-design.md): both
-                // apps/{admin,web}/lib/api.ts write `import type { App } from "@v9/api"` — TYPE
+                // apps/{staff,web} lib/api.ts write `import type { App } from "@v9/api"` — TYPE
                 // ONLY, erased at build — to hand the API's type to createApiClient<App>() without
                 // packages/shared ever importing apps/api (that's what would recreate the
                 // shared → api → shared cycle client.ts exists to avoid). This surfaced only after

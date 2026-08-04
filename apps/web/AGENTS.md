@@ -23,7 +23,7 @@ Next 16 App Router, `output: "standalone"`. Site công khai cho khách thuê xe.
 
 ## SEO là lý do app này dùng Next
 
-Đây là điều duy nhất phân biệt nó với `apps/admin` (Vite SPA). Ưu tiên SSG/ISR; tránh
+Đây là điều duy nhất phân biệt nó với `apps/staff` (Vite PWA). Ưu tiên SSG/ISR; tránh
 `force-dynamic` trừ khi có lý do viết ra thành chữ. Trang chủ hiện dùng `revalidate = 60`.
 
 ## UI phải tôn trọng DESIGN.md
@@ -34,7 +34,7 @@ nước ngoài. Vibe moto-garage — tối, nhiều ảnh, typography đậm.
 
 **Cấm rõ**: thẩm mỹ SaaS generic — gradient tím, Inter ở mọi nơi, card lồng card.
 
-`impeccable` áp dụng cho app này (không phải cho `apps/admin`, nơi ưu tiên chức năng).
+`impeccable` áp dụng cho app này (không phải cho `apps/staff`, nơi ưu tiên chức năng).
 
 ## i18n mới là seam, chưa phải hệ thống
 
@@ -52,9 +52,9 @@ thật đầu tiên.
 Không phải lỗi build, nhưng là một phút xấu xí sau mỗi lần deploy. Biết trước để không đi debug
 nhầm chỗ.
 
-## Khác biệt với apps/admin
+## Khác biệt với apps/staff
 
-| | `apps/web` | `apps/admin` |
+| | `apps/web` | `apps/staff` |
 |---|---|---|
 | Framework | Next 16 | Vite |
 | Mô hình | server-first (RSC) | client-first (SPA + TanStack Query) |

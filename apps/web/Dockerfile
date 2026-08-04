@@ -9,7 +9,6 @@ COPY packages/db/package.json packages/db/
 # bun.lock với đĩa — thiếu package.json của apps/admin (dù apps/web không
 # phụ thuộc nó) khiến nó báo "lockfile had changes" và fail. Chỉ cần
 # manifest, không cần source.
-COPY apps/admin/package.json apps/admin/
 RUN bun install --frozen-lockfile
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
