@@ -60,9 +60,19 @@ import { createApiClient } from "@v9/shared/client";
 export const api = createApiClient<App>(process.env.NEXT_PUBLIC_API_URL!);
 ```
 
-**Hệ quả.** `packages/shared` có đúng **một** dependency là `@elysiajs/eden`, và nó bị nhốt trong
-subpath `/client`. Domain logic nằm ở `src/domain/**` và tuyệt đối không import gì — đó mới là
-vùng bắt buộc TDD.
+**Hệ quả.** `packages/shared` có đúng **hai** dependency — `@elysiajs/eden` và `elysia` — và cả
+hai bị nhốt trong subpath `/client`. Domain logic nằm ở `src/domain/**` và tuyệt đối không import
+gì; đó mới là vùng bắt buộc TDD.
+
+> **Sửa ngày 2026-08-05.** Bản duyệt đầu ghi "đúng một dependency". Sai, và chỉ lộ ra khi biên
+> dịch thật ở Task 5: chữ ký của `treaty` là
+> `<const App extends Elysia<any, any, any, any, any, any, any>>`, nên `createApiClient<T>` phải
+> ràng buộc `T extends Elysia<...>`, tức `shared` buộc phải biết type `Elysia`.
+>
+> Điều này **không** tái lập chu trình. `shared → elysia` là phụ thuộc vào một thư viện bên thứ
+> ba, khác hẳn `shared → @v9/api` vốn là thứ tạo vòng. Import cũng là `import type` nên bị xoá
+> lúc build, không có chi phí runtime nào cho frontend. Tính chất cần bảo vệ — `shared` không bao
+> giờ biết tới `apps/api` — vẫn nguyên vẹn.
 
 **Đã loại.** Tách `packages/api-client` riêng (sạch hơn nhưng thêm một package và lệch câu chữ
 của spec) · `apps/api` tự export client (ít file nhất nhưng frontend coupling thẳng vào app backend).

@@ -377,7 +377,9 @@ Config đã commit (`eefa2c6` + `300c2a9`) là bản có thẩm quyền; đừng
 }
 ```
 
-`@elysiajs/eden` là dependency **duy nhất** của package này, và nó chỉ được dùng trong `src/client.ts`.
+`@elysiajs/eden` **và `elysia`** là hai dependency duy nhất của package này, và cả hai chỉ được dùng trong `src/client.ts`.
+
+Bản duyệt đầu ghi "đúng một dependency" — sai, lộ ra khi biên dịch thật ở Task 5. Chữ ký của `treaty` là `<const App extends Elysia<any, any, any, any, any, any, any>>`, nên `createApiClient<T>` buộc phải ràng buộc `T extends Elysia<...>`. Đây **không** phải tái lập chu trình: `shared → elysia` là thư viện bên thứ ba, khác hẳn `shared → @v9/api`; và nó là `import type` nên bị xoá lúc build.
 
 - [ ] **Step 2: Tạo `packages/shared/tsconfig.json`**
 
@@ -609,6 +611,15 @@ git commit -m "feat(shared): overlaps nửa khoảng [start,end) khớp tstzrang
 
 ```ts
 import { treaty } from "@elysiajs/eden";
+import type { Elysia } from "elysia";
+
+/* eslint-disable @typescript-eslint/no-explicit-any --
+ * Chữ ký thật của treaty là `<const App extends Elysia<any, any, any, any, any, any, any>>`.
+ * Bảy tham số any đó là của chính Elysia, không có cách nào viết hẹp hơn mà vẫn nhận được
+ * mọi app hợp lệ. Thu hẹp bừa ở đây sẽ làm client từ chối app thật lúc biên dịch.
+ */
+type AnyElysiaApp = Elysia<any, any, any, any, any, any, any>;
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
  * Factory tạo Eden client có type.
@@ -624,9 +635,9 @@ import { treaty } from "@elysiajs/eden";
  *
  * Xem §4.1 của docs/plans/2026-08-04-scaffolding-design.md.
  */
-export function createApiClient<T>(baseUrl: string) {
+export function createApiClient<T extends AnyElysiaApp>(baseUrl: string) {
   if (!baseUrl) {
-    throw new Error("createApiClient cần baseUrl — kiểm tra NEXT_PUBLIC_API_URL");
+    throw new Error("createApiClient cần baseUrl — kiểm tra NEXT_PUBLIC_API_URL / VITE_API_URL");
   }
   return treaty<T>(baseUrl);
 }
@@ -2189,7 +2200,7 @@ Ngắn, trỏ về root. Phải có: **ưu tiên chức năng, không polish pas
 
 - [ ] **Step 5: Viết `packages/shared/CLAUDE.md`**
 
-Phải có: **TDD nghiêm bắt buộc** — test trước, luôn luôn, cho mọi thứ trong `src/domain/` · `src/domain/` không được import bất cứ gì · `@elysiajs/eden` là dependency duy nhất và chỉ dùng trong `src/client.ts` · `client.ts` phải giữ generic, không bao giờ import `@v9/api` (nếu không sẽ tạo chu trình) · tiền là `Vnd` = số nguyên đồng, mọi phép chia phải qua `roundVnd`.
+Phải có: **TDD nghiêm bắt buộc** — test trước, luôn luôn, cho mọi thứ trong `src/domain/` · `src/domain/` không được import bất cứ gì · `@elysiajs/eden` và `elysia` là hai dependency duy nhất, cả hai chỉ dùng trong `src/client.ts` · `client.ts` phải giữ generic, không bao giờ import `@v9/api` (nếu không sẽ tạo chu trình) · tiền là `Vnd` = số nguyên đồng, mọi phép chia phải qua `roundVnd`.
 
 - [ ] **Step 6: Viết `packages/db/CLAUDE.md`**
 
