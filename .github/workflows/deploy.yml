@@ -1,0 +1,125 @@
+name: Deploy
+
+# ── Quyết định: song song với CI, không dùng `workflow_run` ────────────────
+#
+# `deploy.yml` trigger trực tiếp trên `push` tới `main`, CÙNG sự kiện với
+# `ci.yml` — GitHub chạy cả hai workflow song song, `deploy` KHÔNG chờ `CI`
+# kết luận trước khi bắt đầu build/push image.
+#
+# Đánh đổi: một commit push thẳng vào `main` mà vỡ lint/typecheck/test vẫn có
+# thể build xong và đẩy image lên GHCR (job `build`) — thậm chí SSH lên server
+# chạy migration thật (job `deploy`, khi secrets đã có) — TRƯỚC KHI ai kịp thấy
+# `CI` báo đỏ. Đây là rủi ro thật, không phải lý thuyết.
+#
+# Vẫn chọn song song thay vì gate bằng `workflow_run` vì:
+#   1. Repo này hiện chỉ có một agent push thẳng vào `main`, không qua PR
+#      review gate — `ci.yml` và `deploy.yml` luôn chạy trên cùng một SHA, nên
+#      nếu SHA đó vỡ, nó vỡ ở CẢ HAI workflow, chỉ là `workflow_run` trì hoãn
+#      thời điểm image bị đẩy đi vài phút chứ không ngăn được gì về sau khi CI
+#      cuối cùng cũng đỏ — thiệt hại (image vỡ đã lên GHCR) đã xảy ra trong lúc
+#      chờ `CI` chạy dù có gate hay không, trừ khi gate chặn hẳn job `build`.
+#   2. `db:migrate` trong `ci.yml` chạy trên Postgres tạm (service container,
+#      chưa từng có dữ liệu) — CI xanh CHỨNG MINH migration SQL hợp lệ, nhưng
+#      KHÔNG chứng minh nó apply sạch trên Postgres prod đã có dữ liệu thật.
+#      Vì vậy "đợi CI xanh rồi mới deploy" tạo cảm giác an toàn cho bước
+#      migrate nhiều hơn mức nó thật sự đảm bảo — an toàn thật nằm ở việc
+#      backup trước migrate và review migration SQL bằng mắt, không phải ở
+#      thứ tự hai workflow.
+#   3. Giai đoạn scaffold cần vòng lặp deploy nhanh để verify hạ tầng (Docker
+#      build, GHCR push, SSH, compose) — cộng thêm độ trễ chờ workflow khác
+#      hoàn tất không mua được gì tương xứng ở quy mô này.
+#
+# Muốn gate thật (deploy CHỈ chạy khi CI xanh) khi team/quy trình đổi — ví dụ
+# nhiều người/agent cùng push vào main, hoặc chuyển sang PR-required — đổi
+# trigger bên dưới thành:
+#
+#   on:
+#     workflow_run:
+#       workflows: ["CI"]
+#       types: [completed]
+#       branches: [main]
+#
+# rồi thêm `if: github.event.workflow_run.conclusion == 'success'` vào job
+# `build`. Chưa làm bây giờ vì đó là bước ngược — cần lý do cụ thể để bật, chứ
+# không phải mặc định "an toàn hơn nên luôn bật".
+on:
+  push:
+    branches: [main]
+
+# Bắt buộc `cancel-in-progress: false`: hai lần deploy chồng nhau (vd push
+# thứ hai trong lúc push đầu còn đang chạy job `deploy`) có thể cùng lúc chạy
+# `db:migrate` nhắm vào MỘT Postgres prod — huỷ nửa chừng một migration đang
+# apply nguy hiểm hơn nhiều so với việc để hai lần deploy xếp hàng chạy nối
+# tiếp. `cancel-in-progress: true` (mặc định phổ biến cho CI) sẽ tạo đúng race
+# condition đó — không dùng ở đây.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        app: [api, admin, web]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          push: true
+          # Cả hai ARG được truyền cho MỌI app trong matrix, kể cả app không
+          # khai báo ARG đó trong Dockerfile:
+          #   - apps/admin khai ARG VITE_API_URL (Vite nướng nó vào bundle JS
+          #     lúc build — đặt runtime trong compose.prod.yaml vô tác dụng).
+          #   - apps/web khai ARG NEXT_PUBLIC_API_URL.
+          #   - apps/api không khai ARG nào trong hai cái này.
+          # Docker xử lý build-arg không được Dockerfile tiêu thụ bằng một
+          # WARNING ("... were not consumed"), KHÔNG fail build — verify cục
+          # bộ bằng `docker build --build-arg NOT_DECLARED=y ...` trên một
+          # Dockerfile tối giản trước khi viết workflow này. Giữ chung một
+          # khối build-args cho cả ba app đơn giản hơn if/else theo matrix.app
+          # mà không tốn gì thêm.
+          build-args: |
+            VITE_API_URL=https://api.${{ vars.ROOT_DOMAIN }}
+            NEXT_PUBLIC_API_URL=https://api.${{ vars.ROOT_DOMAIN }}
+          tags: |
+            ghcr.io/viethoangnguyenle/v9-motor-rental-${{ matrix.app }}:latest
+            ghcr.io/viethoangnguyenle/v9-motor-rental-${{ matrix.app }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd ~/v9-motor-rental
+            docker compose -f compose.prod.yaml pull
+            docker compose -f compose.prod.yaml up -d
+            # Lệnh này khớp NGUYÊN VĂN comment "Migration story" trong
+            # compose.prod.yaml (chạy thẳng script, không qua `bun run
+            # db:migrate`, vì package.json trong image api là bản root — có
+            # script đó — nhưng compose.prod.yaml đã tự tài liệu hoá đúng lệnh
+            # này làm nguồn sự thật cho cả người vận hành thủ công lẫn CI/CD,
+            # nên dùng lại thay vì tạo một biến thể lệnh thứ hai).
+            docker compose -f compose.prod.yaml exec -T api bun packages/db/scripts/migrate.ts

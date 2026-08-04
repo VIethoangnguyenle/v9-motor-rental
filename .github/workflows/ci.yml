@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: v9
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: v9_rental
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U v9 -d v9_rental"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgres://v9:ci_password@localhost:5432/v9_rental
+      MINIO_ENDPOINT: http://localhost:9000
+      MINIO_BUCKET_VEHICLES: vehicles
+      MINIO_BUCKET_CHECKINS: checkins
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+
+      - run: bun install --frozen-lockfile
+
+      # `db:migrate` ở root package.json là
+      # `bun --env-file=.env packages/db/scripts/migrate.ts`. Không có `.env`
+      # ở CI (gitignored, không được commit) — nhưng KHÔNG cần tạo file giả từ
+      # .env.example hay gọi thẳng migrate.ts để né --env-file: đã verify tại
+      # chỗ (bun 1.3.10, `bun --env-file=.env` trỏ vào file không tồn tại) rằng
+      # bun coi đó là no-op, không throw, và chạy tiếp với process.env hiện có.
+      # DATABASE_URL/MINIO_* ở khối `env:` phía trên của job đã nằm sẵn trong
+      # process.env của mọi step. Vì vậy chạy đúng NGUYÊN VĂN `bun run
+      # db:migrate` — giữ một code path duy nhất, script này chạy giống hệt cho
+      # người dev lẫn CI, không cần một biến thể "phiên bản CI" riêng.
+      - run: bun run db:migrate
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun test
