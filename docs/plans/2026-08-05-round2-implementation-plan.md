@@ -518,12 +518,12 @@ git commit -m "refactor(web): thu hẹp về xem xe + gửi yêu cầu, không h
     "@v9/api": "workspace:*",
     "@vitejs/plugin-react": "6.0.5",
     "vite": "8.2.0",
-    "vite-plugin-pwa": "1.0.3"
+    "vite-plugin-pwa": "1.3.0"
   }
 }
 ```
 
-`@types/react-dom` là **19.2.4** — 19.2.18 không tồn tại trên registry (phát hiện ở đợt 1). Version `vite-plugin-pwa` phải **kiểm tra registry trước khi ghim**, đừng tin con số này.
+`@types/react-dom` là **19.2.4** — 19.2.18 không tồn tại trên registry (phát hiện ở đợt 1). `vite-plugin-pwa` 1.3.0 đã **kiểm registry**: peer nhận `vite ^8.0.0` nên khớp. (Bản nháp đầu của plan ghi 1.0.3 — sai, sửa sau khi kiểm.)
 
 - [ ] **Step 2: `apps/staff/tsconfig.json`**
 
@@ -658,7 +658,7 @@ gh run watch --exit-status
 
 **Spec coverage** — 7 hạng mục §6 design doc → Task 1–8 (Task 8 gộp hạ tầng + tài liệu + verify). 12 tiêu chí §7: #1→T2, #2/#3/#4→T4, #5→T6, #6/#7→T7, #8→T8, #9→T8 Step 5, #10/#11→T5, #12→T8 Step 6.
 
-**Chỗ plan CỐ Ý không khẳng định** (phải kiểm chứng lúc làm, đã ghi rõ trong từng bước): cơ chế `DB_SEARCH_PATH` của Directus 11 · `POSTGRESQL_TABLE_SCHEMA` của SuperTokens · chữ ký thật của `middleware()` custom · version `vite-plugin-pwa`. Bốn chỗ này là giả định, không phải sự thật đã verify — đợt 1 cho thấy giả định chưa kiểm là nơi mọi lỗi đắt tiền trú ngụ.
+**Chỗ plan CỐ Ý không khẳng định** (phải kiểm chứng lúc làm, đã ghi rõ trong từng bước): cơ chế `DB_SEARCH_PATH` của Directus 11 · `POSTGRESQL_TABLE_SCHEMA` của SuperTokens · chữ ký thật của `middleware()` custom. Ba chỗ này là giả định, không phải sự thật đã verify. (Chỗ thứ tư — version `vite-plugin-pwa` — đã kiểm và bản nháp ghi sai: 1.0.3 → 1.3.0.) — đợt 1 cho thấy giả định chưa kiểm là nơi mọi lỗi đắt tiền trú ngụ.
 
 **Type consistency** — `Role`/`AuthContext` giữ nguyên tên từ đợt 1 · `createApiClient<App>` dùng y hệt ở `apps/staff` như `apps/web` · `VITE_API_URL` giữ nguyên tên biến.
 
