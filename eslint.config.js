@@ -38,8 +38,47 @@ export default tseslint.config(
       // thất bại, plugin phân loại đích là "unknown" và IM LẶNG bỏ qua — boundaries/dependencies trở
       // thành no-op hoàn toàn trên toàn bộ codebase TypeScript thật, lint vẫn exit 0. Đã kiểm chứng
       // thực nghiệm bằng cách gọi eslint-import-resolver-node trực tiếp và qua boundaries/debug.
+      //
+      // `engines` + `preserveSymlinks: false` KHÔNG ĐƯỢC XOÁ — thiếu một trong hai, mọi import
+      // package-specifier NỘI BỘ (import { x } from "@v9/db", "@v9/shared/client", ...) im lặng
+      // KHÔNG được boundaries/dependencies kiểm tra, dù import bằng đường dẫn tương đối vẫn bị bắt —
+      // đây chính xác là "enforcement theatre" bị phát hiện thực nghiệm: `api-root` import thẳng
+      // `@v9/db` (con đường mọi người thực sự viết, vì apps/api có khai @v9/db trong dependencies)
+      // lọt qua hoàn toàn, trong khi chỉ import bằng "../../../db/src/index" (không ai viết) mới bị
+      // bắt. Root cause, đọc trực tiếp từ node_modules/.bun/resolve@2.0.0-next.7/…/lib/sync.js và
+      // node_modules/eslint-import-resolver-node/index.js, xác nhận bằng cách gọi resolver trực
+      // tiếp ngoài ESLint:
+      //   1. eslint-import-resolver-node dùng gói `resolve`, gói này CÓ hỗ trợ "exports" field của
+      //      package.json — nhưng chỉ bật khi options.engines cho nó biết range Node để chọn "exports
+      //      category". Resolver mặc định `engines: true` nghĩa là "đọc engines.node từ package.json
+      //      GẦN NHẤT phía trên file đang import" — không package.json nào trong repo này khai
+      //      `engines.node` (root chỉ có `engines.bun`) → tra cứu thất bại → resolver ÂM THẦM rơi về
+      //      thuật toán "main field" cũ, không đọc "exports" — mà packages/db, packages/shared chỉ
+      //      khai "exports", không có "main" → resolve "@v9/db" ra `{ found: false }`. Đặt thẳng
+      //      `engines: ">=18"` ở đây bỏ qua bước tra package.json, luôn bật "exports" resolution.
+      //   2. Sau khi (1) làm resolve thành công, path trả về vẫn là đường dẫn CHƯA realpath — ví dụ
+      //      từ apps/api/src/index.ts, "@v9/db" resolve ra
+      //      "apps/api/node_modules/@v9/db/src/index.ts" (symlink workspace, KHÔNG realpath), vì
+      //      resolver mặc định `preserveSymlinks: true`. Path đó CHỨA chuỗi "node_modules" →
+      //      flagAsExternal.inNodeModules (mặc định true, không đổi ở đây) phân loại nó "external"
+      //      → boundaries/dependencies bỏ qua (mặc định chỉ kiểm tra origin "local"). Đặt
+      //      `preserveSymlinks: false` buộc resolver gọi fs.realpathSync, trả về đường dẫn thật
+      //      "packages/db/src/index.ts" — khớp pattern `packages/db/**`, phân loại "local", "db".
+      // Gói thật sự bên ngoài (elysia, drizzle-orm, @tanstack/react-query, ...) vẫn resolve vào
+      // node_modules thật (node_modules/.bun/<pkg>/...) dù có realpath hay không — "node_modules"
+      // vẫn nằm trong path đó, nên vẫn bị phân loại "external" và KHÔNG bị kiểm tra bởi
+      // boundaries/dependencies (checkAllOrigins vẫn để mặc định false — KHÔNG bật, vì bật nó lên sẽ
+      // buộc kiểm tra luôn cả import bên thứ ba thật, mà không policy nào trong file này cho phép
+      // import vào element "unknown" → mọi import elysia/react/vite/... sẽ bị disallow, phá toàn bộ
+      // dev bình thường). Đã kiểm chứng bằng script gọi resolver trực tiếp cho cả hai nhóm, và bằng
+      // 8 probe boundaries/dependencies + no-restricted-imports thật (4 cũ + 2 dương/2 âm mới) chạy
+      // qua `bun run lint` — xem lịch sử task để lại chứng cứ đầy đủ.
       "import/resolver": {
-        node: { extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".json"] },
+        node: {
+          extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".json"],
+          engines: ">=18",
+          preserveSymlinks: false,
+        },
       },
       // Composition roots / entrypoint files that scripts and other packages import through are not
       // covered by any folder pattern below (index.ts isn't "under" domain/, routes/, etc.). A file
@@ -181,13 +220,31 @@ export default tseslint.config(
             },
             {
               from: { element: { type: "frontend" } },
-              allow: {
-                to: {
-                  element: {
-                    types: { anyOf: ["frontend", "shared-domain", "shared-client"] },
+              allow: [
+                {
+                  to: {
+                    element: {
+                      types: { anyOf: ["frontend", "shared-domain", "shared-client"] },
+                    },
                   },
                 },
-              },
+                // Eden Treaty typing (§4.1 docs/plans/2026-08-04-scaffolding-design.md): both
+                // apps/{admin,web}/lib/api.ts write `import type { App } from "@v9/api"` — TYPE
+                // ONLY, erased at build — to hand the API's type to createApiClient<App>() without
+                // packages/shared ever importing apps/api (that's what would recreate the
+                // shared → api → shared cycle client.ts exists to avoid). This surfaced only after
+                // fixing the resolver below to stop misclassifying "@v9/*" specifiers as external —
+                // before that fix this dependency was invisible to boundaries entirely, so the "no
+                // policy allows frontend → api-root" rule below never had to account for it. Scoped
+                // to `dependency.kind: "type"` so a *value* import from api-root (e.g. importing
+                // `app` itself, not just `type App`) is still rejected — dependency.kind confirmed
+                // via boundaries/debug on this exact file (kind: "type" for `import type {...}`,
+                // kind: "value" for a plain `import {...}`).
+                {
+                  to: { element: { type: "api-root" } },
+                  dependency: { kind: "type" },
+                },
+              ],
             },
           ],
         },
