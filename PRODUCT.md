@@ -19,7 +19,9 @@ web
 
 Hệ quản lý cho một shop cho thuê mô tô phân khối lớn ở TP.HCM, gồm ba phần: API, app quản trị nội bộ, và site công khai cho khách.
 
-Site công khai **nhận đặt xe online đầy đủ** — khách tự chọn xe, chọn ngày, xem giá, đặt và nhận xác nhận mà không cần nhắn tin cho ai. Thành công nghĩa là khách chốt được đơn ngoài giờ làm việc, và nhân viên không phải chép tay đơn từ tin nhắn sang sổ.
+Site công khai cho khách **xem mẫu xe và gửi yêu cầu thuê**. Khách **không tự chốt đơn** — yêu cầu đi vào hệ thống, nhân viên tiếp nhận và chốt thành đơn thuê thật trong `apps/staff`.
+
+Thành công nghĩa là khách gửi được yêu cầu ngoài giờ làm việc và không bị bỏ sót, thay vì phải nhắn Zalo rồi chờ tới sáng.
 
 ## Positioning
 
@@ -34,7 +36,13 @@ Shop nhỏ, đội xe thật, giao xe tận nơi. Khác biệt không nằm ở 
 - **Giao xe tận nơi.** Shop mang xe tới khách sạn hoặc địa chỉ khách hẹn, không bắt khách tới cửa hàng.
 - **Đơn vị thuê cơ bản là ngày**, không phải giờ.
 
-**Bối cảnh kỹ thuật:** monorepo ba app — `apps/api` (Bun + Elysia), `apps/admin` (Vite + TanStack, SPA nội bộ), `apps/web` (Next 16, SSG/ISR vì SEO quan trọng). Chi tiết ở `CLAUDE.md`.
+**Phân vai công cụ nội bộ:**
+
+- **Directus** — chỉ dữ liệu gốc: danh mục xe, ảnh, bảng giá. **Không** làm vận hành.
+- **`apps/staff`** — vận hành hằng ngày: lịch đặt xe, thống kê, lên đơn và bàn giao xe (chụp ảnh giấy tờ, ký hợp đồng), quản lý khách hàng, tiếp nhận yêu cầu từ web.
+- Xác thực cho `apps/staff` dùng **SuperTokens** self-host. Khách trên `apps/web` **không cần tài khoản** — bắt đăng nhập chỉ làm giảm số yêu cầu nhận được, mà yêu cầu chính là thứ web sinh ra để tạo.
+
+**Bối cảnh kỹ thuật:** monorepo — `apps/api` (Bun + Elysia), `apps/web` (Next 16, SSG/ISR vì SEO quan trọng), `apps/staff` (Vite + TanStack, PWA). Chi tiết ở `CLAUDE.md`.
 
 ## Capabilities and Constraints
 
@@ -42,7 +50,9 @@ Shop nhỏ, đội xe thật, giao xe tận nơi. Khác biệt không nằm ở 
 
 **Ràng buộc mang tính sống còn — chống đặt trùng.** Một chiếc xe không thể được đặt hai lần trong khoảng thời gian chồng nhau. Ràng buộc này đặt ở tầng database (exclusion constraint trên `(vehicle_id, tstzrange)`), không ở tầng ứng dụng.
 
-Vì `apps/web` nhận đặt online, **khách cuối sẽ chạm trực tiếp vào ràng buộc này** — không chỉ nhân viên. Hai người đặt cùng chiếc xe cùng khoảng ngày là chuyện sẽ xảy ra thật. Hệ thống phải trả lỗi rõ ràng cho người đến sau, không được để lộ ra thành lỗi kỹ thuật.
+Vì `apps/web` chỉ tạo *yêu cầu*, **nhân viên mới là người chạm vào ràng buộc này** khi chốt đơn trong `apps/staff` — không phải khách cuối. Va chạm vẫn xảy ra thật (hai yêu cầu cùng xe cùng khoảng ngày), chỉ là nó lộ ra với nhân viên chứ không với khách. Luật `23P01` → 409 vẫn bắt buộc.
+
+> *Sửa 2026-08-05:* bản đầu của tài liệu này ghi khách cuối chạm trực tiếp vào ràng buộc, vì lúc đó `apps/web` được thiết kế nhận đặt online đầy đủ. Người dùng đổi sang mô hình yêu cầu. Xem §1.1 của `docs/plans/2026-08-05-round2-directus-staff-design.md`.
 
 **Ngôn ngữ:** tiếng Việt trước, tiếng Anh sau. Tiếng Anh **chưa** làm, nhưng khách du lịch nước ngoài là nhóm người dùng đã xác nhận — nên đây là nợ đã biết, không phải tính năng tùy chọn.
 
