@@ -28,21 +28,29 @@
     "nspname",
     "rolname",
     "schemaname",
-    "tablename"
+    "tablename",
+    "healthcheck",
+    "isready",
+    "checkins"
   ],
-  "ignoreRegExpList": ["/[A-Za-zÀ-ỹ]*[À-ỹ][A-Za-zÀ-ỹ]*/gu"],
+  "ignoreRegExpList": [
+    "/[A-Za-zÀ-ỹ]*[À-ỹ][A-Za-zÀ-ỹ]*/gu"
+  ],
   "ignorePaths": [
-    "node_modules/**",
-    "bun.lock",
+    "**/*.sql",
+    "**/*.test.ts",
+    "**/AGENTS.md",
+    "**/CLAUDE.md",
+    "**/Caddyfile",
+    "**/messages/*.json",
     ".next/**",
+    "Caddyfile",
+    "DESIGN.md",
+    "PRODUCT.md",
+    "bun.lock",
+    "compose*.yaml",
     "dist/**",
     "docs/**",
-    "**/CLAUDE.md",
-    "**/AGENTS.md",
-    "PRODUCT.md",
-    "DESIGN.md",
-    "**/messages/*.json",
-    "**/*.test.ts",
-    "**/*.sql"
+    "node_modules/**"
   ]
 }
