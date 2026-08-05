@@ -128,11 +128,22 @@ services:
       NEXT_PUBLIC_API_URL: https://api.${ROOT_DOMAIN}
       PORT: "3000"
 
+  staff:
+    image: ghcr.io/viethoangnguyenle/v9-motor-rental-staff:latest
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    # KHÔNG đặt VITE_API_URL ở đây — Vite nướng nó vào bundle JS lúc build
+    # (xem apps/staff/Dockerfile), đặt runtime trong compose không có tác
+    # dụng gì. Đổi API URL của staff bắt buộc phải build lại image.
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
     depends_on:
       - web
+      - staff
       - api
       - directus
     ports:

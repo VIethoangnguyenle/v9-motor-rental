@@ -10,6 +10,10 @@ api.{$ROOT_DOMAIN} {
 	reverse_proxy api:3001
 }
 
+staff.{$ROOT_DOMAIN} {
+	reverse_proxy staff:3003
+}
+
 # data. không admin. — cố ý: đây không phải admin app chính, chỉ dữ liệu gốc
 # (danh mục xe, ảnh, bảng giá). Vận hành hằng ngày nằm ở apps/staff.
 data.{$ROOT_DOMAIN} {

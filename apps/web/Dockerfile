@@ -5,8 +5,9 @@ COPY apps/web/package.json apps/web/
 COPY apps/api/package.json apps/api/
 COPY packages/shared/package.json packages/shared/
 COPY packages/db/package.json packages/db/
+COPY apps/staff/package.json apps/staff/
 # `bun install --frozen-lockfile` đối chiếu TOÀN BỘ workspace graph trong
-# bun.lock với đĩa — thiếu package.json của apps/admin (dù apps/web không
+# bun.lock với đĩa — thiếu package.json của apps/staff (dù apps/web không
 # phụ thuộc nó) khiến nó báo "lockfile had changes" và fail. Chỉ cần
 # manifest, không cần source.
 RUN bun install --frozen-lockfile
