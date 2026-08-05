@@ -76,6 +76,31 @@ services:
     ports:
       - "${DIRECTUS_PORT}:8055"
 
+  # Xác thực cho apps/staff (§4 docs/plans/2026-08-05-round2-directus-staff-design.md).
+  # Core riêng, tự tạo bảng của nó — nối role supertokens_app: schema riêng
+  # `supertokens`, KHÔNG có DDL lên `public`. Cùng luật với directus_app ở trên.
+  # Xem packages/db/migrations/0001_service_roles.sql và §4.2 design doc.
+  supertokens:
+    image: registry.supertokens.io/supertokens/supertokens-postgresql:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRESQL_CONNECTION_URI: postgres://supertokens_app:${SUPERTOKENS_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POSTGRESQL_TABLE_SCHEMA: supertokens
+      API_KEYS: ${SUPERTOKENS_API_KEY}
+    ports:
+      - "3567:3567"
+    # Image ship curl thật (Debian bookworm), không có wget — kiểm bằng
+    # `docker run --entrypoint sh ... -c "which curl wget"` trước khi viết dòng này.
+    # /hello trả "Hello" khi core sống — proxy liveness thật, không phải TCP connect suông.
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3567/hello"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
 volumes:
   postgres-data:
   minio-data:

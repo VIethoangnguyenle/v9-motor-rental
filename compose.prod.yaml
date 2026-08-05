@@ -73,6 +73,25 @@ services:
       WEBSOCKETS_ENABLED: "false"
       PUBLIC_URL: https://data.${ROOT_DOMAIN}
 
+  # Xác thực cho apps/staff (§4 docs/plans/2026-08-05-round2-directus-staff-design.md).
+  # Nội bộ hoàn toàn — chỉ apps/api gọi tới, KHÔNG route Caddy, KHÔNG publish port.
+  # Cùng luật role/schema riêng như dev, xem compose.yaml.
+  supertokens:
+    image: registry.supertokens.io/supertokens/supertokens-postgresql:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRESQL_CONNECTION_URI: postgres://supertokens_app:${SUPERTOKENS_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POSTGRESQL_TABLE_SCHEMA: supertokens
+      API_KEYS: ${SUPERTOKENS_API_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3567/hello"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   api:
     image: ghcr.io/viethoangnguyenle/v9-motor-rental-api:latest
     restart: unless-stopped
@@ -81,12 +100,18 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      supertokens:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       MINIO_ENDPOINT: http://minio:9000
       MINIO_BUCKET_VEHICLES: ${MINIO_BUCKET_VEHICLES}
       MINIO_BUCKET_CHECKINS: ${MINIO_BUCKET_CHECKINS}
       API_PORT: "3001"
+      API_DOMAIN: https://api.${ROOT_DOMAIN}
+      STAFF_APP_URL: https://staff.${ROOT_DOMAIN}
+      SUPERTOKENS_CONNECTION_URI: http://supertokens:3567
+      SUPERTOKENS_API_KEY: ${SUPERTOKENS_API_KEY}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
       interval: 10s

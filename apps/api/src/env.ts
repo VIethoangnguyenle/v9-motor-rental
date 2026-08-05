@@ -13,4 +13,10 @@ export const env = {
     bucketVehicles: required("MINIO_BUCKET_VEHICLES"),
     bucketCheckins: required("MINIO_BUCKET_CHECKINS"),
   },
+  apiDomain: process.env.API_DOMAIN ?? "http://localhost:3001",
+  staffAppUrl: process.env.STAFF_APP_URL ?? "http://localhost:3003",
+  supertokens: {
+    connectionUri: required("SUPERTOKENS_CONNECTION_URI"),
+    apiKey: required("SUPERTOKENS_API_KEY"),
+  },
 } as const;
