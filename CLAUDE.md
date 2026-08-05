@@ -5,7 +5,9 @@ Hệ quản lý cho shop cho thuê mô tô phân khối lớn ở TP.HCM. UI ti�
 Repo này được phát triển **chủ yếu bởi AI agent**. Vì vậy ranh giới do máy ép và tài liệu này là
 deliverable ngang hàng với code, không phải phụ lục.
 
-> Thiết kế và lý do đằng sau mọi quyết định: `docs/plans/2026-08-04-scaffolding-design.md`.
+> Thiết kế và lý do đằng sau mọi quyết định:
+> `docs/plans/2026-08-04-scaffolding-design.md` (đợt 1 — nền móng) và
+> `docs/plans/2026-08-05-round2-directus-staff-design.md` (đợt 2 — Directus, `apps/staff`, thu hẹp `apps/web`).
 > Khi tài liệu này và design doc mâu thuẫn, **design doc thắng** — và hãy sửa file này.
 
 ---
@@ -152,6 +154,65 @@ Không phải quên. Cờ này đánh nhau với mẫu JSX `prop={cond ? value :
 Đặt biến đó lúc chạy trong compose **không có tác dụng gì**. Đổi API URL của staff bắt buộc phải
 build lại image. `deploy.yml` truyền nó qua `--build-arg`.
 
+### `vite-plugin-pwa` **không** chạy ở chế độ dev
+
+Ở `vite dev`, plugin không chèn link manifest và không đăng ký service worker trừ khi bật
+`devOptions.enabled`. Nghĩa là **mọi hành vi PWA chỉ quan sát được trên bản build**. Kiểm bằng
+`bun run --filter @v9/staff build` rồi `vite preview`, đừng kiểm ở dev rồi kết luận PWA hỏng.
+
+`apps/staff/public/icon-192.png` và `icon-512.png` hiện là **placeholder màu đặc**, chưa phải logo
+thật của shop. Thiếu file icon thì trình duyệt **im lặng** không mời cài app — không báo lỗi ở đâu
+cả. Shop đã có logo ngoài đời; thay hai file này trước khi ship.
+
+---
+
+## Ba service dùng chung một Postgres — chỉ migration được đổi schema
+
+| Schema | Chủ | Được đổi cấu trúc |
+|---|---|---|
+| `public` | migration của `packages/db` | **chỉ migration** |
+| `directus` | Directus | Directus |
+| `supertokens` | SuperTokens | SuperTokens |
+| `drizzle` | journal migration | migrator |
+
+Directus và SuperTokens kết nối bằng role riêng **không có quyền DDL trên `public`**
+(migration `0001_service_roles.sql`). Directus đọc-ghi được *dữ liệu* trong `public`; SuperTokens
+không chạm `public` chút nào.
+
+Ép ở tầng database chứ **không** bằng cấu hình của tool: toggle trong UI là thứ người sau bật lại
+được và không để lại dấu vết nào trong repo.
+
+**Kiểm lại sau mỗi lần nâng version Directus hoặc SuperTokens:**
+
+```bash
+# PHẢI ra: ERROR: permission denied for schema public
+docker compose exec -T postgres psql -U v9 -d v9_rental -c \
+  "SET ROLE directus_app; CREATE TABLE public.x (id int);"
+```
+
+Bằng chứng thu được từ chính UI Directus khi bấm *Create Field*:
+`must be owner of table probe_vehicles`. Dữ liệu vẫn ghi được bình thường — **chặn schema, không
+chặn dữ liệu**. Một cấu hình chặn tất là hỏng, không phải an toàn.
+
+`CREATE ROLE` là đối tượng **cấp cluster**, không phải cấp database — migration phải bọc trong
+`DO $$ IF NOT EXISTS $$`, `CREATE TABLE IF NOT EXISTS` không có tương đương cho role.
+
+### Xác thực: SuperTokens cho `apps/staff`, không có gì cho `apps/web`
+
+`apps/api/src/plugins/auth.ts` phơi `/auth/*` qua framework `custom` của `supertokens-node`
+(`PreParsedRequest` / `CollectingResponse` — chuẩn Web `Request`/`Response`, khớp Elysia tự nhiên).
+
+**Hiện chưa route nào enforce auth và chưa có màn hình đăng nhập** — chưa có route nghiệp vụ nào
+để bảo vệ, và một cơ chế phân quyền chưa từng chạy thì tệ hơn không có: nó trông như đã kiểm chứng
+trong khi không.
+
+`apps/web` **không** dùng auth. Khách gửi yêu cầu thuê không cần tài khoản — bắt đăng nhập chỉ làm
+giảm số yêu cầu nhận được, mà yêu cầu chính là thứ web sinh ra để tạo.
+
+Directus giữ hệ tài khoản riêng của nó. Hai nơi đăng nhập là **chấp nhận có ý thức**: hai nhóm
+người dùng khác nhau, và Directus chỉ có vài tài khoản back-office. Hợp nhất bằng OIDC là việc
+thêm khi có nhu cầu thật.
+
 ---
 
 ## ⚠️ Hàng rào phải được probe, không được tin
@@ -230,6 +291,15 @@ chứ không ở bước đọc code.
 
 ## Việc còn để lại
 
-Chính sách tính ngày thuê và bảng giá · schema nghiệp vụ (`vehicles`, `customers`, `rentals`) kèm
-exclusion constraint chống double-booking · implement JWT auth (seam: `grep -rn "SEAM: JWT auth"`)
-· next-intl khi thật sự có tiếng Anh · upload ảnh lên MinIO.
+**Nghiệp vụ (cần brainstorm riêng trước khi code):** chính sách tính ngày thuê và bảng giá ·
+schema `vehicles`, `customers`, `rentals`, `booking_requests` kèm exclusion constraint chống đặt
+trùng · bốn tính năng của `apps/staff`: lịch, thống kê, lên đơn/bàn giao, quản lý khách hàng ·
+vai trò `SALES` làm gì.
+
+**Kỹ thuật:** enforce auth trên route thật (SuperTokens đã nối, chưa route nào dùng) · thay icon
+placeholder của `apps/staff` bằng logo thật · `next-intl` khi thật sự có tiếng Anh · upload ảnh
+lên MinIO · `DESIGN.md` (cần màn hình thật để thiết kế và asset logo thật).
+
+**Deploy:** đang gác. Secret SSH đã đặt; còn thiếu `ssh-copy-id` lên VPS, `ROOT_DOMAIN` +
+`CADDY_EMAIL`, bootstrap `~/v9-motor-rental`, và `docker login ghcr.io` trên VPS (repo private nên
+image cũng private). Chi tiết trong Agent Memory.
