@@ -58,6 +58,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
       KEY: ${DIRECTUS_KEY}
       SECRET: ${DIRECTUS_SECRET}
@@ -72,6 +74,19 @@ services:
       ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD}
       WEBSOCKETS_ENABLED: "false"
       PUBLIC_URL: https://data.${ROOT_DOMAIN}
+      # Ảnh xe lưu vào MinIO, KHÔNG lưu trong container: không có dòng này thì
+      # mọi file upload biến mất sau `docker compose down`.
+      STORAGE_LOCATIONS: s3
+      STORAGE_S3_DRIVER: s3
+      STORAGE_S3_KEY: ${MINIO_ROOT_USER}
+      STORAGE_S3_SECRET: ${MINIO_ROOT_PASSWORD}
+      STORAGE_S3_BUCKET: ${MINIO_BUCKET_VEHICLES}
+      STORAGE_S3_REGION: us-east-1
+      STORAGE_S3_ENDPOINT: http://minio:9000
+      # BẮT BUỘC với MinIO: driver S3 mặc định dựng URL kiểu bucket.host/key,
+      # MinIO chỉ phục vụ host/bucket/key. Thiếu dòng này upload trả 403/404
+      # với thông báo không nhắc gì tới path style.
+      STORAGE_S3_FORCE_PATH_STYLE: "true"
 
   # Xác thực cho apps/staff (§4 docs/plans/2026-08-05-round2-directus-staff-design.md).
   # Nội bộ hoàn toàn — chỉ apps/api gọi tới, KHÔNG route Caddy, KHÔNG publish port.
