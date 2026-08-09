@@ -25,7 +25,13 @@
     "heading": "Đội xe",
     "lead": "Ảnh chụp từng chiếc, không phải ảnh catalogue của hãng.",
     "detail": "Xem chi tiết",
-    "empty": "Chưa có dữ liệu xe — bảng vehicles chưa được tạo."
+    "empty": "Chưa có xe nào được đăng. Nhắn Zalo hoặc Fanpage để hỏi xe đang có.",
+    "noPhoto": "Chưa có ảnh",
+    "all": "Xem tất cả xe",
+    "perDay": "/ ngày",
+    "depositLabel": "Tiền cọc",
+    "longTerm": "Thuê dài ngày có giá riêng — liên hệ shop để được báo giá.",
+    "specs": { "engine": "Phân khối", "year": "Đời xe", "odo": "ODO", "color": "Màu" }
   },
   "terms": {
     "heading": "Thủ tục thuê",

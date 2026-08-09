@@ -142,6 +142,10 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: https://api.${ROOT_DOMAIN}
       PORT: "3000"
+    # KHÔNG đặt NEXT_PUBLIC_DIRECTUS_URL ở đây — next.config.ts đọc nó LÚC BUILD
+    # để dựng images.remotePatterns, nên nó đi qua --build-arg (xem
+    # apps/web/Dockerfile và .github/workflows/deploy.yml). Đặt runtime ở đây
+    # không có tác dụng gì — cùng bản chất VITE_API_URL của staff bên dưới.
 
   staff:
     image: ghcr.io/viethoangnguyenle/v9-motor-rental-staff:latest

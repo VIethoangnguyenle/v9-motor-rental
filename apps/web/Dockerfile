@@ -15,6 +15,11 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# next.config.ts đọc biến này LÚC BUILD để dựng images.remotePatterns, nên nó
+# phải là build-arg chứ không phải env lúc chạy — cùng bản chất VITE_API_URL
+# của apps/staff. Xem comment ở service `web` trong compose.prod.yaml.
+ARG NEXT_PUBLIC_DIRECTUS_URL
+ENV NEXT_PUBLIC_DIRECTUS_URL=$NEXT_PUBLIC_DIRECTUS_URL
 # `bun run --filter @v9/web build` chạy `next build` DƯỚI runtime Bun. Trên
 # glibc (máy dev) việc này ổn, nhưng trên bun 1.3.10 bản Alpine/musl nó vỡ ở
 # bước "Collecting page data": Bun crash với

@@ -81,12 +81,14 @@ jobs:
           context: .
           file: apps/${{ matrix.app }}/Dockerfile
           push: true
-          # Cả hai ARG được truyền cho MỌI app trong matrix, kể cả app không
+          # Cả ba ARG được truyền cho MỌI app trong matrix, kể cả app không
           # khai báo ARG đó trong Dockerfile:
           #   - apps/staff khai ARG VITE_API_URL (Vite nướng nó vào bundle JS
           #     lúc build — đặt runtime trong compose.prod.yaml vô tác dụng).
-          #   - apps/web khai ARG NEXT_PUBLIC_API_URL.
-          #   - apps/api không khai ARG nào trong hai cái này.
+          #   - apps/web khai ARG NEXT_PUBLIC_API_URL và
+          #     ARG NEXT_PUBLIC_DIRECTUS_URL (next.config.ts đọc cái sau lúc
+          #     build để dựng images.remotePatterns — cùng bản chất build-time).
+          #   - apps/api không khai ARG nào trong ba cái này.
           # Docker xử lý build-arg không được Dockerfile tiêu thụ bằng một
           # WARNING ("... were not consumed"), KHÔNG fail build — verify cục
           # bộ bằng `docker build --build-arg NOT_DECLARED=y ...` trên một
@@ -96,6 +98,7 @@ jobs:
           build-args: |
             VITE_API_URL=https://api.${{ vars.ROOT_DOMAIN }}
             NEXT_PUBLIC_API_URL=https://api.${{ vars.ROOT_DOMAIN }}
+            NEXT_PUBLIC_DIRECTUS_URL=https://data.${{ vars.ROOT_DOMAIN }}
           tags: |
             ghcr.io/viethoangnguyenle/v9-motor-rental-${{ matrix.app }}:latest
             ghcr.io/viethoangnguyenle/v9-motor-rental-${{ matrix.app }}:${{ github.sha }}
