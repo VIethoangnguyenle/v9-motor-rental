@@ -32,9 +32,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
-# apps/web/public/ chưa tồn tại trong repo (chưa có static asset nào) — COPY
-# một thư mục không tồn tại sẽ fail build. Bỏ dòng COPY public thay vì tạo
-# public/.gitkeep giả, vì đó là thay đổi source ngoài phạm vi task này. Khi
-# app thật sự cần static assets, dòng này quay lại cùng lúc với public/.
+# `output: "standalone"` KHÔNG gói public/ vào .next/standalone — phải copy tay.
+# Thiếu dòng này thì ảnh hero (public/placeholder/) 404 trên prod trong khi dev
+# vẫn bình thường, vì `next dev` phục vụ public/ thẳng từ đĩa.
+COPY --from=builder /app/apps/web/public ./apps/web/public
 EXPOSE 3000
 CMD ["node", "apps/web/server.js"]
