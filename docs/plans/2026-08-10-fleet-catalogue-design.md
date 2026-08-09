@@ -378,11 +378,9 @@ khi đo, để kết quả có nghĩa: Directus kết nối bằng role `directu
 superuser, và `has_schema_privilege('directus_app', 'public', 'CREATE')` = `false`. Không bước nào
 cấp thêm quyền cho bất kỳ role nào.
 
-- Directus nhận collection từ bảng có sẵn: **được** — `POST /collections` với **chỉ khoá `meta`**,
-  không kèm `schema`/`fields` (HTTP 200). Bảng tự hiện trong `GET /collections` ngay khi `v9` tạo
-  xong, nhưng khi chưa có dòng metadata thì `GET /fields/probe_fleet` trả 403 `FORBIDDEN` — nên vẫn
-  phải adopt chính thức. Sau adopt, cột của `public.probe_fleet` **không đổi** (`id`, `name`,
-  `file_id`); chỉ thêm một dòng trong `directus.directus_collections`.
+- Directus nhận collection từ bảng có sẵn: **được**, nhưng ~~`POST /collections`~~ → xem §7.2.
+  Sau adopt, cột của `public.probe_fleet` **không đổi**; chỉ thêm một dòng trong
+  `directus.directus_collections`.
 - Gắn field ảnh không cần DDL: **không** — cả ba đường chính thức đều bị Postgres chặn:
 
   ```
@@ -439,6 +437,41 @@ UI — và §10 cần thêm một tiêu chí kiểm rằng dòng `directus_relat
 **Xác nhận kèm theo cho §4.1** (không sửa ở task này): file upload trong probe trả về
 `"storage":"local"` — đúng như §4.1 dự đoán, Directus chưa có `STORAGE_*` nên ảnh rơi vào ổ đĩa
 trong container chứ không vào MinIO. Ghi lại như **bằng chứng đã xác nhận**; việc sửa thuộc task 3.
+
+### 7.2 Hai chỗ §7.1 đo sai, phát hiện lúc viết script thật
+
+Cả hai đều được §7.1 ghi là "đã đo", và cả hai đều **sai** trên Directus 11.17.4. Giữ nguyên §7.1 ở
+trên với gạch ngang thay vì viết lại, vì bài học nằm ở chỗ một probe **có thể** cho kết quả đúng vì
+lý do sai.
+
+**① `POST /collections` với chỉ `meta` KHÔNG adopt được bảng có sẵn.** Nó trả:
+
+```
+HTTP 400 {"errors":[{"message":"Invalid payload. Collection \"vehicles\" already exists."}]}
+```
+
+`node_modules/@directus/api/dist/services/collections.js:54` — `createOne` từ chối khi tên đã có
+trong `directus_collections` **hoặc** trong `Object.keys(this.schema.collections)`, mà mọi bảng vật
+lý trong `public` đều nằm ở vế thứ hai.
+
+Vậy vì sao §7.1 thấy nó chạy? Vì `probe_fleet` vừa được `v9` tạo xong và **schema cache của Directus
+chưa kịp thấy nó**. Đường đi đó là một cuộc đua thắng được một lần, không phải một cơ chế. Trên bảng
+đã tồn tại từ trước — tức mọi trường hợp thật — nó luôn hỏng.
+
+**Đường đúng: `PATCH /collections/<name>` với chỉ `meta`.** `updateOne` là upsert: tạo dòng
+`directus_collections` khi chưa có, cập nhật khi đã có, và không phát DDL.
+
+**② `GET /fields/<collection>` KHÔNG phải phép kiểm adoption.** Với token admin nó trả **200** cho
+bảng chưa adopt, chỉ khác ở chỗ mọi field có `meta: null`. §7.1 ghi nó trả 403 — quan sát đó cũng
+đến từ cùng cửa sổ cache ở ①.
+
+**Tín hiệu đúng: `GET /collections/<name>` → `data.meta === null` nghĩa là chưa adopt.**
+
+Chỗ này nguy hiểm hơn ① vì nó **không làm hỏng lần chạy đầu**: script dùng phép kiểm sai sẽ tưởng
+mọi thứ đã adopt, im lặng bỏ qua, và chỉ lộ ra khi ai đó dựng môi trường mới. Một script idempotent
+kiểm sai chỗ thì tệ hơn một script không idempotent — cái sau ít nhất còn nổ.
+
+Cả hai đính chính đã nằm trong comment đầu `scripts/directus-setup.ts`.
 
 Dọn dẹp: đã xoá file test, ba dòng metadata (`collections` / `fields` / `relations`) và
 `DROP TABLE public.probe_fleet`; đếm lại cả ba bảng đều `0`, `to_regclass('public.probe_fleet')`
