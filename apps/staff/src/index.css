@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/*
+ * apps/staff KHÔNG dùng DESIGN.md — file đó là hệ thị giác của apps/web (site
+ * công khai, SEO quan trọng, ảnh dẫn dắt). App này là công cụ vận hành nội bộ,
+ * ưu tiên chức năng và mật độ thông tin. Xem CLAUDE.md và apps/staff/CLAUDE.md.
+ *
+ * Tailwind ở đây dùng theme mặc định, không khai @theme riêng: chưa có màn hình
+ * nghiệp vụ nào để rút token ra. Khi làm lịch/thống kê/bàn giao thì mới thêm.
+ */

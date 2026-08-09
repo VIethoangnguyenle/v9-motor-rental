@@ -136,6 +136,22 @@ Schema chỉ đi qua migration file. Đó là điều kiện để dev và prod 
 `db:migrate` dùng migrator tự viết trên `bun-sql` (`packages/db/scripts/migrate.ts`), **không**
 dùng `drizzle-kit migrate` — CLI đó không hỗ trợ `bun-sql` và sẽ đòi cài driver Postgres thứ hai.
 
+### Tailwind v4 — **không có `tailwind.config.js`**, và hai app cắm hai kiểu
+
+Cả hai frontend dùng Tailwind `4.3.3`. V4 khai theme **trong CSS** bằng `@theme`, không bằng file
+config JS — đi tìm `tailwind.config.js` rồi kết luận "chưa cấu hình" là hiểu sai.
+
+| App          | Cách cắm                                                    | Theme                                           |
+| ------------ | ----------------------------------------------------------- | ----------------------------------------------- |
+| `apps/web`   | PostCSS — `@tailwindcss/postcss` trong `postcss.config.mjs` | token của `DESIGN.md`, khai ở `app/globals.css` |
+| `apps/staff` | Vite plugin — `@tailwindcss/vite` trong `vite.config.ts`    | mặc định, chưa có token riêng                   |
+
+Khác nhau vì hai cơ chế build khác nhau, **không** phải thiếu nhất quán.
+
+`postcss.config.mjs` không nằm trong tsconfig nào nên phải được `disableTypeChecked` trong
+`eslint.config.js` (khối `["**/*.js", "**/*.mjs"]`). Bỏ `.mjs` ra khỏi khối đó thì lint chết với
+`was not found by the project service` — lỗi **parse**, không phải lỗi luật.
+
 ### `bun run --filter '*'` **im lặng bỏ qua** workspace thiếu script
 
 Rồi vẫn exit 0. Nghĩa là `bun run typecheck` có thể xanh mà chưa kiểm tra package nào.

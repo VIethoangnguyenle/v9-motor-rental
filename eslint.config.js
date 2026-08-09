@@ -22,10 +22,16 @@ export default tseslint.config(
     },
   },
 
-  // eslint.config.js is plain JS with no tsconfig of its own — keep it out of
-  // type-aware linting rather than forcing it into a synthetic default project.
-  // Must come after the block above so it wins for **/*.js.
-  { files: ["**/*.js"], extends: [tseslint.configs.disableTypeChecked] },
+  // File cấu hình JS thuần, không nằm trong tsconfig nào: eslint.config.js và
+  // apps/web/postcss.config.mjs. Để chúng ngoài type-aware linting thay vì ép
+  // vào một synthetic default project.
+  //
+  // `.mjs` PHẢI có mặt ở đây. Thiếu nó, postcss.config.mjs làm lint chết với
+  // "was not found by the project service" — lỗi parse, không phải lỗi luật,
+  // nên đọc thoáng dễ tưởng config hỏng.
+  //
+  // Must come after the block above so it wins for these files.
+  { files: ["**/*.js", "**/*.mjs"], extends: [tseslint.configs.disableTypeChecked] },
 
   // ── Dependency graph ──────────────────────────────────────────────────
   {

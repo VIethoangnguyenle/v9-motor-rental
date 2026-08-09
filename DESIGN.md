@@ -30,6 +30,24 @@ giống BMW" — đọc cột lý do trước.
 
 ---
 
+## 0. Hệ này được implement bằng Tailwind v4
+
+Token nằm ở `apps/web/app/globals.css`, khai bằng `@theme` — **không có `tailwind.config.js`**,
+v4 khai theme trong CSS. Mỗi biến sinh ra utility tương ứng: `--color-canvas` → `bg-canvas`,
+`--spacing-section` → `py-section`.
+
+**Luật:** JSX dùng utility, **không hard-code hex và không dùng arbitrary value** kiểu
+`bg-[#1a1a1a]`. Thấy mình sắp viết arbitrary value cho màu hoặc thang cách nghĩa là token còn
+thiếu — thêm vào `@theme`, đừng lách.
+
+Thang chữ (§3) và hình dạng nút (§4) khai bằng `@utility` chứ không rắc utility rời trong JSX:
+đó là hợp đồng của hệ thiết kế, phải sửa một chỗ. Viết tay
+`text-[60px] font-bold uppercase leading-[1.15]` ở mỗi tiêu đề là cách chắc chắn nhất để nó trôi.
+
+`apps/web` cắm Tailwind qua **PostCSS** (`@tailwindcss/postcss`), `apps/staff` qua **Vite plugin**
+(`@tailwindcss/vite`). Hai cơ chế build khác nhau nên hai cách cắm — đúng, không phải thiếu nhất
+quán. Và `apps/staff` **không** dùng file này: nó chạy theme mặc định của Tailwind.
+
 ## 1. Không khí và chủ đề
 
 Nền đen tuyền. Chrome giao diện lùi hết về sau; **ảnh xe là toàn bộ điện áp của trang**. Không

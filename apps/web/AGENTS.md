@@ -61,6 +61,11 @@ Tóm tắt để không phải mở file: nền đen tuyền · **ảnh xe gánh
 tiêu đề 700 HOA / thân bài 300 · **góc 0px, không bo nút** · không đổ bóng, không gradient ·
 lưới xe 3-up.
 
+**Styling: Tailwind v4**, cắm qua PostCSS (`postcss.config.mjs`). **Không có `tailwind.config.js`**
+— token khai bằng `@theme` trong `app/globals.css`. Dùng utility (`bg-canvas`, `text-ink`,
+`py-section`), **không hard-code hex, không arbitrary value** cho màu/thang cách. Thang chữ và
+hình dạng nút là `@utility` (`display-xl`, `label-upper`, `btn-shape`) — dùng lại, đừng viết tay.
+
 **Ba thứ khác bản BMW gốc, đừng "sửa lại cho giống":** `line-height` display **1.15** (ở 1.0 dấu
 tiếng Việt đâm dòng trên, đã render kiểm chứng) · **không dùng Inter** dù file gốc khuyên thế ·
 accent lấy từ **logo thật của shop**, không phải M tricolor.

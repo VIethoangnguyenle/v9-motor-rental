@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { api } from "@/lib/api";
 import messages from "@/messages/vi.json";
 import { PLACEHOLDER_VEHICLES } from "./_placeholder-data";
@@ -10,21 +11,18 @@ import { PLACEHOLDER_VEHICLES } from "./_placeholder-data";
 // docs/plans/2026-08-05-round2-directus-staff-design.md.
 export const revalidate = 60;
 
+const CONTAINER = "mx-auto w-full max-w-page px-6";
+
 /**
- * Chỗ đặt ảnh. Chưa có ảnh thật của shop nên render khối `surface-card` kèm nhãn.
- *
- * CỐ Ý không dùng ảnh AI sinh: đã thử, và thứ nhận về là ô màu trơn (API hết
- * quota) — tức là dối trá mà chẳng được gì. Khối có nhãn thì trung thực và vẫn
- * cho thấy nhịp trang.
- *
- * Khi có ảnh thật: đổi sang next/image, `priority` cho hero (ảnh hero CHÍNH LÀ
- * LCP của trang này — DESIGN.md §8), và gỡ nhãn.
+ * Ảnh trong prototype là ẢNH AI SINH, không phải xe của shop. Nhãn dưới góc phải
+ * phải còn nguyên cho tới khi thay bằng ảnh thật — gỡ nhãn mà không thay ảnh là
+ * nói dối khách. PRODUCT.md nguyên tắc #2.
  */
-function PhotoSlot({ label, className }: { label: string; className: string }) {
+function PlaceholderTag() {
   return (
-    <div className={className} aria-hidden="true">
-      <span className="placeholder-tag">{label}</span>
-    </div>
+    <span className="caption-text absolute right-3 bottom-3 border border-hairline bg-canvas/70 px-2 py-0.5 text-body">
+      {messages.placeholder.imageTag}
+    </span>
   );
 }
 
@@ -34,16 +32,22 @@ export default async function Page() {
 
   return (
     <>
-      <header className="top-nav">
-        <div className="container">
-          <a className="wordmark" href="/">
+      <header className="sticky top-0 z-10 h-16 border-b border-hairline bg-canvas">
+        <div className={`${CONTAINER} flex h-full items-center justify-between gap-10`}>
+          <a
+            href="/"
+            className="label-upper text-lg whitespace-nowrap text-ink no-underline"
+            style={{ fontSize: 18 }}
+          >
             {messages.site.title}
           </a>
-          <nav className="nav-links">
-            <a className="label-upper text-link" href="#doi-xe">
+          {/* DESIGN.md §8 yêu cầu hamburger ở mobile — CHƯA LÀM (cần client
+              component). Tạm ẩn dưới 768px để wordmark không gãy dòng. */}
+          <nav className="hidden gap-10 md:flex">
+            <a href="#doi-xe" className="label-upper text-ink hover:underline">
               {messages.nav.vehicles}
             </a>
-            <a className="label-upper text-link" href="#thu-tuc">
+            <a href="#thu-tuc" className="label-upper text-ink hover:underline">
               {messages.nav.howItWorks}
             </a>
           </nav>
@@ -51,65 +55,89 @@ export default async function Page() {
       </header>
 
       <main>
-        {/* ── Băng ảnh hero: ảnh chính là băng, không khung card ── */}
-        <section className="hero">
-          <PhotoSlot label="Ảnh hero — chưa có ảnh thật" className="hero-media" />
-          <div className="hero-scrim" />
-          <div className="hero-inner">
-            <div className="container">
-              <h1 className="display-xl">{messages.hero.headline}</h1>
-              <p className="title-md hero-sub">{messages.hero.sub}</p>
-              <div style={{ display: "flex", gap: "var(--space-md)", flexWrap: "wrap" }}>
-                <a className="btn btn-solid" href="#gui-yeu-cau">
+        {/* ── Băng ảnh hero: ảnh CHÍNH LÀ băng, không khung card ──
+            priority vì ảnh này là LCP của trang. DESIGN.md §8. */}
+        <section className="relative flex min-h-[min(78vh,720px)] items-end overflow-hidden">
+          <Image
+            src="/placeholder/hero.jpg"
+            alt="Mô tô phân khối lớn đỗ trong garage tối"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
+          />
+          {/* Phủ đen thuần để chữ đọc được trên ảnh — không phải gradient màu,
+              đây thuộc nhóm "độ sâu từ ảnh". DESIGN.md §6. */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/15" />
+          <div className="relative w-full py-16">
+            <div className={CONTAINER}>
+              <h1 className="display-xl m-0 text-ink">{messages.hero.headline}</h1>
+              <p className="my-6 max-w-[46ch] text-lg text-body-strong">{messages.hero.sub}</p>
+              <div className="flex flex-wrap gap-4">
+                <a
+                  href="#gui-yeu-cau"
+                  className="btn-shape border-ink bg-ink text-canvas no-underline transition-colors hover:bg-transparent hover:text-ink"
+                >
                   {messages.booking.cta}
                 </a>
-                <a className="btn btn-primary" href="#doi-xe">
+                <a
+                  href="#doi-xe"
+                  className="btn-shape border-ink bg-transparent text-ink no-underline transition-colors hover:bg-ink hover:text-canvas"
+                >
                   {messages.hero.secondaryCta}
                 </a>
               </div>
             </div>
+            <PlaceholderTag />
           </div>
         </section>
 
-        {/* ── Bảng thông số: dữ kiện đã xác nhận trong PRODUCT.md, không bịa ── */}
-        <section className="section" id="thu-tuc">
-          <div className="container">
-            <h2 className="display-lg">{messages.terms.heading}</h2>
-            <div className="grid-specs" style={{ marginTop: "var(--space-xl)" }}>
+        {/* ── Bảng thủ tục: dữ kiện đã xác nhận trong PRODUCT.md, không bịa ── */}
+        <section id="thu-tuc" className="py-section">
+          <div className={CONTAINER}>
+            <h2 className="display-lg m-0 text-ink">{messages.terms.heading}</h2>
+            <div className="mt-10 grid grid-cols-1 gap-px border border-hairline bg-hairline md:grid-cols-2 lg:grid-cols-4">
               {[
                 messages.terms.papers,
                 messages.terms.deposit,
                 messages.terms.unit,
                 messages.terms.delivery,
               ].map((item) => (
-                <div className="spec-cell" key={item.label}>
-                  <span className="display-sm">{item.value}</span>
-                  <span className="label-upper spec-label">{item.label}</span>
+                <div key={item.label} className="flex flex-col gap-2 bg-surface-soft p-6">
+                  <span className="display-sm text-ink">{item.value}</span>
+                  <span className="label-upper text-body">{item.label}</span>
                 </div>
               ))}
             </div>
-            <p style={{ maxWidth: "62ch", marginTop: "var(--space-xl)" }}>
-              {messages.terms.photoNote}
-            </p>
+            <p className="mt-10 max-w-[62ch]">{messages.terms.photoNote}</p>
           </div>
         </section>
 
         {/* ── Lưới xe ── */}
-        <section className="section" id="doi-xe" style={{ paddingTop: 0 }}>
-          <div className="container">
-            <h2 className="display-lg">{messages.vehicles.heading}</h2>
-            <p className="title-md" style={{ marginTop: "var(--space-md)" }}>
-              {messages.vehicles.lead}
-            </p>
+        <section id="doi-xe" className="pb-section">
+          <div className={CONTAINER}>
+            <h2 className="display-lg m-0 text-ink">{messages.vehicles.heading}</h2>
+            <p className="mt-4 text-lg text-body-strong">{messages.vehicles.lead}</p>
 
-            <div className="grid-vehicles" style={{ marginTop: "var(--space-xl)" }}>
+            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {PLACEHOLDER_VEHICLES.map((v) => (
-                <article className="vehicle-card" key={v.id}>
-                  <PhotoSlot label={messages.placeholder.imageTag} className="vehicle-media" />
-                  <div className="vehicle-body">
-                    <h3 className="display-md">{v.name}</h3>
-                    <p className="body-sm vehicle-meta">{v.meta}</p>
-                    <a className="label-upper text-link" href="#gui-yeu-cau">
+                <article key={v.id}>
+                  <div className="relative aspect-[16/10] overflow-hidden bg-surface-card">
+                    <Image
+                      src={v.image}
+                      alt={`Ảnh ${v.name} — ảnh tạm, chưa phải xe của shop`}
+                      fill
+                      sizes="(max-width: 767px) 100vw, (max-width: 1023px) 50vw, 33vw"
+                      className="object-cover"
+                    />
+                    <PlaceholderTag />
+                  </div>
+                  <div className="flex flex-col items-start gap-3 pt-6">
+                    <h3 className="display-md m-0 text-ink">{v.name}</h3>
+                    {/* metadata dùng text-body chứ KHÔNG text-muted:
+                        muted trên surface tối chỉ 4.29:1, dưới AA. DESIGN.md §2 */}
+                    <p className="m-0 text-sm text-body">{v.meta}</p>
+                    <a href="#gui-yeu-cau" className="label-upper text-ink hover:underline">
                       {messages.vehicles.detail} →
                     </a>
                   </div>
@@ -117,48 +145,42 @@ export default async function Page() {
               ))}
             </div>
 
-            <p className="caption" style={{ marginTop: "var(--space-lg)" }}>
-              {messages.vehicles.empty}
-            </p>
+            <p className="caption-text mt-6 text-muted">{messages.vehicles.empty}</p>
           </div>
         </section>
 
         {/* ── Băng CTA: copy lấy nguyên từ messages, KHÔNG hứa xe còn trống ── */}
-        <section className="section cta-band" id="gui-yeu-cau">
-          <div className="container">
-            <h2 className="display-md">{messages.booking.cta}</h2>
-            <p className="cta-note">{messages.booking.note}</p>
-            <a className="btn btn-primary" href="#gui-yeu-cau">
+        <section id="gui-yeu-cau" className="border-y border-hairline py-section text-center">
+          <div className={CONTAINER}>
+            <h2 className="display-md m-0 text-ink">{messages.booking.cta}</h2>
+            <p className="mx-auto my-6 max-w-[52ch] text-body">{messages.booking.note}</p>
+            <a
+              href="#gui-yeu-cau"
+              className="btn-shape border-ink bg-transparent text-ink no-underline transition-colors hover:bg-ink hover:text-canvas"
+            >
               {messages.booking.cta}
             </a>
           </div>
         </section>
       </main>
 
-      <footer className="site-footer">
-        <div className="container">
-          <div className="footer-cols">
-            <div className="footer-col">
-              <h3 className="label-upper">{messages.footer.vehicles}</h3>
-              <ul className="body-sm">
-                <li>{messages.vehicles.heading}</li>
-              </ul>
+      <footer className="border-t border-hairline py-16">
+        <div className={CONTAINER}>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <h3 className="label-upper mb-4 text-ink">{messages.footer.vehicles}</h3>
+              <p className="m-0 text-sm">{messages.vehicles.heading}</p>
             </div>
-            <div className="footer-col">
-              <h3 className="label-upper">{messages.footer.rental}</h3>
-              <ul className="body-sm">
-                <li>{messages.terms.heading}</li>
-              </ul>
+            <div>
+              <h3 className="label-upper mb-4 text-ink">{messages.footer.rental}</h3>
+              <p className="m-0 text-sm">{messages.terms.heading}</p>
             </div>
-            <div className="footer-col">
-              <h3 className="label-upper">{messages.footer.shop}</h3>
-              <ul className="body-sm">
-                <li>{messages.site.tagline}</li>
-              </ul>
+            <div>
+              <h3 className="label-upper mb-4 text-ink">{messages.footer.shop}</h3>
+              <p className="m-0 text-sm">{messages.site.tagline}</p>
             </div>
-            <div className="footer-col" />
           </div>
-          <p className="caption" style={{ marginTop: "var(--space-xl)" }}>
+          <p className="caption-text mt-10 text-muted">
             {messages.footer.legal} · {messages.scaffold.apiHealth}: {apiStatus}
           </p>
         </div>

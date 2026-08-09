@@ -15,9 +15,11 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
     "@types/node": "26.1.2",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
-    "@v9/api": "workspace:*"
+    "@v9/api": "workspace:*",
+    "tailwindcss": "4.3.3"
   }
 }

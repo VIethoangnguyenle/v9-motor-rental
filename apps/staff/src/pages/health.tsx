@@ -12,13 +12,13 @@ export function HealthPage() {
   });
 
   return (
-    <main style={{ fontFamily: "monospace", padding: 24 }}>
-      <h1>V9 Staff — scaffold</h1>
-      <p>
+    <main className="p-6 font-mono">
+      <h1 className="text-xl font-bold">V9 Staff — scaffold</h1>
+      <p className="mt-3">
         API health:{" "}
         <strong>{isPending ? "đang tải…" : error ? `lỗi: ${error.message}` : data.status}</strong>
       </p>
-      <p>Chưa có chức năng nghiệp vụ nào. Xem CLAUDE.md.</p>
+      <p className="mt-3 text-gray-600">Chưa có chức năng nghiệp vụ nào. Xem CLAUDE.md.</p>
     </main>
   );
 }
