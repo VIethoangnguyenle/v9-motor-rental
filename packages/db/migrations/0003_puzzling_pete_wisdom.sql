@@ -1,0 +1,2 @@
+ALTER TABLE "vehicles" ADD CONSTRAINT "vehicles_money_nonneg" CHECK ("vehicles"."price_per_day" >= 0 AND "vehicles"."deposit" >= 0);--> statement-breakpoint
+ALTER TABLE "vehicles" ADD CONSTRAINT "vehicles_engine_cc_positive" CHECK ("vehicles"."engine_cc" > 0);

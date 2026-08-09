@@ -22,6 +22,20 @@
       "when": 1786316980399,
       "tag": "0002_tearful_plazm",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786318134198,
+      "tag": "0003_puzzling_pete_wisdom",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786318161860,
+      "tag": "0004_real_mantis",
+      "breakpoints": true
     }
   ]
 }
