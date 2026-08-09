@@ -15,6 +15,13 @@
       "when": 1785886705182,
       "tag": "0001_service_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786316980399,
+      "tag": "0002_tearful_plazm",
+      "breakpoints": true
     }
   ]
 }
