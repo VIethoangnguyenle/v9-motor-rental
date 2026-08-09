@@ -370,23 +370,32 @@ if (publicPolicy === undefined) {
   throw new Error("Không tìm thấy policy Public (directus_access với role và user đều NULL)");
 }
 
-const filePerms = await api<{ id: number; fields: string[] | null }[]>(
+const filePermShape: Meta = { fields: ["*"], permissions: {}, validation: {} };
+const filePerms = await api<(Meta & { id: number })[]>(
   "GET",
   `/permissions?filter%5Bpolicy%5D%5B_eq%5D=${publicPolicy}` +
     `&filter%5Bcollection%5D%5B_eq%5D=directus_files&filter%5Baction%5D%5B_eq%5D=read`,
 );
-if (filePerms.length === 0) {
+const filePerm = filePerms[0];
+if (filePerm === undefined) {
   await api("POST", "/permissions", {
     policy: publicPolicy,
     collection: "directus_files",
     action: "read",
-    fields: ["*"],
-    permissions: {},
-    validation: {},
+    ...filePermShape,
   });
   step(true, "quyền Public đọc directus_files", "tạo permission");
 } else {
-  step(false, "quyền Public đọc directus_files", `đã có (id ${String(filePerms[0]?.id)})`);
+  // Kiểm cả NỘI DUNG chứ không chỉ sự tồn tại: một permission bị ai đó thu hẹp field hay
+  // gắn thêm filter trong UI vẫn "tồn tại", và /assets sẽ hỏng trong im lặng trong khi
+  // script báo xanh — đúng kiểu kiểm-chứng-giả mà repo này đã dính bốn lần.
+  const permDrift = drift(filePerm, filePermShape);
+  if (permDrift.length === 0) {
+    step(false, "quyền Public đọc directus_files", `đã có (id ${String(filePerm.id)})`);
+  } else {
+    await api("PATCH", `/permissions/${String(filePerm.id)}`, filePermShape);
+    step(true, "quyền Public đọc directus_files", `sửa lại: ${permDrift.join(", ")}`);
+  }
 }
 
 // ── 6. Chặn transform tuỳ ý ───────────────────────────────────────────────
