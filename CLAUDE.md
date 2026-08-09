@@ -296,7 +296,7 @@ minh gì** nếu bạn không đọc nó nổ vì luật nào.
 | **Serena**       | Cách **duy nhất** để điều hướng và sửa code theo ngữ nghĩa. Bắt buộc `find_symbol` / `find_referencing_symbols` **trước khi** sửa bất kỳ exported function hay shared type nào. Ưu tiên sửa ở mức symbol hơn ghi đè cả file.                           | Không đổi tên hay đổi signature khi chưa kiểm tra reference.                                                                                               |
 | **Agent Memory** | Là **ADR, không phải cache code**. **Đọc** lúc mở phiên và trước **mọi** đề xuất đổi schema hay API contract. **Ghi** quyết định + lý do, naming convention, gotcha phát hiện lúc debug.                                                               | Không lưu code snippet hay nội dung file — git và Serena lo phần đó. Nếu đề xuất mâu thuẫn với quyết định đã lưu, **nêu xung đột cho người**, không tự đè. |
 | **rtk**          | Đã hook sẵn, không cần làm gì. Ưu tiên chạy test/git/docker qua bash để rtk nén output.                                                                                                                                                                | Không dán output dài vào context bằng tay.                                                                                                                 |
-| **impeccable**   | `apps/web` là chính; audit nhẹ cho `apps/staff`. Ràng buộc sản phẩm ở `PRODUCT.md` (đã có, do `/impeccable init` sinh).                                                                                                                                | `apps/staff` ưu tiên chức năng — **không polish pass trừ khi được yêu cầu**. `DESIGN.md` **chưa tồn tại** — đừng viện dẫn nó như thể đã có.                |
+| **impeccable**   | `apps/web` là chính; audit nhẹ cho `apps/staff`. Ràng buộc sản phẩm ở `PRODUCT.md`, hệ thiết kế ở `DESIGN.md` — **cả hai đã có**, đọc trước khi động vào UI.                                                                                           | `apps/staff` ưu tiên chức năng — **không polish pass trừ khi được yêu cầu**.                                                                               |
 
 ### ⚠️ Phân biệt: ranh giới **repo ép** vs **cấu hình local**
 
@@ -345,11 +345,14 @@ khi thật sự có tiếng Anh · upload ảnh lên MinIO.
 
 **Chặn ở người, không chặn ở code** — hai việc này không tự làm được, cần asset/quyết định từ shop:
 
+Cả hai đều chờ **đúng một** thứ: **file logo thật của shop**.
+
+- **Màu accent của `DESIGN.md`.** Hệ thiết kế đã chốt (nền BMW M, adapt 7 chỗ) nhưng cố ý để
+  trống đúng một ô: màu thương hiệu. Bản gốc dùng M tricolor của BMW — ta không dùng được, và
+  `PRODUCT.md` cấm vẽ lại nhận diện. **Đừng bịa màu**: dựng đơn sắc trắng-đen cho tới khi có
+  asset. Xem §9 của `DESIGN.md`.
 - **Icon thật cho `apps/staff`.** `public/icon-{192,512}.png` đang là ô màu đặc. Thiếu icon thì
   trình duyệt **im lặng** không mời cài app.
-- **`DESIGN.md`.** Sinh bằng `/impeccable document` — nhưng lệnh đó **đọc code có sẵn**, mà hiện
-  `apps/web` mới có trang tạm monospace. Chạy sớm chỉ sinh ra một `DESIGN.md` bịa rồi mọi phiên
-  sau tuân theo nó. Điều kiện: có màn hình xe thật **và** logo thật.
 
 **Deploy:** đang gác. Secret SSH đã đặt; còn thiếu `ssh-copy-id` lên VPS, `ROOT_DOMAIN` +
 `CADDY_EMAIL`, bootstrap `~/v9-motor-rental`, và `docker login ghcr.io` trên VPS (repo private nên

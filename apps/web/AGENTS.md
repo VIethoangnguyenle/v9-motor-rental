@@ -50,18 +50,23 @@ xe tĩnh hoàn toàn được. Đó đúng là lý do Next được chọn. Xem 
 Đây là điều duy nhất phân biệt nó với `apps/staff` (Vite PWA). Ưu tiên SSG/ISR; tránh
 `force-dynamic` trừ khi có lý do viết ra thành chữ. Trang chủ hiện dùng `revalidate = 60`.
 
-## UI phải tôn trọng PRODUCT.md — `DESIGN.md` **chưa tồn tại**
+## UI phải tôn trọng `DESIGN.md` và `PRODUCT.md`
 
-[`../../PRODUCT.md`](../../PRODUCT.md) là ràng buộc sản phẩm của app này, do `/impeccable init`
-sinh ra. Khán giả: dân chơi mô tô phân khối lớn người Việt ở TP.HCM **cộng** khách du lịch nước
-ngoài. Vibe moto-garage — tối, nhiều ảnh, typography đậm.
+[`../../DESIGN.md`](../../DESIGN.md) là hệ thiết kế của app này — nền **BMW M** (từ
+`VoltAgent/awesome-design-md`) đã adapt bảy chỗ cho V9. [`../../PRODUCT.md`](../../PRODUCT.md) là
+ràng buộc sản phẩm. Khán giả: dân chơi mô tô phân khối lớn người Việt ở TP.HCM **cộng** khách du
+lịch nước ngoài.
 
-**`DESIGN.md` chưa có, và đó là cố ý.** `/impeccable init` chỉ sinh `PRODUCT.md` — nó không bịa
-ra một thế giới thị giác. `DESIGN.md` sinh bằng `/impeccable document` (đọc code có sẵn) hoặc
-trong một phiên thiết kế, và cả hai đều cần **màn hình thật** để đọc: hiện `app/page.tsx` mới là
-trang tạm monospace. Chạy sớm chỉ tạo ra một `DESIGN.md` bịa, rồi mọi phiên sau tuân theo nó.
+Tóm tắt để không phải mở file: nền đen tuyền · **ảnh xe gánh toàn bộ năng lượng** · Archivo,
+tiêu đề 700 HOA / thân bài 300 · **góc 0px, không bo nút** · không đổ bóng, không gradient ·
+lưới xe 3-up.
 
-Điều kiện để làm: có màn hình danh sách/chi tiết xe thật, và có asset logo thật của shop.
+**Ba thứ khác bản BMW gốc, đừng "sửa lại cho giống":** `line-height` display **1.15** (ở 1.0 dấu
+tiếng Việt đâm dòng trên, đã render kiểm chứng) · **không dùng Inter** dù file gốc khuyên thế ·
+accent lấy từ **logo thật của shop**, không phải M tricolor.
+
+⛔ **Màu accent chưa chốt** — chờ file logo. Cho tới lúc đó dựng đơn sắc trắng-đen, **không bịa
+màu**. Xem §9 của `DESIGN.md`.
 
 **Cấm rõ**: thẩm mỹ SaaS generic — gradient tím, Inter ở mọi nơi, card lồng card.
 
