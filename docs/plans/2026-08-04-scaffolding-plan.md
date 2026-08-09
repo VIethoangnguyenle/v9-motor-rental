@@ -4,22 +4,23 @@
 >
 > **17/17 task hoàn thành.** Checkbox bên dưới **cố ý không tick**: nhiều bước đã bị thay đổi
 > trong lúc thực thi, nên tick hết sẽ khẳng định sai rằng mọi thứ diễn ra đúng như viết ban đầu.
-> Nguồn sự thật về code là repo; file này là bản ghi *ý định*, đọc kèm các mục "Kết quả thực tế".
+> Nguồn sự thật về code là repo; file này là bản ghi _ý định_, đọc kèm các mục "Kết quả thực tế".
 >
 > **Những chỗ thực tế lệch khỏi plan** (mỗi chỗ đều có ghi chú tại task tương ứng):
 >
-> | Task | Lệch |
-> |---|---|
-> | 2 | Config lint draft chưa đủ; 6 thay đổi bắt buộc, gồm 2 bug của `eslint-plugin-boundaries` |
-> | 3 | Phải thêm `"types": ["bun"]` — TS không tự nạp `@types/bun` trong layout của bun |
-> | 5 | `packages/shared` có **hai** dependency chứ không phải một; `treaty` ràng buộc `T extends Elysia<…>` |
-> | 7 | `drizzle-kit migrate` không hỗ trợ `bun-sql` → tự viết migrator |
-> | 8 | `routes/` không được chạm `db.ts`/`env.ts` → tách `services/health.ts`; bỏ macro `requireRole` |
-> | 9 | **Viết lại hoàn toàn**: Next → Vite + TanStack (người dùng đổi giữa chừng) |
-> | 11 | Vá lỗ hổng `boundaries` bỏ sót import kiểu `@v9/*` |
-> | 13 | Pattern 2-stage `deps` hỏng với isolated linker của bun; Next build crash trên Bun+musl |
+> | Task | Lệch                                                                                                 |
+> | ---- | ---------------------------------------------------------------------------------------------------- |
+> | 2    | Config lint draft chưa đủ; 6 thay đổi bắt buộc, gồm 2 bug của `eslint-plugin-boundaries`             |
+> | 3    | Phải thêm `"types": ["bun"]` — TS không tự nạp `@types/bun` trong layout của bun                     |
+> | 5    | `packages/shared` có **hai** dependency chứ không phải một; `treaty` ràng buộc `T extends Elysia<…>` |
+> | 7    | `drizzle-kit migrate` không hỗ trợ `bun-sql` → tự viết migrator                                      |
+> | 8    | `routes/` không được chạm `db.ts`/`env.ts` → tách `services/health.ts`; bỏ macro `requireRole`       |
+> | 9    | **Viết lại hoàn toàn**: Next → Vite + TanStack (người dùng đổi giữa chừng)                           |
+> | 11   | Vá lỗ hổng `boundaries` bỏ sót import kiểu `@v9/*`                                                   |
+> | 13   | Pattern 2-stage `deps` hỏng với isolated linker của bun; Next build crash trên Bun+musl              |
 >
 > **Hai hạng mục hoãn có chủ ý:**
+>
 > - **`DESIGN.md`** (Task 16) — `/impeccable init` chỉ sinh `PRODUCT.md`. Thế giới thị giác cần
 >   một màn hình thật để thiết kế (= business feature, bị §2 design doc cấm) và cần asset logo
 >   thật. Để phiên làm giao diện.
@@ -45,31 +46,32 @@ Repo đã `git init` (branch `main`), remote `origin` = `git@github.com:VIethoan
 
 ## File structure
 
-| File | Trách nhiệm |
-|---|---|
-| `package.json` | workspaces + canonical scripts, không chứa dependency của app |
-| `tsconfig.base.json` | compiler options dùng chung, mọi package `extends` nó |
-| `.env.example` | **nguồn sự thật duy nhất** cho tên biến env |
-| `eslint.config.js` | flat config + đồ thị boundaries |
-| `packages/shared/src/domain/money.ts` | type `Vnd`, format, quy ước làm tròn |
-| `packages/shared/src/domain/interval.ts` | `overlaps()` nửa khoảng `[start, end)` |
-| `packages/shared/src/client.ts` | `createApiClient<T>()` — chỗ duy nhất `shared` chạm HTTP |
-| `packages/db/drizzle.config.ts` | cấu hình drizzle-kit |
-| `packages/db/migrations/0000_btree_gist.sql` | bật extension, không có business schema |
-| `apps/api/src/env.ts` | đọc + validate env, fail fast |
-| `apps/api/src/db.ts` | **chỗ duy nhất** biết driver là `bun-sql` |
-| `apps/api/src/plugins/auth.ts` | SEAM JWT |
-| `apps/api/src/plugins/timing.ts` | đo latency |
-| `apps/api/src/routes/health.ts` | `/health` và `/health/deep` |
-| `apps/api/src/index.ts` | compose app, `export type App` |
-| `apps/{admin,web}/lib/api.ts` | gắn `App` vào `createApiClient` |
-| `CLAUDE.md` | luật cho mọi phiên AI sau |
+| File                                         | Trách nhiệm                                                   |
+| -------------------------------------------- | ------------------------------------------------------------- |
+| `package.json`                               | workspaces + canonical scripts, không chứa dependency của app |
+| `tsconfig.base.json`                         | compiler options dùng chung, mọi package `extends` nó         |
+| `.env.example`                               | **nguồn sự thật duy nhất** cho tên biến env                   |
+| `eslint.config.js`                           | flat config + đồ thị boundaries                               |
+| `packages/shared/src/domain/money.ts`        | type `Vnd`, format, quy ước làm tròn                          |
+| `packages/shared/src/domain/interval.ts`     | `overlaps()` nửa khoảng `[start, end)`                        |
+| `packages/shared/src/client.ts`              | `createApiClient<T>()` — chỗ duy nhất `shared` chạm HTTP      |
+| `packages/db/drizzle.config.ts`              | cấu hình drizzle-kit                                          |
+| `packages/db/migrations/0000_btree_gist.sql` | bật extension, không có business schema                       |
+| `apps/api/src/env.ts`                        | đọc + validate env, fail fast                                 |
+| `apps/api/src/db.ts`                         | **chỗ duy nhất** biết driver là `bun-sql`                     |
+| `apps/api/src/plugins/auth.ts`               | SEAM JWT                                                      |
+| `apps/api/src/plugins/timing.ts`             | đo latency                                                    |
+| `apps/api/src/routes/health.ts`              | `/health` và `/health/deep`                                   |
+| `apps/api/src/index.ts`                      | compose app, `export type App`                                |
+| `apps/{admin,web}/lib/api.ts`                | gắn `App` vào `createApiClient`                               |
+| `CLAUDE.md`                                  | luật cho mọi phiên AI sau                                     |
 
 ---
 
 ## Task 1: Root workspace
 
 **Files:**
+
 - Create: `package.json`, `tsconfig.base.json`, `.env.example`, `bunfig.toml`
 
 - [ ] **Step 1: Tạo `package.json` ở root**
@@ -203,6 +205,7 @@ git commit -m "chore: root bun workspace, tsconfig base, env template"
 ## Task 2: ESLint + Prettier + boundaries
 
 **Files:**
+
 - Create: `eslint.config.js`, `.prettierrc`, `.prettierignore`, `cspell.json`
 
 - [ ] **Step 1: Tạo `.prettierrc`**
@@ -311,7 +314,10 @@ export default tseslint.config(
             { from: "shared-client", allow: [] },
             { from: "db", allow: ["db"] },
             // Trong api: route → service → db. Không có mũi tên ngược.
-            { from: "api-routes", allow: ["api-routes", "api-services", "api-plugins", "shared-domain"] },
+            {
+              from: "api-routes",
+              allow: ["api-routes", "api-services", "api-plugins", "shared-domain"],
+            },
             { from: "api-services", allow: ["api-services", "api-infra", "db", "shared-domain"] },
             { from: "api-infra", allow: ["api-infra"] },
             { from: "api-plugins", allow: ["api-plugins", "api-infra", "shared-domain"] },
@@ -372,7 +378,7 @@ Config đã commit (`eefa2c6` + `300c2a9`) là bản có thẩm quyền; đừng
 1. **`@eslint/js@10.0.1`**, không phải `10.8.0` — package đó không tồn tại (đã sửa ở Step 5).
 2. **`import/resolver` thêm `.ts`/`.tsx`.** Thiếu nó, `eslint-import-resolver-node` không resolve được import không đuôi file, plugin phân loại đích là unknown và **im lặng bỏ qua** — toàn bộ luật boundaries thành no-op mà lint vẫn exit 0.
 3. **`mode: "full"` cho ba element một-file** (`shared-root`, `api-root`, `shared-client`, `api-infra`). Bản thay thế theo tài liệu `partialMatch: false` **hỏng** ở plugin 7.1.0 — nó vẫn nối hậu tố thư mục con nên không bao giờ khớp chính file đó. Đổi lấy một cảnh báo deprecated để có enforcement đúng.
-4. **Thêm element `shared-root` và `api-root`.** File không khớp element nào **không phải bị kiểm tra lỏng — mà được miễn hoàn toàn**: plugin không đăng ký visitor nào cho file nó không phân loại được, nên import *từ* file đó không bao giờ bị soi. `apps/api/src/index.ts` và `packages/shared/src/index.ts` đều rơi vào lỗ này. `api-root` **không được** với thẳng tới `db`.
+4. **Thêm element `shared-root` và `api-root`.** File không khớp element nào **không phải bị kiểm tra lỏng — mà được miễn hoàn toàn**: plugin không đăng ký visitor nào cho file nó không phân loại được, nên import _từ_ file đó không bao giờ bị soi. `apps/api/src/index.ts` và `packages/shared/src/index.ts` đều rơi vào lỗ này. `api-root` **không được** với thẳng tới `db`.
 5. **Bật `boundaries/no-unknown-files: "error"`** để lần sau có file top-level không khớp gì thì nó đỏ ngay, thay vì lặng lẽ chui khỏi hàng rào.
 6. **Đổi tên rule `boundaries/element-types` → `boundaries/dependencies`** (cùng factory, cùng schema, không đổi hành vi) và **`boundaries/ignore: ["apps/api/scripts/**"]`** cho `bench.ts` — bench là công cụ vận hành, không phải một tầng kiến trúc; cho nó element type với allow rộng sẽ tạo lỗ hình cửa hậu ngay trong đồ thị.
 
@@ -381,6 +387,7 @@ Config đã commit (`eefa2c6` + `300c2a9`) là bản có thẩm quyền; đừng
 ## Task 3: `packages/shared` — money (TDD)
 
 **Files:**
+
 - Create: `packages/shared/package.json`, `packages/shared/tsconfig.json`
 - Test: `packages/shared/src/domain/money.test.ts`
 - Create: `packages/shared/src/domain/money.ts`
@@ -514,6 +521,7 @@ git commit -m "feat(shared): Vnd, roundVnd, formatVnd với test"
 ## Task 4: `packages/shared` — interval (TDD)
 
 **Files:**
+
 - Test: `packages/shared/src/domain/interval.test.ts`
 - Create: `packages/shared/src/domain/interval.ts`, `packages/shared/src/index.ts`
 
@@ -634,6 +642,7 @@ git commit -m "feat(shared): overlaps nửa khoảng [start,end) khớp tstzrang
 ## Task 5: `packages/shared/client.ts` — Eden factory
 
 **Files:**
+
 - Create: `packages/shared/src/client.ts`
 
 - [ ] **Step 1: Viết `packages/shared/src/client.ts`**
@@ -689,6 +698,7 @@ git commit -m "feat(shared): createApiClient generic, không tạo chu trình v�
 ## Task 6: `packages/db` — drizzle + migration `btree_gist`
 
 **Files:**
+
 - Create: `packages/db/package.json`, `packages/db/tsconfig.json`, `packages/db/drizzle.config.ts`
 - Create: `packages/db/src/schema/index.ts`, `packages/db/src/index.ts`
 - Create: `packages/db/migrations/0000_btree_gist.sql`, `packages/db/migrations/meta/_journal.json`
@@ -817,6 +827,7 @@ git commit -m "feat(db): drizzle config + migration 0000 bật btree_gist"
 ## Task 7: `compose.yaml` (dev) + chạy migration thật
 
 **Files:**
+
 - Create: `compose.yaml`
 - Test: `packages/db/src/btree-gist.test.ts`
 
@@ -957,8 +968,9 @@ describe("btree_gist", () => {
   it("cho phép exclusion constraint chặn tstzrange chồng lấn trên cùng một xe", async () => {
     // Toàn bộ chạy trong transaction rồi ROLLBACK: chứng minh extension dùng được
     // mà KHÔNG commit một dòng business schema nào (§2 design doc cấm việc đó).
-    await sql.begin(async (tx) => {
-      await tx`
+    await sql
+      .begin(async (tx) => {
+        await tx`
         CREATE TEMP TABLE probe_rentals (
           id          bigserial PRIMARY KEY,
           vehicle_id  uuid NOT NULL,
@@ -968,38 +980,39 @@ describe("btree_gist", () => {
         ) ON COMMIT DROP
       `;
 
-      const vehicle = "11111111-1111-1111-1111-111111111111";
+        const vehicle = "11111111-1111-1111-1111-111111111111";
 
-      await tx`
+        await tx`
         INSERT INTO probe_rentals (vehicle_id, period)
         VALUES (${vehicle}::uuid, tstzrange('2026-01-01', '2026-01-05', '[)'))
       `;
 
-      // Chồng lấn trên CÙNG xe → phải bị chặn bằng SQLSTATE 23P01.
-      let code: string | undefined;
-      try {
-        await tx`
+        // Chồng lấn trên CÙNG xe → phải bị chặn bằng SQLSTATE 23P01.
+        let code: string | undefined;
+        try {
+          await tx`
           INSERT INTO probe_rentals (vehicle_id, period)
           VALUES (${vehicle}::uuid, tstzrange('2026-01-03', '2026-01-08', '[)'))
         `;
-      } catch (e) {
-        code = (e as { code?: string }).code;
-      }
-      expect(code).toBe("23P01");
+        } catch (e) {
+          code = (e as { code?: string }).code;
+        }
+        expect(code).toBe("23P01");
 
-      // Chạm đầu-đuôi trên cùng xe → PHẢI được chấp nhận, khớp overlaps() của @v9/shared.
-      await tx`
+        // Chạm đầu-đuôi trên cùng xe → PHẢI được chấp nhận, khớp overlaps() của @v9/shared.
+        await tx`
         INSERT INTO probe_rentals (vehicle_id, period)
         VALUES (${vehicle}::uuid, tstzrange('2026-01-05', '2026-01-09', '[)'))
       `;
 
-      const rows = await tx`SELECT count(*)::int AS n FROM probe_rentals`;
-      expect(rows[0].n).toBe(2);
+        const rows = await tx`SELECT count(*)::int AS n FROM probe_rentals`;
+        expect(rows[0].n).toBe(2);
 
-      throw new Error("rollback-on-purpose");
-    }).catch((e: Error) => {
-      if (e.message !== "rollback-on-purpose") throw e;
-    });
+        throw new Error("rollback-on-purpose");
+      })
+      .catch((e: Error) => {
+        if (e.message !== "rollback-on-purpose") throw e;
+      });
   });
 });
 ```
@@ -1023,6 +1036,7 @@ git commit -m "feat(infra): compose dev postgres+minio+bucket init; test chứng
 ## Task 8: `apps/api` — env, db, health
 
 **Files:**
+
 - Create: `apps/api/package.json`, `apps/api/tsconfig.json`
 - Create: `apps/api/src/env.ts`, `apps/api/src/db.ts`
 - Create: `apps/api/src/plugins/timing.ts`, `apps/api/src/plugins/auth.ts`
@@ -1204,7 +1218,11 @@ export const health = new Elysia({ name: "health" })
     async ({ status }) => {
       const [postgres, minio] = await Promise.all([checkPostgres(), checkMinio()]);
       const ok = postgres.ok && minio.ok;
-      return status(ok ? 200 : 503, { status: ok ? ("ok" as const) : ("degraded" as const), postgres, minio });
+      return status(ok ? 200 : 503, {
+        status: ok ? ("ok" as const) : ("degraded" as const),
+        postgres,
+        minio,
+      });
     },
     {
       response: {
@@ -1307,6 +1325,7 @@ git commit -m "feat(api): elysia app, bun-sql driver, /health + /health/deep, se
 > `apps/admin` chuyển sang Vite + TanStack, `apps/web` giữ Next. Lý do và đánh đổi: §4.10 design doc.
 
 **Files:**
+
 - Modify: `.env.example`
 - Create: `apps/admin/package.json`, `apps/admin/tsconfig.json`, `apps/admin/vite.config.ts`, `apps/admin/index.html`
 - Create: `apps/admin/src/lib/api.ts`, `apps/admin/src/pages/health.tsx`, `apps/admin/src/router.tsx`, `apps/admin/src/main.tsx`
@@ -1371,6 +1390,7 @@ Giữ nguyên `NEXT_PUBLIC_API_URL` — `apps/web` vẫn dùng nó.
 ```
 
 Ba điểm không được đổi:
+
 - `jsx: "react-jsx"` (không phải `"preserve"` như bên Next) — Vite không có bước tsc emit, nên tsc phải tự hiểu JSX.
 - `types: ["vite/client"]` để `import.meta.env` có type. Xem §4.11 design doc: TS không tự nạp type theo layout install của bun, phải khai tường minh.
 - `exactOptionalPropertyTypes: false` — cùng lý do như `apps/web`, cờ này đánh nhau với mẫu JSX `prop={cond ? value : undefined}`.
@@ -1525,6 +1545,7 @@ git commit -m "feat(admin): vite + tanstack router/query, trang health qua Eden 
 ## Task 10: `apps/web` — Next + ISR
 
 **Files:**
+
 - Create: `apps/web/package.json`, `apps/web/tsconfig.json`, `apps/web/next.config.ts`
 - Create: `apps/web/lib/api.ts`, `apps/web/app/layout.tsx`, `apps/web/app/page.tsx`
 - Create: `apps/web/messages/vi.json`
@@ -1686,6 +1707,7 @@ git commit -m "feat(web): next standalone + ISR, seam i18n vi, trang placeholder
 ## Task 11: Typecheck + lint toàn workspace
 
 **Files:**
+
 - Modify: các file bị lint/typecheck bắt lỗi
 
 - [ ] **Step 1: Trước hết, chứng minh `typecheck` không im lặng bỏ sót workspace nào**
@@ -1693,6 +1715,7 @@ git commit -m "feat(web): next standalone + ISR, seam i18n vi, trang placeholder
 `bun run --filter '*' <script>` **bỏ qua không báo lỗi** những workspace không khai script đó, rồi vẫn exit 0. Nghĩa là `bun run typecheck` có thể "xanh" trong khi chưa hề kiểm tra một package nào. Không có bước này thì tiêu chí #11 là xanh giả.
 
 Run:
+
 ```bash
 for f in apps/*/package.json packages/*/package.json; do
   name=$(bun -e "console.log(require('./$f').name)")
@@ -1700,6 +1723,7 @@ for f in apps/*/package.json packages/*/package.json; do
   echo "$name typecheck=$has"
 done
 ```
+
 Expected: **5 dòng**, mỗi dòng `typecheck=true` — `@v9/api`, `@v9/admin`, `@v9/web`, `@v9/db`, `@v9/shared`. Bất kỳ dòng nào `false` hoặc thiếu dòng nào đều phải sửa `package.json` của workspace đó trước khi đi tiếp.
 
 - [ ] **Step 2: Chạy typecheck toàn workspace**
@@ -1766,6 +1790,7 @@ git commit -m "chore: typecheck + lint xanh toàn workspace, xác nhận boundar
 ## Task 12: Bench + perf budget
 
 **Files:**
+
 - Create: `apps/api/scripts/bench.ts`
 
 - [ ] **Step 1: Tạo `apps/api/scripts/bench.ts`**
@@ -1847,6 +1872,7 @@ git commit -m "feat(api): bench script, fail khi vượt perf budget p95"
 ## Task 13: Dockerfile + compose prod + Caddy
 
 **Files:**
+
 - Create: `apps/api/Dockerfile`, `apps/admin/Dockerfile`, `apps/web/Dockerfile`
 - Create: `compose.prod.yaml`, `Caddyfile`, `.dockerignore`
 
@@ -2106,6 +2132,7 @@ git commit -m "feat(infra): dockerfile 3 app, compose prod + caddy auto-https"
 ## Task 14: GitHub Actions — CI + deploy
 
 **Files:**
+
 - Create: `.github/workflows/ci.yml`, `.github/workflows/deploy.yml`
 
 - [ ] **Step 1: Tạo `.github/workflows/ci.yml`**
@@ -2238,6 +2265,7 @@ Expected: workflow `CI` kết thúc `success`.
 ## Task 15: CLAUDE.md — root + từng app
 
 **Files:**
+
 - Create: `CLAUDE.md`, `apps/api/CLAUDE.md`, `apps/admin/CLAUDE.md`, `apps/web/CLAUDE.md`, `packages/shared/CLAUDE.md`, `packages/db/CLAUDE.md`
 
 - [ ] **Step 1: Viết `CLAUDE.md` ở root**
@@ -2247,7 +2275,7 @@ Nội dung bắt buộc có, theo §11 design doc:
 1. **Repo map** — bảng 5 workspace, một dòng trách nhiệm mỗi cái.
 2. **Canonical commands** — `bun install`, `docker compose up -d`, `bun run dev`, `bun test`, `bun run typecheck`, `bun run lint`, `bun run db:generate|custom|migrate`, `bun run bench`.
 3. **Luật domain-chỉ-ở-shared** — mọi phép tính pricing / deposit / availability nằm trong `packages/shared/src/domain/`. Frontend và `apps/api` **không được** implement lại. Vi phạm bị ESLint `boundaries` chặn.
-4. **Bảng luật per-tool** — copy nguyên bảng §11.2 của design doc (superpowers / Serena / Agent Memory / rtk / impeccable, mỗi tool có cột *dùng khi nào* và *không dùng khi nào*).
+4. **Bảng luật per-tool** — copy nguyên bảng §11.2 của design doc (superpowers / Serena / Agent Memory / rtk / impeccable, mỗi tool có cột _dùng khi nào_ và _không dùng khi nào_).
 5. **Standard session workflow (a)–(g)** — copy nguyên §11.3.
 6. **Perf budget** — bảng p95, cộng câu "vượt budget là fail, không phải góp ý".
 7. **Luật pin TypeScript** — đang ở 6.0.3; **không nâng lên 7** cho tới khi `typescript-eslint` nới peer `<6.1.0`; nâng sớm sẽ giết type-aware lint.
@@ -2302,6 +2330,7 @@ git commit -m "docs: CLAUDE.md root + per-workspace, luật per-tool và session
 ## Task 16: `/impeccable init` — PRODUCT.md + DESIGN.md
 
 **Files:**
+
 - Create: `PRODUCT.md`, `DESIGN.md`
 
 - [ ] **Step 1: Chạy `/impeccable init`**
@@ -2391,23 +2420,23 @@ git push
 
 **Spec coverage** — đối chiếu 12 tiêu chí "setup done" với task:
 
-| Tiêu chí | Task |
-|---|---|
-| 1. `bun install` + workspace resolve | 1, 11 |
-| 2. compose lên postgres+minio, api nối được cả hai | 7, 8 (Step 11) |
-| 3. `/health` qua Elysia+TypeBox, export type Eden | 8 |
-| 4. admin + web render placeholder, gọi `/health` typed | 9, 10 |
-| 5. drizzle config + migration `btree_gist`, `db:migrate` chạy | 6, 7 |
-| 6. shared có pure function + test, `bun test` pass | 3, 4, 11 |
-| 7. CLAUDE.md root đủ nội dung + per-app | 15 |
-| 8. PRODUCT.md + DESIGN.md, web CLAUDE.md tham chiếu | 16 |
-| 9. `docs/plans/` có design doc + plan | đã xong trước Task 1 |
-| 10. `.env.example` phủ hết, không commit secret | 1, 17 (Step 4) |
-| 11. `typecheck` pass toàn workspace | 11 |
-| 12. ghi quyết định vào Agent Memory | 17 |
-| *(mở rộng)* `lint` pass + boundaries chặn thật | 2, 11 |
-| *(mở rộng)* `bun-sql` nối Postgres thật | 8 (Step 11) |
-| *(mở rộng)* `ci.yml` xanh | 14 |
+| Tiêu chí                                                      | Task                 |
+| ------------------------------------------------------------- | -------------------- |
+| 1. `bun install` + workspace resolve                          | 1, 11                |
+| 2. compose lên postgres+minio, api nối được cả hai            | 7, 8 (Step 11)       |
+| 3. `/health` qua Elysia+TypeBox, export type Eden             | 8                    |
+| 4. admin + web render placeholder, gọi `/health` typed        | 9, 10                |
+| 5. drizzle config + migration `btree_gist`, `db:migrate` chạy | 6, 7                 |
+| 6. shared có pure function + test, `bun test` pass            | 3, 4, 11             |
+| 7. CLAUDE.md root đủ nội dung + per-app                       | 15                   |
+| 8. PRODUCT.md + DESIGN.md, web CLAUDE.md tham chiếu           | 16                   |
+| 9. `docs/plans/` có design doc + plan                         | đã xong trước Task 1 |
+| 10. `.env.example` phủ hết, không commit secret               | 1, 17 (Step 4)       |
+| 11. `typecheck` pass toàn workspace                           | 11                   |
+| 12. ghi quyết định vào Agent Memory                           | 17                   |
+| _(mở rộng)_ `lint` pass + boundaries chặn thật                | 2, 11                |
+| _(mở rộng)_ `bun-sql` nối Postgres thật                       | 8 (Step 11)          |
+| _(mở rộng)_ `ci.yml` xanh                                     | 14                   |
 
 **Type consistency** — `Vnd` (Task 3) dùng lại ở Task 15 Step 5 · `Interval`/`overlaps` (Task 4) dùng lại ở Task 7 Step 6 và Task 15 Step 6 · `createApiClient<T>` (Task 5) dùng ở Task 9 Step 4 và Task 10 Step 4 với cùng chữ ký · `App` export ở Task 8 Step 8, import ở Task 9/10 · `Role`/`AuthContext` chỉ khai ở Task 8 Step 6, không task nào dùng lại (đúng — nó là seam).
 

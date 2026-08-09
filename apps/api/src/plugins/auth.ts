@@ -2,7 +2,11 @@ import { Elysia } from "elysia";
 import supertokens from "supertokens-node";
 import EmailPassword from "supertokens-node/recipe/emailpassword";
 import Session from "supertokens-node/recipe/session";
-import { CollectingResponse, middleware, PreParsedRequest } from "supertokens-node/framework/custom";
+import {
+  CollectingResponse,
+  middleware,
+  PreParsedRequest,
+} from "supertokens-node/framework/custom";
 import type { HTTPMethod } from "supertokens-node/types";
 import { env } from "../env";
 

@@ -24,7 +24,7 @@ Package có đúng **hai** dependency: `@elysiajs/eden` và `elysia`. Cả hai c
 ## `client.ts` phải giữ generic — không bao giờ import `@v9/api`
 
 ```ts
-export function createApiClient<T extends AnyElysiaApp>(baseUrl: string)
+export function createApiClient<T extends AnyElysiaApp>(baseUrl: string);
 ```
 
 Import `App` trực tiếp ở đây sẽ tạo chu trình `shared → api → shared`, vì `apps/api` import domain

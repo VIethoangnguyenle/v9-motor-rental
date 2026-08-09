@@ -12,19 +12,19 @@
 Sau khi đợt 1 hoàn tất, người dùng thay đổi ba điều về sản phẩm. Đây không phải sửa lỗi — là
 hiểu biết mới về cách shop thật sự vận hành:
 
-| | Đợt 1 | Đợt 2 |
-|---|---|---|
-| App quản trị | `apps/admin` tự viết (Vite + TanStack) | **Directus**, và chỉ cho dữ liệu gốc |
+|                    | Đợt 1                                   | Đợt 2                                            |
+| ------------------ | --------------------------------------- | ------------------------------------------------ |
+| App quản trị       | `apps/admin` tự viết (Vite + TanStack)  | **Directus**, và chỉ cho dữ liệu gốc             |
 | Vai trò `apps/web` | đặt xe online đầy đủ, khách tự chốt đơn | **xem mẫu xe + tạo request** cho admin tiếp nhận |
-| App hiện trường | không có | **`apps/staff`** — PWA cho chủ và nhân viên |
+| App hiện trường    | không có                                | **`apps/staff`** — PWA cho chủ và nhân viên      |
 
 ### 1.1 Một đảo chiều phải ghi rõ
 
-`PRODUCT.md` viết ngày 2026-08-05 (buổi sáng) ghi *"apps/web nhận đặt xe online đầy đủ"*, kèm kết
+`PRODUCT.md` viết ngày 2026-08-05 (buổi sáng) ghi _"apps/web nhận đặt xe online đầy đủ"_, kèm kết
 luận rằng **khách cuối sẽ chạm trực tiếp vào exclusion constraint** chống đặt trùng, và vì thế luật
 `23P01 → 409` là đường dẫn khách hàng nhìn thấy.
 
-**Điều đó không còn đúng.** Booking trên web giờ chỉ tạo một *request*; nhân viên mới là người chốt
+**Điều đó không còn đúng.** Booking trên web giờ chỉ tạo một _request_; nhân viên mới là người chốt
 thành đơn thuê thật. Hệ quả:
 
 - Khách cuối **không** chạm vào exclusion constraint. Nhân viên chạm, qua `apps/staff`.
@@ -58,16 +58,16 @@ thành đơn thuê thật. Hệ quả:
                     └─────────────────────────────────────┘
 ```
 
-| Thành phần | Trách nhiệm |
-|---|---|
-| `apps/api` | Bun + Elysia. Nơi duy nhất ghi dữ liệu nghiệp vụ. Export `type App` cho Eden. |
-| `apps/web` | Next 16, SSG/ISR. Xem mẫu xe, tạo request. **Không** chốt đơn. |
-| `apps/staff` | **Mới.** PWA (Vite + TanStack). Lịch, thống kê, lên đơn/bàn giao, khách hàng, tiếp nhận request. |
-| Directus | **Chỉ dữ liệu gốc**: danh mục xe, ảnh, bảng giá. Tra cứu dữ liệu thô. |
-| SuperTokens | **Mới.** Service xác thực self-host cho `apps/staff`. Schema riêng trong cùng Postgres. |
-| `packages/db` | Làm chủ schema. Migration là nguồn sự thật duy nhất. |
-| `packages/shared` | Không đổi. Domain logic thuần + Eden client factory. |
-| ~~`apps/admin`~~ | **Xoá.** |
+| Thành phần        | Trách nhiệm                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
+| `apps/api`        | Bun + Elysia. Nơi duy nhất ghi dữ liệu nghiệp vụ. Export `type App` cho Eden.                    |
+| `apps/web`        | Next 16, SSG/ISR. Xem mẫu xe, tạo request. **Không** chốt đơn.                                   |
+| `apps/staff`      | **Mới.** PWA (Vite + TanStack). Lịch, thống kê, lên đơn/bàn giao, khách hàng, tiếp nhận request. |
+| Directus          | **Chỉ dữ liệu gốc**: danh mục xe, ảnh, bảng giá. Tra cứu dữ liệu thô.                            |
+| SuperTokens       | **Mới.** Service xác thực self-host cho `apps/staff`. Schema riêng trong cùng Postgres.          |
+| `packages/db`     | Làm chủ schema. Migration là nguồn sự thật duy nhất.                                             |
+| `packages/shared` | Không đổi. Domain logic thuần + Eden client factory.                                             |
+| ~~`apps/admin`~~  | **Xoá.**                                                                                         |
 
 ## 3. Quyết định và lý do
 
@@ -78,7 +78,7 @@ quản lý khách hàng, tiếp nhận request từ web. Directus thu về đún
 danh mục xe, ảnh, bảng giá, tài khoản — cộng tra cứu dữ liệu thô khi cần.
 
 **Vì sao không để Directus làm lịch và thống kê.** Đây là giới hạn kỹ thuật thật, không phải sở
-thích. Lịch đặt xe cần lưới *xe × thời gian*, hiển thị khoảng thuê chồng lấn, kéo thả đổi ngày —
+thích. Lịch đặt xe cần lưới _xe × thời gian_, hiển thị khoảng thuê chồng lấn, kéo thả đổi ngày —
 calendar layout của Directus chỉ nhóm bản ghi theo một trường ngày. Thống kê doanh thu theo xe theo
 tháng vượt xa những gì Insights của Directus làm được. Ép hai thứ đó vào Directus sẽ dẫn tới việc
 viết extension cho Directus, tức tự viết code nhưng trong một môi trường khó hơn.
@@ -115,7 +115,7 @@ những bảng đó đặt trong **schema riêng** (`directus`), nơi role đư�
 CREATE SCHEMA directus AUTHORIZATION directus_app;
 ```
 
-Kết quả: Directus toàn quyền trong schema của nó, chỉ đọc-ghi *dữ liệu* trong `public`, và Postgres
+Kết quả: Directus toàn quyền trong schema của nó, chỉ đọc-ghi _dữ liệu_ trong `public`, và Postgres
 từ chối mọi DDL lên bảng nghiệp vụ bất kể ai bấm gì trên giao diện.
 
 **Cách kiểm chứng** (phải chạy thật, không tin cấu hình): đăng nhập Directus, thử thêm một field
@@ -178,12 +178,12 @@ Chi phí vận hành cũng lệch hẳn: tự host Supabase là khoảng chín c
 `supertokens-node` không có adapter cho Elysia, nên câu hỏi sống còn là nó có chạy dưới Bun không.
 Đã thử thật:
 
-| Kiểm | Kết quả |
-|---|---|
-| `supertokens-node@24.0.3` cài được | ✅ |
-| Adapter framework có `custom` | ✅ (cạnh `express`, `fastify`, `koa`, `hapi`, `loopback`, `awsLambda`) |
-| `supertokens.init({ framework: "custom" })` chạy dưới Bun | ✅ in ra `init OK` |
-| `middleware()` trả về handler | ✅ |
+| Kiểm                                                      | Kết quả                                                                |
+| --------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `supertokens-node@24.0.3` cài được                        | ✅                                                                     |
+| Adapter framework có `custom`                             | ✅ (cạnh `express`, `fastify`, `koa`, `hapi`, `loopback`, `awsLambda`) |
+| `supertokens.init({ framework: "custom" })` chạy dưới Bun | ✅ in ra `init OK`                                                     |
+| `middleware()` trả về handler                             | ✅                                                                     |
 
 Framework `custom` phơi ra `PreParsedRequest` và `CollectingResponse` — lớp adapter theo chuẩn Web
 `Request`/`Response`, cùng thứ SuperTokens dùng cho Next App Router và edge runtime. Elysia cũng
@@ -213,11 +213,11 @@ SuperTokens toàn quyền trong schema `supertokens`, và **không chạm đư�
 
 Directus giữ hệ user riêng của nó. Nghĩa là:
 
-| Ai | Đăng nhập ở đâu |
-|---|---|
-| Chủ và nhân viên dùng `apps/staff` | SuperTokens |
-| Người nhập liệu vào Directus | tài khoản Directus |
-| Khách trên `apps/web` | **không cần đăng nhập** — chỉ gửi request |
+| Ai                                 | Đăng nhập ở đâu                           |
+| ---------------------------------- | ----------------------------------------- |
+| Chủ và nhân viên dùng `apps/staff` | SuperTokens                               |
+| Người nhập liệu vào Directus       | tài khoản Directus                        |
+| Khách trên `apps/web`              | **không cần đăng nhập** — chỉ gửi request |
 
 Chấp nhận được vì hai nhóm khác nhau và Directus chỉ có vài tài khoản back-office. Nếu sau này
 phiền, SuperTokens làm được OAuth2/OIDC provider và Directus nhận SSO — nhưng đó là việc thêm khi
@@ -243,34 +243,34 @@ nào để bảo vệ. Mục tiêu là seam không còn là giấy: nó gọi đ
 
 ## 6. Phạm vi đợt này
 
-| # | Việc |
-|---|---|
-| 1 | Sửa `PRODUCT.md` (đảo chiều booking, thêm Directus và `apps/staff`) + design doc |
-| 2 | Xoá `apps/admin` khỏi bảy chỗ |
-| 3 | Directus vào `compose.yaml` + `compose.prod.yaml` + route Caddy; role Postgres theo §3.2; **verify bằng cách thử đổi schema và thấy nó bị từ chối** |
-| 4 | Thu hẹp `apps/web` về xem xe + tạo request |
-| 5 | Dựng khung `apps/staff` PWA — cài được, offline shell, gọi được `/health` |
-| 6 | SuperTokens core vào compose, schema + role riêng, ghép `middleware()` vào seam `apps/api` |
-| 7 | Cập nhật CLAUDE.md, ghi ADR, verify lại toàn bộ |
+| #   | Việc                                                                                                                                                |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Sửa `PRODUCT.md` (đảo chiều booking, thêm Directus và `apps/staff`) + design doc                                                                    |
+| 2   | Xoá `apps/admin` khỏi bảy chỗ                                                                                                                       |
+| 3   | Directus vào `compose.yaml` + `compose.prod.yaml` + route Caddy; role Postgres theo §3.2; **verify bằng cách thử đổi schema và thấy nó bị từ chối** |
+| 4   | Thu hẹp `apps/web` về xem xe + tạo request                                                                                                          |
+| 5   | Dựng khung `apps/staff` PWA — cài được, offline shell, gọi được `/health`                                                                           |
+| 6   | SuperTokens core vào compose, schema + role riêng, ghép `middleware()` vào seam `apps/api`                                                          |
+| 7   | Cập nhật CLAUDE.md, ghi ADR, verify lại toàn bộ                                                                                                     |
 
 ## 7. Tiêu chí "xong" cho đợt 2
 
 Không tiêu chí nào được tuyên bố đạt nếu chưa chạy lệnh và đọc output.
 
-| # | Tiêu chí | Cách verify |
-|---|---|---|
-| 1 | `apps/admin` biến mất hoàn toàn | `grep -rn "admin" --include=* .` không còn tham chiếu sống; `bun run typecheck` và `lint` vẫn xanh |
-| 2 | Directus lên được và thấy bảng nghiệp vụ | mở UI, đăng nhập, thấy collection |
-| 3 | **Directus KHÔNG đổi được schema** | thử thêm field vào bảng nghiệp vụ trong UI → phải bị Postgres từ chối |
-| 4 | Directus tự quản được bảng của nó | bảng `directus_*` nằm trong schema `directus`, không nằm trong `public` |
-| 5 | `apps/web` không còn hứa hẹn chốt đơn | đọc lại copy và luồng |
-| 6 | `apps/staff` cài được như app | Lighthouse PWA installable, hoặc trình duyệt hiện nút cài |
-| 7 | `apps/staff` gọi được `/health` qua Eden typed | mở app thật, thấy trạng thái |
-| 8 | Toàn bộ vẫn xanh | `bun test`, `bun run typecheck`, `bun run lint`, CI |
-| 9 | Bộ probe boundaries vẫn nổ | chạy lại bộ probe trong CLAUDE.md sau khi đổi `eslint.config.js` |
-| 10 | SuperTokens core lên được và `apps/api` gọi tới nơi | endpoint của SuperTokens trả về qua Elysia, không phải 404 |
-| 11 | **SuperTokens KHÔNG đổi được schema `public`** | thử DDL bằng role `supertokens_app` → phải bị từ chối |
-| 12 | ADR đã ghi | `memory_recall` đọc lại được quyết định Directus, SuperTokens, và role Postgres |
+| #   | Tiêu chí                                            | Cách verify                                                                                        |
+| --- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 1   | `apps/admin` biến mất hoàn toàn                     | `grep -rn "admin" --include=* .` không còn tham chiếu sống; `bun run typecheck` và `lint` vẫn xanh |
+| 2   | Directus lên được và thấy bảng nghiệp vụ            | mở UI, đăng nhập, thấy collection                                                                  |
+| 3   | **Directus KHÔNG đổi được schema**                  | thử thêm field vào bảng nghiệp vụ trong UI → phải bị Postgres từ chối                              |
+| 4   | Directus tự quản được bảng của nó                   | bảng `directus_*` nằm trong schema `directus`, không nằm trong `public`                            |
+| 5   | `apps/web` không còn hứa hẹn chốt đơn               | đọc lại copy và luồng                                                                              |
+| 6   | `apps/staff` cài được như app                       | Lighthouse PWA installable, hoặc trình duyệt hiện nút cài                                          |
+| 7   | `apps/staff` gọi được `/health` qua Eden typed      | mở app thật, thấy trạng thái                                                                       |
+| 8   | Toàn bộ vẫn xanh                                    | `bun test`, `bun run typecheck`, `bun run lint`, CI                                                |
+| 9   | Bộ probe boundaries vẫn nổ                          | chạy lại bộ probe trong CLAUDE.md sau khi đổi `eslint.config.js`                                   |
+| 10  | SuperTokens core lên được và `apps/api` gọi tới nơi | endpoint của SuperTokens trả về qua Elysia, không phải 404                                         |
+| 11  | **SuperTokens KHÔNG đổi được schema `public`**      | thử DDL bằng role `supertokens_app` → phải bị từ chối                                              |
+| 12  | ADR đã ghi                                          | `memory_recall` đọc lại được quyết định Directus, SuperTokens, và role Postgres                    |
 
 Tiêu chí **#3** là tiêu chí quan trọng nhất của đợt này. Nếu Directus vẫn đổi được schema thì luật
 "migration làm chủ" chỉ là chữ trên giấy, và toàn bộ kỷ luật migration của đợt 1 mất tác dụng.

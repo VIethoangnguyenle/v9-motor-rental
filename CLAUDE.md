@@ -14,15 +14,15 @@ deliverable ngang hàng với code, không phải phụ lục.
 
 ## Repo map
 
-| Workspace | Vai trò |
-|---|---|
-| `apps/api` | Bun + Elysia + TypeBox. Export `type App` cho Eden Treaty. |
-| `apps/staff` | Vite + TanStack Router/Query, **PWA**. Vận hành: lịch, thống kê, lên đơn/bàn giao, khách hàng. Role `OWNER`, `STAFF`; `SALES` để dành. |
-| Directus | **Chỉ dữ liệu gốc**: danh mục xe, ảnh, bảng giá. Không làm vận hành. |
-| SuperTokens | Xác thực cho `apps/staff`. Schema riêng trong cùng Postgres. |
-| `apps/web` | Next 16 App Router, `output: "standalone"`, SSG/ISR. Site công khai, **SEO quan trọng**. |
-| `packages/shared` | Domain logic thuần + Eden client factory. |
-| `packages/db` | Drizzle schema + migration SQL. |
+| Workspace         | Vai trò                                                                                                                                |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api`        | Bun + Elysia + TypeBox. Export `type App` cho Eden Treaty.                                                                             |
+| `apps/staff`      | Vite + TanStack Router/Query, **PWA**. Vận hành: lịch, thống kê, lên đơn/bàn giao, khách hàng. Role `OWNER`, `STAFF`; `SALES` để dành. |
+| Directus          | **Chỉ dữ liệu gốc**: danh mục xe, ảnh, bảng giá. Không làm vận hành.                                                                   |
+| SuperTokens       | Xác thực cho `apps/staff`. Schema riêng trong cùng Postgres.                                                                           |
+| `apps/web`        | Next 16 App Router, `output: "standalone"`, SSG/ISR. Site công khai, **SEO quan trọng**.                                               |
+| `packages/shared` | Domain logic thuần + Eden client factory.                                                                                              |
+| `packages/db`     | Drizzle schema + migration SQL.                                                                                                        |
 
 **Hai frontend dùng hai framework khác nhau, có chủ ý.** `apps/staff` là app vận hành nội bộ nên
 SEO vô nghĩa; `apps/web` giữ Next vì SEO chính là lý do Next được chọn. Đừng "thống nhất" chúng.
@@ -33,11 +33,11 @@ SEO vô nghĩa; `apps/web` giữ Next vì SEO chính là lý do Next được ch
 bun install                  # cài, ở root
 docker compose up -d         # dev: postgres + minio (KHÔNG có app)
 bun run dev                  # api + web + staff chạy trên host
-bun run db:migrate           # apply migration (chạy từ root, không dùng --filter)
+bun run db:migrate           # apply migration
 bun run db:generate          # sinh migration cho bảng thường
 bun run db:custom            # migration trống để viết SQL tay
 bun test                     # bun test, toàn repo
-bun run typecheck            # cả 4 workspace (5 khi có apps/staff)
+bun run typecheck            # cả 5 workspace
 bun run lint                 # eslint, có ép ranh giới kiến trúc
 bun run format               # prettier
 bun run bench                # đo /health, exit 1 nếu vượt perf budget
@@ -101,18 +101,18 @@ Viết sai thì va chạm booking rơi ra thành 500 thay vì 409, và **unit te
 phải có Postgres thật mới lộ.
 
 **Lỗi trong transaction làm hỏng cả transaction.** Sau một câu lệnh lỗi, mọi câu sau bị từ chối
-với `current transaction is aborted`. Muốn *thử* insert rồi xử lý va chạm mà vẫn dùng tiếp
+với `current transaction is aborted`. Muốn _thử_ insert rồi xử lý va chạm mà vẫn dùng tiếp
 transaction đó thì phải bọc câu có thể lỗi trong `tx.savepoint(async (sp) => { ... })`.
 
 ---
 
 ## Perf budget — vượt là coi như fail, không phải góp ý
 
-| Thao tác | p95 |
-|---|---|
-| `GET /health` | < 5 ms |
+| Thao tác               | p95     |
+| ---------------------- | ------- |
+| `GET /health`          | < 5 ms  |
 | Đọc một record theo id | < 25 ms |
-| Truy vấn availability | < 50 ms |
+| Truy vấn availability  | < 50 ms |
 
 Baseline đo 2026-08-05 trên máy dev: `/health` p50 1.28ms · p95 2.26ms · p99 2.95ms · 34.968 rps.
 `bun run bench` exit 1 khi vượt.
@@ -141,8 +141,34 @@ dùng `drizzle-kit migrate` — CLI đó không hỗ trợ `bun-sql` và sẽ đ
 Rồi vẫn exit 0. Nghĩa là `bun run typecheck` có thể xanh mà chưa kiểm tra package nào.
 **Luật: mọi workspace mới bắt buộc khai `typecheck` trong `package.json` ngay khi được tạo.**
 
-Ngoài ra `--filter` chạy với cwd là thư mục package, nên `.env` ở root không tới nơi. Lệnh nào
-cần env thì chạy từ root với `bun --env-file=.env ...`.
+### ⚠️ `--filter` đặt cwd ở thư mục package, nên `.env` ở root **không tới nơi**
+
+Bun chỉ tự nạp `.env` ở **đúng cwd**, không đi ngược lên thư mục cha. Đã đo:
+
+```bash
+# root  → CÓ   |  cwd=apps/api → KHÔNG  |  cwd=packages/db → KHÔNG
+env -u DATABASE_URL bun -e 'console.log(process.env.DATABASE_URL ? "CÓ" : "KHÔNG")'
+```
+
+Hệ quả — **hai cách truyền env, chỉ một cách chạy được với `bun x`:**
+
+| Cách                                           | `--env-file` có tới nơi?                                    |
+| ---------------------------------------------- | ----------------------------------------------------------- |
+| `bun --env-file=.env run --filter @v9/api dev` | ✅ có, propagate xuống script của package                   |
+| `bun --env-file=... x <cli>`                   | ❌ **không** — `bun x` spawn tiến trình mới, env-file bị bỏ |
+
+Vì vậy script nào cần một CLI + env thì gọi **thẳng binary**, đừng qua `bun x`:
+`bun --env-file=../../.env ./node_modules/.bin/drizzle-kit generate`.
+
+`bun --env-file` trỏ vào file **không tồn tại** là **no-op, không throw** — đó là lý do CI (không
+có `.env`) chạy được đúng nguyên văn cùng một script với máy dev, không cần biến thể riêng.
+
+**Luật: mọi script ở root động tới app hoặc DB đều phải mang `--env-file`.** Kiểm bằng cách chạy
+với env sạch, không phải bằng cách đọc lại script:
+
+```bash
+env -u DATABASE_URL bun run dev     # PHẢI thấy cả 3 app lên, không có "Thiếu biến môi trường"
+```
 
 ### `exactOptionalPropertyTypes`: bật ở `packages/*`, tắt ở `apps/{web,staff}`
 
@@ -168,15 +194,15 @@ cả. Shop đã có logo ngoài đời; thay hai file này trước khi ship.
 
 ## Ba service dùng chung một Postgres — chỉ migration được đổi schema
 
-| Schema | Chủ | Được đổi cấu trúc |
-|---|---|---|
-| `public` | migration của `packages/db` | **chỉ migration** |
-| `directus` | Directus | Directus |
-| `supertokens` | SuperTokens | SuperTokens |
-| `drizzle` | journal migration | migrator |
+| Schema        | Chủ                         | Được đổi cấu trúc |
+| ------------- | --------------------------- | ----------------- |
+| `public`      | migration của `packages/db` | **chỉ migration** |
+| `directus`    | Directus                    | Directus          |
+| `supertokens` | SuperTokens                 | SuperTokens       |
+| `drizzle`     | journal migration           | migrator          |
 
 Directus và SuperTokens kết nối bằng role riêng **không có quyền DDL trên `public`**
-(migration `0001_service_roles.sql`). Directus đọc-ghi được *dữ liệu* trong `public`; SuperTokens
+(migration `0001_service_roles.sql`). Directus đọc-ghi được _dữ liệu_ trong `public`; SuperTokens
 không chạm `public` chút nào.
 
 Ép ở tầng database chứ **không** bằng cấu hình của tool: toggle trong UI là thứ người sau bật lại
@@ -190,7 +216,7 @@ docker compose exec -T postgres psql -U v9 -d v9_rental -c \
   "SET ROLE directus_app; CREATE TABLE public.x (id int);"
 ```
 
-Bằng chứng thu được từ chính UI Directus khi bấm *Create Field*:
+Bằng chứng thu được từ chính UI Directus khi bấm _Create Field_:
 `must be owner of table probe_vehicles`. Dữ liệu vẫn ghi được bình thường — **chặn schema, không
 chặn dữ liệu**. Một cấu hình chặn tất là hỏng, không phải an toàn.
 
@@ -264,13 +290,31 @@ minh gì** nếu bạn không đọc nó nổ vì luật nào.
 
 ## Bộ công cụ AI — dùng khi nào, **không** dùng khi nào
 
-| Tool | Dùng khi | KHÔNG dùng khi |
-|---|---|---|
-| **superpowers** | Mọi thay đổi không tầm thường: brainstorm → design doc → plan các bước verify được → implement → verify trước khi tuyên bố xong. Design doc và plan commit vào `docs/plans/` để sống sót qua các phiên. **TDD nghiêm bắt buộc** cho `packages/shared`. | Việc infra và UI dùng verification-before-completion thay cho test-first. |
-| **Serena** | Cách **duy nhất** để điều hướng và sửa code theo ngữ nghĩa. Bắt buộc `find_symbol` / `find_referencing_symbols` **trước khi** sửa bất kỳ exported function hay shared type nào. Ưu tiên sửa ở mức symbol hơn ghi đè cả file. | Không đổi tên hay đổi signature khi chưa kiểm tra reference. |
-| **Agent Memory** | Là **ADR, không phải cache code**. **Đọc** lúc mở phiên và trước **mọi** đề xuất đổi schema hay API contract. **Ghi** quyết định + lý do, naming convention, gotcha phát hiện lúc debug. | Không lưu code snippet hay nội dung file — git và Serena lo phần đó. Nếu đề xuất mâu thuẫn với quyết định đã lưu, **nêu xung đột cho người**, không tự đè. |
-| **rtk** | Đã hook sẵn, không cần làm gì. Ưu tiên chạy test/git/docker qua bash để rtk nén output. | Không dán output dài vào context bằng tay. |
-| **impeccable** | `apps/web` là chính; audit nhẹ cho `apps/staff`. UI của `apps/web` phải tôn trọng `DESIGN.md`. | `apps/staff` ưu tiên chức năng — **không polish pass trừ khi được yêu cầu**. |
+| Tool             | Dùng khi                                                                                                                                                                                                                                               | KHÔNG dùng khi                                                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **superpowers**  | Mọi thay đổi không tầm thường: brainstorm → design doc → plan các bước verify được → implement → verify trước khi tuyên bố xong. Design doc và plan commit vào `docs/plans/` để sống sót qua các phiên. **TDD nghiêm bắt buộc** cho `packages/shared`. | Việc infra và UI dùng verification-before-completion thay cho test-first.                                                                                  |
+| **Serena**       | Cách **duy nhất** để điều hướng và sửa code theo ngữ nghĩa. Bắt buộc `find_symbol` / `find_referencing_symbols` **trước khi** sửa bất kỳ exported function hay shared type nào. Ưu tiên sửa ở mức symbol hơn ghi đè cả file.                           | Không đổi tên hay đổi signature khi chưa kiểm tra reference.                                                                                               |
+| **Agent Memory** | Là **ADR, không phải cache code**. **Đọc** lúc mở phiên và trước **mọi** đề xuất đổi schema hay API contract. **Ghi** quyết định + lý do, naming convention, gotcha phát hiện lúc debug.                                                               | Không lưu code snippet hay nội dung file — git và Serena lo phần đó. Nếu đề xuất mâu thuẫn với quyết định đã lưu, **nêu xung đột cho người**, không tự đè. |
+| **rtk**          | Đã hook sẵn, không cần làm gì. Ưu tiên chạy test/git/docker qua bash để rtk nén output.                                                                                                                                                                | Không dán output dài vào context bằng tay.                                                                                                                 |
+| **impeccable**   | `apps/web` là chính; audit nhẹ cho `apps/staff`. Ràng buộc sản phẩm ở `PRODUCT.md` (đã có, do `/impeccable init` sinh).                                                                                                                                | `apps/staff` ưu tiên chức năng — **không polish pass trừ khi được yêu cầu**. `DESIGN.md` **chưa tồn tại** — đừng viện dẫn nó như thể đã có.                |
+
+### ⚠️ Phân biệt: ranh giới **repo ép** vs **cấu hình local**
+
+Nhầm hai loại này là cách sinh ra ảo giác "đang được bảo vệ" — dự án này đã dính bốn lần.
+
+| Cơ chế                            | Nằm ở đâu                                           | Sống sót qua `git clone`?          |
+| --------------------------------- | --------------------------------------------------- | ---------------------------------- |
+| Boundaries kiến trúc              | `eslint.config.js` (đã commit)                      | ✅ **có** — CI chạy `bun run lint` |
+| Chặn DDL của Directus/SuperTokens | migration `0001_service_roles.sql`                  | ✅ **có** — ép ở tầng Postgres     |
+| TDD cho `packages/shared`         | `bun test` (đã commit)                              | ✅ **có**                          |
+| **Detector của impeccable**       | `.claude/settings.local.json` + `.codex/hooks.json` | ❌ **KHÔNG**                       |
+
+Hai file cuối **không được track**: `.claude/settings.local.json` bị chặn bởi gitignore toàn cục
+của máy, `.codex/` bị chặn ở `.gitignore:42` vì nội dung hard-code path máy local.
+
+Nghĩa là detector của impeccable chỉ chạy trên máy đã cài. **Không được coi nó là ràng buộc của
+repo**, và không được kết luận "UI đã qua kiểm tra" chỉ vì hook im lặng — trên máy khác hook
+không tồn tại. Muốn ép thật thì phải đưa vào `eslint.config.js` hoặc CI.
 
 ---
 
@@ -296,9 +340,16 @@ schema `vehicles`, `customers`, `rentals`, `booking_requests` kèm exclusion con
 trùng · bốn tính năng của `apps/staff`: lịch, thống kê, lên đơn/bàn giao, quản lý khách hàng ·
 vai trò `SALES` làm gì.
 
-**Kỹ thuật:** enforce auth trên route thật (SuperTokens đã nối, chưa route nào dùng) · thay icon
-placeholder của `apps/staff` bằng logo thật · `next-intl` khi thật sự có tiếng Anh · upload ảnh
-lên MinIO · `DESIGN.md` (cần màn hình thật để thiết kế và asset logo thật).
+**Kỹ thuật:** enforce auth trên route thật (SuperTokens đã nối, chưa route nào dùng) · `next-intl`
+khi thật sự có tiếng Anh · upload ảnh lên MinIO.
+
+**Chặn ở người, không chặn ở code** — hai việc này không tự làm được, cần asset/quyết định từ shop:
+
+- **Icon thật cho `apps/staff`.** `public/icon-{192,512}.png` đang là ô màu đặc. Thiếu icon thì
+  trình duyệt **im lặng** không mời cài app.
+- **`DESIGN.md`.** Sinh bằng `/impeccable document` — nhưng lệnh đó **đọc code có sẵn**, mà hiện
+  `apps/web` mới có trang tạm monospace. Chạy sớm chỉ sinh ra một `DESIGN.md` bịa rồi mọi phiên
+  sau tuân theo nó. Điều kiện: có màn hình xe thật **và** logo thật.
 
 **Deploy:** đang gác. Secret SSH đã đặt; còn thiếu `ssh-copy-id` lên VPS, `ROOT_DOMAIN` +
 `CADDY_EMAIL`, bootstrap `~/v9-motor-rental`, và `docker login ghcr.io` trên VPS (repo private nên

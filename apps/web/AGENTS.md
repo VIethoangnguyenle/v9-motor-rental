@@ -50,11 +50,18 @@ xe tĩnh hoàn toàn được. Đó đúng là lý do Next được chọn. Xem 
 Đây là điều duy nhất phân biệt nó với `apps/staff` (Vite PWA). Ưu tiên SSG/ISR; tránh
 `force-dynamic` trừ khi có lý do viết ra thành chữ. Trang chủ hiện dùng `revalidate = 60`.
 
-## UI phải tôn trọng DESIGN.md
+## UI phải tôn trọng PRODUCT.md — `DESIGN.md` **chưa tồn tại**
 
-[`../../DESIGN.md`](../../DESIGN.md) và [`../../PRODUCT.md`](../../PRODUCT.md) là ràng buộc thiết
-kế của app này. Khán giả: dân chơi mô tô phân khối lớn người Việt ở TP.HCM **cộng** khách du lịch
-nước ngoài. Vibe moto-garage — tối, nhiều ảnh, typography đậm.
+[`../../PRODUCT.md`](../../PRODUCT.md) là ràng buộc sản phẩm của app này, do `/impeccable init`
+sinh ra. Khán giả: dân chơi mô tô phân khối lớn người Việt ở TP.HCM **cộng** khách du lịch nước
+ngoài. Vibe moto-garage — tối, nhiều ảnh, typography đậm.
+
+**`DESIGN.md` chưa có, và đó là cố ý.** `/impeccable init` chỉ sinh `PRODUCT.md` — nó không bịa
+ra một thế giới thị giác. `DESIGN.md` sinh bằng `/impeccable document` (đọc code có sẵn) hoặc
+trong một phiên thiết kế, và cả hai đều cần **màn hình thật** để đọc: hiện `app/page.tsx` mới là
+trang tạm monospace. Chạy sớm chỉ tạo ra một `DESIGN.md` bịa, rồi mọi phiên sau tuân theo nó.
+
+Điều kiện để làm: có màn hình danh sách/chi tiết xe thật, và có asset logo thật của shop.
 
 **Cấm rõ**: thẩm mỹ SaaS generic — gradient tím, Inter ở mọi nơi, card lồng card.
 
@@ -78,13 +85,13 @@ nhầm chỗ.
 
 ## Khác biệt với apps/staff
 
-| | `apps/web` | `apps/staff` |
-|---|---|---|
-| Framework | Next 16 | Vite |
-| Mô hình | server-first (RSC) | client-first (SPA + TanStack Query) |
-| Biến env | `process.env.NEXT_PUBLIC_*`, đọc lúc chạy | `import.meta.env.VITE_*`, nướng lúc build |
-| JSX | `jsx: "preserve"` | `jsx: "react-jsx"` |
-| SEO | quan trọng | vô nghĩa |
+|           | `apps/web`                                | `apps/staff`                              |
+| --------- | ----------------------------------------- | ----------------------------------------- |
+| Framework | Next 16                                   | Vite                                      |
+| Mô hình   | server-first (RSC)                        | client-first (SPA + TanStack Query)       |
+| Biến env  | `process.env.NEXT_PUBLIC_*`, đọc lúc chạy | `import.meta.env.VITE_*`, nướng lúc build |
+| JSX       | `jsx: "preserve"`                         | `jsx: "react-jsx"`                        |
+| SEO       | quan trọng                                | vô nghĩa                                  |
 
 ## Chạy
 

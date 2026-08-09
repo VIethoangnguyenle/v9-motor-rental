@@ -10,11 +10,15 @@ cố ý rỗng.
 Schema chỉ đi qua migration file. Đó là điều kiện để dev và prod hội tụ, và để review được thay
 đổi schema trong diff.
 
-| Việc | Lệnh |
-|---|---|
-| Bảng thường (khai trong `src/schema/`) | `bun run db:generate` |
+| Việc                                                                      | Lệnh                                 |
+| ------------------------------------------------------------------------- | ------------------------------------ |
+| Bảng thường (khai trong `src/schema/`)                                    | `bun run db:generate`                |
 | DDL Postgres thuần (extension, exclusion constraint, partial index, role) | `bun run db:custom` rồi viết SQL tay |
-| Apply | `bun run db:migrate` |
+| Apply                                                                     | `bun run db:migrate`                 |
+
+Cả bốn script của package này (`generate`, `custom`, `migrate`, `studio`) đều **tự mang**
+`--env-file=../../.env` và gọi **thẳng binary** trong `node_modules/.bin`, không qua `bun x`.
+Không phải rườm rà — xem mục kế tiếp.
 
 Migration hiện có: `0000_btree_gist` (bật extension) · `0001_service_roles` (role + schema cho Directus và SuperTokens).
 
@@ -29,22 +33,46 @@ lộ ngay lúc migrate thay vì ẩn tới lúc chạy thật.
 
 `drizzle-kit` vẫn dùng cho `generate` và `generate --custom` — hai lệnh đó không cần driver.
 
-Chạy từ **root** (`bun --env-file=.env packages/db/scripts/migrate.ts`), không dùng `--filter`:
-`--filter` đặt cwd là thư mục package nên `.env` ở root không tới nơi.
+Script `migrate` của package này trỏ vào `scripts/migrate.ts`, **không** phải `drizzle-kit
+migrate`. Trước đây nó trỏ vào `drizzle-kit migrate` — một cái bẫy: tài liệu ghi CLI đó không
+dùng được, nhưng `bun run --filter @v9/db migrate` vẫn gọi đúng vào nó.
+
+## ⚠️ Vì sao mọi script ở đây phải tự mang `--env-file=../../.env`
+
+Bun chỉ nạp `.env` ở **đúng cwd**, không đi ngược lên cha. Mà `--filter` đặt cwd là thư mục
+package, nên `.env` ở root **không tới nơi**:
+
+```bash
+# root → CÓ  |  cwd=packages/db → KHÔNG
+env -u DATABASE_URL bun -e 'console.log(process.env.DATABASE_URL ? "CÓ" : "KHÔNG")'
+```
+
+Và `--env-file` **không đi xuyên qua `bun x`** (bunx spawn tiến trình mới). Đó là lý do script
+gọi thẳng `./node_modules/.bin/drizzle-kit` thay vì `bun x drizzle-kit`.
+
+Kiểm bằng env sạch, đừng kiểm bằng cách đọc lại script — trên máy đã có sẵn biến trong shell thì
+script hỏng vẫn chạy xanh:
+
+```bash
+env -u DATABASE_URL bun run --filter @v9/db generate   # PHẢI ra "No schema changes"
+```
+
+`bun --env-file` trỏ vào file không tồn tại là **no-op, không throw** — nên cùng script này chạy
+được ở CI (không có `.env`, biến lấy từ khối `env:` của job).
 
 ## ⚠️ Ba service dùng chung Postgres — chỉ `packages/db` được đổi schema
 
 Từ migration `0001_service_roles.sql`, database này có **bốn schema tách bạch**:
 
-| Schema | Ai làm chủ | Ai được đổi cấu trúc |
-|---|---|---|
-| `public` | migration của package này | **chỉ migration** |
-| `directus` | Directus tự quản | Directus |
-| `supertokens` | SuperTokens tự quản | SuperTokens |
-| `drizzle` | journal migration | migrator |
+| Schema        | Ai làm chủ                | Ai được đổi cấu trúc |
+| ------------- | ------------------------- | -------------------- |
+| `public`      | migration của package này | **chỉ migration**    |
+| `directus`    | Directus tự quản          | Directus             |
+| `supertokens` | SuperTokens tự quản       | SuperTokens          |
+| `drizzle`     | journal migration         | migrator             |
 
 Directus và SuperTokens kết nối bằng role riêng (`directus_app`, `supertokens_app`) **không có
-quyền DDL trên `public`**. Directus đọc ghi được *dữ liệu* trong `public`; SuperTokens không chạm
+quyền DDL trên `public`**. Directus đọc ghi được _dữ liệu_ trong `public`; SuperTokens không chạm
 `public` chút nào.
 
 Ép ở tầng database chứ không bằng cấu hình của từng tool, vì toggle trong UI là thứ người sau bật
@@ -63,7 +91,7 @@ docker compose exec -T postgres psql -U v9 -d v9_rental -c \
   "SET ROLE directus_app; SELECT 1;"
 ```
 
-Bằng chứng đã thu được từ chính UI Directus khi bấm *Create Field*:
+Bằng chứng đã thu được từ chính UI Directus khi bấm _Create Field_:
 
 ```
 [INTERNAL_SERVER_ERROR] alter table "probe_vehicles" add column "probe_field" varchar(255) null

@@ -11,11 +11,11 @@
 Hệ quản lý cho một shop cho thuê mô tô phân khối lớn ở TP.HCM. UI tiếng Việt trước, tiếng Anh sau.
 Ba deliverable dài hạn, phiên này chỉ dựng khung:
 
-| App | Vai trò | Ghi chú |
-|---|---|---|
-| `apps/api` | Backend API | Bun + Elysia + TypeBox |
-| `apps/admin` | App quản trị nội bộ | Role `OWNER`, `STAFF`; `SALES` để dành |
-| `apps/web` | Site khách hàng công khai | SEO quan trọng → SSG/ISR |
+| App          | Vai trò                   | Ghi chú                                |
+| ------------ | ------------------------- | -------------------------------------- |
+| `apps/api`   | Backend API               | Bun + Elysia + TypeBox                 |
+| `apps/admin` | App quản trị nội bộ       | Role `OWNER`, `STAFF`; `SALES` để dành |
+| `apps/web`   | Site khách hàng công khai | SEO quan trọng → SSG/ISR               |
 
 Repo này sẽ được phát triển chủ yếu bởi AI agent. Vì vậy CLAUDE.md và ranh giới do máy ép
 là deliverable ngang hàng với code, không phải phụ lục.
@@ -43,7 +43,7 @@ bật `btree_gist` ngay migration đầu.
 
 ### 4.1 Eden client đặt ở đâu — phá vòng lặp `shared ↔ api`
 
-**Vấn đề.** Spec yêu cầu đồng thời hai điều: `packages/shared` giữ toàn bộ domain logic, *và*
+**Vấn đề.** Spec yêu cầu đồng thời hai điều: `packages/shared` giữ toàn bộ domain logic, _và_
 frontend gọi API qua "typed Eden client từ `packages/shared`". Nhưng Eden cần `typeof app` từ
 `apps/api`, trong khi `apps/api` import `packages/shared` để dùng domain logic → chu trình
 `shared → api → shared`. Nó cũng phá điều kiện zero-dep của `shared`, vốn là thứ khiến ép TDD
@@ -107,12 +107,12 @@ Drizzle không đụng tới constraint nó không biết.
 
 VND không có đơn vị phụ nên `1 = 1 đồng`, luôn nguyên.
 
-| Tầng | Biểu diễn |
-|---|---|
-| `packages/shared` | `export type Vnd = number` |
-| `packages/db` | `bigint("...", { mode: "number" })` → cột Postgres `bigint` |
-| `apps/api` | `t.Integer({ minimum: 0 })` |
-| JSON qua Eden | số nguyên native, không cần serializer riêng |
+| Tầng              | Biểu diễn                                                   |
+| ----------------- | ----------------------------------------------------------- |
+| `packages/shared` | `export type Vnd = number`                                  |
+| `packages/db`     | `bigint("...", { mode: "number" })` → cột Postgres `bigint` |
+| `apps/api`        | `t.Integer({ minimum: 0 })`                                 |
+| JSON qua Eden     | số nguyên native, không cần serializer riêng                |
 
 `MAX_SAFE_INTEGER` ≈ 9 triệu tỷ đồng, xa mọi con số của shop. Rủi ro duy nhất là phép chia sinh
 số lẻ → chặn bằng test và bằng quy ước **làm tròn phải tường minh** trong `shared/domain/money.ts`.
@@ -150,7 +150,7 @@ SOLID vẫn có, ở dạng function một trách nhiệm và tham số, không 
    > **Cách bắt — kiểm chứng thực nghiệm ở Task 7, đừng đoán lại:**
    >
    > **SQLSTATE nằm ở `.errno`, KHÔNG phải `.code`.** Bun.SQL bọc lỗi server-side thành
-   > `PostgresError` với `.code` luôn bằng `"ERR_POSTGRES_SERVER_ERROR"` cho *mọi* lỗi Postgres.
+   > `PostgresError` với `.code` luôn bằng `"ERR_POSTGRES_SERVER_ERROR"` cho _mọi_ lỗi Postgres.
    > Viết `if (e.code === "23P01")` cho ra một điều kiện **không bao giờ đúng**, và nó im lặng —
    > va chạm booking sẽ thành 500, còn unit test không bắt được vì phải có Postgres thật mới lộ.
    >
@@ -159,7 +159,7 @@ SOLID vẫn có, ở dạng function một trách nhiệm và tham số, không 
    > ```
    >
    > **Lỗi trong transaction làm hỏng cả transaction.** Sau một câu lệnh lỗi, mọi câu sau đều bị
-   > từ chối với `current transaction is aborted`. Nếu service cần *thử* insert rồi xử lý va chạm
+   > từ chối với `current transaction is aborted`. Nếu service cần _thử_ insert rồi xử lý va chạm
    > mà vẫn dùng tiếp transaction đó, phải bọc câu có thể lỗi trong `tx.savepoint(...)` —
    > nó phát `SAVEPOINT` / `ROLLBACK TO SAVEPOINT` và gỡ độc cho transaction ngoài.
 
@@ -189,11 +189,11 @@ availability · `plugins/timing.ts` ghi `{route, ms, status}` có cấu trúc ·
 
 **Perf budget — vượt là coi như test fail, không phải góp ý:**
 
-| Thao tác | p95 |
-|---|---|
-| `GET /health` | < 5 ms |
+| Thao tác               | p95     |
+| ---------------------- | ------- |
+| `GET /health`          | < 5 ms  |
 | Đọc một record theo id | < 25 ms |
-| Truy vấn availability | < 50 ms |
+| Truy vấn availability  | < 50 ms |
 
 ### 4.9 Deploy — GitHub Actions → GHCR → SSH vào VPS
 
@@ -224,10 +224,10 @@ phải build lại image** — khai biến trong `compose.prod.yaml` hoàn toàn
 yêu cầu frontend dùng TanStack. "TanStack" là một họ sản phẩm nên đã hỏi rõ mức độ; chốt phương án
 tách đôi:
 
-| App | Stack | Vì sao |
-|---|---|---|
+| App          | Stack                                                      | Vì sao                                                                                                                                                                                     |
+| ------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `apps/admin` | Vite + TanStack Router + TanStack Query, build ra SPA tĩnh | Dashboard nội bộ. **SEO không có nghĩa gì** ở đây, nên ràng buộc SSG/ISR vốn là lý do chọn Next không áp dụng. Router type-safe của TanStack ghép với Eden Treaty tự nhiên hơn App Router. |
-| `apps/web` | Next 16 App Router, `output: "standalone"`, SSG/ISR | **SEO là lý do Next được chọn ngay từ đầu.** Không có gì thay đổi lý do đó. |
+| `apps/web`   | Next 16 App Router, `output: "standalone"`, SSG/ISR        | **SEO là lý do Next được chọn ngay từ đầu.** Không có gì thay đổi lý do đó.                                                                                                                |
 
 **Giá phải trả, ghi rõ để không ai ngạc nhiên sau:** hai framework trong một repo, hai cách build,
 hai Dockerfile khác hẳn nhau. Một lập trình viên chuyển giữa hai app phải đổi mô hình tư duy —
@@ -264,11 +264,11 @@ vốn không chạy trên Bun.
 Bài học đắt nhất của phiên scaffold. Trong quá trình dựng, `eslint-plugin-boundaries` đã **suy
 thoái im lặng ba lần** — mỗi lần đều `exit 0`, đều trông như đang bảo vệ, và đều không kiểm tra gì:
 
-| Lần | Nguyên nhân | Hậu quả nếu không phát hiện |
-|---|---|---|
-| Task 2 | Resolver mặc định không nhận đuôi `.ts` | Rule vô hiệu trên **toàn bộ** codebase TypeScript |
-| Task 2 | `index.ts` không khớp element type nào | Composition root — nơi vi phạm hay tích tụ nhất — được miễn hoàn toàn |
-| Task 11 | `checkAllOrigins: false` bỏ qua import kiểu package specifier | `import "@v9/db"` lọt; chỉ `import "../../../db/src"` bị chặn |
+| Lần     | Nguyên nhân                                                   | Hậu quả nếu không phát hiện                                           |
+| ------- | ------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Task 2  | Resolver mặc định không nhận đuôi `.ts`                       | Rule vô hiệu trên **toàn bộ** codebase TypeScript                     |
+| Task 2  | `index.ts` không khớp element type nào                        | Composition root — nơi vi phạm hay tích tụ nhất — được miễn hoàn toàn |
+| Task 11 | `checkAllOrigins: false` bỏ qua import kiểu package specifier | `import "@v9/db"` lọt; chỉ `import "../../../db/src"` bị chặn         |
 
 Lần thứ ba nguy hiểm nhất: **không ai viết đường dẫn tương đối xuyên package.** Người ta viết
 `@v9/db`. Hàng rào canh con đường không ai đi và bỏ ngỏ con đường mọi người đi. TypeScript cũng
@@ -324,24 +324,24 @@ sâu vào `src/` của package khác (chỉ qua entrypoint đã export).
 
 ## 7. Version pin
 
-| Package | Version | Ghi chú |
-|---|---|---|
-| bun | 1.3.10 | runtime, đã có trên máy |
-| **typescript** | **6.0.3** | **pin < 7** |
-| elysia | 1.4.29 | |
-| @elysiajs/eden | 1.4.9 | |
-| @elysiajs/cors | 1.4.2 | |
-| drizzle-orm | 0.45.2 | export `./bun-sql` đã verify |
-| drizzle-kit | 0.31.10 | |
-| next | 16.3.0 | **chỉ `apps/web`** |
-| react · react-dom | 19.2.8 | cả hai frontend |
-| vite · @vitejs/plugin-react | 8.2.0 · 6.0.5 | **chỉ `apps/admin`** |
-| @tanstack/react-router | 1.170.18 | `apps/admin` |
-| @tanstack/react-query | 5.101.4 | `apps/admin` |
-| eslint | 10.8.0 | |
-| typescript-eslint | 8.66.0 | peer `typescript >=4.8.4 <6.1.0` |
-| eslint-plugin-boundaries | 7.1.0 | peer `eslint >=6` |
-| prettier | 3.9.6 | |
+| Package                     | Version       | Ghi chú                          |
+| --------------------------- | ------------- | -------------------------------- |
+| bun                         | 1.3.10        | runtime, đã có trên máy          |
+| **typescript**              | **6.0.3**     | **pin < 7**                      |
+| elysia                      | 1.4.29        |                                  |
+| @elysiajs/eden              | 1.4.9         |                                  |
+| @elysiajs/cors              | 1.4.2         |                                  |
+| drizzle-orm                 | 0.45.2        | export `./bun-sql` đã verify     |
+| drizzle-kit                 | 0.31.10       |                                  |
+| next                        | 16.3.0        | **chỉ `apps/web`**               |
+| react · react-dom           | 19.2.8        | cả hai frontend                  |
+| vite · @vitejs/plugin-react | 8.2.0 · 6.0.5 | **chỉ `apps/admin`**             |
+| @tanstack/react-router      | 1.170.18      | `apps/admin`                     |
+| @tanstack/react-query       | 5.101.4       | `apps/admin`                     |
+| eslint                      | 10.8.0        |                                  |
+| typescript-eslint           | 8.66.0        | peer `typescript >=4.8.4 <6.1.0` |
+| eslint-plugin-boundaries    | 7.1.0         | peer `eslint >=6`                |
+| prettier                    | 3.9.6         |                                  |
 
 **Vì sao TypeScript bị pin ở 6.0.3 dù 7.0.2 đã ra.** `typescript-eslint@8.66.0` khai peer
 `typescript: ">=4.8.4 <6.1.0"`. TS 7 (bản compiler viết lại bằng Go) nằm ngoài range → type-aware
@@ -451,11 +451,11 @@ web trên host.
 
 **Prod** — `compose.prod.yaml`: sáu service + `caddy`. Ba image, ba runtime khác nhau:
 
-| Service | Builder | Runtime | Vì sao |
-|---|---|---|---|
-| `api` | `oven/bun` | `oven/bun` | driver `bun-sql` bắt buộc chạy Bun (§4.8) |
-| `web` | `oven/bun` | `node:22-alpine` chạy `.next/standalone` | `output: "standalone"` sinh `server.js` nhắm Node |
-| `admin` | `oven/bun` | `caddy:2-alpine` phục vụ tĩnh | SPA tĩnh, không có server-side runtime nào để chạy |
+| Service | Builder    | Runtime                                  | Vì sao                                             |
+| ------- | ---------- | ---------------------------------------- | -------------------------------------------------- |
+| `api`   | `oven/bun` | `oven/bun`                               | driver `bun-sql` bắt buộc chạy Bun (§4.8)          |
+| `web`   | `oven/bun` | `node:22-alpine` chạy `.next/standalone` | `output: "standalone"` sinh `server.js` nhắm Node  |
+| `admin` | `oven/bun` | `caddy:2-alpine` phục vụ tĩnh            | SPA tĩnh, không có server-side runtime nào để chạy |
 
 Dùng Node cho runtime Next là lựa chọn boring có chủ ý — đây không phải chỗ để thử nghiệm, chỗ
 thử nghiệm đã dùng hết cho driver `bun-sql`.
@@ -481,15 +481,15 @@ Repo map · canonical commands · luật domain-chỉ-ở-`shared` · luật per
 · perf budget · luật pin TS kèm điều kiện gỡ · luật cấm `drizzle-kit push` · bốn design pattern
 backend ở mục 4.6.
 
-### 11.2 Luật per-tool — mỗi tool phải nói rõ *dùng khi nào* và *không dùng khi nào*
+### 11.2 Luật per-tool — mỗi tool phải nói rõ _dùng khi nào_ và _không dùng khi nào_
 
-| Tool | Dùng khi | Không dùng khi |
-|---|---|---|
-| **superpowers** | Mọi thay đổi không tầm thường: brainstorm → design doc → plan các bước verify được → implement → verify trước khi tuyên bố xong. **TDD nghiêm bắt buộc** cho mọi thứ trong `packages/shared` (tiền, pricing, deposit, availability). | Việc infra và UI dùng verification-before-completion thay cho test-first. |
-| **Serena** | Cách **duy nhất** để điều hướng và sửa code theo ngữ nghĩa. Bắt buộc `find_symbol` / `find_referencing_symbols` **trước khi** sửa bất kỳ exported function hay shared type nào. Ưu tiên symbol-level edit hơn rewrite cả file. | Không đổi tên hay đổi signature khi chưa kiểm tra reference. |
-| **Agent Memory** | Là ADR, không phải cache code. **Đọc** lúc mở phiên và trước **mọi** đề xuất đổi schema hay API contract. **Ghi** quyết định + lý do, naming convention, gotcha phát hiện lúc debug. | Không lưu code snippet hay nội dung file — git và Serena lo phần đó. Nếu đề xuất mâu thuẫn với quyết định đã lưu, **nêu xung đột cho người**, không tự đè. |
-| **rtk** | Đã hook sẵn, không cần làm gì. Ưu tiên chạy test, git, docker qua bash để rtk nén output. | Không dán output dài vào context bằng tay. |
-| **impeccable** | `apps/web` là chính; audit nhẹ cho `apps/admin`. UI của `apps/web` phải tôn trọng DESIGN.md. | `apps/admin` ưu tiên chức năng — không có polish pass trừ khi được yêu cầu. |
+| Tool             | Dùng khi                                                                                                                                                                                                                             | Không dùng khi                                                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **superpowers**  | Mọi thay đổi không tầm thường: brainstorm → design doc → plan các bước verify được → implement → verify trước khi tuyên bố xong. **TDD nghiêm bắt buộc** cho mọi thứ trong `packages/shared` (tiền, pricing, deposit, availability). | Việc infra và UI dùng verification-before-completion thay cho test-first.                                                                                  |
+| **Serena**       | Cách **duy nhất** để điều hướng và sửa code theo ngữ nghĩa. Bắt buộc `find_symbol` / `find_referencing_symbols` **trước khi** sửa bất kỳ exported function hay shared type nào. Ưu tiên symbol-level edit hơn rewrite cả file.       | Không đổi tên hay đổi signature khi chưa kiểm tra reference.                                                                                               |
+| **Agent Memory** | Là ADR, không phải cache code. **Đọc** lúc mở phiên và trước **mọi** đề xuất đổi schema hay API contract. **Ghi** quyết định + lý do, naming convention, gotcha phát hiện lúc debug.                                                 | Không lưu code snippet hay nội dung file — git và Serena lo phần đó. Nếu đề xuất mâu thuẫn với quyết định đã lưu, **nêu xung đột cho người**, không tự đè. |
+| **rtk**          | Đã hook sẵn, không cần làm gì. Ưu tiên chạy test, git, docker qua bash để rtk nén output.                                                                                                                                            | Không dán output dài vào context bằng tay.                                                                                                                 |
+| **impeccable**   | `apps/web` là chính; audit nhẹ cho `apps/admin`. UI của `apps/web` phải tôn trọng DESIGN.md.                                                                                                                                         | `apps/admin` ưu tiên chức năng — không có polish pass trừ khi được yêu cầu.                                                                                |
 
 ### 11.3 Workflow chuẩn cho mỗi phiên
 
@@ -521,20 +521,20 @@ thẩm mỹ SaaS generic (gradient tím, Inter ở mọi nơi, card lồng card)
 
 Không tiêu chí nào được tuyên bố đạt nếu chưa chạy lệnh và đọc output.
 
-| # | Tiêu chí | Cách verify |
-|---|---|---|
-| 1 | `bun install` chạy được, workspace resolve | `bun install` ở root; `bun pm ls` thấy đủ 5 workspace |
-| 2 | `docker compose up` lên postgres + minio, api nối được cả hai | `docker compose up -d`, `docker compose ps` healthy; `curl /health/deep` trả ok cho cả pg và minio |
-| 3 | `GET /health` trả `{status:"ok"}` qua Elysia + TypeBox, export type Eden | `curl -s localhost:$API_PORT/health`; `bun run typecheck` thấy `App` export được |
-| 4 | admin và web render placeholder và gọi `/health` qua Eden client typed | build cả hai, mở trang, thấy trạng thái health render ra |
-| 5 | `packages/db` có drizzle config + migration đầu bật `btree_gist`; `bun run db:migrate` chạy | `bun run db:migrate`; `\dx` thấy `btree_gist`; test rollback chứng minh exclusion constraint chặn được overlap thật |
-| 6 | `packages/shared` có pure function mẫu + test pass; `bun test` pass ở root | `bun test` |
-| 7 | CLAUDE.md root đủ nội dung mục 11; mỗi app có CLAUDE.md trỏ về root | đọc lại từng file đối chiếu mục 11 |
-| 8 | PRODUCT.md và DESIGN.md tồn tại, được `apps/web/CLAUDE.md` tham chiếu | `/impeccable init` rồi kiểm tra file và link |
-| 9 | `docs/plans/` có design doc và plan của phiên này | `ls docs/plans/` |
-| 10 | `.env.example` phủ mọi biến bắt buộc, không commit secret | đối chiếu với `env.ts` và hai file compose; `git log -p` không có secret |
-| 11 | `bun run typecheck` pass toàn workspace | `bun run typecheck` |
-| 12 | Ghi quyết định scaffolding vào Agent Memory | `memory_save` layout monorepo, cách nối Eden, workflow migration; rồi `memory_recall` đọc lại |
+| #   | Tiêu chí                                                                                    | Cách verify                                                                                                         |
+| --- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 1   | `bun install` chạy được, workspace resolve                                                  | `bun install` ở root; `bun pm ls` thấy đủ 5 workspace                                                               |
+| 2   | `docker compose up` lên postgres + minio, api nối được cả hai                               | `docker compose up -d`, `docker compose ps` healthy; `curl /health/deep` trả ok cho cả pg và minio                  |
+| 3   | `GET /health` trả `{status:"ok"}` qua Elysia + TypeBox, export type Eden                    | `curl -s localhost:$API_PORT/health`; `bun run typecheck` thấy `App` export được                                    |
+| 4   | admin và web render placeholder và gọi `/health` qua Eden client typed                      | build cả hai, mở trang, thấy trạng thái health render ra                                                            |
+| 5   | `packages/db` có drizzle config + migration đầu bật `btree_gist`; `bun run db:migrate` chạy | `bun run db:migrate`; `\dx` thấy `btree_gist`; test rollback chứng minh exclusion constraint chặn được overlap thật |
+| 6   | `packages/shared` có pure function mẫu + test pass; `bun test` pass ở root                  | `bun test`                                                                                                          |
+| 7   | CLAUDE.md root đủ nội dung mục 11; mỗi app có CLAUDE.md trỏ về root                         | đọc lại từng file đối chiếu mục 11                                                                                  |
+| 8   | PRODUCT.md và DESIGN.md tồn tại, được `apps/web/CLAUDE.md` tham chiếu                       | `/impeccable init` rồi kiểm tra file và link                                                                        |
+| 9   | `docs/plans/` có design doc và plan của phiên này                                           | `ls docs/plans/`                                                                                                    |
+| 10  | `.env.example` phủ mọi biến bắt buộc, không commit secret                                   | đối chiếu với `env.ts` và hai file compose; `git log -p` không có secret                                            |
+| 11  | `bun run typecheck` pass toàn workspace                                                     | `bun run typecheck`                                                                                                 |
+| 12  | Ghi quyết định scaffolding vào Agent Memory                                                 | `memory_save` layout monorepo, cách nối Eden, workflow migration; rồi `memory_recall` đọc lại                       |
 
 Thêm ngoài 12 tiêu chí gốc, do phạm vi được mở rộng trong phiên: `bun run lint` pass ·
 `drizzle-orm/bun-sql` nối được Postgres thật · `ci.yml` xanh trên GitHub.

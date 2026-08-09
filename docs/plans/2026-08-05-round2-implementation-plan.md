@@ -1,5 +1,27 @@
 # V9 Motor Rental — Đợt 2: Implementation Plan
 
+> ## ✅ ĐÃ THỰC THI XONG — 2026-08-05
+>
+> **8/8 task hoàn thành**, đã lên `main`. Checkbox bên dưới **cố ý không tick**, cùng lý do như
+> plan đợt 1: nguồn sự thật về code là repo, file này là bản ghi _ý định_.
+>
+> **Ma trận verify cuối đợt** (chạy lại được bất cứ lúc nào):
+>
+> | Tiêu chí                                                | Kết quả                                            |
+> | ------------------------------------------------------- | -------------------------------------------------- |
+> | `apps/admin` biến mất                                   | ✅                                                 |
+> | Bảng theo schema: `directus` / `supertokens` / `public` | 29 / 55 / **0**                                    |
+> | `directus_app` và `supertokens_app` đổi schema `public` | ✅ `ERROR: permission denied for schema public`    |
+> | `bun run typecheck`                                     | ✅ 5/5 workspace                                   |
+> | `bun run lint`                                          | ✅ exit 0                                          |
+> | `bun test`                                              | ✅ 15 pass                                         |
+> | 3 probe boundaries                                      | ✅ nổ đúng luật, im đúng chỗ                       |
+> | `POST /auth/signup` tới được SuperTokens core           | ✅ `{"message":"Missing input param: formFields"}` |
+>
+> **Còn gác lại sau đợt này:** deploy lên VPS (người dùng gác) · `DESIGN.md` (cần màn hình thật
+> và asset logo) · icon placeholder của `apps/staff` · enforce auth trên route nghiệp vụ (chưa có
+> route nào để bảo vệ).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development. Steps dùng checkbox (`- [ ]`).
 
 **Goal:** Thay `apps/admin` tự viết bằng Directus (chỉ dữ liệu gốc), thu hẹp `apps/web` về xem xe + tạo request, dựng khung `apps/staff` PWA, và cắm SuperTokens vào seam auth đã có. Không business feature nào.
@@ -16,18 +38,18 @@
 
 ## Bản đồ thay đổi
 
-| File/thư mục | Thao tác |
-|---|---|
-| `apps/admin/**` | xoá |
-| `compose.yaml`, `compose.prod.yaml` | bỏ service `admin`; thêm `directus`, `supertokens` |
-| `Caddyfile` | bỏ route admin; thêm route Directus |
-| `.github/workflows/deploy.yml` | bỏ `admin` khỏi matrix |
-| `eslint.config.js` | bỏ `admin` khỏi element `frontend`; thêm `apps/staff` |
-| `packages/db/migrations/0001_*.sql` | role + schema cho Directus và SuperTokens |
-| `apps/web/**` | thu hẹp copy và luồng |
-| `apps/staff/**` | tạo mới |
-| `apps/api/src/plugins/auth.ts` | thay seam bằng SuperTokens thật |
-| `PRODUCT.md`, `CLAUDE.md` | cập nhật |
+| File/thư mục                        | Thao tác                                              |
+| ----------------------------------- | ----------------------------------------------------- |
+| `apps/admin/**`                     | xoá                                                   |
+| `compose.yaml`, `compose.prod.yaml` | bỏ service `admin`; thêm `directus`, `supertokens`    |
+| `Caddyfile`                         | bỏ route admin; thêm route Directus                   |
+| `.github/workflows/deploy.yml`      | bỏ `admin` khỏi matrix                                |
+| `eslint.config.js`                  | bỏ `admin` khỏi element `frontend`; thêm `apps/staff` |
+| `packages/db/migrations/0001_*.sql` | role + schema cho Directus và SuperTokens             |
+| `apps/web/**`                       | thu hẹp copy và luồng                                 |
+| `apps/staff/**`                     | tạo mới                                               |
+| `apps/api/src/plugins/auth.ts`      | thay seam bằng SuperTokens thật                       |
+| `PRODUCT.md`, `CLAUDE.md`           | cập nhật                                              |
 
 ---
 
@@ -52,7 +74,7 @@ Zalo rồi chờ.
 Đoạn nói khách cuối chạm trực tiếp vào exclusion constraint **không còn đúng**. Thay bằng:
 
 ```markdown
-Vì `apps/web` chỉ tạo *yêu cầu*, **nhân viên mới là người chạm vào ràng buộc này** khi chốt đơn
+Vì `apps/web` chỉ tạo _yêu cầu_, **nhân viên mới là người chạm vào ràng buộc này** khi chốt đơn
 trong `apps/staff` — không phải khách cuối. Va chạm vẫn xảy ra (hai yêu cầu cùng xe cùng ngày), chỉ
 là nó lộ ra với nhân viên chứ không với khách. Luật `23P01` → 409 vẫn bắt buộc.
 ```
@@ -186,6 +208,7 @@ Rồi thử phá — đây mới là phần quan trọng:
 docker compose exec -T postgres psql -U v9 -d v9_rental -c \
   "SET ROLE directus_app; CREATE TABLE public.should_fail (id int);"
 ```
+
 Expected: **lỗi** `permission denied for schema public`.
 
 ```bash
@@ -193,6 +216,7 @@ Expected: **lỗi** `permission denied for schema public`.
 docker compose exec -T postgres psql -U v9 -d v9_rental -c \
   "SET ROLE directus_app; CREATE TABLE directus.ok_here (id int); DROP TABLE directus.ok_here;"
 ```
+
 Expected: thành công.
 
 ```bash
@@ -200,6 +224,7 @@ Expected: thành công.
 docker compose exec -T postgres psql -U v9 -d v9_rental -c \
   "SET ROLE supertokens_app; CREATE TABLE public.should_fail (id int);"
 ```
+
 Expected: **lỗi**.
 
 Nếu bất kỳ lệnh "phải lỗi" nào lại thành công → migration sai, sửa trước khi đi tiếp. Đây là tiêu chí #3 và #11 của design doc.
@@ -232,28 +257,28 @@ DIRECTUS_PORT=8055
 - [ ] **Step 2: Service trong `compose.yaml` (dev)**
 
 ```yaml
-  directus:
-    image: directus/directus:11
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      KEY: ${DIRECTUS_KEY}
-      SECRET: ${DIRECTUS_SECRET}
-      DB_CLIENT: pg
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_DATABASE: ${POSTGRES_DB}
-      DB_USER: directus_app
-      DB_PASSWORD: ${DIRECTUS_DB_PASSWORD}
-      # Bảng hệ thống của Directus nằm ở schema riêng; public chỉ đọc-ghi dữ liệu.
-      DB_SEARCH_PATH: directus,public
-      ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL}
-      ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD}
-      WEBSOCKETS_ENABLED: "false"
-    ports:
-      - "${DIRECTUS_PORT}:8055"
+directus:
+  image: directus/directus:11
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+  environment:
+    KEY: ${DIRECTUS_KEY}
+    SECRET: ${DIRECTUS_SECRET}
+    DB_CLIENT: pg
+    DB_HOST: postgres
+    DB_PORT: "5432"
+    DB_DATABASE: ${POSTGRES_DB}
+    DB_USER: directus_app
+    DB_PASSWORD: ${DIRECTUS_DB_PASSWORD}
+    # Bảng hệ thống của Directus nằm ở schema riêng; public chỉ đọc-ghi dữ liệu.
+    DB_SEARCH_PATH: directus,public
+    ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL}
+    ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD}
+    WEBSOCKETS_ENABLED: "false"
+  ports:
+    - "${DIRECTUS_PORT}:8055"
 ```
 
 **Phải kiểm chứng, không được giả định:** `DB_SEARCH_PATH` có thật sự khiến Directus đặt bảng `directus_*` vào schema `directus` hay không, và nó có còn thấy bảng ở `public` để import collection hay không. Đọc tài liệu của bản `directus/directus:11` đang dùng và **xác nhận bằng cách chạy rồi query `pg_tables`**. Nếu cơ chế khác với giả định trên, sửa cho đúng và **báo cáo rõ đã sửa gì** — đừng lặng lẽ đổi sang cho Directus toàn quyền `public`, vì đó là phá bỏ chính điều Task 3 vừa dựng.
@@ -270,6 +295,7 @@ docker compose logs directus | tail -20
 docker compose exec -T postgres psql -U v9 -d v9_rental -tAc \
   "SELECT schemaname, count(*) FROM pg_tables WHERE tablename LIKE 'directus%' GROUP BY schemaname;"
 ```
+
 Expected: mọi bảng `directus_*` ở schema `directus`, **0 bảng ở `public`**.
 
 - [ ] **Step 4: Verify Directus KHÔNG đổi được schema nghiệp vụ**
@@ -326,23 +352,29 @@ STAFF_APP_URL=http://localhost:3003
 - [ ] **Step 2: Service trong `compose.yaml`**
 
 ```yaml
-  supertokens:
-    image: registry.supertokens.io/supertokens/supertokens-postgresql:latest
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      POSTGRESQL_CONNECTION_URI: postgres://supertokens_app:${SUPERTOKENS_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      POSTGRESQL_TABLE_SCHEMA: supertokens
-      API_KEYS: ${SUPERTOKENS_API_KEY}
-    ports:
-      - "3567:3567"
-    healthcheck:
-      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/3567 && echo -e 'GET /hello HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep 'Hello'"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+supertokens:
+  image: registry.supertokens.io/supertokens/supertokens-postgresql:latest
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+  environment:
+    POSTGRESQL_CONNECTION_URI: postgres://supertokens_app:${SUPERTOKENS_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    POSTGRESQL_TABLE_SCHEMA: supertokens
+    API_KEYS: ${SUPERTOKENS_API_KEY}
+  ports:
+    - "3567:3567"
+  healthcheck:
+    test:
+      [
+        "CMD",
+        "bash",
+        "-c",
+        "exec 3<>/dev/tcp/127.0.0.1/3567 && echo -e 'GET /hello HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep 'Hello'",
+      ]
+    interval: 10s
+    timeout: 5s
+    retries: 10
 ```
 
 Verify `POSTGRESQL_TABLE_SCHEMA` thật sự đặt bảng vào schema `supertokens`:
@@ -351,6 +383,7 @@ Verify `POSTGRESQL_TABLE_SCHEMA` thật sự đặt bảng vào schema `supertok
 docker compose exec -T postgres psql -U v9 -d v9_rental -tAc \
   "SELECT schemaname, count(*) FROM pg_tables WHERE schemaname='supertokens' GROUP BY schemaname;"
 ```
+
 Expected: có bảng ở schema `supertokens`, **0 bảng SuperTokens ở `public`**.
 
 - [ ] **Step 3: Cài SDK**
@@ -606,6 +639,7 @@ git commit -m "feat(staff): khung PWA Vite + TanStack, gọi /health qua Eden ty
 - [ ] **Step 1: `apps/staff/Dockerfile` + `Caddyfile`**
 
 Copy nguyên mẫu từ `apps/admin` cũ (`git show 80218d3 -- apps/admin/Dockerfile apps/admin/Caddyfile`), đổi tên app. Nhớ ba bài học đợt 1:
+
 - **không** dùng stage `deps` tách rời — bun isolated linker không hoist, phải copy source rồi mới `bun install`;
 - copy `package.json` của **mọi** workspace, vì `--frozen-lockfile` xác thực cả đồ thị;
 - `try_files {path} /index.html` bắt buộc, nếu không mọi route sâu 404 khi F5.

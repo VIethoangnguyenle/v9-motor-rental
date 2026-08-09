@@ -43,10 +43,36 @@ unit test không bắt được vì phải có Postgres thật mới lộ. Chi t
 `GET /health` p95 < 5ms · đọc một record < 25ms · availability < 50ms.
 `bun run bench` exit 1 khi vượt. Vượt budget là fail, không phải góp ý.
 
-## Seam auth
+## Seam auth — **đã ghép SuperTokens**, nhưng chưa route nào enforce
 
-Chưa implement. Tìm bằng `grep -rn "SEAM: JWT auth"`. Type `Role` và `AuthContext` đã có sẵn ở
-`src/plugins/auth.ts`; phiên này không route nào enforce.
+Đọc kỹ hai vế, đừng gộp làm một.
+
+**Đã có thật:** `src/plugins/auth.ts` phơi `/auth/*` qua framework `custom` của `supertokens-node`
+(`PreParsedRequest` / `CollectingResponse`). Đăng ký, đăng nhập, session đều chạy được. Kiểm:
+
+```bash
+# PHẢI ra: {"message":"Missing input param: formFields"}
+curl -s -X POST localhost:3001/auth/signup -H 'content-type: application/json' -d '{}'
+```
+
+Ra được thông báo đó nghĩa là request **đã tới SuperTokens core**, không phải rơi vào 404 của
+Elysia — đối chứng: `POST /auth/khong-ton-tai` trả **404**.
+
+**`-H content-type` và `-d '{}'` là bắt buộc, không phải trang trí.** Thiếu body thì
+`request.json()` ném và bạn nhận `Unexpected end of JSON input` — trông như auth hỏng trong khi
+nó chạy tốt. Probe này **không tạo user**; đã kiểm bằng
+`SELECT count(*) FROM supertokens.all_auth_recipe_users` trước và sau: đều bằng 0.
+
+Signup đầy đủ (gửi `formFields` thật) cũng đã chạy end-to-end và trả `{"status":"OK"}` kèm user
+id. **Đừng dùng bản đó làm probe thường xuyên** — nó ghi user thật vào DB, muốn dọn phải gọi
+`POST http://localhost:3567/user/remove` với `api-key` và `cdi-version: 5.1`.
+
+**Chưa có:** không route nghiệp vụ nào enforce auth, và chưa có màn hình đăng nhập ở `apps/staff`.
+Có chủ ý — chưa có route nghiệp vụ nào để bảo vệ, mà một cơ chế phân quyền chưa từng chạy còn tệ
+hơn không có: nó trông như đã kiểm chứng trong khi không.
+
+Type `Role` (`OWNER` | `STAFF` | `SALES`) và `AuthContext` đã export sẵn ở cùng file.
+Tìm bằng `grep -rn "SEAM: JWT auth"`.
 
 ## Chạy
 

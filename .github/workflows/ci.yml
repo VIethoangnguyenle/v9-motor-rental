@@ -47,3 +47,9 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
       - run: bun test
+
+      # `format` là canonical command trong CLAUDE.md nhưng trước đây KHÔNG ai
+      # kiểm — repo đã trôi tới 12 file lệch format mà vẫn xanh. Hậu quả không
+      # phải xấu mã: người sau chạy `bun run format` sẽ kéo theo 12 file lạ vào
+      # diff của họ, làm review mất dấu thay đổi thật.
+      - run: bun run format:check

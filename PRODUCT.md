@@ -27,7 +27,7 @@ Thành công nghĩa là khách gửi được yêu cầu ngoài giờ làm việ
 
 Shop nhỏ, đội xe thật, giao xe tận nơi. Khác biệt không nằm ở giá mà ở việc khách **thấy đúng con xe mình sẽ nhận** — ảnh thật của từng chiếc, không phải ảnh catalogue của hãng.
 
-*Lưu ý:* web **không** hiển thị tình trạng còn trống theo thời gian thực. Khách gửi yêu cầu, nhân viên xác nhận xe và thời gian.
+_Lưu ý:_ web **không** hiển thị tình trạng còn trống theo thời gian thực. Khách gửi yêu cầu, nhân viên xác nhận xe và thời gian.
 
 ## Operating Context
 
@@ -52,15 +52,16 @@ Shop nhỏ, đội xe thật, giao xe tận nơi. Khác biệt không nằm ở 
 
 **Ràng buộc mang tính sống còn — chống đặt trùng.** Một chiếc xe không thể được đặt hai lần trong khoảng thời gian chồng nhau. Ràng buộc này đặt ở tầng database (exclusion constraint trên `(vehicle_id, tstzrange)`), không ở tầng ứng dụng.
 
-Vì `apps/web` chỉ tạo *yêu cầu*, **nhân viên mới là người chạm vào ràng buộc này** khi chốt đơn trong `apps/staff` — không phải khách cuối. Va chạm vẫn xảy ra thật (hai yêu cầu cùng xe cùng khoảng ngày), chỉ là nó lộ ra với nhân viên chứ không với khách. Luật `23P01` → 409 vẫn bắt buộc.
+Vì `apps/web` chỉ tạo _yêu cầu_, **nhân viên mới là người chạm vào ràng buộc này** khi chốt đơn trong `apps/staff` — không phải khách cuối. Va chạm vẫn xảy ra thật (hai yêu cầu cùng xe cùng khoảng ngày), chỉ là nó lộ ra với nhân viên chứ không với khách. Luật `23P01` → 409 vẫn bắt buộc.
 
-> *Sửa 2026-08-05:* bản đầu của tài liệu này ghi khách cuối chạm trực tiếp vào ràng buộc, vì lúc đó `apps/web` được thiết kế nhận đặt online đầy đủ. Người dùng đổi sang mô hình yêu cầu. Xem §1.1 của `docs/plans/2026-08-05-round2-directus-staff-design.md`.
+> _Sửa 2026-08-05:_ bản đầu của tài liệu này ghi khách cuối chạm trực tiếp vào ràng buộc, vì lúc đó `apps/web` được thiết kế nhận đặt online đầy đủ. Người dùng đổi sang mô hình yêu cầu. Xem §1.1 của `docs/plans/2026-08-05-round2-directus-staff-design.md`.
 
 **Ngôn ngữ:** tiếng Việt trước, tiếng Anh sau. Tiếng Anh **chưa** làm, nhưng khách du lịch nước ngoài là nhóm người dùng đã xác nhận — nên đây là nợ đã biết, không phải tính năng tùy chọn.
 
 **Tiền:** VND, luôn là số nguyên đồng. Không có đơn vị phụ.
 
 **Chưa quyết — đừng bịa:**
+
 - Chính sách tính ngày thuê và bảng giá (thuê dài ngày có giá khác, nhưng cụ thể thế nào thì chưa chốt).
 - Vai trò `SALES` làm gì.
 - Có bảo hiểm hay không.

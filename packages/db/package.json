@@ -7,10 +7,10 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "generate": "drizzle-kit generate",
-    "custom": "drizzle-kit generate --custom",
-    "migrate": "drizzle-kit migrate",
-    "studio": "drizzle-kit studio",
+    "generate": "bun --env-file=../../.env ./node_modules/.bin/drizzle-kit generate",
+    "custom": "bun --env-file=../../.env ./node_modules/.bin/drizzle-kit generate --custom",
+    "migrate": "bun --env-file=../../.env ./scripts/migrate.ts",
+    "studio": "bun --env-file=../../.env ./node_modules/.bin/drizzle-kit studio",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -33,9 +33,7 @@
     "isready",
     "checkins"
   ],
-  "ignoreRegExpList": [
-    "/[A-Za-zÀ-ỹ]*[À-ỹ][A-Za-zÀ-ỹ]*/gu"
-  ],
+  "ignoreRegExpList": ["/[A-Za-zÀ-ỹ]*[À-ỹ][A-Za-zÀ-ỹ]*/gu"],
   "ignorePaths": [
     "**/*.sql",
     "**/*.test.ts",
