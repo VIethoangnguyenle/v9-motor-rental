@@ -159,15 +159,33 @@ với thông báo không nhắc gì tới path style.
 Prod dùng access key riêng cho Directus thay vì `MINIO_ROOT_*`. Ghi thành một dòng phải-đổi trong
 `.env.example`, vì root lọt ra prod theo quán tính là cách rò rỉ quyền phổ biến nhất.
 
-### 4.2 Directus nhận hai bảng có sẵn
+### 4.2 Directus nhận hai bảng có sẵn — và ba thứ nó KHÔNG làm được
 
-Directus tạo collection từ bảng đã tồn tại bằng cách chèn metadata vào schema `directus`
-(`directus_collections`, `directus_fields`, `directus_relations`) — không đụng DDL lên `public`.
+Mục này đã được **đo thật**, không còn là giả định. Kết quả đầy đủ ở §7.1.
 
-Cấu hình cần: `vehicle_photos.file_id` dùng interface file; `vehicles` có O2M xuống
-`vehicle_photos`; `plate` đánh dấu là trường nội bộ; `status` dùng dropdown ba giá trị khớp `CHECK`.
+| Thao tác                                           | Kết quả  | Vì sao                                         |
+| -------------------------------------------------- | -------- | ---------------------------------------------- |
+| Nhận bảng có sẵn (`POST /collections`, chỉ `meta`) | ✅ được  | chỉ chèn metadata vào schema `directus`        |
+| Cấu hình interface field có sẵn (`PATCH /fields`)  | ✅ được  | metadata, không đụng bảng                      |
+| Tạo field **mới**                                  | ❌ không | Directus phát `ALTER TABLE ... ADD COLUMN`     |
+| Tạo quan hệ file (`POST /relations`)               | ❌ không | Directus phát `ALTER TABLE ... ADD CONSTRAINT` |
+| Xoá collection (`DELETE /collections`)             | ❌ không | Directus phát `DROP TABLE`                     |
 
-**Đây là giả định lớn nhất của cả thiết kế** — xem §7.
+Bốn dòng cuối đều chết ở cùng một câu của Postgres: `must be owner of table`. Đó là hàng rào §3.2
+của đợt 2 đang làm đúng việc của nó — không phải trục trặc.
+
+**Vì vậy quan hệ ảnh khai bằng metadata, không qua API của Directus:** chèn thẳng một dòng vào
+`directus.directus_relations` (schema mà `directus_app` toàn quyền), để lại quan hệ hoạt động đầy
+đủ với `schema: null` — Directus không cần foreign key ở tầng DB để expand file. Đã đo: item tạo
+được, `file_id` expand ra object file thật.
+
+Toàn bộ cấu hình còn lại — adopt collection, interface của `status`/`slug`/`plate`/`description`,
+quan hệ O2M `vehicles → vehicle_photos`, quyền Public, preset ảnh — gói trong **một script
+idempotent commit vào repo**, xem §4.5.
+
+**Hệ quả vận hành phải nói rõ với shop:** không ai thêm được trường mới cho xe bằng cách bấm trong
+Directus. Thêm trường = một migration trong `packages/db` cộng một lần chạy lại script. Đó đúng là
+điều hàng rào sinh ra để ép, nhưng nó là thứ người dùng Directus sẽ đâm vào và cần được báo trước.
 
 ### 4.3 Quyền công khai hẹp nhất có thể
 
@@ -188,23 +206,45 @@ quality 80). `next/image` vẫn tự sinh đủ các cỡ responsive từ ảnh 
 nặng, Next lo phần còn lại. Ảnh chụp bằng điện thoại 4000px/5MB không đi thẳng vào optimizer của
 Next.
 
-### 4.5 Chỗ này KHÔNG được ép bằng repo, và tài liệu không giả vờ ngược lại
+### 4.5 Cấu hình Directus là script trong repo, không phải các bước bấm
 
-Ngoài phần `compose.yaml`, toàn bộ §4.2 → §4.4 nằm trong **database của Directus, không nằm trong
-git**. Clone repo về máy khác là không có gì cả, và không có dòng nào trong diff ghi lại rằng nó
-từng được cấu hình.
+Bản đầu của mục này đề xuất một runbook liệt kê các bước bấm trong UI, và thừa nhận thẳng rằng cấu
+hình chỉ sống trong database của Directus — clone repo về máy khác là không có gì cả.
 
-Đây đúng họ với `.claude/settings.local.json` mà `CLAUDE.md` §"ranh giới repo ép vs cấu hình local"
-đã cảnh báo. Không đề xuất giả vờ rằng nó được repo bảo đảm. Đề xuất là làm cho drift **lộ ra
-nhanh**:
+**§7.1 đổi được điều đó theo hướng tốt hơn.** Vì quan hệ ảnh dù sao cũng phải chèn bằng SQL, và mọi
+thứ còn lại đều là lệnh REST, toàn bộ cấu hình viết được thành **một script idempotent commit vào
+repo**: `scripts/directus-setup.ts`, chạy bằng `bun run directus:setup`.
 
-1. Một runbook `docs/runbooks/directus-vehicles.md` liệt kê đúng các bước bấm.
-2. Một lệnh probe thêm vào `CLAUDE.md`, chạy sau mỗi lần nâng version Directus:
+Script làm, theo thứ tự, và mỗi bước đều kiểm-trước-khi-làm để chạy lại nhiều lần vô hại:
+
+1. Đăng nhập lấy token admin.
+2. Adopt `vehicles` và `vehicle_photos` (`POST /collections`, chỉ `meta`).
+3. Cấu hình interface: `status` dropdown ba giá trị khớp `CHECK`, `slug` kèm ghi chú định dạng,
+   `plate` ghi chú "nội bộ — không hiển thị trên web", `description` textarea.
+4. Chèn hai dòng quan hệ vào `directus.directus_relations` bằng SQL: `vehicle_photos.file_id →
+directus_files`, và O2M `vehicles → vehicle_photos`.
+5. Cấp cho role Public quyền **read `directus_files`**, không gì khác.
+6. Đặt `storage_asset_transform = presets` và preset `web`.
+7. Xoá cache schema của Directus (`POST /utils/cache/clear`) — sau khi chèn thẳng vào
+   `directus_relations`, Directus vẫn giữ schema cũ trong bộ nhớ cho tới khi cache bị xoá hoặc
+   container restart. Bỏ bước này thì quan hệ trông như không có tác dụng, và người sau sẽ đi
+   debug nhầm chỗ.
+
+**Cái này vẫn KHÔNG phải ràng buộc do repo ép** — không có gì bắt ai chạy script. Nhưng nó khác hẳn
+một danh sách bước bấm: nó review được trong diff, chạy lại được, và một môi trường mới dựng lên
+bằng một lệnh thay vì bằng trí nhớ.
+
+Kèm một lệnh probe thêm vào `CLAUDE.md`, chạy sau mỗi lần nâng version Directus:
 
 ```bash
 # PHẢI ra 200 và content-type: image/*
 curl -sI "http://localhost:8055/assets/<uuid>?key=web" | head -3
 ```
+
+**Bằng chứng rằng leak metadata là chuyện có thật:** lúc probe, `directus_collections` còn nguyên
+một dòng `probe_vehicles` từ phiên đợt 2 — bảng đã bị xoá từ lâu, dòng metadata thì không. Vì
+`DELETE /collections` cũng cần DDL nên nó không tự dọn được. Script phải dọn được cả chiều ngược
+lại, hoặc runbook phải nói rõ cách dọn bằng SQL.
 
 ## 5. Contract của `apps/api`
 
@@ -342,16 +382,17 @@ cấp thêm quyền cho bất kỳ role nào.
   mang nguyên văn câu SQL mà Directus đã phát ra rồi mới đính lỗi DB vào cuối, và mã trả về là 500
   `INTERNAL_SERVER_ERROR` chứ không phải 400 `INVALID_PAYLOAD`. Đối chứng độc lập: chạy thẳng
   `ALTER TABLE` bằng psql với `SET ROLE directus_app` ra đúng cùng một câu `must be owner of table
-  probe_fleet`.
+probe_fleet`.
 
   Riêng `PATCH /fields/probe_fleet/file_id` với **chỉ `meta`** (`interface: file-image`,
   `special: ["file"]`) thì qua được (HTTP 200) — phần metadata không đụng DDL. Chỗ vỡ là **quan hệ**:
   `/relations` của Directus **luôn** tạo FOREIGN KEY, không có chế độ chỉ-metadata.
+
 - `directus_app` đọc được bảng sinh sau migration 0001: **được** — `SET ROLE directus_app; SELECT
-  count(*) FROM public.probe_fleet;` trả `0`. `ALTER DEFAULT PRIVILEGES` phủ đúng bảng tạo sau, nên
+count(*) FROM public.probe_fleet;` trả `0`. `ALTER DEFAULT PRIVILEGES` phủ đúng bảng tạo sau, nên
   rủi ro thứ hai nêu ngay trên **không xảy ra**.
 - `ALTER TABLE` bằng `directus_app` vẫn bị từ chối: **đúng** — `ERROR: must be owner of table
-  probe_fleet`. Hàng rào DDL còn nguyên sau toàn bộ probe; không FK nào được thêm vào
+probe_fleet`. Hàng rào DDL còn nguyên sau toàn bộ probe; không FK nào được thêm vào
   `public.probe_fleet` (chỉ còn `probe_fleet_pkey`).
 
 **Kết luận: đường chính KHÔNG chạy — bắt buộc chuyển sang đường lùi (1).** Directus không tự cấu
@@ -395,37 +436,44 @@ thật đã bị drop — rác của phiên trước, cố ý không đụng t�
 
 ## 9. Phạm vi công việc
 
-| #   | Việc                                                                                                                                       |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | **Probe Directus adopt bảng có sẵn + field file, không DDL** (chốt chặn §7 — làm trước mọi thứ)                                            |
-| 2   | Khai hai bảng trong `packages/db/src/schema/`, sinh migration `0002_*` bằng `db:generate`, **đọc file SQL sinh ra** trước khi `db:migrate` |
-| 3   | `compose.yaml` + `compose.prod.yaml`: `STORAGE_*` cho Directus, `depends_on: minio`; `.env.example`                                        |
-| 4   | Directus: adopt hai collection, cấu hình field, quyền Public đọc `directus_files`, preset `web`                                            |
-| 5   | `apps/api`: plugin `vehicles` — routes, service, TypeBox schema                                                                            |
-| 6   | `apps/web`: `/xe`, `/xe/[slug]`, trang chủ dùng data thật, xoá `_placeholder-data.ts`, `remotePatterns`                                    |
-| 7   | `docs/runbooks/directus-vehicles.md` + probe vào `CLAUDE.md`; cập nhật `CLAUDE.md` §Việc còn để lại                                        |
+| #   | Việc                                                                                                                                          |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Probe Directus adopt bảng có sẵn + field file, không DDL** (chốt chặn §7 — làm trước mọi thứ)                                               |
+| 2   | Khai hai bảng trong `packages/db/src/schema/`, sinh migration `0002_*` bằng `db:generate`, **đọc file SQL sinh ra** trước khi `db:migrate`    |
+| 3   | `compose.yaml` + `compose.prod.yaml`: `STORAGE_*` cho Directus, `depends_on: minio`; `.env.example`                                           |
+| 4   | `scripts/directus-setup.ts` idempotent (§4.5) — adopt collection, interface, quan hệ qua SQL, quyền Public, preset, xoá cache                 |
+| 5   | `apps/api`: plugin `vehicles` — routes, service, TypeBox schema                                                                               |
+| 6   | `apps/web`: `/xe`, `/xe/[slug]`, trang chủ dùng data thật, xoá `_placeholder-data.ts`, `remotePatterns`                                       |
+| 7   | `docs/runbooks/directus-vehicles.md` (chạy script + dọn metadata rác bằng SQL) + probe vào `CLAUDE.md`; cập nhật `CLAUDE.md` §Việc còn để lại |
 
 ## 10. Tiêu chí "xong"
 
 Không tiêu chí nào được tuyên bố đạt nếu chưa chạy lệnh và đọc output.
 
-| #   | Tiêu chí                                        | Cách verify                                                                           |
-| --- | ----------------------------------------------- | ------------------------------------------------------------------------------------- |
-| 1   | Directus nhận bảng có sẵn, không cần DDL        | probe §7, chạy **trước** khi viết migration                                           |
-| 2   | `directus_app` đọc ghi được hai bảng mới        | `SET ROLE directus_app; SELECT * FROM vehicles;` → thành công                         |
-| 3   | `directus_app` **vẫn không** đổi được schema    | `SET ROLE directus_app; ALTER TABLE vehicles ADD COLUMN x int;` → `permission denied` |
-| 4   | Ảnh nằm trong MinIO, không trong container      | upload trong Directus rồi `mc ls local/vehicles` thấy object                          |
-| 5   | Ảnh sống sót qua `docker compose down && up -d` | upload → down → up → mở lại `/assets/<uuid>?key=web`                                  |
-| 6   | `plate` không rò ra                             | `curl localhost:3001/vehicles \| grep -i plate` → rỗng                                |
-| 7   | Xe `draft` không lên web                        | tạo một bản ghi `draft`, `curl` không thấy nó                                         |
-| 8   | Transform tuỳ ý bị chặn                         | `curl -sI "…/assets/<uuid>?width=9999"` → không trả ảnh 9999px                        |
-| 9   | Trang tĩnh chứa tên xe thật                     | `bun run --filter @v9/web build` rồi grep HTML sinh ra                                |
-| 10  | Trạng thái rỗng không nói về schema             | xoá hết xe published, mở `/xe`, đọc câu hiện ra                                       |
-| 11  | Toàn bộ vẫn xanh                                | `bun test`, `bun run typecheck`, `bun run lint`                                       |
-| 12  | ADR đã ghi                                      | `memory_recall` đọc lại được quyết định "một bản ghi = một chiếc" và lý do            |
+| #   | Tiêu chí                                        | Cách verify                                                                                                                                    |
+| --- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | ~~Directus nhận bảng có sẵn, không cần DDL~~    | **Đã đo, KHÔNG đạt** — xem §7.1. Thay bằng #1b                                                                                                 |
+| 1b  | Quan hệ ảnh chạy qua metadata, không qua FK     | chạy `bun run directus:setup` **hai lần liên tiếp**, lần hai không đổi gì; rồi tạo item trong Directus và thấy `file_id` expand ra object file |
+| 2   | `directus_app` đọc ghi được hai bảng mới        | `SET ROLE directus_app; SELECT * FROM vehicles;` → thành công                                                                                  |
+| 3   | `directus_app` **vẫn không** đổi được schema    | `SET ROLE directus_app; ALTER TABLE vehicles ADD COLUMN x int;` → `permission denied`                                                          |
+| 4   | Ảnh nằm trong MinIO, không trong container      | upload trong Directus rồi `mc ls local/vehicles` thấy object                                                                                   |
+| 5   | Ảnh sống sót qua `docker compose down && up -d` | upload → down → up → mở lại `/assets/<uuid>?key=web`                                                                                           |
+| 6   | `plate` không rò ra                             | `curl localhost:3001/vehicles \| grep -i plate` → rỗng                                                                                         |
+| 7   | Xe `draft` không lên web                        | tạo một bản ghi `draft`, `curl` không thấy nó                                                                                                  |
+| 8   | Transform tuỳ ý bị chặn                         | `curl -sI "…/assets/<uuid>?width=9999"` → không trả ảnh 9999px                                                                                 |
+| 9   | Trang tĩnh chứa tên xe thật                     | `bun run --filter @v9/web build` rồi grep HTML sinh ra                                                                                         |
+| 10  | Trạng thái rỗng không nói về schema             | xoá hết xe published, mở `/xe`, đọc câu hiện ra                                                                                                |
+| 11  | Toàn bộ vẫn xanh                                | `bun test`, `bun run typecheck`, `bun run lint`                                                                                                |
+| 12  | ADR đã ghi                                      | `memory_recall` đọc lại được quyết định "một bản ghi = một chiếc" và lý do                                                                     |
 
-Tiêu chí **#1** là tiêu chí quan trọng nhất. Nếu nó hỏng thì §3 và §5 phải viết lại trước khi code,
-chứ không phải sau.
+**Tiêu chí #1 đã hỏng, và đó là lý do §4.2 với §4.5 mang hình dạng hiện tại.** Probe chạy trước khi
+viết một dòng migration nào, nên cái phải sửa là hai mục tài liệu — không phải một migration đã
+apply và một API đã có người gọi. Giữ dòng gạch ngang ở trên thay vì xoá nó: nó là bằng chứng cổng
+chặn đã làm đúng việc.
+
+Tiêu chí **#1b** thay thế nó. Yêu cầu "chạy hai lần liên tiếp" không phải hình thức — một script
+cấu hình không idempotent sẽ hỏng đúng vào lần dựng môi trường thứ hai, tức là lúc không ai còn
+nhớ nó tồn tại.
 
 Tiêu chí **#5** là cái duy nhất chứng minh §4.1 thật sự được sửa — mọi kiểm tra khác vẫn xanh trên
 một Directus lưu file vào container sắp bị xoá.

@@ -521,46 +521,81 @@ git commit -m "fix(directus): lưu file vào MinIO — trước đó upload mấ
 
 ---
 
-## Task 3: Directus nhận hai collection + quyền + preset
+## Task 3: Script cấu hình Directus (`scripts/directus-setup.ts`)
 
-Toàn bộ task này là **cấu hình sống trong database của Directus, không sống trong git**. Vì thế deliverable của nó là một runbook, không phải một file config.
+> **Task này đã được viết lại sau Task 0.** Bản đầu là một danh sách bước bấm trong UI. Probe cho thấy Directus **không** tạo được quan hệ file (nó phát `ALTER TABLE`, Postgres từ chối), nên quan hệ phải chèn bằng SQL — và vì đã phải viết SQL thì viết luôn cả phần còn lại thành script chạy lại được. Xem §7.1 và §4.5 của design doc.
 
 **Files:**
 
+- Create: `scripts/directus-setup.ts`
+- Modify: `package.json` (thêm script `directus:setup`)
 - Create: `docs/runbooks/directus-vehicles.md`
 
-- [ ] **Step 1: Nhận hai collection**
+**Ba sự thật đo được ở Task 0, script phải tôn trọng:**
 
-Settings → Data Model. `vehicles` và `vehicle_photos` xuất hiện dưới dạng bảng chưa quản lý — bấm từng cái để tạo collection.
+| Thao tác                       | Được?  | Cách làm trong script                               |
+| ------------------------------ | ------ | --------------------------------------------------- |
+| Adopt bảng có sẵn              | ✅     | `POST /collections` với **chỉ** khoá `meta`         |
+| Sửa interface của field có sẵn | ✅     | `PATCH /fields/<collection>/<field>`                |
+| Tạo field mới                  | ❌ DDL | không làm — mọi cột đến từ migration                |
+| `POST /relations`              | ❌ DDL | thay bằng `INSERT INTO directus.directus_relations` |
+| `DELETE /collections`          | ❌ DDL | dọn bằng SQL                                        |
 
-- [ ] **Step 2: Cấu hình field**
+- [ ] **Step 1: Viết script**
 
-| Field                         | Cấu hình                                                                              |
-| ----------------------------- | ------------------------------------------------------------------------------------- |
-| `vehicles.status`             | interface Dropdown, đúng ba giá trị `draft` / `published` / `archived`                |
-| `vehicles.slug`               | interface Input, ghi note: "chữ thường, số và dấu gạch ngang. Ví dụ: honda-cb500x-01" |
-| `vehicles.plate`              | note: "Nội bộ — không hiển thị trên web"                                              |
-| `vehicles.description`        | interface Textarea                                                                    |
-| `vehicle_photos.file_id`      | interface File (relation tới Directus Files)                                          |
-| `vehicles` → `vehicle_photos` | O2M qua `vehicle_photos.vehicle_id`                                                   |
+Tạo `scripts/directus-setup.ts`. Yêu cầu cứng: **idempotent** — kiểm-trước-khi-làm ở mọi bước, chạy hai lần liên tiếp thì lần hai không đổi gì. Đọc env `DIRECTUS_URL` (mặc định `http://localhost:8055`), `DIRECTUS_ADMIN_EMAIL`, `DIRECTUS_ADMIN_PASSWORD`, `DATABASE_URL`.
 
-- [ ] **Step 3: Quyền Public — hẹp nhất có thể**
+Thứ tự bắt buộc:
 
-Settings → Access Policies → **Public**.
-Cấp **read** trên `directus_files`. **Không** cấp quyền nào trên `vehicles` hay `vehicle_photos` — JSON đi qua `apps/api`, Directus chỉ phơi byte ảnh.
+1. `POST /auth/login` lấy `access_token`.
+2. Adopt `vehicles` rồi `vehicle_photos` — `GET /fields/<collection>` trước; nếu 403/404 thì `POST /collections` với chỉ `meta`. (Bảng tự hiện trong `GET /collections` kể cả khi chưa adopt, nên **đừng** dùng endpoint đó để kiểm — đó là bẫy đã gặp ở Task 0.)
+3. `PATCH /fields/...` cho interface:
 
-- [ ] **Step 4: Preset ảnh, chặn transform tuỳ ý**
+| Field                  | Cấu hình                                                         |
+| ---------------------- | ---------------------------------------------------------------- |
+| `vehicles.status`      | dropdown đúng ba giá trị `draft` / `published` / `archived`      |
+| `vehicles.slug`        | note: "chữ thường, số và dấu gạch ngang. Ví dụ: honda-cb500x-01" |
+| `vehicles.plate`       | note: "Nội bộ — không hiển thị trên web"                         |
+| `vehicles.description` | interface textarea                                               |
 
-Settings → Files & Storage:
+4. Chèn hai quan hệ bằng SQL qua `Bun.SQL` trên `DATABASE_URL` (role `v9`), mỗi cái bọc kiểm tồn tại:
+   - `vehicle_photos.file_id` → `directus_files` (M2O, `schema: null`)
+   - `vehicle_photos.vehicle_id` → `vehicles`, `one_field = 'photos'` (O2M nhìn từ `vehicles`)
+5. Role Public: **read `directus_files`**, không gì khác. Không cấp quyền nào trên `vehicles` / `vehicle_photos` — JSON đi qua `apps/api`, Directus chỉ phơi byte ảnh.
+6. `PATCH /settings`: `storage_asset_transform = "presets"`, presets có key `web` (fit `inside`, width 2000, quality 80).
+7. `POST /utils/cache/clear`. **Bỏ bước này là hỏng ngầm:** sau khi chèn thẳng vào `directus_relations`, Directus vẫn dùng schema cũ trong bộ nhớ, quan hệ trông như không có tác dụng, và người sau đi debug nhầm chỗ.
 
-- **Transformation Mode**: `Presets Only`
-- Thêm preset key `web`: Fit `inside`, Width `2000`, Quality `80`
+Thêm vào `package.json` ở root:
 
-- [ ] **Step 5: Nhập một xe thật để kiểm đầu-cuối**
+```json
+    "directus:setup": "bun --env-file=.env scripts/directus-setup.ts",
+```
+
+⚠️ **`scripts/` ở root là thư mục mới, và `boundaries/no-unknown-files` có thể nổ vì nó không khớp element nào.** Nếu `bun run lint` báo lỗi đó, thêm `scripts/**` vào mảng `boundaries/ignore` trong `eslint.config.js` — cùng lý do đã ghi sẵn ở đó cho `apps/api/scripts/**`: đây là công cụ vận hành, không phải một tầng trong kiến trúc app/service/db. **Đụng vào `eslint.config.js` thì bắt buộc chạy lại cả ba probe boundaries trong `CLAUDE.md`** và đọc mã lỗi, không chỉ nhìn exit code.
+
+- [ ] **Step 2: Chạy, rồi chạy lại lần nữa**
+
+```bash
+bun run directus:setup
+bun run directus:setup
+```
+
+Expected: lần một tạo mọi thứ; **lần hai không đổi gì** và không lỗi. Script không idempotent sẽ hỏng đúng vào lần dựng môi trường thứ hai — lúc không ai còn nhớ nó tồn tại. Đây là tiêu chí #1b của design doc.
+
+- [ ] **Step 3: Dọn metadata rác có sẵn**
+
+`directus_collections` đang còn một dòng `probe_vehicles` từ phiên đợt 2 — bảng đã bị xoá từ lâu, dòng metadata thì không, vì `DELETE /collections` cũng cần DDL. Xoá bằng SQL:
+
+```bash
+docker compose exec -T postgres psql -U v9 -d v9_rental -c \
+  "DELETE FROM directus.directus_collections WHERE collection = 'probe_vehicles';"
+```
+
+- [ ] **Step 4: Nhập một xe thật để kiểm đầu-cuối**
 
 Tạo một bản ghi `vehicles` với dữ liệu thật của shop, `status = published`, kèm ít nhất một ảnh có `alt` mô tả thật (loại xe, phân khối, tình trạng — không phải tên file).
 
-- [ ] **Step 6: Xác nhận ảnh ra được và transform tuỳ ý bị chặn**
+- [ ] **Step 5: Xác nhận ảnh ra được và transform tuỳ ý bị chặn**
 
 ```bash
 # lấy uuid file từ Directus UI rồi thay vào
@@ -570,26 +605,32 @@ curl -sI "http://localhost:8055/assets/<uuid>?width=9999" | head -3
 
 Expected: lệnh đầu ra `200` + `content-type: image/...`. Lệnh sau **không** trả ảnh 9999px (Directus từ chối hoặc trả ảnh gốc theo preset).
 
-- [ ] **Step 7: Viết runbook**
+- [ ] **Step 6: Viết runbook**
 
-Tạo `docs/runbooks/directus-vehicles.md` ghi lại đúng Step 1→6 ở trên dưới dạng checklist, mở đầu bằng:
+Tạo `docs/runbooks/directus-vehicles.md`, mở đầu bằng:
 
 ```markdown
-# Runbook — cấu hình Directus cho danh mục đội xe
+# Runbook — Directus cho danh mục đội xe
 
-⚠️ Mọi thứ trong file này sống trong **database của Directus, không trong git**.
-Clone repo về máy khác là không có gì cả. Đây cùng họ với `.claude/settings.local.json`
-mà `CLAUDE.md` §"ranh giới repo ép vs cấu hình local" đã cảnh báo — đừng coi nó là
-ràng buộc của repo.
+Cấu hình Directus **không** do repo ép — không có gì bắt ai chạy script. Nhưng nó
+được viết thành `scripts/directus-setup.ts` nên review được trong diff và chạy lại
+được, thay vì sống trong trí nhớ người đã bấm.
 
-Chạy lại toàn bộ file này sau mỗi lần dựng môi trường mới hoặc reset volume Postgres.
+Môi trường mới, hoặc sau khi reset volume Postgres:
+
+    docker compose up -d
+    bun run db:migrate
+    bun run directus:setup     # chạy được nhiều lần, vô hại
 ```
 
-- [ ] **Step 8: Commit**
+Phần còn lại của runbook ghi: những gì Directus **không** làm được (tạo field, tạo quan hệ, xoá collection — đều cần DDL) và cách dọn metadata rác bằng SQL khi một bảng bị xoá.
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add docs/runbooks/directus-vehicles.md
-git commit -m "docs: runbook cấu hình Directus cho danh mục đội xe"
+bun run typecheck && bun run lint
+git add scripts/directus-setup.ts package.json docs/runbooks/directus-vehicles.md
+git commit -m "feat: script cấu hình Directus idempotent — quan hệ ảnh qua metadata, không qua DDL"
 ```
 
 ---
@@ -1804,7 +1845,8 @@ git commit -m "docs: probe asset Directus + cập nhật việc còn để lại
 
 | Tiêu chí design doc                         | Task chứng minh                            |
 | ------------------------------------------- | ------------------------------------------ |
-| #1 Directus nhận bảng có sẵn, không DDL     | Task 0 Step 5                              |
+| ~~#1 Directus nhận bảng có sẵn, không DDL~~ | Task 0 — **đã đo, KHÔNG đạt**              |
+| #1b Quan hệ ảnh qua metadata, idempotent    | Task 3 Step 2 (chạy script hai lần)        |
 | #2 `directus_app` đọc ghi được bảng mới     | Task 0 Step 3, Task 1 Step 8               |
 | #3 `directus_app` vẫn không đổi được schema | Task 0 Step 6, Task 1 Step 8               |
 | #4 Ảnh nằm trong MinIO                      | Task 2 Step 5                              |
