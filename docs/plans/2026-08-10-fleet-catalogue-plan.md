@@ -854,12 +854,16 @@ function toSummary(row: VehicleRow, photo: VehiclePhoto | null): VehicleSummary 
 }
 
 export async function listPublishedVehicles(): Promise<VehicleSummary[]> {
-  // asc() của Postgres đã là NULLS LAST mặc định — xe chưa đặt `sort` rơi xuống cuối.
+  // ⚠️ `NULLS LAST` phải viết ra, không được rút gọn thành desc(createdAt).
+  // Partial index sinh ra là ("sort","created_at" DESC NULLS LAST), còn mặc định
+  // của Postgres cho DESC là NULLS FIRST — planner KHÔNG coi hai cái là một, kể cả
+  // khi created_at là NOT NULL. Viết lệch thì rơi xuống Incremental Sort và index
+  // thành vô dụng. Đã đo bằng EXPLAIN trên 20k hàng.
   const rows = await db
     .select()
     .from(schema.vehicles)
     .where(eq(schema.vehicles.status, "published"))
-    .orderBy(asc(schema.vehicles.sort), desc(schema.vehicles.createdAt));
+    .orderBy(sql`${schema.vehicles.sort}, ${schema.vehicles.createdAt} DESC NULLS LAST`);
 
   if (rows.length === 0) return [];
 
@@ -872,7 +876,10 @@ export async function listPublishedVehicles(): Promise<VehicleSummary[]> {
         rows.map((r) => r.id),
       ),
     )
-    .orderBy(asc(schema.vehiclePhotos.sort));
+    // Thêm `id` làm khoá phụ: upload hàng loạt cho mọi ảnh `sort = 0`, và khi đó
+    // thứ tự Postgres trả về là tuỳ ý — tức ảnh nào lên lưới có thể đổi giữa hai
+    // lần ISR rebuild. `id` làm nó xác định.
+    .orderBy(asc(schema.vehiclePhotos.sort), asc(schema.vehiclePhotos.id));
 
   const first = new Map<string, VehiclePhoto>();
   for (const p of photos) {
@@ -896,7 +903,10 @@ export async function findPublishedVehicleBySlug(slug: string): Promise<VehicleD
     .select()
     .from(schema.vehiclePhotos)
     .where(eq(schema.vehiclePhotos.vehicleId, row.id))
-    .orderBy(asc(schema.vehiclePhotos.sort));
+    // Thêm `id` làm khoá phụ: upload hàng loạt cho mọi ảnh `sort = 0`, và khi đó
+    // thứ tự Postgres trả về là tuỳ ý — tức ảnh nào lên lưới có thể đổi giữa hai
+    // lần ISR rebuild. `id` làm nó xác định.
+    .orderBy(asc(schema.vehiclePhotos.sort), asc(schema.vehiclePhotos.id));
 
   const photos = photoRows.map((p) => ({ fileId: p.fileId, alt: p.alt }));
 
