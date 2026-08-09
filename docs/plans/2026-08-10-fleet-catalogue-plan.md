@@ -1798,6 +1798,13 @@ curl -sI "http://localhost:8055/assets/<uuid-một-ảnh-xe>?key=web" | head -3
 ```
 ````
 
+- [ ] **Step 1b: Vá `packages/db/CLAUDE.md` — hai câu đã thành sai**
+
+Phát hiện lúc làm Task 1; bản đầu của plan không giao cho ai.
+
+- "Phiên scaffold **chưa có bảng nghiệp vụ nào** — `src/schema/` cố ý rỗng" → sai từ migration `0002`. Viết lại cho đúng: có `vehicles` và `vehicle_photos`; `customers` và `rentals` vẫn chưa.
+- "Migration hiện có: `0000_btree_gist` · `0001_service_roles`" → thiếu `0002_tearful_plazm` (bảng danh mục xe).
+
 - [ ] **Step 2: Cập nhật §Việc còn để lại trong `CLAUDE.md`**
 
 - Bỏ `vehicles` khỏi danh sách schema chưa có (giữ nguyên `customers`, `rentals`, `booking_requests`).
