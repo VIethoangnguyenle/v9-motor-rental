@@ -306,6 +306,82 @@ Rủi ro thứ hai, nhỏ hơn nhưng cùng loại: `ALTER DEFAULT PRIVILEGES` t
 bảng do **đúng role đã chạy nó** tạo ra. Migration chạy bằng `v9` nên trên lý thuyết là khớp — nhưng
 "trên lý thuyết" chính là cách repo này đã tự lừa mình bốn lần. Thành tiêu chí #3 ở §10.
 
+### 7.1 Kết quả probe (chạy ngày 2026-08-10)
+
+Probe chạy trên Directus 11 thật qua REST API (UI chỉ là client của cùng API này). Xác nhận trước
+khi đo, để kết quả có nghĩa: Directus kết nối bằng role `directus_app` (`DB_USER` trong
+`compose.yaml`, đối chiếu `pg_stat_activity` thấy đúng role đó đang giữ kết nối), role này **không**
+superuser, và `has_schema_privilege('directus_app', 'public', 'CREATE')` = `false`. Không bước nào
+cấp thêm quyền cho bất kỳ role nào.
+
+- Directus nhận collection từ bảng có sẵn: **được** — `POST /collections` với **chỉ khoá `meta`**,
+  không kèm `schema`/`fields` (HTTP 200). Bảng tự hiện trong `GET /collections` ngay khi `v9` tạo
+  xong, nhưng khi chưa có dòng metadata thì `GET /fields/probe_fleet` trả 403 `FORBIDDEN` — nên vẫn
+  phải adopt chính thức. Sau adopt, cột của `public.probe_fleet` **không đổi** (`id`, `name`,
+  `file_id`); chỉ thêm một dòng trong `directus.directus_collections`.
+- Gắn field ảnh không cần DDL: **không** — cả ba đường chính thức đều bị Postgres chặn:
+
+  ```
+  POST /relations {"collection":"probe_fleet","field":"file_id",
+                   "related_collection":"directus_files","schema":{"on_delete":"SET NULL"}}
+  → HTTP 500
+  alter table "probe_fleet" add constraint "probe_fleet_file_id_foreign" foreign key ("file_id")
+  references "directus_files" ("id") on delete SET NULL - must be owner of table probe_fleet
+
+  POST /relations (bỏ hẳn khoá "schema", hy vọng chỉ ghi metadata)
+  → HTTP 500
+  alter table "probe_fleet" add constraint "probe_fleet_file_id_foreign" foreign key ("file_id")
+  references "directus_files" ("id") - must be owner of table probe_fleet
+
+  POST /fields/probe_fleet (tạo cột ảnh mới thay vì dùng cột sẵn có)
+  → HTTP 500
+  alter table "probe_fleet" add column "anh_moi" uuid null - must be owner of table probe_fleet
+  ```
+
+  Đây là lỗi **quyền/sở hữu của Postgres**, không phải lỗi validate payload của Directus: thông báo
+  mang nguyên văn câu SQL mà Directus đã phát ra rồi mới đính lỗi DB vào cuối, và mã trả về là 500
+  `INTERNAL_SERVER_ERROR` chứ không phải 400 `INVALID_PAYLOAD`. Đối chứng độc lập: chạy thẳng
+  `ALTER TABLE` bằng psql với `SET ROLE directus_app` ra đúng cùng một câu `must be owner of table
+  probe_fleet`.
+
+  Riêng `PATCH /fields/probe_fleet/file_id` với **chỉ `meta`** (`interface: file-image`,
+  `special: ["file"]`) thì qua được (HTTP 200) — phần metadata không đụng DDL. Chỗ vỡ là **quan hệ**:
+  `/relations` của Directus **luôn** tạo FOREIGN KEY, không có chế độ chỉ-metadata.
+- `directus_app` đọc được bảng sinh sau migration 0001: **được** — `SET ROLE directus_app; SELECT
+  count(*) FROM public.probe_fleet;` trả `0`. `ALTER DEFAULT PRIVILEGES` phủ đúng bảng tạo sau, nên
+  rủi ro thứ hai nêu ngay trên **không xảy ra**.
+- `ALTER TABLE` bằng `directus_app` vẫn bị từ chối: **đúng** — `ERROR: must be owner of table
+  probe_fleet`. Hàng rào DDL còn nguyên sau toàn bộ probe; không FK nào được thêm vào
+  `public.probe_fleet` (chỉ còn `probe_fleet_pkey`).
+
+**Kết luận: đường chính KHÔNG chạy — bắt buộc chuyển sang đường lùi (1).** Directus không tự cấu
+hình được field ảnh trên bảng thuộc `public`, vì thao tác đó bắt buộc đi qua `ALTER TABLE`. Không có
+cách nào lách bằng payload: bỏ khoá `schema` vẫn ra cùng lệnh DDL.
+
+Đường lùi (2) **không cần dùng** — đã đo được đường lùi (1) chạy đầu-cuối. Chèn thẳng một dòng vào
+`directus.directus_relations` (`many_collection`, `many_field='file_id'`,
+`one_collection='directus_files'`, `one_deselect_action='nullify'`) thì:
+
+- `GET /relations/probe_fleet/file_id` trả 200 với `schema: null` — Directus chấp nhận quan hệ không
+  có FK ở tầng DB;
+- `POST /items/probe_fleet` kèm `file_id` tạo record bình thường;
+- `GET /items/probe_fleet?fields=*,file_id.*` **expand đúng** thành object file lồng nhau:
+  `"file_id":{"id":"f08202b0-…","type":"image/png","filename_download":"px.png"}`.
+
+Hệ quả cho phần triển khai: **migration phải tự khai quan hệ Directus**, không trông chờ bấm trong
+UI — và §10 cần thêm một tiêu chí kiểm rằng dòng `directus_relations` tồn tại sau khi migrate.
+
+**Xác nhận kèm theo cho §4.1** (không sửa ở task này): file upload trong probe trả về
+`"storage":"local"` — đúng như §4.1 dự đoán, Directus chưa có `STORAGE_*` nên ảnh rơi vào ổ đĩa
+trong container chứ không vào MinIO. Ghi lại như **bằng chứng đã xác nhận**; việc sửa thuộc task 3.
+
+Dọn dẹp: đã xoá file test, ba dòng metadata (`collections` / `fields` / `relations`) và
+`DROP TABLE public.probe_fleet`; đếm lại cả ba bảng đều `0`, `to_regclass('public.probe_fleet')`
+rỗng. Ghi chú: `DELETE /collections/probe_fleet` qua API cũng hỏng (`drop table "probe_fleet" - must
+be owner of table probe_fleet`), nên metadata phải xoá bằng SQL trong schema `directus`. Còn sót
+**từ trước probe này** một dòng `probe_vehicles` trong `directus.directus_collections` trong khi bảng
+thật đã bị drop — rác của phiên trước, cố ý không đụng tới ở đây.
+
 ## 8. Non-goals đợt này
 
 - Không làm form gửi yêu cầu thuê (`booking_requests`) — đợt kế ngay sau.
