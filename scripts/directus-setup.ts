@@ -370,7 +370,29 @@ if (publicPolicy === undefined) {
   throw new Error("Không tìm thấy policy Public (directus_access với role và user đều NULL)");
 }
 
-const filePermShape: Meta = { fields: ["*"], permissions: {}, validation: {} };
+// `fields` KHÔNG phải `["*"]`, và đây là chỗ dễ nới ra cho "đỡ phiền" nhất trong file này.
+// Cấp `*` thì `GET /files` công khai trả cả `filename_disk`, `storage`, `uploaded_by`
+// (uuid tài khoản back-office) và `tus_data` cho bất kỳ ai — đo thật, không phải lo xa.
+// Danh sách dưới đây đã đo là ĐỦ để `/assets/<uuid>?key=web` phục vụ một file HOÀN TOÀN
+// MỚI (chưa có entry cache) mà không cần token. `filename_download` có mặt chỉ để
+// Content-Disposition còn tên file tử tế — bỏ nó thì trình duyệt lưu về thành uuid.
+const filePermShape: Meta = {
+  fields: [
+    "id",
+    "type",
+    "title",
+    "description",
+    "filename_download",
+    "width",
+    "height",
+    "filesize",
+    "focal_point_x",
+    "focal_point_y",
+    "modified_on",
+  ],
+  permissions: {},
+  validation: {},
+};
 const filePerms = await api<(Meta & { id: number })[]>(
   "GET",
   `/permissions?filter%5Bpolicy%5D%5B_eq%5D=${publicPolicy}` +
