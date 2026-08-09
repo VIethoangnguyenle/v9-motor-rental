@@ -274,8 +274,12 @@ chạm Postgres nằm ở service.
 
 ```
 GET /vehicles          → danh sách xe status='published', ORDER BY sort, created_at DESC NULLS LAST
-GET /vehicles/:slug    → một xe published; 404 nếu không tồn tại hoặc chưa published
+GET /vehicles/:slug    → một xe published; 404 cho mọi trường hợp khác
 ```
+
+**`draft`, `archived` và không tồn tại đều trả 404 giống hệt nhau** — cố ý. Phân biệt chúng là để
+lộ ra rằng một slug nào đó _có tồn tại nhưng chưa đăng_, tức là rò rỉ chính thứ mà `status` sinh ra
+để giấu. Người ngoài không cần biết shop đang chuẩn bị đưa xe nào lên.
 
 Response khai bằng TypeBox:
 

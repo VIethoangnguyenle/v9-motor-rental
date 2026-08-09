@@ -1820,7 +1820,15 @@ Phát hiện lúc làm Task 1; bản đầu của plan không giao cho ai.
 - Bỏ `vehicles` khỏi danh sách schema chưa có (giữ nguyên `customers`, `rentals`, `booking_requests`).
 - Thêm một dòng: `booking_requests` + form gửi yêu cầu trên `apps/web` là đợt kế tiếp.
 
-- [ ] **Step 3: Ghi ADR vào Agent Memory (tiêu chí #12)**
+- [ ] **Step 2b: Ghi vào `CLAUDE.md` §Việc còn để lại — credential MinIO root trong prod**
+
+Phát hiện lúc làm Task 2, chưa có chủ. `compose.prod.yaml` cho Directus dùng `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`. `.env.example` có cảnh báo, nhưng cảnh báo không ép được gì — và deploy đang gác nên chưa ai đâm vào.
+
+Ghi thành một dòng trong mục **Deploy** của §Việc còn để lại: trước khi stack chạm VPS thật, tạo access key MinIO riêng cho Directus với quyền chỉ trên bucket `vehicles`.
+
+- [ ] **Step 3: Ghi ADR vào Agent Memory (tiêu chí #12) — ĐÃ LÀM ở phiên điều phối**
+
+Ba ADR đã được ghi bởi agent điều phối (có đủ lịch sử quyết định, subagent thì không). Việc của task này chỉ là **kiểm** bằng `memory_recall`, không ghi lại:
 
 Lưu quyết định + lý do, **không** lưu code:
 
