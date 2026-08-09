@@ -44,6 +44,22 @@ jobs:
       # db:migrate` — giữ một code path duy nhất, script này chạy giống hệt cho
       # người dev lẫn CI, không cần một biến thể "phiên bản CI" riêng.
       - run: bun run db:migrate
+
+      # Bắt DRIFT giữa khai báo drizzle (`packages/db/src/schema/`) và migration
+      # đã commit. CI chạy `db:migrate` + `bun test`, nhưng test kiểm DATABASE ĐÃ
+      # APPLY chứ không kiểm khai báo — nên sửa `schema/vehicles.ts` mà quên
+      # `bun run db:generate` là thay đổi VÔ HÌNH: mọi test vẫn xanh, còn database
+      # thật thì không bao giờ có cột/constraint đó. Bước này sinh lại migration;
+      # nếu có gì mới xuất hiện thì `git diff --exit-code` đỏ.
+      #
+      # `--exit-code` trên đúng thư mục `migrations`: `meta/` cũng nằm trong đó và
+      # cũng phải được commit cùng migration, còn snapshot lệch thì lần generate
+      # sau đòi tạo lại bảng.
+      - name: Migration khớp với schema (db:generate không sinh thêm gì)
+        run: |
+          bun run db:generate
+          git diff --exit-code packages/db/migrations
+
       - run: bun run lint
       - run: bun run typecheck
       - run: bun test
