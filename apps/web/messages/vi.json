@@ -4,12 +4,45 @@
     "tagline": "Thuê mô tô phân khối lớn tại TP.HCM"
   },
   "scaffold": {
-    "notice": "Trang tạm. Danh sách xe và form gửi yêu cầu chưa làm.",
     "apiHealth": "Trạng thái API"
   },
   "booking": {
     "cta": "Gửi yêu cầu thuê",
     "afterSubmit": "Đã nhận yêu cầu. Shop sẽ liên hệ với bạn để xác nhận xe và thời gian.",
     "note": "Gửi yêu cầu chưa phải là đặt xe. Shop xác nhận rồi mới có đơn."
+  },
+  "nav": {
+    "vehicles": "Đội xe",
+    "howItWorks": "Cách thuê",
+    "contact": "Liên hệ"
+  },
+  "hero": {
+    "headline": "Thuê mô tô phân khối lớn tại TP.HCM",
+    "sub": "Đội xe thật, ảnh thật của từng chiếc — bạn thấy đúng con xe mình sẽ nhận. Giao xe tận nơi.",
+    "secondaryCta": "Xem đội xe"
+  },
+  "vehicles": {
+    "heading": "Đội xe",
+    "lead": "Ảnh chụp từng chiếc, không phải ảnh catalogue của hãng.",
+    "detail": "Xem chi tiết",
+    "empty": "Chưa có dữ liệu xe — bảng vehicles chưa được tạo."
+  },
+  "terms": {
+    "heading": "Thủ tục thuê",
+    "papers": { "value": "CCCD / Hộ chiếu", "label": "Giấy tờ giữ lại" },
+    "deposit": { "value": "Đặt cọc tiền", "label": "Kèm giấy tờ tùy thân" },
+    "unit": { "value": "Theo ngày", "label": "Đơn vị thuê cơ bản" },
+    "delivery": { "value": "Giao tận nơi", "label": "Khách sạn hoặc địa chỉ hẹn" },
+    "photoNote": "Shop chụp ảnh tình trạng xe lúc giao và lúc nhận lại. Ảnh đó là bằng chứng khi có tranh chấp xước xát — bảo vệ cả bạn lẫn shop."
+  },
+  "footer": {
+    "vehicles": "Đội xe",
+    "rental": "Thuê xe",
+    "shop": "Shop",
+    "legal": "Trang prototype. Nội dung xe và ảnh chưa phải dữ liệu thật."
+  },
+  "placeholder": {
+    "imageTag": "Ảnh AI tạm — chưa phải xe của shop",
+    "vehicleName": "Xe mẫu"
   }
 }

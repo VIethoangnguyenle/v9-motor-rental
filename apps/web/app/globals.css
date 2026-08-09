@@ -1,0 +1,411 @@
+/*
+ * Token của DESIGN.md. Đây là chỗ DUY NHẤT định nghĩa màu/thang cách —
+ * component đọc var(), không hard-code hex.
+ *
+ * --accent CỐ Ý để trống: DESIGN.md §9. Bản BMW gốc dùng M tricolor của BMW,
+ * ta không dùng được; màu thật phải rút từ logo shop, chưa có asset. Cho tới
+ * lúc đó giao diện chạy đơn sắc trắng-đen — đừng điền màu vào đây cho "đỡ trống".
+ */
+:root {
+  --canvas: #000000;
+  --surface-card: #1a1a1a;
+  --surface-elevated: #262626;
+  --surface-soft: #0d0d0d;
+
+  --ink: #ffffff;
+  --body-strong: #e6e6e6;
+  --body: #bbbbbb;
+  --muted: #7e7e7e;
+
+  /* 1.90:1 trên canvas — CHỈ làm viền, không bao giờ làm chữ. DESIGN.md §2 */
+  --hairline: #3c3c3c;
+
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-xxl: 64px;
+  --space-section: 96px;
+
+  --container: 1440px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--canvas);
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--body);
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  font-weight: 300; /* thân bài LUÔN 300 — DESIGN.md §3 luật 2 */
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* ── Typography ─────────────────────────────────────────────────────────
+ * line-height của display là 1.15/1.2, KHÔNG phải 1.0 như bản BMW gốc.
+ * Ở 1.0 dấu tiếng Việt (Ố, Ế, Ự) đâm vào dòng trên. DESIGN.md §3 luật 1.
+ */
+.display-xl,
+.display-lg,
+.display-md,
+.display-sm {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  color: var(--ink);
+  margin: 0;
+}
+.display-xl {
+  font-size: clamp(36px, 5vw, 60px);
+  line-height: 1.15;
+}
+.display-lg {
+  font-size: clamp(28px, 3.4vw, 40px);
+  line-height: 1.15;
+}
+.display-md {
+  font-size: clamp(22px, 2.2vw, 28px);
+  line-height: 1.2;
+}
+.display-sm {
+  font-size: clamp(20px, 1.8vw, 24px);
+  line-height: 1.2;
+}
+
+.title-lg {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ink);
+  margin: 0;
+}
+.title-md {
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--body-strong);
+  margin: 0;
+}
+
+.label-upper {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.body-sm {
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.6;
+}
+
+.caption {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────── */
+.container {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding-inline: var(--space-lg);
+}
+
+.section {
+  padding-block: var(--space-section);
+}
+
+/* ── Nút ────────────────────────────────────────────────────────────────
+ * Góc 0px là ngôn ngữ thương hiệu. Bo góc đọc ra consumer-tech. DESIGN.md §4.
+ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: 0;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+.btn-primary {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--ink);
+}
+.btn-primary:hover {
+  background: var(--ink);
+  color: var(--canvas);
+}
+.btn-solid {
+  background: var(--ink);
+  color: var(--canvas);
+  border: 1px solid var(--ink);
+}
+.btn-solid:hover {
+  background: transparent;
+  color: var(--ink);
+}
+
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--ink);
+  text-decoration: none;
+}
+.text-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* ── Nav ────────────────────────────────────────────────────────────── */
+/* KHÔNG đặt flex ở đây: .container bên trong mới là thứ căn hai đầu. Để flex ở
+ * cả hai tầng thì container co lại bằng nội dung và nav dồn vào giữa. */
+.top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 64px;
+  display: block;
+  background: var(--canvas);
+  border-bottom: 1px solid var(--hairline);
+}
+.top-nav .container {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xl);
+}
+.nav-links {
+  display: flex;
+  gap: var(--space-xl);
+}
+.wordmark {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* ── Băng ảnh hero ──────────────────────────────────────────────────── */
+.hero {
+  position: relative;
+  min-height: min(78vh, 720px);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+.hero-media,
+.hero-media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Nền để chỗ đặt ảnh nhìn ra được là VÙNG ẢNH khi chưa có ảnh thật. Không có
+ * dòng này thì hero là một khoảng đen trơn và không ai biết ảnh sẽ nằm đâu.
+ * Dùng surface-elevated chứ không surface-card vì scrim phủ lên khá nặng —
+ * ở #1a1a1a thì vùng ảnh gần như biến mất. Có ảnh thật thì nền này bị che hết. */
+.hero-media {
+  background: var(--surface-elevated);
+}
+/* Lớp phủ đen thuần để chữ đọc được trên ảnh. Không phải gradient màu —
+ * đây là black-to-transparent, thuộc nhóm "độ sâu từ ảnh". DESIGN.md §6. */
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.92) 0%,
+    rgba(0, 0, 0, 0.55) 45%,
+    rgba(0, 0, 0, 0.15) 100%
+  );
+}
+.hero-inner {
+  position: relative;
+  width: 100%;
+  padding-block: var(--space-xxl);
+}
+.hero-sub {
+  max-width: 46ch;
+  margin: var(--space-lg) 0 var(--space-xl);
+  color: var(--body-strong);
+}
+
+/* ── Lưới xe ────────────────────────────────────────────────────────── */
+.grid-vehicles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+}
+.vehicle-card {
+  background: var(--canvas);
+  border-radius: 0;
+}
+.vehicle-media {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: var(--surface-card);
+  overflow: hidden;
+}
+.vehicle-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.vehicle-body {
+  padding-top: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  align-items: flex-start;
+}
+/* Trong card, metadata dùng --body chứ KHÔNG dùng --muted:
+ * muted trên surface-card chỉ 4.29:1, dưới ngưỡng AA. DESIGN.md §2 */
+.vehicle-meta {
+  color: var(--body);
+}
+
+/* ── Ô thông số ─────────────────────────────────────────────────────── */
+.grid-specs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--hairline);
+  border: 1px solid var(--hairline);
+}
+.spec-cell {
+  background: var(--surface-soft);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.spec-label {
+  color: var(--body);
+}
+
+/* ── Băng CTA + footer ──────────────────────────────────────────────── */
+.cta-band {
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  text-align: center;
+}
+.cta-note {
+  max-width: 52ch;
+  margin: var(--space-lg) auto var(--space-xl);
+  color: var(--body);
+}
+
+.site-footer {
+  border-top: 1px solid var(--hairline);
+  padding-block: var(--space-xxl);
+}
+.footer-cols {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-lg);
+}
+.footer-col h3 {
+  margin: 0 0 var(--space-md);
+  color: var(--ink);
+}
+.footer-col ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+/* ── Nhãn placeholder ───────────────────────────────────────────────────
+ * Dùng token caption (vốn dành cho chú thích ảnh). Ảnh trong prototype là
+ * AI sinh, KHÔNG phải xe của shop — nhãn này phải còn nguyên tới khi thay
+ * bằng ảnh thật. Xoá nhãn mà không thay ảnh = nói dối khách.
+ */
+.placeholder-tag {
+  position: absolute;
+  right: var(--space-sm);
+  bottom: var(--space-sm);
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid var(--hairline);
+  color: var(--body);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ── Responsive — DESIGN.md §8 ──────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .grid-vehicles {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .grid-specs {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .footer-cols {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --space-section: 64px;
+  }
+  /* DESIGN.md §8 yêu cầu hamburger ở mobile — CHƯA LÀM (cần client component).
+   * Tạm ẩn link để wordmark không bị gãy dòng. Trang vẫn đi lại được bằng CTA
+   * trong hero. Đây là nợ đã biết, không phải quyết định thiết kế. */
+  .nav-links {
+    display: none;
+  }
+  .wordmark {
+    white-space: nowrap;
+  }
+  .grid-vehicles,
+  .grid-specs,
+  .footer-cols {
+    grid-template-columns: 1fr;
+  }
+  .hero {
+    min-height: 70vh;
+  }
+}

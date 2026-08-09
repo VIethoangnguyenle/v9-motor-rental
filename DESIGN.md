@@ -78,19 +78,28 @@ Màu accent khi có phải **đo lại** trên cả `#000000` và `#1a1a1a` trư
 `vietnamese` (đã kiểm), dải 100–900, chất grotesque "machined" gần BMW Type Next và **không**
 phải Inter.
 
+Cỡ dùng `clamp()` — giá trị dưới là **mobile → desktop**:
+
 ```
-display-xl   80px / 700 / lh 1.15 / ls 0      HOA   hero h1
-display-lg   56px / 700 / lh 1.15 / ls 0      HOA   đầu mục lớn
-display-md   40px / 700 / lh 1.2  / ls 0      HOA   tên xe
-display-sm   32px / 700 / lh 1.2  / ls 0      HOA   tiêu đề băng CTA
-title-lg     24px / 700 / lh 1.35              card title
-title-md     20px / 400 / lh 1.45              lead
-label-upper  14px / 700 / lh 1.4 / ls 1.5px  HOA   nhãn danh mục, link
-body-md      16px / 300 / lh 1.6               thân bài mặc định
-body-sm      14px / 300 / lh 1.6               chân trang, fine print
-caption      12px / 400 / lh 1.5 / ls 0.5px    chú thích ảnh
-button       14px / 700 / lh 1.2 / ls 1.5px  HOA   nhãn nút
+display-xl   36 → 60px / 700 / lh 1.15 / ls 0      HOA   hero h1
+display-lg   28 → 40px / 700 / lh 1.15 / ls 0      HOA   đầu mục lớn
+display-md   22 → 28px / 700 / lh 1.2  / ls 0      HOA   tên xe
+display-sm   20 → 24px / 700 / lh 1.2  / ls 0      HOA   giá trị ô thông số
+title-lg          20px / 700 / lh 1.35              card title
+title-md          18px / 400 / lh 1.5               lead
+label-upper       14px / 700 / lh 1.4 / ls 1.5px  HOA   nhãn danh mục, link
+body-md           16px / 300 / lh 1.6               thân bài mặc định
+body-sm           14px / 300 / lh 1.6               chân trang, fine print
+caption           12px / 400 / lh 1.5 / ls 0.5px    chú thích ảnh
+button            14px / 700 / lh 1.2 / ls 1.5px  HOA   nhãn nút
 ```
+
+**Thang này nhỏ hơn BMW M một bậc** (bản gốc: hero 80px, đầu mục 56px, tên xe 40px). Hạ sau khi
+dựng thử trang chủ và nhìn thật: 80px hợp với site thương hiệu xa xỉ mỗi trang một sản phẩm, còn
+đây là **catalogue** — chữ to cỡ đó đẩy lưới xe xuống quá sâu và bắt cuộn nhiều mới thấy được xe.
+
+Chữ ký của hệ **không nằm ở cỡ chữ mà ở tương phản trọng lượng** (700 vs 300), nên hạ cỡ không
+làm mất bản sắc. Hạ trọng lượng thì mất.
 
 **Ba luật không được phá:**
 
