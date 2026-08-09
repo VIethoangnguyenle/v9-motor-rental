@@ -52,7 +52,7 @@ CREATE TABLE vehicles (
   make          text NOT NULL,          -- Honda
   model         text NOT NULL,          -- CB500X
   year          integer,                -- đời xe
-  engine_cc     integer NOT NULL,
+  engine_cc     integer NOT NULL CHECK (engine_cc > 0),
   odo_km        integer,
   color         text,
   plate         text,                   -- biển số: nội bộ, KHÔNG ra web
@@ -63,8 +63,14 @@ CREATE TABLE vehicles (
                 CHECK (status IN ('draft','published','archived')),
   sort          integer,
   created_at    timestamptz NOT NULL DEFAULT now(),
-  updated_at    timestamptz NOT NULL DEFAULT now()
+  updated_at    timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT vehicles_money_nonneg CHECK (price_per_day >= 0 AND deposit >= 0)
 );
+
+-- updated_at không có gì ghi vào nếu không có trigger: Directus ghi thẳng vào Postgres,
+-- không đi qua apps/api, nên $onUpdate của Drizzle hay hook của Elysia đều bị đi vòng qua.
+CREATE TRIGGER vehicles_set_updated_at
+  BEFORE UPDATE ON vehicles FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE TABLE vehicle_photos (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -74,13 +80,19 @@ CREATE TABLE vehicle_photos (
   sort       integer NOT NULL DEFAULT 0
 );
 
-CREATE INDEX vehicles_published_idx ON vehicles (sort, created_at DESC) WHERE status = 'published';
+CREATE INDEX vehicles_published_idx ON vehicles (sort, created_at DESC NULLS LAST) WHERE status = 'published';
 CREATE INDEX vehicle_photos_vehicle_idx ON vehicle_photos (vehicle_id, sort);
 ```
 
 Partial index đánh trên `(sort, created_at)` chứ **không** đánh trên `status`: đây là index chỉ chứa
 hàng `published`, nên `status` bên trong nó là hằng số và làm khoá tìm kiếm thì vô dụng. Cột cần
 đánh là cột dùng để **sắp xếp** — đúng thứ tự `ORDER BY` của endpoint danh sách ở §5.
+
+`NULLS LAST` phải viết ra ở **cả hai** nơi, index lẫn `ORDER BY`. Mặc định của Postgres cho `DESC`
+là `NULLS FIRST`, và planner **không** coi hai thứ đó thay thế được cho nhau kể cả khi `created_at`
+là `NOT NULL`. Đo bằng EXPLAIN trên 20k hàng `published`: `ORDER BY sort, created_at DESC` rơi
+xuống Incremental Sort, chỉ `ORDER BY sort, created_at DESC NULLS LAST` mới ra Index Scan sạch.
+Mất index ở đây là mất trong im lặng — không lỗi, không cảnh báo, chỉ chậm.
 
 Cả hai bảng khai trong `packages/db/src/schema/` rồi sinh bằng `bun run db:generate` — đây là "bảng
 thường" theo bảng phân loại ở `packages/db/CLAUDE.md`. `drizzle-orm@0.45.2` diễn đạt được cả
@@ -92,10 +104,18 @@ thế là để snapshot của drizzle lệch khỏi thực tế và lần `db:g
 
 ### 3.1 Sáu quyết định trong đoạn SQL trên
 
-**`integer` cho tiền, không phải `bigint`.** Drizzle trả `bigint` về JavaScript dưới dạng `string`.
-Thế là `type Vnd = number` của `packages/shared` vỡ ngay tại ranh giới, và nó vỡ **im lặng** — chuỗi
-`"1200000"` vẫn nối được, vẫn render được, chỉ sai lúc đem đi cộng. Giá ngày và tiền cọc không tới
-2,1 tỷ nên `integer` đủ, và nó là kiểu duy nhất giữ được `Vnd` nguyên vẹn.
+**`integer` cho tiền, không phải `bigint`.** Giá một ngày thuê và tiền cọc tính bằng đồng không tới
+2,1 tỷ, nên `integer` thừa sức chứa. Quan trọng hơn: `integer` là kiểu duy nhất round-trip về
+`number` thuần mà **không có tuỳ chọn nào để chọn sai**. `bigint` bắt phải chọn `mode` —
+`mode: "number"` dựng `PgBigInt53` và trả `number`, còn `mode: "bigint"` dựng `PgBigInt64` và trả
+`BigInt`, thứ làm vỡ `type Vnd = number` của `packages/shared`. Một cột không có mode để đặt sai thì
+không có cách nào đặt sai.
+
+Bản trước của mục này ghi "Drizzle trả `bigint` về dưới dạng `string`". **Sai** — đã kiểm trên
+`drizzle-orm@0.45.2`: `mapFromDriverValue` của `PgBigInt53` trả `number`, của `PgBigInt64` trả
+`BigInt`; kiểu trả `string` là `PgNumeric`, tức `numeric`/`decimal`, không phải `bigint`. Quyết định
+giữ nguyên, chỉ lý do là sai. Comment trong `packages/db/src/schema/vehicles.ts` từng chép lại câu
+sai này, nay đã sửa cùng lúc — đừng suy ngược lại từ một trong hai chỗ.
 
 **`status` là trạng thái _danh mục_, không phải trạng thái _rảnh/bận_.** Ba giá trị, và không giá
 trị nào mang nghĩa "xe đang có sẵn". `apps/web` bị cấm hứa xe còn trống (`apps/web/AGENTS.md`), nên
@@ -253,7 +273,7 @@ Một Elysia plugin `vehicles`, **luôn đặt `name`** (thiếu `name` thì plu
 chạm Postgres nằm ở service.
 
 ```
-GET /vehicles          → danh sách xe status='published', sắp theo (sort NULLS LAST, created_at DESC)
+GET /vehicles          → danh sách xe status='published', ORDER BY sort, created_at DESC NULLS LAST
 GET /vehicles/:slug    → một xe published; 404 nếu không tồn tại hoặc chưa published
 ```
 
