@@ -4,12 +4,14 @@ import { env } from "./env";
 import { auth } from "./plugins/auth";
 import { timing } from "./plugins/timing";
 import { health } from "./routes/health";
+import { vehicles } from "./routes/vehicles";
 
 const app = new Elysia()
   .use(cors())
   .use(timing)
   .use(auth)
   .use(health)
+  .use(vehicles)
   .listen({ port: env.port, hostname: env.host });
 
 console.warn(`api đang chạy tại http://${env.host}:${String(env.port)}`);
