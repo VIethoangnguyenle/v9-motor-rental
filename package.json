@@ -13,7 +13,7 @@
     "dev": "bun --env-file=.env run --filter '*' dev",
     "build": "bun --env-file=.env run --filter '*' build",
     "test": "bun test",
-    "typecheck": "bun run --filter '*' typecheck",
+    "typecheck": "bun run --filter '*' typecheck && ./node_modules/.bin/tsc --noEmit -p scripts/tsconfig.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -21,6 +21,7 @@
     "db:generate": "bun run --filter @v9/db generate",
     "db:custom": "bun run --filter @v9/db custom",
     "db:migrate": "bun --env-file=.env packages/db/scripts/migrate.ts",
+    "directus:setup": "bun --env-file=.env scripts/directus-setup.ts",
     "bench": "bun run apps/api/scripts/bench.ts"
   },
   "devDependencies": {
