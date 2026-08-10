@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function VehiclesPage() {
-  const vehicles = await fetchVehicles();
+  const { vehicles, failed } = await fetchVehicles();
 
   return (
     <>
@@ -26,7 +26,12 @@ export default async function VehiclesPage() {
             <h1 className="display-xl m-0 text-ink">{messages.vehicles.heading}</h1>
             <p className="mt-6 max-w-[52ch] text-lg text-body-strong">{messages.vehicles.lead}</p>
 
-            {vehicles.length === 0 ? (
+            {/* Ba nhánh, không hai: "không gọi được API" KHÁC "shop chưa đăng xe
+                nào". Gộp lại thì một sự cố hạ tầng biến thành lời khẳng định sai
+                về shop, nướng vào HTML tĩnh. */}
+            {failed ? (
+              <p className="mt-10 text-body">{messages.vehicles.loadFailed}</p>
+            ) : vehicles.length === 0 ? (
               <p className="mt-10 text-body">{messages.vehicles.empty}</p>
             ) : (
               <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">

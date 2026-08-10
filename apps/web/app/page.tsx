@@ -35,7 +35,10 @@ function PlaceholderTag() {
 export default async function Page() {
   // Song song, không nối tiếp: hai request không phụ thuộc nhau, chờ lần lượt
   // chỉ cộng thêm latency vào chính lần build/revalidate.
-  const [{ data, error }, vehicles] = await Promise.all([api.health.get(), fetchVehicles()]);
+  const [{ data, error }, { vehicles, failed }] = await Promise.all([
+    api.health.get(),
+    fetchVehicles(),
+  ]);
   const apiStatus = error ? "lỗi" : data.status;
 
   // Trang chủ là cửa sổ, không phải danh mục: ba chiếc đầu rồi mời sang /xe.
@@ -110,7 +113,11 @@ export default async function Page() {
             <h2 className="display-lg m-0 text-ink">{messages.vehicles.heading}</h2>
             <p className="mt-4 text-lg text-body-strong">{messages.vehicles.lead}</p>
 
-            {featured.length === 0 ? (
+            {failed ? (
+              // Không gọi được API. KHÔNG được nói "chưa có xe nào được đăng" ở
+              // đây — đó là một câu sai về shop, và nó bị nướng vào HTML tĩnh.
+              <p className="mt-10 text-body">{messages.vehicles.loadFailed}</p>
+            ) : featured.length === 0 ? (
               // Chưa đăng xe nào — nói thẳng với khách bằng câu của họ, không
               // để lại lưới rỗng trông như trang hỏng.
               <p className="mt-10 text-body">{messages.vehicles.empty}</p>

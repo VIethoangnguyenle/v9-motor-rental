@@ -17,7 +17,9 @@ export const revalidate = 300;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  const vehicles = await fetchVehicles();
+  // Cố ý bỏ qua cờ `failed`: API chết lúc build thì danh sách rỗng là ĐÚNG hành vi
+  // mong muốn ở đây — không sinh sẵn trang nào, `dynamicParams` lo phần còn lại.
+  const { vehicles } = await fetchVehicles();
   return vehicles.map((v) => ({ slug: v.slug }));
 }
 

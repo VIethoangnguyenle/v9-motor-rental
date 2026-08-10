@@ -26,6 +26,7 @@
     "lead": "Ảnh chụp từng chiếc, không phải ảnh catalogue của hãng.",
     "detail": "Xem chi tiết",
     "empty": "Chưa có xe nào được đăng. Nhắn Zalo hoặc Fanpage để hỏi xe đang có.",
+    "loadFailed": "Chưa tải được danh sách xe. Bạn thử lại sau ít phút, hoặc nhắn Zalo hoặc Fanpage để hỏi xe đang có.",
     "noPhoto": "Chưa có ảnh",
     "all": "Xem tất cả xe",
     "perDay": "/ ngày",
