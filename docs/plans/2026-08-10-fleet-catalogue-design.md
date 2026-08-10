@@ -335,6 +335,20 @@ khách. `generateMetadata` thường là đủ ở quy mô một shop.
 
 Xem lại khi nào: khi hệ thống thật sự biết xe còn trống hay không, tức là sau khi có `rentals`.
 
+### 6.1b Lỗ duy nhất trong luật copy: trường `description`
+
+Mọi chuỗi do code sinh ra đều đi qua `messages/vi.json` và đã được soát. Nhưng `description` là
+**văn bản tự do nhân viên gõ trong Directus**, và nó render nguyên vẹn ra trang chi tiết. Không có
+gì ngăn một câu kiểu "xe còn trống cuối tuần này" đi thẳng lên web công khai.
+
+Không bịt bằng code ở đợt này. Chặn bằng validate thì hoặc quá thô (cấm từ khoá, sẽ chặn nhầm) hoặc
+quá phức tạp cho một shop có vài chục xe. Cách đúng là **nói cho người nhập liệu biết** — ghi vào
+`docs/runbooks/directus-vehicles.md` rằng `description` tả _chiếc xe_, không tả _tình trạng còn
+trống_, vì lịch xe không nằm ở Directus.
+
+Ghi ra đây để nó là một lỗ **đã biết** thay vì một lỗ tưởng đã bịt: câu "không trang nào hứa xe còn
+trống" đúng với phần code, không đúng với phần dữ liệu.
+
 ### 6.2 Khi API chết lúc build
 
 `generateStaticParams()` trả `[]` thay vì ném lỗi. CI không có Postgres, nên ném lỗi biến "chưa có
