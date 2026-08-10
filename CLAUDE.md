@@ -133,6 +133,16 @@ transaction đó thì phải bọc câu có thể lỗi trong `tx.savepoint(asyn
 Baseline đo 2026-08-05 trên máy dev: `/health` p50 1.28ms · p95 2.26ms · p99 2.95ms · 34.968 rps.
 `bun run bench` exit 1 khi vượt.
 
+⚠️ **Baseline đó đo khi stack còn ít container.** Đo lại 2026-08-10 với đủ postgres + minio +
+directus + supertokens đang chạy: p50 1.55ms · **p95 2.88ms** · p99 16.78ms · 23.314 rps. p95 vẫn
+trong budget và budget chỉ ép p95 — nhưng p99 cao gấp sáu và rps thấp hơn một phần ba, **do máy
+chật chứ không do code**: `/health` không chạm Postgres, và đợt 3 không thêm gì vào đường đi của
+nó.
+
+Cố ý **không** ghi đè baseline bằng số mới. Đo lại trên một máy đang ồn rồi gọi đó là baseline là
+rửa số liệu — lần sau có regression thật sẽ không ai thấy. Con số 2026-08-05 giữ nguyên làm mốc;
+đoạn này tồn tại để người đọc không nhầm nhiễu môi trường thành hồi quy.
+
 ---
 
 ## Ràng buộc phiên bản và công cụ
@@ -419,6 +429,13 @@ vai trò `SALES` làm gì.
 
 **Kỹ thuật:** enforce auth trên route thật (SuperTokens đã nối, chưa route nào dùng) · `next-intl`
 khi thật sự có tiếng Anh · upload ảnh lên MinIO.
+
+⚠️ **Nợ có hạn: `mode` trong `eslint.config.js` đã deprecated ở `eslint-plugin-boundaries` v7** và
+in cảnh báo mỗi lần lint. Bản thay là `partialMatch: false`. Phải chuyển **trước** khi nâng
+boundaries lên major kế tiếp, vì mục "hàng rào phải được probe" bên trên ghi rõ: xoá `mode: "full"`
+làm hàng rào **im lặng** ngừng hoạt động. Nếu một bản major xoá `mode` mà chưa chuyển, hàng rào tự
+tắt và mọi thứ vẫn exit 0 — đúng kiểu suy thoái đã xảy ra bốn lần trong dự án này. Chuyển xong phải
+chạy lại cả ba probe và **đọc tên luật**, không nhìn exit code.
 
 **Chặn ở người, không chặn ở code** — hai việc này không tự làm được, cần asset/quyết định từ shop:
 

@@ -48,7 +48,6 @@
     "legal": "Trang prototype. Thông tin và ảnh xe lấy từ danh mục của shop. Riêng ảnh bìa trang chủ là ảnh AI tạm."
   },
   "placeholder": {
-    "imageTag": "Ảnh AI tạm — chưa phải xe của shop",
-    "vehicleName": "Xe mẫu"
+    "imageTag": "Ảnh AI tạm — chưa phải xe của shop"
   }
 }
