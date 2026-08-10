@@ -4,6 +4,21 @@ function required(name: string): string {
   return v;
 }
 
+/**
+ * `Number("abc")` trả NaN chứ không ném — và một cổng NaN chỉ lộ ra lúc listen
+ * hoặc lúc gửi mail đầu tiên, tức là muộn nhất có thể. File này tồn tại để hỏng
+ * sớm, nên ép nó hỏng ở đây.
+ */
+function requiredPort(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return fallback;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 65535) {
+    throw new Error(`Biến môi trường ${name} phải là số cổng hợp lệ, nhận được "${raw}"`);
+  }
+  return parsed;
+}
+
 const isProduction = process.env.NODE_ENV === "production";
 
 /**
@@ -23,7 +38,7 @@ if (isProduction && process.env.AUTH_DEV_OTP) {
 
 export const env = {
   databaseUrl: required("DATABASE_URL"),
-  port: Number(process.env.API_PORT ?? 3001),
+  port: requiredPort("API_PORT", 3001),
   host: process.env.API_HOST ?? "0.0.0.0",
   minio: {
     endpoint: required("MINIO_ENDPOINT"),
@@ -42,7 +57,7 @@ export const env = {
   smtp: process.env.SMTP_HOST
     ? {
         host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT ?? 587),
+        port: requiredPort("SMTP_PORT", 587),
         user: required("SMTP_USER"),
         password: required("SMTP_PASSWORD"),
         from: required("SMTP_FROM"),

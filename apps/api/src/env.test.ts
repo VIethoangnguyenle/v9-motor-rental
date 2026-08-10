@@ -31,4 +31,19 @@ describe("env", () => {
     expect(code).not.toBe(0);
     expect(err).toContain("AUTH_DEV_OTP");
   });
+
+  // Ca này giữ hàng rào KHỎI chặn nhầm: nó phải chỉ nổ khi AUTH_DEV_OTP CÓ MẶT,
+  // không phải nổ với mọi production. Bỏ test này thì việc siết điều kiện thành
+  // `if (isProduction)` sẽ lọt — đã kiểm bằng mutation, hai test kia đều xanh.
+  it("production KHÔNG có AUTH_DEV_OTP vẫn khởi động bình thường", async () => {
+    const { out, code } = await bootWith({ NODE_ENV: "production" });
+    expect(out).toContain("BOOT_OK");
+    expect(code).toBe(0);
+  });
+
+  it("cổng không phải số thì không khởi động", async () => {
+    const { err, code } = await bootWith({ NODE_ENV: "development", API_PORT: "abc" });
+    expect(code).not.toBe(0);
+    expect(err).toContain("API_PORT");
+  });
 });
