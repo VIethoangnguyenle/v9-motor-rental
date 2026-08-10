@@ -22,7 +22,11 @@
     "db:custom": "bun run --filter @v9/db custom",
     "db:migrate": "bun --env-file=.env packages/db/scripts/migrate.ts",
     "directus:setup": "bun --env-file=.env scripts/directus-setup.ts",
+    "staff:bootstrap": "bun --env-file=.env scripts/staff-bootstrap.ts",
     "bench": "bun run apps/api/scripts/bench.ts"
+  },
+  "dependencies": {
+    "supertokens-node": "24.0.3"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
