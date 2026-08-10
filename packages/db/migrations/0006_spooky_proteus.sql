@@ -1,0 +1,1 @@
+ALTER TABLE "staff_users" ADD CONSTRAINT "staff_users_approved_by_staff_users_id_fk" FOREIGN KEY ("approved_by") REFERENCES "public"."staff_users"("id") ON DELETE set null ON UPDATE no action;

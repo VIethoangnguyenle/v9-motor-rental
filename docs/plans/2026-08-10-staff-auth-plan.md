@@ -282,7 +282,16 @@ Create `packages/db/src/schema/staff.ts`:
 
 ```ts
 import { sql } from "drizzle-orm";
-import { check, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  type AnyPgColumn,
+  check,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 /**
  * Danh tính NGHIỆP VỤ của nhân viên. SuperTokens giữ mật khẩu và session; role,
@@ -308,7 +317,15 @@ export const staffUsers = pgTable(
     role: text("role").notNull().default("STAFF"),
     status: text("status").notNull().default("PENDING"),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
-    approvedBy: text("approved_by"),
+    /**
+     * FK tự trỏ về chính bảng này. `ON DELETE SET NULL` chứ không phải mặc định:
+     * không có action thì xoá một nhân viên từng duyệt người khác sẽ bị chặn, và
+     * đó chính là thứ các test dọn dữ liệu `ztest-%` làm. Toàn vẹn tham chiếu giữ
+     * được, việc dọn dẹp không thành lỗi.
+     */
+    approvedBy: text("approved_by").references((): AnyPgColumn => staffUsers.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -367,7 +384,9 @@ Expected: in ra tên file mới, ví dụ `0005_<tên-ngẫu-nhiên>.sql`.
 - [ ] **Step 4: Đọc SQL sinh ra trước khi apply**
 
 Run: `cat packages/db/migrations/0005_*.sql`
-Expected: có `CREATE TABLE "staff_users"`, `CREATE TABLE "password_reset_codes"`, hai `CONSTRAINT ... CHECK`, hai partial index có mệnh đề `WHERE`, và foreign key `password_reset_codes_staff_user_id_staff_users_id_fk`.
+Expected: có `CREATE TABLE "staff_users"`, `CREATE TABLE "password_reset_codes"`, hai `CONSTRAINT ... CHECK`, hai partial index có mệnh đề `WHERE`, và hai foreign key:
+`password_reset_codes_staff_user_id_staff_users_id_fk` (ON DELETE cascade) và
+`staff_users_approved_by_staff_users_id_fk` (ON DELETE set null, tự trỏ về `staff_users`).
 
 Nếu **thiếu mệnh đề `WHERE`** trong index thì partial index đã bị mất — dừng lại, sửa schema, sinh lại. Index không partial vẫn chạy nhưng đó không phải thứ đã thiết kế.
 

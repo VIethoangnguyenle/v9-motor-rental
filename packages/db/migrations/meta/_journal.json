@@ -43,6 +43,13 @@
       "when": 1786380590090,
       "tag": "0005_tidy_machine_man",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786380751581,
+      "tag": "0006_spooky_proteus",
+      "breakpoints": true
     }
   ]
 }

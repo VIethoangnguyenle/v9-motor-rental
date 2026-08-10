@@ -1,5 +1,14 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  type AnyPgColumn,
+  check,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 /**
  * Danh tính NGHIỆP VỤ của nhân viên. SuperTokens giữ mật khẩu và session; role,
@@ -25,7 +34,15 @@ export const staffUsers = pgTable(
     role: text("role").notNull().default("STAFF"),
     status: text("status").notNull().default("PENDING"),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
-    approvedBy: text("approved_by"),
+    /**
+     * FK tự trỏ về chính bảng này. `ON DELETE SET NULL` chứ không phải mặc định:
+     * không có action thì xoá một nhân viên từng duyệt người khác sẽ bị chặn, và
+     * đó chính là thứ các test dọn dữ liệu `ztest-%` làm. Toàn vẹn tham chiếu giữ
+     * được, việc dọn dẹp không thành lỗi.
+     */
+    approvedBy: text("approved_by").references((): AnyPgColumn => staffUsers.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
