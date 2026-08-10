@@ -56,32 +56,55 @@ async function photosOf(vehicleIds: string[]) {
 }
 
 /**
+ * Tách riêng khỏi `listPublishedVehicles` để test khoá được mệnh đề `ORDER BY` bằng
+ * `.toSQL()` — không cần DB, không cần 20k hàng. Mệnh đề này là thứ mong manh nhất
+ * của đợt danh mục xe và trước đó chỉ có một comment canh giữ.
+ */
+export function publishedVehiclesQuery() {
+  return (
+    db
+      .select({
+        id: schema.vehicles.id,
+        slug: schema.vehicles.slug,
+        make: schema.vehicles.make,
+        model: schema.vehicles.model,
+        year: schema.vehicles.year,
+        engineCc: schema.vehicles.engineCc,
+        odoKm: schema.vehicles.odoKm,
+        color: schema.vehicles.color,
+        pricePerDay: schema.vehicles.pricePerDay,
+        deposit: schema.vehicles.deposit,
+      })
+      .from(schema.vehicles)
+      .where(eq(schema.vehicles.status, "published"))
+      // ⚠️ `NULLS LAST` phải viết ra, không được rút gọn thành desc(createdAt).
+      // Partial index sinh ra là ("sort","created_at" DESC NULLS LAST), còn mặc định
+      // của Postgres cho DESC là NULLS FIRST — planner KHÔNG coi hai cái là một, kể
+      // cả khi created_at là NOT NULL. Đo bằng EXPLAIN trên 20k hàng: giữ nguyên văn
+      // thì Presorted Key gồm CẢ HAI cột (`sort, created_at`); bỏ `NULLS LAST` thì
+      // Presorted Key tụt xuống còn `sort` và phần created_at phải sắp lại. Mất trong
+      // im lặng — không lỗi, không cảnh báo, chỉ chậm. Test `.toSQL()` ở
+      // vehicles.test.ts khoá đúng chuỗi này.
+      //
+      // `id` là khoá phụ CUỐI CÙNG, thêm sau: `sort` mặc định NULL và `created_at`
+      // mặc định `now()` — hàng tạo trong cùng một transaction dùng chung đúng một
+      // giá trị cho cả hai, nên thứ tự Postgres trả về là tuỳ ý và có thể đổi giữa
+      // hai lần ISR rebuild. Cùng lý do đã thêm `id` cho `photosOf`. Nối thêm khoá
+      // thứ ba KHÔNG làm mất index: prefix hai cột đầu vẫn khớp, chỉ thêm một
+      // Incremental Sort trên các nhóm bằng nhau (đã đo).
+      .orderBy(
+        sql`${schema.vehicles.sort}, ${schema.vehicles.createdAt} DESC NULLS LAST, ${schema.vehicles.id}`,
+      )
+  );
+}
+
+/**
  * Danh mục công khai. Hai truy vấn rồi ghép trong JS — cố ý: một lateral join chỉ
  * để lấy MỘT ảnh mỗi xe khó đọc hơn nhiều mà không nhanh hơn ở quy mô đội xe của
  * một shop.
  */
 export async function listPublishedVehicles(): Promise<VehicleSummary[]> {
-  const rows = await db
-    .select({
-      id: schema.vehicles.id,
-      slug: schema.vehicles.slug,
-      make: schema.vehicles.make,
-      model: schema.vehicles.model,
-      year: schema.vehicles.year,
-      engineCc: schema.vehicles.engineCc,
-      odoKm: schema.vehicles.odoKm,
-      color: schema.vehicles.color,
-      pricePerDay: schema.vehicles.pricePerDay,
-      deposit: schema.vehicles.deposit,
-    })
-    .from(schema.vehicles)
-    .where(eq(schema.vehicles.status, "published"))
-    // ⚠️ `NULLS LAST` phải viết ra, không được rút gọn thành desc(createdAt).
-    // Partial index sinh ra là ("sort","created_at" DESC NULLS LAST), còn mặc định
-    // của Postgres cho DESC là NULLS FIRST — planner KHÔNG coi hai cái là một, kể cả
-    // khi created_at là NOT NULL. Viết lệch thì rơi xuống Incremental Sort và index
-    // thành vô dụng. Đã đo bằng EXPLAIN trên 20k hàng.
-    .orderBy(sql`${schema.vehicles.sort}, ${schema.vehicles.createdAt} DESC NULLS LAST`);
+  const rows = await publishedVehiclesQuery();
 
   const photos = await photosOf(rows.map((r) => r.id));
 

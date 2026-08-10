@@ -2,7 +2,11 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { schema } from "@v9/db";
 import { like } from "drizzle-orm";
 import { client, db } from "../db";
-import { findPublishedVehicleBySlug, listPublishedVehicles } from "./vehicles";
+import {
+  findPublishedVehicleBySlug,
+  listPublishedVehicles,
+  publishedVehiclesQuery,
+} from "./vehicles";
 
 // Tiền tố riêng để dọn sạch mà không đụng dữ liệu thật của shop.
 const P = "ztest-";
@@ -55,6 +59,25 @@ afterAll(async () => {
   // packages/db/src/test-support.ts, nếu không file nạp sau sẽ chết vì kết nối đã
   // bị đóng — và thứ tự nạp là thứ không ai kiểm soát.
   await client.close();
+});
+
+describe("mệnh đề ORDER BY của danh mục", () => {
+  // Bất biến mong manh nhất của đợt này, và cho tới giờ CHỈ có một comment canh giữ
+  // trong khi mọi bất biến ở tầng DB đều đã có test. Rủi ro thật không phải "ai đó
+  // viết sai SQL" mà "ai đó rút gọn cho gọn": `desc(schema.vehicles.createdAt)` đọc
+  // sạch hơn hẳn, chạy đúng, trả đúng thứ tự — và lặng lẽ làm partial index
+  // vehicles_published_idx chỉ còn khớp một cột thay vì hai.
+  const { sql: generated } = publishedVehiclesQuery().toSQL();
+
+  it("giữ nguyên văn `DESC NULLS LAST` — không có nó thì index khớp hụt một cột", () => {
+    expect(generated).toContain("DESC NULLS LAST");
+  });
+
+  it("có `id` làm khoá phụ cuối — `sort` NULL + `created_at` trùng thì thứ tự là tuỳ ý", () => {
+    // Khoá thứ ba PHẢI đứng SAU hai khoá kia: chính prefix `(sort, created_at)` là
+    // thứ khớp index. Đảo lên đầu thì index thành vô dụng.
+    expect(generated).toMatch(/order by\s+.*"sort".*"created_at" desc nulls last,\s*.*"id"/is);
+  });
 });
 
 describe("listPublishedVehicles", () => {
