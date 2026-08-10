@@ -12,6 +12,14 @@ import {
 const P = "ztest-";
 
 beforeAll(async () => {
+  // Dọn TRƯỚC khi seed, không chỉ ở afterAll. Test này ghi hàng THẬT vào DB dev
+  // (kể cả một chiếc `published`), và `afterAll` không chạy khi lần trước bị Ctrl-C
+  // hay bị kill giữa chừng — hàng sót lại sẽ hiện trên trang công khai và làm chính
+  // các assertion dưới đây sai lệch. Dùng chung pool của apps/api là cố ý (service
+  // không nhận tham số db), nên mẫu `inRollback()` của packages/db không dùng được
+  // ở đây; dọn hai đầu là cái giá rẻ nhất mua lại được tính tự-hồi-phục.
+  await db.delete(schema.vehicles).where(like(schema.vehicles.slug, `${P}%`));
+
   const [pub] = await db
     .insert(schema.vehicles)
     .values({
