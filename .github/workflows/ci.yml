@@ -24,6 +24,16 @@ jobs:
       MINIO_ENDPOINT: http://localhost:9000
       MINIO_BUCKET_VEHICLES: vehicles
       MINIO_BUCKET_CHECKINS: checkins
+      # `apps/api/src/env.ts` gọi `required()` cho cả hai biến này, và file đó
+      # được import ở top-level của gần như mọi test của `apps/api`. Thiếu chúng
+      # thì 59/61 test KHÔNG CHẠY — chúng chết lúc import với "Thiếu biến môi
+      # trường bắt buộc: SUPERTOKENS_CONNECTION_URI", kéo theo
+      # "Cannot access 'db'/'env' before initialization" ở các file dùng chung.
+      SUPERTOKENS_CONNECTION_URI: http://localhost:3567
+      # ⚠️ Chỉ được dùng `=`, `-` và ký tự alpha-numeric. Gạch dưới làm core
+      # CHẾT lúc khởi động với `InvalidConfigException: Invalid characters in
+      # API key` — đo tại chỗ, không phải suy đoán từ docs.
+      SUPERTOKENS_API_KEY: ci-key-khong-bi-mat-0123456789
     steps:
       - uses: actions/checkout@v4
 
@@ -59,6 +69,44 @@ jobs:
         run: |
           bun run db:generate
           git diff --exit-code packages/db/migrations
+
+      # ⚠️ Cố ý KHÔNG khai ở khối `services:` bên trên, dù đó là chỗ "đúng" theo
+      # thói quen. GitHub Actions dựng mọi service container XONG rồi mới chạy
+      # step đầu tiên — mà role `supertokens_app` và schema `supertokens` chỉ ra
+      # đời ở `packages/db/migrations/0001_service_roles.sql`, tức là trong step
+      # `db:migrate` ở trên. Một service container sẽ khởi động trước role của
+      # chính nó và crash-loop. Vì vậy: `docker run` như một step, đặt SAU migrate.
+      #
+      # `--network host` để core thấy Postgres ở `localhost:5432` (service
+      # postgres đã publish cổng đó lên runner) và để `apps/api` thấy core ở
+      # `localhost:3567`. Không có instance nào khác trên runner nên cổng mặc
+      # định 3567 rảnh.
+      #
+      # ⚠️ `postgresql://` chứ KHÔNG phải `postgres://` như compose.yaml dùng.
+      # Đã đo: với host `localhost`, `postgres://` làm core chết ở
+      # `Driver org.postgresql.Driver claims to not accept jdbcUrl,
+      # jdbc:postgres://...`. (Qua docker network với host `postgres` thì cả hai
+      # scheme đều chạy — đó là lý do compose.yaml không lộ lỗi này.)
+      #
+      # Mật khẩu `supertokens_dev_only` là hằng số hard-code trong migration
+      # 0001, không phải secret — đổi ở đây mà không đổi ở đó là hỏng.
+      - name: Dựng SuperTokens core (sau db:migrate — role/schema do 0001 tạo)
+        run: |
+          docker run -d --name supertokens --network host \
+            -e POSTGRESQL_CONNECTION_URI="postgresql://supertokens_app:supertokens_dev_only@localhost:5432/v9_rental" \
+            -e POSTGRESQL_TABLE_SCHEMA=supertokens \
+            -e API_KEYS="$SUPERTOKENS_API_KEY" \
+            registry.supertokens.io/supertokens/supertokens-postgresql:latest
+          # Chờ /hello — liveness thật, cùng thứ compose.yaml dùng làm healthcheck.
+          # Thiếu vòng chờ này thì `bun test` chạy trước khi core sẵn sàng và đỏ
+          # theo kiểu ngắt quãng, đúng loại lỗi CI tốn nhiều giờ nhất để đọc ra.
+          for i in $(seq 1 60); do
+            if [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3567/hello)" = "200" ]; then
+              echo "SuperTokens core sẵn sàng sau ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "SuperTokens core không lên sau 60s:"; docker logs supertokens; exit 1
 
       - run: bun run lint
       - run: bun run typecheck
