@@ -92,6 +92,26 @@ function parseQuery(url: string): Record<string, string> {
 }
 
 /**
+ * Dùng chung với staff-guard.ts — hai chỗ dựng khác nhau là hai chỗ lệch nhau.
+ *
+ * Guard đọc session bằng đúng cặp adapter mà route `/auth/*` dùng để nói chuyện
+ * với SuperTokens; nếu mỗi bên tự dựng `PreParsedRequest` riêng thì một hôm nào
+ * đó cookie parse ra khác nhau và "đăng nhập được nhưng guard bảo chưa đăng
+ * nhập" — thứ hỏng im lặng, không nổ ở đâu cả.
+ */
+export function toPreParsedRequest(request: Request): PreParsedRequest {
+  return new PreParsedRequest({
+    url: request.url,
+    method: request.method.toLowerCase() as HTTPMethod,
+    headers: request.headers,
+    cookies: parseCookies(request.headers.get("cookie")),
+    query: parseQuery(request.url),
+    getJSONBody: () => request.json(),
+    getFormBody: () => request.formData(),
+  });
+}
+
+/**
  * Bọc middleware() của framework "custom" thành một route Elysia.
  *
  * PreParsedRequest / CollectingResponse là cặp adapter chuẩn Web Request/Response
@@ -105,15 +125,7 @@ function parseQuery(url: string): Record<string, string> {
  * theo từng recipe/route của nó, cố tình không model lại ở đây.
  */
 export const auth = new Elysia({ name: "auth" }).all("/auth/*", async ({ request }) => {
-  const preParsedRequest = new PreParsedRequest({
-    url: request.url,
-    method: request.method.toLowerCase() as HTTPMethod,
-    headers: request.headers,
-    cookies: parseCookies(request.headers.get("cookie")),
-    query: parseQuery(request.url),
-    getJSONBody: () => request.json(),
-    getFormBody: () => request.formData(),
-  });
+  const preParsedRequest = toPreParsedRequest(request);
   const collectingResponse = new CollectingResponse();
 
   const result = await stMiddleware(preParsedRequest, collectingResponse);
