@@ -33,7 +33,28 @@ supertokens.init({
     apiBasePath: "/auth",
     websiteBasePath: "/auth",
   },
-  recipeList: [EmailPassword.init(), Session.init()],
+  recipeList: [
+    EmailPassword.init({
+      signUpFeature: {
+        // Hai field thêm vào form đăng ký. SuperTokens tự validate "có mặt";
+        // ràng buộc nội dung nằm ở service khi ghi staff_users.
+        formFields: [{ id: "hoTen" }, { id: "soDienThoai", optional: true }],
+      },
+      override: {
+        apis: (original) => ({
+          ...original,
+          // ⚠️ TẮT luồng đặt lại mật khẩu dựng sẵn. Không tắt thì hệ thống có HAI
+          // luồng reset song song và một trong hai gửi mail từ noreply@supertokens.io
+          // bằng dịch vụ hosted mặc định — không ai biết là có.
+          // Luồng thật của ta là mã 6 số ở /staff/password-reset/*.
+          // §4.1 docs/plans/2026-08-10-staff-auth-design.md.
+          generatePasswordResetTokenPOST: undefined,
+          passwordResetPOST: undefined,
+        }),
+      },
+    }),
+    Session.init(),
+  ],
 });
 
 export type Role = "OWNER" | "STAFF" | "SALES";
