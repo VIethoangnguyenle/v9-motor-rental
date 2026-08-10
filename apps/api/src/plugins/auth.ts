@@ -141,7 +141,21 @@ supertokens.init({
         }),
       },
     }),
-    Session.init(),
+    Session.init({
+      // Prod tách subdomain: staff.$ROOT_DOMAIN gọi api.$ROOT_DOMAIN. Đặt cookie ở
+      // domain cha để cookie đi được giữa hai subdomain. Ở dev cả hai cùng
+      // `localhost` (cổng không tính vào "site") nên KHÔNG đặt — đặt "localhost"
+      // làm cookieDomain là cách làm hỏng dev mà không lỗi ở đâu cả.
+      //
+      // Spread có điều kiện chứ KHÔNG phải `cookieDomain: x ?? undefined`:
+      // `apps/api` bật `exactOptionalPropertyTypes` (tsconfig.base.json) và
+      // SuperTokens khai `cookieDomain?: string` — không phải `string | undefined`
+      // (recipe/session/types.d.ts:47). Truyền `undefined` tường minh là lỗi type.
+      //
+      // ⚠️ Vế này KHÔNG verify được ở localhost. Chỉ đóng lại bằng một lần đăng
+      // nhập thật trên stack đã deploy. §7 docs/plans/2026-08-10-staff-auth-design.md.
+      ...(env.rootDomain ? { cookieDomain: `.${env.rootDomain}` } : {}),
+    }),
   ],
 });
 

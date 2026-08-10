@@ -125,6 +125,14 @@ services:
       API_PORT: "3001"
       API_DOMAIN: https://api.${ROOT_DOMAIN}
       STAFF_APP_URL: https://staff.${ROOT_DOMAIN}
+      # ⚠️ Trông thừa vì hai dòng trên đã nội suy ${ROOT_DOMAIN} — KHÔNG thừa.
+      # Hai dòng trên nội suy ở phía compose và gửi đi kết quả; `env.ts` cần
+      # chính BIẾN đó để dựng `cookieDomain: ".$ROOT_DOMAIN"` (plugins/auth.ts).
+      # Thiếu dòng này thì `env.rootDomain` là null NGAY CẢ khi `.env` trên VPS
+      # điền đủ, cookie session bị đặt host-only trên `api.$ROOT_DOMAIN`, và
+      # `staff.$ROOT_DOMAIN` không bao giờ gửi được nó đi: đăng nhập trả 200 rồi
+      # màn hình kế tiếp lại 401. Đúng cái bẫy khối comment ngay dưới mô tả.
+      ROOT_DOMAIN: ${ROOT_DOMAIN}
       SUPERTOKENS_CONNECTION_URI: http://supertokens:3567
       SUPERTOKENS_API_KEY: ${SUPERTOKENS_API_KEY}
       # Khối `environment:` này liệt kê TỪNG biến một, nên biến nào không có tên ở

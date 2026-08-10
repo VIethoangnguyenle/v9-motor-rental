@@ -47,6 +47,21 @@ export const env = {
   },
   apiDomain: process.env.API_DOMAIN ?? "http://localhost:3001",
   staffAppUrl: process.env.STAFF_APP_URL ?? "http://localhost:3003",
+  /**
+   * Domain gốc ở prod (`v9.example.com`), dùng DUY NHẤT để đặt `cookieDomain`
+   * cho session — xem `plugins/auth.ts`.
+   *
+   * **Cố ý KHÔNG `required()`.** Dev không có biến này và không được có: ở dev
+   * staff `:3003` và api `:3001` cùng `localhost`, mà cổng không tính vào
+   * "site", nên cookie đã đi bình thường rồi. Ép nó tồn tại là bắt mọi máy dev
+   * khai một domain không có thật.
+   *
+   * `?.trim() ||` chứ không phải `??`: compose expand `${ROOT_DOMAIN}` của một
+   * biến chưa đặt thành **chuỗi rỗng**, không phải "không có biến". `??` sẽ để
+   * lọt `""` và sinh ra `cookieDomain: "."` — một domain vô nghĩa mà trình
+   * duyệt lặng lẽ vứt cookie, tức là đăng nhập hỏng ở prod mà không lỗi ở đâu.
+   */
+  rootDomain: process.env.ROOT_DOMAIN?.trim() || null,
   supertokens: {
     connectionUri: required("SUPERTOKENS_CONNECTION_URI"),
     apiKey: required("SUPERTOKENS_API_KEY"),
