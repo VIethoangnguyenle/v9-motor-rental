@@ -50,9 +50,12 @@ export function canApprove(actor: StaffActor, target: StaffActor): Permission {
 }
 
 /**
- * `activeOwnerCount` là số OWNER đang ACTIVE **tính cả target**. Service phải
- * đếm trong cùng transaction với lệnh UPDATE, nếu không hai OWNER tự hạ role
- * đồng thời sẽ cùng thấy count = 2 và cùng đi qua.
+ * `activeOwnerCount` là số OWNER đang ACTIVE **tính cả target**. Cùng transaction
+ * với lệnh UPDATE là ĐIỀU KIỆN CẦN nhưng KHÔNG ĐỦ: ở mức cô lập mặc định
+ * READ COMMITTED, một `SELECT` (kể cả `count(*)`) thường không khoá hàng nào —
+ * nó chỉ đọc snapshot tại thời điểm câu lệnh bắt đầu. Service phải đếm bằng
+ * `SELECT ... FOR UPDATE` để thật sự khoá các hàng OWNER đang ACTIVE, nếu không
+ * hai OWNER tự hạ role đồng thời vẫn cùng đọc được count = 2 và cùng đi qua.
  */
 export function canChangeRole(
   actor: StaffActor,

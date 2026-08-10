@@ -6,6 +6,19 @@
  * Chạy lại nhiều lần vô hại — cùng khuôn với scripts/directus-setup.ts.
  *
  *   STAFF_OWNER_EMAIL=chu@shop.vn bun run staff:bootstrap
+ *
+ * ⚠️ `supertokens-node` bị ghim ở HAI chỗ: `package.json` gốc (cho file này) và
+ * `apps/api/package.json`. Bun không hoist dep của workspace lên root, mà
+ * `scripts/` không phải workspace — nên không khai ở root thì cả lúc chạy lẫn lúc
+ * typecheck đều không resolve được. Hệ quả phải nhớ: **nâng version ở `apps/api`
+ * thì nâng cả ở root**. Quên thì script này nói chuyện với core bằng SDK cũ, và
+ * không có lint hay CI nào báo.
+ *
+ * ⚠️ `supertokens.init()` dưới đây CỐ Ý đơn giản hơn của `apps/api/src/plugins/auth.ts`
+ * (không `formFields`, không tắt API reset). Vô hại vì ta gọi thẳng
+ * `EmailPassword.signUp()` — tức đi dưới tầng HTTP, nơi các override đó mới có tác
+ * dụng. Nhưng nếu `apps/api` thêm recipe mới (email verification chẳng hạn) thì
+ * đây là chỗ thứ hai phải nhớ, và cũng là chỗ lệch trong im lặng.
  */
 import { SQL } from "bun";
 import supertokens from "supertokens-node";

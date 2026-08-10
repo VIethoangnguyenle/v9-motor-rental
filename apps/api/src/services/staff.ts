@@ -1,4 +1,4 @@
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { schema } from "@v9/db";
 import {
   canApprove,
@@ -115,13 +115,53 @@ async function loadActorAndTarget(actorId: string, targetId: string) {
   return { actor, target };
 }
 
-/** Số OWNER đang ACTIVE. Tham số `executor` cho phép gọi trong hoặc ngoài transaction. */
-async function countActiveOwners(executor: { select: typeof db.select }): Promise<number> {
-  const [row] = await executor
-    .select({ n: count() })
+/** Kiểu `tx` thật của `db.transaction` — suy từ chính `db`, không hard-code driver. */
+type StaffTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Tách xây query khỏi chạy, cùng lý do `publishedVehiclesQuery` (vehicles.ts):
+ * cho phép test khoá `FOR UPDATE` bằng `.toSQL()` mà không cần mở transaction
+ * thật — `.toSQL()` không chạm DB nên gọi trên `db` (thay vì `tx`) vẫn ra đúng
+ * văn bản SQL. Tham số `executor` ở đây CHỈ quyết định phần build câu lệnh; nó
+ * không phải chỗ ép "phải dùng tx" — chỗ ép đó nằm ở `countActiveOwnersLocked`
+ * ngay dưới, nhận đúng kiểu `StaffTx`.
+ *
+ * `ORDER BY id` để mọi transaction khoá các hàng theo ĐÚNG MỘT thứ tự cố định:
+ * hai `SELECT ... FOR UPDATE` cùng khớp một tập hàng mà quét theo thứ tự khác
+ * nhau có thể khoá chéo và deadlock (`40P01`, nằm ở `.errno` — xem CLAUDE.md
+ * gốc). Cùng tập hàng, cùng thứ tự thì transaction tới sau luôn chờ đúng một
+ * chỗ thay vì tạo vòng chờ.
+ */
+export function activeOwnersLockedQuery(executor: { select: typeof db.select }) {
+  return executor
+    .select({ id: schema.staffUsers.id })
     .from(schema.staffUsers)
-    .where(and(eq(schema.staffUsers.role, "OWNER"), eq(schema.staffUsers.status, "ACTIVE")));
-  return row?.n ?? 0;
+    .where(and(eq(schema.staffUsers.role, "OWNER"), eq(schema.staffUsers.status, "ACTIVE")))
+    .orderBy(asc(schema.staffUsers.id))
+    .for("update");
+}
+
+/**
+ * Số OWNER đang ACTIVE — và KHOÁ các hàng đó bằng `SELECT ... FOR UPDATE`.
+ *
+ * Chạy trong CÙNG transaction với UPDATE là ĐIỀU KIỆN CẦN nhưng KHÔNG ĐỦ: mức
+ * cô lập mặc định của Postgres là READ COMMITTED, và ở mức đó một `SELECT`
+ * (kể cả `count(*)`) thường không khoá hàng nào cả — nó chỉ đọc snapshot tại
+ * thời điểm câu lệnh bắt đầu. Hai transaction `changeStaffRole`/`disableStaff`
+ * chạy song song vẫn cùng đọc được count = 2, cùng đi qua điều kiện "còn hơn 1
+ * OWNER", và cùng UPDATE — mất OWNER cuối cùng dù xét riêng từng lời gọi đều
+ * hợp lệ. `FOR UPDATE` khoá đúng các hàng khớp WHERE ngay khi đọc; transaction
+ * thứ hai chạm cùng hàng phải CHỜ transaction thứ nhất commit/rollback rồi mới
+ * đọc lại — lúc đó thấy hàng đã đổi, count giảm, và bị chặn đúng như phải chặn.
+ *
+ * Tham số PHẢI là `tx` thật (kiểu suy từ `db.transaction`, không phải interface
+ * duck-type chung với `db`) — gọi bằng `db` bên trong callback của
+ * `db.transaction` mở một CONNECTION KHÁC, khoá đặt trên đó không có tác dụng
+ * gì với transaction đang chạy. Đây là chỗ dễ sai nhất của hàm này.
+ */
+async function countActiveOwnersLocked(tx: StaffTx): Promise<number> {
+  const rows = await activeOwnersLockedQuery(tx);
+  return rows.length;
 }
 
 export type StaffMutationResult = Permission | { ok: false; reason: "KHONG_TIM_THAY" };
@@ -151,10 +191,9 @@ export async function approveStaff(
 }
 
 /**
- * Đếm OWNER đang ACTIVE và UPDATE nằm trong CÙNG một transaction (cùng `tx`,
- * không phải `db`). Tách ra hai lời gọi riêng thì hai OWNER cùng tự hạ role một
- * lúc sẽ cùng đọc được count = 2 và cùng đi qua — hệ thống mất OWNER cuối cùng
- * mà không luật nào bị vi phạm nếu xét từng lời gọi một cách riêng lẻ.
+ * Đếm OWNER đang ACTIVE (khoá bằng `FOR UPDATE`) và UPDATE nằm trong CÙNG một
+ * transaction (cùng `tx`, không phải `db`) — xem `countActiveOwnersLocked` cho
+ * lý do vì sao đếm suông (`count(*)` không khoá) là chưa đủ dù đã cùng transaction.
  */
 export async function changeStaffRole(
   actorId: string,
@@ -169,7 +208,7 @@ export async function changeStaffRole(
       asActor(ctx.actor),
       asActor(ctx.target),
       newRole,
-      await countActiveOwners(tx),
+      await countActiveOwnersLocked(tx),
     );
     if (!allowed.ok) return allowed;
 
@@ -182,8 +221,8 @@ export async function changeStaffRole(
 }
 
 /**
- * Cùng lý do transaction như `changeStaffRole`: đếm OWNER và khoá tài khoản phải
- * đọc-ghi trên cùng một `tx`, không phải trên `db`.
+ * Cùng lý do transaction như `changeStaffRole`: đếm OWNER (có khoá `FOR UPDATE`)
+ * và khoá tài khoản phải đọc-ghi trên cùng một `tx`, không phải trên `db`.
  *
  * `deps.revokeSessions` được gọi SAU KHI transaction commit — vì sao vẫn cần thu
  * hồi dù `staff-guard` đã đọc DB mỗi request: guard chặn được người DISABLED ngay
@@ -204,7 +243,7 @@ export async function disableStaff(
     const allowed = canDisable(
       asActor(ctx.actor),
       asActor(ctx.target),
-      await countActiveOwners(tx),
+      await countActiveOwnersLocked(tx),
     );
     if (!allowed.ok) return allowed;
 
