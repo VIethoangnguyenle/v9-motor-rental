@@ -227,7 +227,14 @@ export default tseslint.config(
               allow: {
                 to: {
                   element: {
-                    types: { anyOf: ["api-plugins", "api-infra", "shared-domain"] },
+                    // `api-services` thêm 2026-08-10 cho plugins/staff-guard.ts: luật "mặc
+                    // định chặn" phải chạy như một hook toàn cục (tức là plugin), nhưng nó
+                    // cần đọc staff_users — và đọc DB là việc của services, y hệt routes.
+                    // Cạnh này song song với `api-routes → api-services` đã có.
+                    //
+                    // ⚠️ CỐ Ý không thêm "db": plugin phải đi qua service, không được tự
+                    // viết Drizzle. Probe ④ trong CLAUDE.md khoá điều đó lại.
+                    types: { anyOf: ["api-plugins", "api-services", "api-infra", "shared-domain"] },
                   },
                 },
               },

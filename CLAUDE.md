@@ -352,7 +352,18 @@ rm -rf apps/api/src/nowhere
 
 # ③ PHẢI im (mẫu Eden hợp lệ — import type bị xoá lúc build)
 bun x eslint apps/web/lib/api.ts apps/staff/src/lib/api.ts
+
+# ④ PHẢI nổ với boundaries/dependencies, thông điệp nhắc "api-plugins" → "db"
+cp apps/api/src/plugins/timing.ts /tmp/timing.bak
+sed -i '1i import { schema } from "@v9/db";' apps/api/src/plugins/timing.ts
+bun x eslint apps/api/src/plugins/timing.ts
+#   → phải thấy: boundaries/dependencies
+#     "no policy allowing dependencies from elements of type "api-plugins" to elements of type "db""
+cp /tmp/timing.bak apps/api/src/plugins/timing.ts
 ```
+
+Probe ④ khoá cạnh `api-plugins → api-services` mở ở đợt auth: plugin được gọi service, nhưng vẫn
+**không** được tự viết Drizzle.
 
 **Đọc kỹ mã lỗi, đừng chỉ nhìn exit code.** Probe ① dùng `apps/api` chứ không dùng
 `packages/shared` là **có lý do**: `apps/api` khai `@v9/db` là dependency thật nên import resolve
