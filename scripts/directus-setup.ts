@@ -89,8 +89,18 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
 type Meta = Record<string, unknown>;
 
 /**
- * So sánh NÔNG theo tập khoá mong muốn: chỉ những khoá script này quan tâm, để việc ai
- * đó chỉnh thêm icon/width trong UI không biến mỗi lần chạy thành một lần ghi đè.
+ * So sánh NÔNG theo đúng tập khoá script KHAI: chỉ khoá có trong `desired` mới được
+ * đối chiếu — nhưng mọi khoá trong đó thì **đều bị áp lại** khi lệch.
+ *
+ * ⚠️ `icon` và `width` NẰM TRONG tập đó (xem bước 2 và 3), nên ai nới `width` của một
+ * field trong UI sẽ bị hoàn nguyên ở lần chạy sau. Đó là chủ ý — hoàn nguyên drift là
+ * việc script này sinh ra để làm — nhưng phải nói đúng, vì bản trước của comment này
+ * hứa ngược lại và runbook chép theo.
+ *
+ * Thứ thật sự sống sót là khoá script KHÔNG khai: `readonly`, `color`, `hidden`,
+ * `group`, `translations`, `sort`… Đã đo cả hai chiều trên Directus 11.17.4:
+ * `width: full` → về `half`; `icon` → về `two_wheeler`; `readonly: true` và
+ * `color: "#FF0000"` thì còn nguyên.
  */
 function drift(actual: Meta | null, desired: Meta): string[] {
   if (actual === null) return Object.keys(desired);
@@ -211,7 +221,10 @@ const fields: { collection: string; field: string; meta: Meta }[] = [
     field: "alt",
     meta: {
       interface: "input",
-      note: "Mô tả CHIẾC XE trong ảnh: loại xe, phân khối, tình trạng. KHÔNG phải tên file. Ví dụ: Honda CB500X 500cc màu đỏ, nhìn nghiêng bên phải. (PRODUCT.md §Accessibility)",
+      // 471cc, KHÔNG phải 500cc: CB500X là 471cc thật (bản ghi seed, vehicles.test.ts
+      // và runbook đều ghi 471). Đây là câu dạy nhân viên viết alt trung thực — sai số
+      // ngay trong ví dụ mẫu thì nó dạy đúng thói quen bịa thông số.
+      note: "Mô tả CHIẾC XE trong ảnh: loại xe, phân khối, tình trạng. KHÔNG phải tên file. Ví dụ: Honda CB500X 471cc màu đỏ, nhìn nghiêng bên phải. (PRODUCT.md §Accessibility)",
     },
   },
 ];

@@ -15,12 +15,19 @@ Thứ tự bắt buộc: `db:migrate` **trước**. Script chỉ nhận bảng c
 
 Script đọc bốn biến môi trường (`bun run directus:setup` tự nạp `.env` ở root):
 
-| Biến                      | Mặc định                                         |
-| ------------------------- | ------------------------------------------------ |
-| `DIRECTUS_URL`            | `NEXT_PUBLIC_DIRECTUS_URL`, rồi `localhost:8055` |
-| `DIRECTUS_ADMIN_EMAIL`    | bắt buộc                                         |
-| `DIRECTUS_ADMIN_PASSWORD` | bắt buộc                                         |
-| `DATABASE_URL`            | bắt buộc — dùng cho bước quan hệ                 |
+| Biến                      | Mặc định                                                       |
+| ------------------------- | -------------------------------------------------------------- |
+| `DIRECTUS_URL`            | **không có trong `.env.example`** — xem ghi chú ngay dưới bảng |
+| `DIRECTUS_ADMIN_EMAIL`    | bắt buộc                                                       |
+| `DIRECTUS_ADMIN_PASSWORD` | bắt buộc                                                       |
+| `DATABASE_URL`            | bắt buộc — dùng cho bước quan hệ                               |
+
+`DIRECTUS_URL` là **cửa lách tuỳ chọn**, cố ý không đưa vào `.env.example`: địa chỉ Directus
+đã có một biến chính thức là `NEXT_PUBLIC_DIRECTUS_URL`, và khai hai biến cho cùng một thứ là
+cách chúng lệch nhau. Script đọc theo thứ tự `DIRECTUS_URL` → `NEXT_PUBLIC_DIRECTUS_URL` →
+`http://localhost:8055`; đặt `DIRECTUS_URL` chỉ khi cần trỏ script sang một Directus khác
+trong đúng một lần chạy. **Mọi lệnh trong file này dùng `$NEXT_PUBLIC_DIRECTUS_URL`** — biến
+có thật trong `.env`.
 
 ---
 
@@ -51,8 +58,23 @@ nhớ nó tồn tại. Chạy hai lần liên tiếp, lần hai phải ra:
 
     Không có gì phải đổi — Directus đã đúng cấu hình.
 
-So sánh là **nông và chỉ trên tập khoá script quan tâm**: ai đó chỉnh thêm `icon` hay
-`width` trong UI thì lần chạy sau không ghi đè, nhưng đổi ba lựa chọn của `status` thì có.
+So sánh là **nông và chỉ trên tập khoá script khai** — nhưng đọc kỹ vế thứ hai: mọi khoá
+**có trong** tập đó đều bị áp lại khi lệch. Hoàn nguyên drift chính là việc script sinh ra
+để làm.
+
+| Sửa trong UI Directus                                          | Lần chạy sau       |
+| -------------------------------------------------------------- | ------------------ |
+| `width` của `slug`/`plate`/`status`, `icon` của collection     | **bị hoàn nguyên** |
+| `note`, `interface`, `options`, `display_template`             | **bị hoàn nguyên** |
+| `readonly`, `color`, `hidden`, `group`, `sort`, `translations` | giữ nguyên         |
+
+Đo trên Directus 11.17.4: đặt `vehicles.slug.width = full` và `icon = pedal_bike` rồi chạy
+lại → script in `+ field vehicles.slug — đặt: width` và trả về `half`; trong khi
+`readonly: true` và `color: "#FF0000"` đặt cùng lúc thì còn nguyên.
+
+**Nói trước với shop:** nới rộng một ô nhập trong Data Studio là thay đổi **không bền**.
+Muốn nó sống thì sửa `scripts/directus-setup.ts` rồi commit — đó mới là chỗ giữ cấu hình.
+Bản trước của mục này hứa ngược lại (rằng `icon`/`width` không bị ghi đè); nó sai.
 
 ---
 
@@ -125,7 +147,28 @@ byte ảnh và không một trường dữ liệu nghiệp vụ nào.
 
 Lấy `<uuid>`: `SELECT file_id FROM vehicle_photos LIMIT 1;`. Ba lệnh này cũng nằm trong
 `../../CLAUDE.md` — chúng bắt drift của cấu hình sống trong DB của Directus chứ không trong
-git, và `bun run directus:setup` là thứ áp lại.
+git.
+
+⚠️ **`bun run directus:setup` KHÔNG áp lại được cả ba.** Script chỉ đụng những gì nó khai:
+
+- Quyền **đọc `directus_files`** — có kiểm cả nội dung (danh sách `fields`, `permissions`,
+  `validation`) và sửa lại nếu ai đó thu hẹp trong UI. Probe ① và ② được nó bảo vệ.
+- `storage_asset_transform` + preset `web` — probe ③ được nó bảo vệ.
+- **Quyền ai đó THÊM MỚI thì không.** Script không liệt kê, không so, không xoá permission lạ.
+  Đo thật: cấp cho policy Public một `read` trên `vehicles` trong UI rồi chạy script → script
+  in `Không có gì phải đổi — Directus đã đúng cấu hình` trong khi `GET /items/vehicles` trả
+  **200 kèm cả cột `plate`**, tức biển số ra internet. Script mù hoàn toàn với ca này.
+
+Nghĩa là probe `curl -s ".../items/vehicles"` → **403** là hàng rào thật ở đây, không phải
+script. Chạy nó sau mỗi lần có người đụng vào phân quyền trong Data Studio. Dọn tay:
+
+```bash
+# liệt kê mọi quyền của policy Public — chỉ được có ĐÚNG MỘT dòng: directus_files/read
+docker compose exec -T postgres psql -U v9 -d v9_rental -c \
+  "SELECT p.id, p.collection, p.action FROM directus.directus_permissions p
+     JOIN directus.directus_access a ON a.policy = p.policy
+    WHERE a.role IS NULL AND a.user IS NULL;"
+```
 
 Câu cuối là lý do có `storage_asset_transform = presets`: `/assets` công khai mà cho `?width=`
 tự do là một vòi CPU miễn phí cho bot — mỗi tổ hợp kích thước là một lần resize và một entry
@@ -241,11 +284,27 @@ DELETE FROM directus.directus_collections WHERE collection = 'ten_bang';
 SQL
 ```
 
-Rồi **bắt buộc** xoá cache — nếu không Directus vẫn phục vụ schema cũ:
+Rồi **bắt buộc** xoá cache — nếu không Directus vẫn phục vụ schema cũ. Endpoint này cần
+token admin, mà `.env` chỉ có email/mật khẩu, nên phải đổi lấy token trước (bản trước của
+mục này dùng `$TOKEN` mà không nói lấy ở đâu, và `$DIRECTUS_URL` là biến không có trong
+`.env.example`):
 
 ```bash
-curl -s -X POST "$DIRECTUS_URL/utils/cache/clear" -H "Authorization: Bearer $TOKEN"
+set -a; . ./.env; set +a
+
+TOKEN=$(curl -s -X POST "$NEXT_PUBLIC_DIRECTUS_URL/auth/login" \
+  -H 'content-type: application/json' \
+  -d "{\"email\":\"$DIRECTUS_ADMIN_EMAIL\",\"password\":\"$DIRECTUS_ADMIN_PASSWORD\"}" \
+  | bun -e 'process.stdout.write(JSON.parse(await Bun.stdin.text()).data.access_token)')
+
+# PHẢI ra 200
+curl -s -X POST "$NEXT_PUBLIC_DIRECTUS_URL/utils/cache/clear" \
+  -H "Authorization: Bearer $TOKEN" -o /dev/null -w '%{http_code}\n'
 ```
+
+Token này sống ngắn (mặc định 15 phút) — lấy lại khi hết hạn, đừng ghi nó vào file nào.
+Không cần token nếu chỉ chạy `bun run directus:setup`: script tự đăng nhập bằng đúng hai
+biến trên.
 
 Tìm collection ma (có metadata nhưng không có bảng thật):
 
