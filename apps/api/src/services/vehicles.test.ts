@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { schema } from "@v9/db";
 import { like } from "drizzle-orm";
-import { client, db } from "../db";
+import { db } from "../db";
 import {
   findPublishedVehicleBySlug,
   listPublishedVehicles,
@@ -59,14 +59,26 @@ beforeAll(async () => {
 afterAll(async () => {
   // Xoá xe là đủ — ảnh đi theo nhờ ON DELETE CASCADE.
   await db.delete(schema.vehicles).where(like(schema.vehicles.slug, `${P}%`));
-  // ⚠️ `client` là singleton module-scope của apps/api (src/db.ts), KHÔNG phải kết
-  // nối riêng của file này — `bun test` chạy mọi file trong CÙNG một tiến trình với
-  // chung module cache, nên đóng nó ở đây là đóng cho cả tiến trình. Hiện an toàn
-  // vì đây là test DUY NHẤT của apps/api chạm `../db`. File test apps/api thứ hai
-  // nào cũng chạm `../db` thì PHẢI bỏ dòng này và chuyển sang mẫu `setupDb()` của
-  // packages/db/src/test-support.ts, nếu không file nạp sau sẽ chết vì kết nối đã
-  // bị đóng — và thứ tự nạp là thứ không ai kiểm soát.
-  await client.close();
+  // ⚠️ ĐỪNG thêm lại `await client.close()` vào đây.
+  //
+  // `client` là singleton module-scope của apps/api (src/db.ts), KHÔNG phải kết nối
+  // riêng của file này — `bun test` chạy mọi file trong CÙNG một tiến trình với chung
+  // module cache, nên đóng nó ở đây là đóng cho cả tiến trình. Dòng đó an toàn khi
+  // đây còn là test DUY NHẤT của apps/api chạm `../db`; nay đã có `staff.test.ts` và
+  // `password-reset.test.ts`, và điều kiện đó không còn đúng.
+  //
+  // Đã đo, không suy luận: với `client.close()` còn nguyên, `bun test
+  // apps/api/src/services/` cho `password-reset.test.ts` chết ở `beforeAll` với
+  // `ERR_POSTGRES_CONNECTION_CLOSED` — và chết ở CẢ HAI thứ tự truyền file trên dòng
+  // lệnh, vì thứ tự nạp do Bun chọn chứ không phải do ta. Chính cái bẫy mà comment
+  // bản trước của dòng này đã dự báo.
+  //
+  // Không cần đóng tay: tiến trình `bun test` thoát bình thường với client còn mở
+  // (`staff.test.ts` và `password-reset.test.ts` vốn không đóng gì và vẫn thoát).
+  // Muốn một kết nối có vòng đời riêng cho từng file thì dùng mẫu `setupDb()` ở
+  // `packages/db/src/test-support.ts` — nhưng ở đây KHÔNG dùng được: service lấy
+  // `db` từ module scope, nên một client riêng sẽ không phải cái mà code dưới test
+  // đang dùng.
 });
 
 describe("mệnh đề ORDER BY của danh mục", () => {
