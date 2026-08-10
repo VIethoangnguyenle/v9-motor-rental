@@ -15,6 +15,10 @@ web
 
 **Nhân sự vận hành shop** (dùng `apps/staff` cho vận hành, Directus cho dữ liệu gốc): vai trò `OWNER` và `STAFF`. `SALES` đã đặt chỗ trong hệ thống nhưng **chưa dùng** — chưa quyết vai trò đó làm gì.
 
+**Nhân viên tự đăng ký, chủ shop duyệt.** Không ai phát tài khoản sẵn: người mới tự tạo tài khoản, rồi nằm ở trạng thái _chờ duyệt_ cho tới khi chủ shop đồng ý. Trong lúc chờ, họ đăng nhập được nhưng không xem được gì ngoài chính màn hình báo đang chờ — điều đó có chủ ý, để một người lạ đăng ký được không có nghĩa là vào được. Chủ shop cũng là người khoá tài khoản khi có người nghỉ việc, và **khoá là có hiệu lực ngay**, không đợi phiên đăng nhập cũ hết hạn.
+
+**Chủ shop phát mã 6 số khi nhân viên không vào được email.** Đường quên-mật-khẩu bình thường gửi mã qua email, nhưng nhân viên shop ở đây dùng Zalo nhiều hơn email, và không phải lúc nào shop cũng đã có địa chỉ email gửi đi. Vì vậy chủ shop bấm một nút, đọc sáu con số cho nhân viên qua Zalo, và nhân viên nhập nó để đặt lại mật khẩu. Mã sống 10 phút, dùng được một lần, và sai quá năm lần thì chết — xin mã mới thì mã cũ mất hiệu lực ngay.
+
 ## Product Purpose
 
 Hệ quản lý cho một shop cho thuê mô tô phân khối lớn ở TP.HCM: API, app vận hành cho chủ và nhân viên, site công khai cho khách, và Directus cho dữ liệu gốc.

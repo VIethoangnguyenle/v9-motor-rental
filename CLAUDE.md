@@ -6,8 +6,9 @@ Repo này được phát triển **chủ yếu bởi AI agent**. Vì vậy ranh 
 deliverable ngang hàng với code, không phải phụ lục.
 
 > Thiết kế và lý do đằng sau mọi quyết định:
-> `docs/plans/2026-08-04-scaffolding-design.md` (đợt 1 — nền móng) và
-> `docs/plans/2026-08-05-round2-directus-staff-design.md` (đợt 2 — Directus, `apps/staff`, thu hẹp `apps/web`).
+> `docs/plans/2026-08-04-scaffolding-design.md` (đợt 1 — nền móng),
+> `docs/plans/2026-08-05-round2-directus-staff-design.md` (đợt 2 — Directus, `apps/staff`, thu hẹp `apps/web`),
+> `docs/plans/2026-08-10-staff-auth-design.md` (đợt auth — danh tính chia đôi, mặc định chặn, mã 6 số).
 > Khi tài liệu này và design doc mâu thuẫn, **design doc thắng** — và hãy sửa file này.
 
 ---
@@ -309,9 +310,63 @@ Lấy `<uuid>`: `SELECT file_id FROM vehicle_photos LIMIT 1;`. Chi tiết và c�
 `apps/api/src/plugins/auth.ts` phơi `/auth/*` qua framework `custom` của `supertokens-node`
 (`PreParsedRequest` / `CollectingResponse` — chuẩn Web `Request`/`Response`, khớp Elysia tự nhiên).
 
-**Hiện chưa route nào enforce auth và chưa có màn hình đăng nhập** — chưa có route nghiệp vụ nào
-để bảo vệ, và một cơ chế phân quyền chưa từng chạy thì tệ hơn không có: nó trông như đã kiểm chứng
-trong khi không.
+**Luật là mặc định chặn.** `apps/api/src/plugins/staff-guard.ts` gắn một hook `onBeforeHandle`
+phạm vi global: route nào **không** khớp danh sách công khai thì đòi session hợp lệ **và** hồ sơ
+`ACTIVE` trong `staff_users`. Nghĩa là route nghiệp vụ đợt sau (`rentals`, `customers`) **quên khai
+là bị chặn**, không phải lọt — không ai phải nhớ bật bảo vệ, và gõ sai một mục trong danh sách thì
+sai theo chiều an toàn.
+
+**Hai danh sách, không phải một.** Gộp lại là hỏng một trong hai đầu:
+
+| Danh sách                      | Đòi gì                             | Gồm những gì                                                                                   | Vì sao phải tách                                                                                                         |
+| ------------------------------ | ---------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `CONG_KHAI`                    | không cần session                  | `/auth/*` · `GET /health*` · `GET /vehicles*` · `POST /staff/password-reset/{request,confirm}` | `apps/web` SSG đọc `/vehicles` không có cookie, và người quên mật khẩu thì theo định nghĩa là người không đăng nhập được |
+| `CAN_SESSION_KHONG_CAN_ACTIVE` | có session, **không** đòi `ACTIVE` | đúng một mục: `GET /staff/me`                                                                  | màn "chờ duyệt" phải đọc được chính trạng thái của mình; thiếu ngoại lệ này thì người `PENDING` nhìn một màn hình trắng  |
+
+`DISABLED` bị chặn ở **cả hai** nhánh cần session, kể cả `/staff/me`: người bị khoá không cần một
+màn hình giải thích, họ cần không vào được.
+
+**Danh tính chia đôi có chủ ý.** SuperTokens giữ đúng hai thứ — mật khẩu và session. Role, trạng
+thái duyệt và hồ sơ (họ tên, số điện thoại) nằm ở `public.staff_users`, nơi **migration làm chủ**
+(`0005`–`0007`).
+
+Lý do quyết định nhất không phải là tiện tay: `rentals` đợt sau phải trả lời "ai chốt đơn, ai bàn
+giao xe", tức là một FK tới hàng nhân viên. FK sang `supertokens.*` là buộc dữ liệu nghiệp vụ vào
+schema **do tool khác làm chủ và tự đổi mỗi lần nâng version** — đúng thứ mà migration `0001` tách
+ba vùng ra để tránh. Lý do thứ hai: khoá tài khoản phải có hiệu lực **ngay**. Đọc trạng thái từ DB
+mỗi request tốn thêm một query (~1 ms, budget cho phép 25 ms); nhét role vào claim của token thì
+rẻ hơn nhưng nhân viên nghỉ việc vẫn vào được cho tới lúc token hết hạn.
+
+Đánh đổi phải nhớ theo chiều ngược lại: `staff_users.email` là **bản sao**, nguồn sự thật vẫn ở
+SuperTokens. Đổi email nhân viên phải đồng bộ hai nơi — đó là lý do việc đó nằm ngoài phạm vi đợt
+này, không phải vì quên.
+
+**Nhân viên tự đăng ký → `PENDING` → OWNER duyệt.** Không có ai được tự chọn quyền của mình:
+`createPendingStaff` cố ý **không nhận** `role`/`status` làm tham số, nên không có đường nào truyền
+một giá trị khác vào. Hệ quả là hệ thống tự khoá chính nó lúc mới dựng — ai đăng ký cũng `PENDING`,
+mà chỉ OWNER duyệt được — nên OWNER **đầu tiên** tạo bằng script, chứ không bằng một luật "người
+đăng ký đầu tiên thành OWNER" sống mãi mãi để phục vụ đúng một lần dùng:
+
+```bash
+STAFF_OWNER_EMAIL=chu@shop.vn bun run staff:bootstrap   # chạy lại nhiều lần vô hại
+```
+
+**Quên mật khẩu đi bằng mã 6 số, không phải link.** Hai đường vào dùng chung đúng một bảng và đúng
+một đường xác minh: email qua SMTP của shop, và OWNER phát mã cho nhân viên đọc qua Zalo
+(`POST /staff/users/:id/reset-code`). Cần cả hai vì nhân viên mất quyền vào email thì đường thứ
+nhất vô dụng; và vì thiếu SMTP là trạng thái mặc định của một prod mới dựng — lúc đó
+`POST /staff/password-reset/request` trả `503 CHUA_CAU_HINH_EMAIL` còn app vẫn chạy.
+
+Ngoài production, mã **luôn** là `999999` (`AUTH_DEV_OTP` chỉ đổi _giá trị_ đó ở dev, không phải
+công tắc bật/tắt cửa sau). Hai điều kiện quanh nó phải đọc kỹ, vì viết sai là mở cả shop bằng sáu
+con số:
+
+- Điều kiện là **`NODE_ENV`**, KHÔNG phải "SMTP chưa cấu hình". Thiếu config là mặc định của một
+  prod mới dựng; nếu thiếu config bật được mã cố định thì hàng rào tự tắt đúng lúc nó cần nhất.
+- `apps/api/src/env.ts` **ném lúc khởi động** nếu `AUTH_DEV_OTP` xuất hiện ở
+  `NODE_ENV=production` — cấu hình dev lọt vào prod thì app không chạy, chứ không chạy sai. Một
+  dòng comment trong `.env.example` không ép được gì; xem mục "ranh giới repo ép vs cấu hình
+  local" bên dưới.
 
 `apps/web` **không** dùng auth. Khách gửi yêu cầu thuê không cần tài khoản — bắt đăng nhập chỉ làm
 giảm số yêu cầu nhận được, mà yêu cầu chính là thứ web sinh ra để tạo.
@@ -319,6 +374,22 @@ giảm số yêu cầu nhận được, mà yêu cầu chính là thứ web sinh
 Directus giữ hệ tài khoản riêng của nó. Hai nơi đăng nhập là **chấp nhận có ý thức**: hai nhóm
 người dùng khác nhau, và Directus chỉ có vài tài khoản back-office. Hợp nhất bằng OIDC là việc
 thêm khi có nhu cầu thật.
+
+---
+
+## ⚠️ Nợ đã biết của đợt auth — ghi ra vì không cái nào tự báo
+
+Năm chỗ dưới đây **đã biết là thiếu** khi đợt auth land, không phải phát hiện sau. Chúng nằm đây
+thay vì trong mục xác thực vì mục đó mô tả thứ **đang chạy**; mục này mô tả thứ **chưa có**, và
+trộn hai loại lại là cách một danh sách việc-phải-làm biến mất khỏi tầm nhìn.
+
+| Nợ                                                                                     | Hậu quả nếu bỏ qua                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Không có rate limit theo IP** trên `/staff/password-reset/request` và `/auth/signup` | `Bun.password.hash` là argon2id **64 MB, ~115 ms mỗi lời gọi** (đo trên máy dev: `m=65536,t=2`, hash 115,3 ms) — và nó nằm trên một endpoint công khai. Vài chục request/giây ghim CPU và ăn sạch RAM của một VPS đơn. Bản sửa TOCTOU của `kiemTraMa` đã cắt phần lớn (mã cạn lượt **không còn** chạy argon2), nhưng mỗi lần xin mã mới vẫn mua được 5 lượt verify. `/auth/signup` thì đẩy việc băm sang SuperTokens core và để lại một hàng `PENDING` cho mỗi request. |
+| **Email so sánh phân biệt hoa thường**                                                 | `staff_users` khai `UNIQUE(email)` trên text thô, và `timStaffTheoEmail` so bằng `=`. `supertokens-node` chỉ `.trim()` form field (`emailpassword/api/utils.js`), không hạ hoa thường. Nhân viên gõ khác hoa thường → không tìm thấy → route trả 200 chung chung (cố ý, để không lộ email) → **không bao giờ nhận được mã, và không có gì để chẩn đoán**. Sửa đúng: `UNIQUE INDEX ON staff_users (lower(email))` + chuẩn hoá **cả** đường ghi lẫn đường đọc.            |
+| **Timing oracle ~190×** ở `/staff/password-reset/request`                              | Email không tồn tại trả về sau đúng một `SELECT` (đo: p95 0,61 ms); email có thật tốn thêm ~115 ms vì `taoMaDatLaiMatKhau` băm mã. Thân response giống hệt nhau, đồng hồ thì không — đúng cái mà "luôn trả 200" sinh ra để giấu.                                                                                                                                                                                                                                        |
+| **Không ai dọn mã hết hạn**                                                            | Hàng `used_at IS NULL` đã quá `expires_at` nằm lại vĩnh viễn. Chúng làm phình đúng `password_reset_codes_active_idx` — partial index đó tồn tại **nhờ giả định** tập này gần như luôn rỗng (xem comment trong `packages/db/src/schema/staff.ts`).                                                                                                                                                                                                                       |
+| **Tên hàm tiếng Việt/Anh lẫn lộn trong `apps/api/src/services/`**                      | `vehicles.ts` và `staff.ts` đặt tên tiếng Anh (`listPublishedVehicles`, `approveStaff`), `password-reset.ts` đặt tiếng Việt (`taoMaDatLaiMatKhau`, `kiemTraMa`). Cả hai quy ước đều ổn; **trộn thì không** — người sau phải đoán mỗi lần gọi một service. Cần chốt một hướng rồi đổi một lượt, không sửa lẻ tẻ.                                                                                                                                                         |
 
 ---
 
@@ -433,13 +504,15 @@ Ràng buộc copy của form nằm ở `apps/web/AGENTS.md` (không hứa xe cò
 
 **Nghiệp vụ (cần brainstorm riêng trước khi code):** chính sách tính ngày thuê và bảng giá ·
 schema `customers`, `rentals`, `booking_requests` — `rentals` kèm exclusion constraint chống đặt
-trùng · bốn tính năng của `apps/staff`: lịch, thống kê, lên đơn/bàn giao, quản lý khách hàng ·
-vai trò `SALES` làm gì.
+trùng **và FK tới `staff_users`** (ai chốt đơn, ai bàn giao xe; đó chính là lý do role và hồ sơ
+nhân viên nằm ở `public` chứ không ở schema của SuperTokens) · bốn tính năng của `apps/staff`:
+lịch, thống kê, lên đơn/bàn giao, quản lý khách hàng · vai trò `SALES` làm gì.
 
-`vehicles` và `vehicle_photos` **đã xong** (migration `0002`–`0004`, đợt 3).
+`vehicles` và `vehicle_photos` **đã xong** (migration `0002`–`0004`, đợt 3); `staff_users` và
+`password_reset_codes` **đã xong** (migration `0005`–`0007`, đợt auth).
 
-**Kỹ thuật:** enforce auth trên route thật (SuperTokens đã nối, chưa route nào dùng) · `next-intl`
-khi thật sự có tiếng Anh · upload ảnh lên MinIO.
+**Kỹ thuật:** `next-intl` khi thật sự có tiếng Anh · upload ảnh lên MinIO · năm món nợ ở mục
+"Nợ đã biết của đợt auth" bên trên.
 
 ⚠️ **Nợ có hạn: `mode` trong `eslint.config.js` đã deprecated ở `eslint-plugin-boundaries` v7** và
 in cảnh báo mỗi lần lint. Bản thay là `partialMatch: false`. Phải chuyển **trước** khi nâng
