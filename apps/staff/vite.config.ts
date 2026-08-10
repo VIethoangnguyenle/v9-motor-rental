@@ -12,9 +12,21 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        // Service worker KHÔNG được trả app shell cho đường dẫn API. Không loại
-        // trừ thì có ngày app hiện màn hình đã-đăng-nhập lấy từ cache trong khi
-        // session đã chết. §6 docs/plans/2026-08-10-staff-auth-design.md.
+        // ⚠️ Đọc kỹ giới hạn của dòng dưới trước khi coi nó là hàng rào.
+        //
+        // `navigateFallbackDenylist` CHỈ áp cho request `mode: "navigate"`. Hôm nay
+        // nó KHÔNG BAO GIỜ khớp gì: Eden và supertokens-web-js gọi API bằng `fetch`
+        // sang origin khác (VITE_API_URL, mặc định :3001), còn app này chạy ở :3003 —
+        // service worker không đứng giữa đường đó. Bản dựng chỉ có đúng một
+        // `registerRoute` là NavigationRoute này, không có runtimeCaching nào cho API.
+        //
+        // Giữ lại vì nó là bảo hiểm rẻ cho một thay đổi rất dễ xảy ra: proxy API về
+        // cùng origin (`staff.$ROOT_DOMAIN/auth/*`) để né CORS. Ngày đó tới mà thiếu
+        // dòng này thì app shell được trả cho đường API, và hỏng trong im lặng.
+        //
+        // Thứ THẬT SỰ bảo vệ ca "session đã chết mà vẫn thấy màn hình cũ" là guard ở
+        // `beforeLoad` của router: nó gọi /staff/me qua mạng và hỏng-thì-chặn. Đừng
+        // dựa vào dòng này cho ca đó. §6 docs/plans/2026-08-10-staff-auth-design.md.
         navigateFallbackDenylist: [/^\/auth\//, /^\/staff\//],
       },
       manifest: {
