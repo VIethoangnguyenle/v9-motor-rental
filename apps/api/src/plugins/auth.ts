@@ -8,6 +8,13 @@ import {
   PreParsedRequest,
 } from "supertokens-node/framework/custom";
 import type { HTTPMethod } from "supertokens-node/types";
+// Đường dẫn sâu nhưng KHÔNG phải hack: `./lib/*` nằm trong `exports` map của
+// supertokens-node, tức là entry point được package công bố. Dùng chính hàm mà
+// adapter express/fastify/awsLambda của họ dùng để cookie ta phát ra giống hệt
+// từng byte với mọi adapter SuperTokens khác — tự nối chuỗi thì `Expires`,
+// escape giá trị và hoa/thường của `SameSite` là ba chỗ lệch âm thầm.
+// Version bị ghim cứng ("supertokens-node": "24.0.3") nên đường dẫn không tự trôi.
+import { serializeCookieValue } from "supertokens-node/lib/build/framework/utils";
 import { env } from "../env";
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -143,8 +150,39 @@ export const auth = new Elysia({ name: "auth" }).all("/auth/*", async ({ request
     return new Response("Not Found", { status: 404 });
   }
 
-  return new Response(collectingResponse.body ?? null, {
+  const response = new Response(collectingResponse.body ?? null, {
     status: collectingResponse.statusCode,
     headers: collectingResponse.headers,
   });
+
+  // ⚠️ CollectingResponse KHÔNG nhét cookie vào `.headers`. Nó cất riêng ở mảng
+  // `.cookies` (`CookieInfo[]` — xem framework/custom/framework.d.ts), vì adapter
+  // "custom" không biết framework đích biểu diễn Set-Cookie kiểu gì. Bỏ vòng lặp
+  // này thì `POST /auth/signin` vẫn trả `{"status":"OK"}` mà KHÔNG có một header
+  // Set-Cookie nào: đăng nhập "thành công", session không bao giờ tồn tại trong
+  // trình duyệt, và không có lỗi ở đâu cả — frontend trông như hỏng ngẫu nhiên.
+  // Đúng kiểu hỏng-im-lặng mà repo này đã dính nhiều lần, nên có `auth.test.ts`
+  // giữ nó bằng một lần đăng nhập thật.
+  //
+  // `.append()` chứ KHÔNG gán: một response mang NHIỀU cookie (`sAccessToken`,
+  // `sRefreshToken`, và cookie xoá lúc signout). Gán đè bằng object literal hay
+  // `.set()` thì chỉ cookie cuối sống sót — mất refresh token là session chết
+  // sau đúng một chu kỳ access token, tức hỏng muộn và trông như lỗi khác.
+  for (const cookie of collectingResponse.cookies) {
+    response.headers.append(
+      "Set-Cookie",
+      serializeCookieValue(
+        cookie.key,
+        cookie.value,
+        cookie.domain,
+        cookie.secure,
+        cookie.httpOnly,
+        cookie.expires,
+        cookie.path,
+        cookie.sameSite,
+      ),
+    );
+  }
+
+  return response;
 });
