@@ -11,6 +11,12 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      workbox: {
+        // Service worker KHÔNG được trả app shell cho đường dẫn API. Không loại
+        // trừ thì có ngày app hiện màn hình đã-đăng-nhập lấy từ cache trong khi
+        // session đã chết. §6 docs/plans/2026-08-10-staff-auth-design.md.
+        navigateFallbackDenylist: [/^\/auth\//, /^\/staff\//],
+      },
       manifest: {
         name: "V9 Motor Rental — Nhân viên",
         short_name: "V9 Staff",
