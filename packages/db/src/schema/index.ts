@@ -11,3 +11,4 @@
  * Extension btree_gist đã được bật sẵn ở migration 0000 để dòng trên chạy được.
  */
 export { vehiclePhotos, vehicles } from "./vehicles";
+export { passwordResetCodes, staffUsers } from "./staff";

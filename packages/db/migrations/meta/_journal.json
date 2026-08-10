@@ -36,6 +36,13 @@
       "when": 1786318161860,
       "tag": "0004_real_mantis",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786380590090,
+      "tag": "0005_tidy_machine_man",
+      "breakpoints": true
     }
   ]
 }
