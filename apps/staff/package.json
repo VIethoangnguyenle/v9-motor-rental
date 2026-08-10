@@ -14,7 +14,8 @@
     "@tanstack/react-router": "1.170.18",
     "@v9/shared": "workspace:*",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "supertokens-web-js": "0.16.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",
