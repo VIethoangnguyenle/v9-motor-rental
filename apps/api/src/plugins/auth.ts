@@ -15,6 +15,7 @@ import type { HTTPMethod } from "supertokens-node/types";
 // escape giá trị và hoa/thường của `SameSite` là ba chỗ lệch âm thầm.
 // Version bị ghim cứng ("supertokens-node": "24.0.3") nên đường dẫn không tự trôi.
 import { serializeCookieValue } from "supertokens-node/lib/build/framework/utils";
+import { createPendingStaff } from "../services/staff";
 import { env } from "../env";
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -57,6 +58,86 @@ supertokens.init({
           // §4.1 docs/plans/2026-08-10-staff-auth-design.md.
           generatePasswordResetTokenPOST: undefined,
           passwordResetPOST: undefined,
+
+          /**
+           * Đăng ký xong thì phải có hồ sơ trong `public.staff_users` — nếu không,
+           * người đó đăng nhập được mà `staff-guard` không biết họ là ai.
+           *
+           * ⚠️ HAI GHI KHÔNG NGUYÊN TỬ. SuperTokens ghi user vào schema của nó, ta
+           * ghi hàng vào `public`: hai transaction khác nhau, KHÔNG có transaction
+           * chung, và không thể có — chúng nằm sau hai connection khác nhau tới hai
+           * schema có chủ khác nhau (§2.1 docs/plans/2026-08-10-staff-auth-design.md).
+           * Bỏ qua lỗi insert thì còn lại một user SuperTokens mồ côi: đăng nhập
+           * được, không hồ sơ, và không có gì báo cho ai biết.
+           *
+           * Vì vậy HAI lớp, và cần cả hai:
+           *   • Lớp 1 (ở đây): insert hỏng → `supertokens.deleteUser` bù trừ, rồi
+           *     ném tiếp để người đăng ký thấy lỗi thay vì tưởng đã xong.
+           *   • Lớp 2 (`staff-guard`): có session mà thiếu hàng → `403 CHUA_CO_HO_SO`.
+           *     Tồn tại vì CHÍNH lớp 1 cũng hỏng được — mất mạng đúng giữa `throw`
+           *     và `deleteUser` là đủ.
+           */
+          signUpPOST: original.signUpPOST
+            ? async (input) => {
+                // ⚠️ PHẢI gọi qua `original.signUpPOST(...)`, KHÔNG được tách hàm
+                // ra biến rồi gọi trần. `original` là một Proxy do
+                // `supertokens-js-override` dựng, và getter của nó trả về hàm đọc
+                // `this._call`. Destructure (`const { signUpPOST } = original`)
+                // hay gán tạm rồi gọi làm mất `this`, và MỌI lần đăng ký nổ
+                // `TypeError: undefined is not an object (evaluating 'this._call')`
+                // → 500. Đã dính thật lúc viết task này. `!` ở đây là hệ quả của
+                // ràng buộc đó, không phải lười thu hẹp kiểu.
+                const response = await original.signUpPOST!(input);
+                // Mọi nhánh không-OK (EMAIL_ALREADY_EXISTS_ERROR, SIGN_UP_NOT_ALLOWED,
+                // GENERAL_ERROR) đi thẳng ra ngoài: chưa có user nào được tạo nên
+                // không có gì để ghi, và cũng không có gì để bù trừ.
+                if (response.status !== "OK") return response;
+
+                // `formFields` khai `value: unknown` (types.d.ts) vì form field là
+                // do người dùng cấu hình. Ta chỉ khai field kiểu chuỗi.
+                const field = (id: string) =>
+                  input.formFields.find((f) => f.id === id)?.value as string | undefined;
+
+                try {
+                  await createPendingStaff({
+                    id: response.user.id,
+                    // `?? ""` chỉ để thoả `noUncheckedIndexedAccess`: recipe
+                    // emailpassword vừa tạo user BẰNG email nên `emails[0]` luôn có.
+                    email: response.user.emails[0] ?? "",
+                    // ⚠️ `.trim() ||` chứ không phải `??`. Đã đo (2026-08-11):
+                    // SuperTokens từ chối `hoTen: ""` bằng FIELD_ERROR
+                    // ("Field is not optional") nhưng CHO QUA chuỗi toàn khoảng
+                    // trắng `"   "` — validator mặc định chỉ kiểm "có mặt", không
+                    // kiểm nội dung. `??` sẽ để lọt một hồ sơ tên rỗng, hiển thị ra
+                    // màn duyệt của OWNER thành một hàng trống không tra được là ai.
+                    fullName: field("hoTen")?.trim() || "(chưa đặt tên)",
+                    phone: field("soDienThoai")?.trim() || undefined,
+                  });
+                } catch (e) {
+                  // CỐ Ý không tách riêng nhánh `23505` (UNIQUE trên
+                  // `staff_users.email`) để trả FIELD_ERROR cho email. Hai lý do,
+                  // cả hai đã đo/đọc chứ không đoán:
+                  //   1. SuperTokens đã chặn email trùng TRƯỚC insert này. Đo
+                  //      2026-08-11: đăng ký lại cùng email trả
+                  //      {"status":"FIELD_ERROR","formFields":[{"id":"email",...}]}
+                  //      — `signUpPOST` gốc trả EMAIL_ALREADY_EXISTS_ERROR và
+                  //      `api/signup.js` dịch nó thành FIELD_ERROR. Nhánh đó thoát
+                  //      ở `status !== "OK"` bên trên, không bao giờ tới đây.
+                  //   2. Kiểu trả của `signUpPOST` không có biến thể FIELD_ERROR
+                  //      (types.d.ts: OK | SIGN_UP_NOT_ALLOWED |
+                  //      EMAIL_ALREADY_EXISTS_ERROR | GeneralErrorResponse), nên
+                  //      từ đây cũng không trả được.
+                  // Nghĩa là 23505 ở đây CHỈ xảy ra khi hai kho đã lệch nhau (hàng
+                  // `staff_users` mồ côi, không có user SuperTokens tương ứng) —
+                  // đó là sự cố dữ liệu, phải nổ to, không phải lỗi nhập liệu để
+                  // hiển thị dịu dàng dưới ô email. Thêm nhánh đó là thêm code chết.
+                  console.error("Tạo staff_users thất bại, đang xoá user SuperTokens:", e);
+                  await supertokens.deleteUser(response.user.id);
+                  throw e;
+                }
+                return response;
+              }
+            : undefined,
         }),
       },
     }),
