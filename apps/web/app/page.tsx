@@ -1,7 +1,12 @@
 import Image from "next/image";
+import Link from "next/link";
+import { SiteFooter } from "@/app/_components/site-footer";
+import { SiteHeader } from "@/app/_components/site-header";
+import { CONTAINER } from "@/app/_components/layout";
+import { VehicleCard } from "@/app/_components/vehicle-card";
 import { api } from "@/lib/api";
+import { fetchVehicles } from "@/lib/vehicles";
 import messages from "@/messages/vi.json";
-import { PLACEHOLDER_VEHICLES } from "./_placeholder-data";
 
 // SEO quan trọng với site công khai → ISR thay vì force-dynamic.
 //
@@ -11,12 +16,13 @@ import { PLACEHOLDER_VEHICLES } from "./_placeholder-data";
 // docs/plans/2026-08-05-round2-directus-staff-design.md.
 export const revalidate = 60;
 
-const CONTAINER = "mx-auto w-full max-w-page px-6";
-
 /**
- * Ảnh trong prototype là ẢNH AI SINH, không phải xe của shop. Nhãn dưới góc phải
- * phải còn nguyên cho tới khi thay bằng ảnh thật — gỡ nhãn mà không thay ảnh là
- * nói dối khách. PRODUCT.md nguyên tắc #2.
+ * Ảnh hero là ẢNH AI SINH, không phải xe của shop. Nhãn dưới góc phải phải còn
+ * nguyên cho tới khi thay bằng ảnh thật — gỡ nhãn mà không thay ảnh là nói dối
+ * khách. PRODUCT.md nguyên tắc #2.
+ *
+ * Nhãn này CHỈ còn ở hero: ảnh trong lưới xe giờ là ảnh thật lấy từ Directus,
+ * gắn nhãn "ảnh tạm" lên chúng cũng là nói sai — theo chiều ngược lại.
  */
 function PlaceholderTag() {
   return (
@@ -27,32 +33,17 @@ function PlaceholderTag() {
 }
 
 export default async function Page() {
-  const { data, error } = await api.health.get();
+  // Song song, không nối tiếp: hai request không phụ thuộc nhau, chờ lần lượt
+  // chỉ cộng thêm latency vào chính lần build/revalidate.
+  const [{ data, error }, vehicles] = await Promise.all([api.health.get(), fetchVehicles()]);
   const apiStatus = error ? "lỗi" : data.status;
+
+  // Trang chủ là cửa sổ, không phải danh mục: ba chiếc đầu rồi mời sang /xe.
+  const featured = vehicles.slice(0, 3);
 
   return (
     <>
-      <header className="sticky top-0 z-10 h-16 border-b border-hairline bg-canvas">
-        <div className={`${CONTAINER} flex h-full items-center justify-between gap-10`}>
-          <a
-            href="/"
-            className="label-upper text-lg whitespace-nowrap text-ink no-underline"
-            style={{ fontSize: 18 }}
-          >
-            {messages.site.title}
-          </a>
-          {/* DESIGN.md §8 yêu cầu hamburger ở mobile — CHƯA LÀM (cần client
-              component). Tạm ẩn dưới 768px để wordmark không gãy dòng. */}
-          <nav className="hidden gap-10 md:flex">
-            <a href="#doi-xe" className="label-upper text-ink hover:underline">
-              {messages.nav.vehicles}
-            </a>
-            <a href="#thu-tuc" className="label-upper text-ink hover:underline">
-              {messages.nav.howItWorks}
-            </a>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main>
         {/* ── Băng ảnh hero: ảnh CHÍNH LÀ băng, không khung card ──
@@ -80,12 +71,12 @@ export default async function Page() {
                 >
                   {messages.booking.cta}
                 </a>
-                <a
-                  href="#doi-xe"
+                <Link
+                  href="/xe"
                   className="btn-shape border-ink bg-transparent text-ink no-underline transition-colors hover:bg-ink hover:text-canvas"
                 >
                   {messages.hero.secondaryCta}
-                </a>
+                </Link>
               </div>
             </div>
             <PlaceholderTag />
@@ -113,39 +104,28 @@ export default async function Page() {
           </div>
         </section>
 
-        {/* ── Lưới xe ── */}
+        {/* ── Lưới xe: đội xe THẬT từ API, không còn dữ liệu dựng thử ── */}
         <section id="doi-xe" className="pb-section">
           <div className={CONTAINER}>
             <h2 className="display-lg m-0 text-ink">{messages.vehicles.heading}</h2>
             <p className="mt-4 text-lg text-body-strong">{messages.vehicles.lead}</p>
 
-            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {PLACEHOLDER_VEHICLES.map((v) => (
-                <article key={v.id}>
-                  <div className="relative aspect-[16/10] overflow-hidden bg-surface-card">
-                    <Image
-                      src={v.image}
-                      alt={`Ảnh ${v.name} — ảnh tạm, chưa phải xe của shop`}
-                      fill
-                      sizes="(max-width: 767px) 100vw, (max-width: 1023px) 50vw, 33vw"
-                      className="object-cover"
-                    />
-                    <PlaceholderTag />
-                  </div>
-                  <div className="flex flex-col items-start gap-3 pt-6">
-                    <h3 className="display-md m-0 text-ink">{v.name}</h3>
-                    {/* metadata dùng text-body chứ KHÔNG text-muted:
-                        muted trên surface tối chỉ 4.29:1, dưới AA. DESIGN.md §2 */}
-                    <p className="m-0 text-sm text-body">{v.meta}</p>
-                    <a href="#gui-yeu-cau" className="label-upper text-ink hover:underline">
-                      {messages.vehicles.detail} →
-                    </a>
-                  </div>
-                </article>
-              ))}
-            </div>
-
-            <p className="caption-text mt-6 text-muted">{messages.vehicles.empty}</p>
+            {featured.length === 0 ? (
+              // Chưa đăng xe nào — nói thẳng với khách bằng câu của họ, không
+              // để lại lưới rỗng trông như trang hỏng.
+              <p className="mt-10 text-body">{messages.vehicles.empty}</p>
+            ) : (
+              <>
+                <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {featured.map((v) => (
+                    <VehicleCard key={v.id} vehicle={v} />
+                  ))}
+                </div>
+                <Link href="/xe" className="label-upper mt-10 inline-block text-ink hover:underline">
+                  {messages.vehicles.all}
+                </Link>
+              </>
+            )}
           </div>
         </section>
 
@@ -164,27 +144,7 @@ export default async function Page() {
         </section>
       </main>
 
-      <footer className="border-t border-hairline py-16">
-        <div className={CONTAINER}>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <h3 className="label-upper mb-4 text-ink">{messages.footer.vehicles}</h3>
-              <p className="m-0 text-sm">{messages.vehicles.heading}</p>
-            </div>
-            <div>
-              <h3 className="label-upper mb-4 text-ink">{messages.footer.rental}</h3>
-              <p className="m-0 text-sm">{messages.terms.heading}</p>
-            </div>
-            <div>
-              <h3 className="label-upper mb-4 text-ink">{messages.footer.shop}</h3>
-              <p className="m-0 text-sm">{messages.site.tagline}</p>
-            </div>
-          </div>
-          <p className="caption-text mt-10 text-muted">
-            {messages.footer.legal} · {messages.scaffold.apiHealth}: {apiStatus}
-          </p>
-        </div>
-      </footer>
+      <SiteFooter note={`${messages.scaffold.apiHealth}: ${apiStatus}`} />
     </>
   );
 }
