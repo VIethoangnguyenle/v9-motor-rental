@@ -121,7 +121,10 @@ export default async function Page() {
                     <VehicleCard key={v.id} vehicle={v} />
                   ))}
                 </div>
-                <Link href="/xe" className="label-upper mt-10 inline-block text-ink hover:underline">
+                <Link
+                  href="/xe"
+                  className="label-upper mt-10 inline-block text-ink hover:underline"
+                >
                   {messages.vehicles.all}
                 </Link>
               </>
