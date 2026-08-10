@@ -115,7 +115,15 @@ export default tseslint.config(
         // api-infra uses `mode: "full"` for the same reason as shared-client above (see that
         // comment): partialMatch:false does not match exact files in this plugin version, so the
         // deprecated `mode: "full"` is the one that actually performs a full-path match here.
-        { type: "api-infra", pattern: "apps/api/src/{db,env}.ts", mode: "full" },
+        //
+        // Nested brace `{,.test}` also covers db.test.ts/env.test.ts: a test file sitting next to
+        // db.ts/env.ts at the src/ root doesn't fall under any folder-pattern element (unlike
+        // services/**.test.ts or domain/**.test.ts, which inherit their element from the folder),
+        // so without this it matches no element and boundaries/no-unknown-files fires on it.
+        // Verified via micromatch@4.0.8 directly (the version eslint-plugin-boundaries resolves):
+        // matches db.ts, env.ts, db.test.ts, env.test.ts; does NOT match index.ts or files under
+        // src/nowhere/ — confirmed again end-to-end via probes ①–③ below after this edit.
+        { type: "api-infra", pattern: "apps/api/src/{db,env}{,.test}.ts", mode: "full" },
         { type: "api-plugins", pattern: "apps/api/src/plugins/**" },
         { type: "frontend", pattern: "apps/{web,staff}/**" },
       ],
