@@ -144,17 +144,44 @@ supertokens.init({
     Session.init({
       // Prod tách subdomain: staff.$ROOT_DOMAIN gọi api.$ROOT_DOMAIN. Đặt cookie ở
       // domain cha để cookie đi được giữa hai subdomain. Ở dev cả hai cùng
-      // `localhost` (cổng không tính vào "site") nên KHÔNG đặt — đặt "localhost"
-      // làm cookieDomain là cách làm hỏng dev mà không lỗi ở đâu cả.
+      // `localhost` (cổng không tính vào "site") nên KHÔNG đặt — cookie host-only
+      // đi bình thường rồi.
+      //
+      // ⚠️ Điều kiện là `isProduction`, KHÔNG phải "có ROOT_DOMAIN". `ROOT_DOMAIN`
+      // là biến của **Caddy**, có từ trước đợt auth, và `.env` dev có nó thật với
+      // giá trị `example.com`. Gắn hành vi cookie vào sự HIỆN DIỆN của biến là gắn
+      // vào một thứ không nói lên môi trường — đo được (2026-08-11) với `.env`
+      // nguyên trạng, trước khi thêm `env.isProduction &&`:
+      //
+      //     set-cookie: sAccessToken=…; Domain=.example.com; Path=/; HttpOnly; SameSite=Lax
+      //
+      // Trình duyệt ở `localhost` **âm thầm vứt** cookie mang `Domain=.example.com`.
+      // Hệ quả: `POST /auth/signin` trả 200 kèm Set-Cookie trông hoàn toàn đúng,
+      // không session nào được lưu, và `staff-guard` đá người dùng về `/dang-nhap`
+      // mãi mãi — không console, không log, không status code sai, không test nào
+      // đỏ. Cùng lý lẽ với hàng rào `AUTH_DEV_OTP` ở `env.ts`: điều kiện phải là
+      // `NODE_ENV`, không phải "config đó có được điền hay không".
+      //
+      // Hàng rào phải ở ĐÂY chứ không ở `.env.example`: một dòng comment trong file
+      // ví dụ không ép được gì, và chính nó là thứ đã mâu thuẫn với comment cũ của
+      // `env.rootDomain` ("dev không có biến này") suốt thời gian bug sống.
       //
       // Spread có điều kiện chứ KHÔNG phải `cookieDomain: x ?? undefined`:
       // `apps/api` bật `exactOptionalPropertyTypes` (tsconfig.base.json) và
       // SuperTokens khai `cookieDomain?: string` — không phải `string | undefined`
       // (recipe/session/types.d.ts:47). Truyền `undefined` tường minh là lỗi type.
       //
-      // ⚠️ Vế này KHÔNG verify được ở localhost. Chỉ đóng lại bằng một lần đăng
-      // nhập thật trên stack đã deploy. §7 docs/plans/2026-08-10-staff-auth-design.md.
-      ...(env.rootDomain ? { cookieDomain: `.${env.rootDomain}` } : {}),
+      // ⚠️ Vế production không quan sát được bằng trình duyệt ở localhost. Nó được
+      // giữ bằng `auth.test.ts` (đăng nhập thật trong tiến trình con `NODE_ENV=production`,
+      // vì `env.ts` đọc `process.env` lúc import và `supertokens.init()` chỉ chạy một
+      // lần mỗi tiến trình) và chỉ đóng lại hoàn toàn bằng một lần đăng nhập thật
+      // trên stack đã deploy. §7 docs/plans/2026-08-10-staff-auth-design.md.
+      //
+      // `NODE_ENV=production` ở prod đến từ `apps/api/Dockerfile:30` (`ENV NODE_ENV=production`
+      // trong stage runtime), không từ `compose.prod.yaml` — xoá dòng đó trong Dockerfile
+      // là tắt luôn `cookieDomain` ở prod, đúng cái hỏng mà comment ở `compose.prod.yaml`
+      // cạnh `ROOT_DOMAIN:` mô tả.
+      ...(env.isProduction && env.rootDomain ? { cookieDomain: `.${env.rootDomain}` } : {}),
     }),
   ],
 });

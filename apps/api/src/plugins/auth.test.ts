@@ -28,7 +28,9 @@ const EMAIL_DANGKY = `${P}dangky@v9.vn`;
 const EMAIL_TRANG = `${P}trang@v9.vn`;
 /** Lớp bù trừ: một hàng staff_users chiếm sẵn email này để insert đụng UNIQUE. */
 const EMAIL_KENH = `${P}kenh@v9.vn`;
-const EMAILS = [EMAIL, EMAIL_DANGKY, EMAIL_TRANG, EMAIL_KENH];
+/** Dùng bởi các tiến trình con đo `cookieDomain` — xem describe cuối file. */
+const EMAIL_COOKIE = `${P}cookie@v9.vn`;
+const EMAILS = [EMAIL, EMAIL_DANGKY, EMAIL_TRANG, EMAIL_KENH, EMAIL_COOKIE];
 // Mật khẩu phải qua policy mặc định của SuperTokens (>= 8 ký tự, có chữ và số).
 const PASSWORD = "matkhau-test-2026";
 
@@ -234,5 +236,126 @@ describe("signUpPOST ghi staff_users", () => {
     const row = await docHang(EMAIL_KENH);
     expect(row?.id).toBe(`${P}chiem-cho`);
     expect(row?.full_name).toBe("Chiếm chỗ");
+  });
+});
+
+/**
+ * `cookieDomain` — §7 docs/plans/2026-08-10-staff-auth-design.md.
+ *
+ * `ROOT_DOMAIN` là biến của **Caddy**, có mặt hợp lệ trong `.env` dev với giá trị
+ * `example.com`. Bản đầu của `auth.ts` đặt `cookieDomain` chỉ dựa trên việc biến đó
+ * CÓ MẶT, nên ở dev cookie ra đời mang `Domain=.example.com` — trình duyệt ở
+ * `localhost` vứt nó trong im lặng: signin trả 200, không session nào tồn tại,
+ * guard đá về `/dang-nhap` mãi mãi, không lỗi ở đâu cả.
+ *
+ * ⚠️ Hai ca dưới **bắt buộc** chạy ở tiến trình con, không phải để cho đẹp: `env.ts`
+ * đọc `process.env` lúc import và `supertokens.init()` chỉ chạy MỘT lần cho cả tiến
+ * trình, nên trong chính tiến trình test này `NODE_ENV`/`ROOT_DOMAIN` đã bị đóng
+ * băng từ lúc `import { auth }` ở đầu file. Cùng lý do với `env.test.ts`.
+ *
+ * Và cả hai ca đều truyền `ROOT_DOMAIN` **tường minh** thay vì dựa vào `.env` đang
+ * có: CI không khai biến này (`.github/workflows/ci.yml` không có `ROOT_DOMAIN`),
+ * nên một test đọc env xung quanh sẽ xanh ở CI vì KHÔNG có gì để đặt sai — đúng
+ * kiểu "xanh vì lý do sai" mà repo này đã dính nhiều lần.
+ */
+
+/**
+ * Chạy trong tiến trình con. In một dòng `V9_COOKIE <json>` rồi thoát ngay —
+ * `auth.ts` kéo theo `../db`, và client Bun.SQL còn mở sẽ giữ tiến trình sống.
+ */
+const KICH_BAN_CON = `
+const { Elysia } = await import("elysia");
+const { auth } = await import("./src/plugins/auth.ts");
+const res = await new Elysia().use(auth).handle(
+  new Request("http://localhost/auth/signin", {
+    method: "POST",
+    // ⚠️ Thiếu \`st-auth-mode: cookie\` thì SuperTokens trả token qua HEADER và
+    // KHÔNG phát Set-Cookie nào — test sẽ "không thấy Domain=" vì không thấy gì
+    // cả, và ca dev xanh vĩnh viễn kể cả khi hàng rào bị gỡ.
+    headers: { "content-type": "application/json", "st-auth-mode": "cookie" },
+    body: process.env.V9_TEST_SIGNIN_BODY,
+  }),
+);
+const body = await res.json();
+await Bun.write(
+  Bun.stdout,
+  "V9_COOKIE " + JSON.stringify({ status: body.status, cookies: res.headers.getSetCookie() }) + "\\n",
+);
+process.exit(0);
+`;
+
+interface KetQuaCon {
+  status: unknown;
+  cookies: string[];
+}
+
+const dangNhap = formFields({ email: EMAIL_COOKIE, password: PASSWORD });
+
+async function dangNhapTrongTienTrinhCon(extra: Record<string, string>): Promise<KetQuaCon> {
+  const proc = Bun.spawn(["bun", "-e", KICH_BAN_CON], {
+    // Kịch bản import `./src/plugins/auth.ts` theo cwd, và cwd=apps/api cũng là
+    // lý do `.env` ở root KHÔNG tự nạp (bun chỉ đọc .env ở đúng cwd) — mọi biến
+    // tới từ `process.env` kế thừa bên dưới, nên `extra` thắng tuyệt đối.
+    cwd: `${import.meta.dir}/../..`,
+    env: { ...process.env, ...extra, V9_TEST_SIGNIN_BODY: JSON.stringify(dangNhap) },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const [out, err] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
+  await proc.exited;
+
+  const dong = out.split("\n").find((l) => l.startsWith("V9_COOKIE "));
+  if (!dong) {
+    throw new Error(`Tiến trình con không in kết quả (exit ${proc.exitCode}).\n${out}\n${err}`);
+  }
+  return JSON.parse(dong.slice("V9_COOKIE ".length)) as KetQuaCon;
+}
+
+describe("cookieDomain chỉ được đặt ở production", () => {
+  beforeAll(async () => {
+    const res = await post(
+      "/auth/signup",
+      formFields({ email: EMAIL_COOKIE, password: PASSWORD, hoTen: "Người Đo Cookie" }),
+    );
+    expect(await res.json()).toMatchObject({ status: "OK" });
+  });
+
+  it("dev + ROOT_DOMAIN=example.com → Set-Cookie KHÔNG có Domain=", async () => {
+    const { status, cookies } = await dangNhapTrongTienTrinhCon({
+      NODE_ENV: "development",
+      ROOT_DOMAIN: "example.com",
+    });
+
+    // Khẳng định có cookie THẬT trước khi khẳng định nó không mang Domain —
+    // "không tìm thấy Domain=" trong một mảng rỗng không chứng minh điều gì.
+    expect(status).toBe("OK");
+    const accessToken = cookies.find((c) => c.startsWith("sAccessToken="));
+    expect(accessToken).toBeDefined();
+
+    // ĐÂY là assertion của cả task. Bỏ `env.isProduction &&` khỏi `auth.ts` thì
+    // mọi dòng trên vẫn xanh và chỉ hai dòng dưới đỏ.
+    expect(accessToken).not.toContain("Domain=");
+    for (const cookie of cookies) expect(cookie).not.toContain("Domain=");
+  });
+
+  it("production + ROOT_DOMAIN=example.com → Set-Cookie có Domain=.example.com", async () => {
+    // Vế đối chứng. Thiếu nó thì "không bao giờ đặt cookieDomain" cũng qua được
+    // ca dev, và prod mất session khi staff.$ROOT_DOMAIN gọi api.$ROOT_DOMAIN —
+    // hỏng ở đúng nơi không quan sát được từ máy dev.
+    const { status, cookies } = await dangNhapTrongTienTrinhCon({
+      NODE_ENV: "production",
+      ROOT_DOMAIN: "example.com",
+    });
+
+    expect(status).toBe("OK");
+    const accessToken = cookies.find((c) => c.startsWith("sAccessToken="));
+    expect(accessToken).toBeDefined();
+    // Dấu chấm đầu là chủ đích: `.example.com` phủ mọi subdomain, `example.com`
+    // (không chấm) thì trình duyệt hiện đại cũng coi như vậy, nhưng ta khai
+    // tường minh nên phải giữ tường minh.
+    expect(accessToken).toContain("Domain=.example.com");
   });
 });

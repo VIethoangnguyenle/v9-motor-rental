@@ -48,13 +48,20 @@ export const env = {
   apiDomain: process.env.API_DOMAIN ?? "http://localhost:3001",
   staffAppUrl: process.env.STAFF_APP_URL ?? "http://localhost:3003",
   /**
-   * Domain gốc ở prod (`v9.example.com`), dùng DUY NHẤT để đặt `cookieDomain`
-   * cho session — xem `plugins/auth.ts`.
+   * Domain gốc mà Caddy dựng hostname lên (`example.com` → `api.example.com`,
+   * `staff.example.com`, …). `apps/api` **mượn lại** nó để đặt `cookieDomain`
+   * cho session — nhưng chỉ ở production; hàng rào nằm ở `plugins/auth.ts`.
    *
-   * **Cố ý KHÔNG `required()`.** Dev không có biến này và không được có: ở dev
-   * staff `:3003` và api `:3001` cùng `localhost`, mà cổng không tính vào
-   * "site", nên cookie đã đi bình thường rồi. Ép nó tồn tại là bắt mọi máy dev
-   * khai một domain không có thật.
+   * ⚠️ **Trường này cố ý KHÔNG tự tắt ở dev.** `ROOT_DOMAIN` có trước đợt auth,
+   * là biến của Caddy, và `.env` dev **có nó thật** với giá trị `example.com`
+   * (`.env.example:38`) — sẽ tiếp tục có. Nên nó phản ánh đúng `process.env`,
+   * không hơn: sự **hiện diện** của biến này không nói lên môi trường, vì vậy
+   * quyết định "có đặt `cookieDomain` hay không" phải hỏi `NODE_ENV`, ở đúng
+   * chỗ dùng. Nhét điều kiện môi trường vào đây là làm `env.rootDomain` nói dối
+   * về nội dung `.env`, và người đọc tiếp theo sẽ tin nó.
+   *
+   * **Cố ý KHÔNG `required()`** vì API phải khởi động được trên một máy dev
+   * không khai biến này.
    *
    * `?.trim() ||` chứ không phải `??`: compose expand `${ROOT_DOMAIN}` của một
    * biến chưa đặt thành **chuỗi rỗng**, không phải "không có biến". `??` sẽ để
