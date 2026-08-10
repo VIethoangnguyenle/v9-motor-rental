@@ -29,6 +29,13 @@ export type Permission = { ok: true } | { ok: false; reason: StaffDenyReason };
 const OK: Permission = { ok: true };
 const deny = (reason: StaffDenyReason): Permission => ({ ok: false, reason });
 
+/**
+ * Vế `actor.status !== "ACTIVE"` là phòng thủ: `staff-guard` ở `apps/api` đã chặn
+ * session của người `PENDING`/`DISABLED` từ trước khi request tới được đây, nên
+ * actor gần như luôn ACTIVE. Gộp chung một reason `KHONG_PHAI_OWNER` cho cả hai vế
+ * là có ý thức — phía gọi không cần phân biệt "không phải OWNER" với "OWNER nhưng
+ * bị khoá", cả hai đều bị từ chối như nhau.
+ */
 function requireOwner(actor: StaffActor): Permission | null {
   if (actor.role !== "OWNER" || actor.status !== "ACTIVE") return deny("KHONG_PHAI_OWNER");
   return null;
@@ -55,8 +62,9 @@ export function canChangeRole(
 ): Permission {
   const notOwner = requireOwner(actor);
   if (notOwner) return notOwner;
-  const hasOwnerLeft = target.role === "OWNER" && newRole !== "OWNER" && activeOwnerCount <= 1;
-  if (hasOwnerLeft) return deny("OWNER_CUOI_CUNG");
+  const wouldLoseLastOwner =
+    target.role === "OWNER" && newRole !== "OWNER" && activeOwnerCount <= 1;
+  if (wouldLoseLastOwner) return deny("OWNER_CUOI_CUNG");
   return OK;
 }
 

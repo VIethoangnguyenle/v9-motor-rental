@@ -5,6 +5,7 @@ const owner: StaffActor = { id: "u-owner", role: "OWNER", status: "ACTIVE" };
 const owner2: StaffActor = { id: "u-owner-2", role: "OWNER", status: "ACTIVE" };
 const staff: StaffActor = { id: "u-staff", role: "STAFF", status: "ACTIVE" };
 const pending: StaffActor = { id: "u-pending", role: "STAFF", status: "PENDING" };
+const ownerBiKhoa: StaffActor = { id: "u-owner-khoa", role: "OWNER", status: "DISABLED" };
 
 describe("canApprove", () => {
   it("OWNER duyệt được người đang chờ", () => {
@@ -22,6 +23,13 @@ describe("canApprove", () => {
 
   it("người đã ACTIVE thì không duyệt lại", () => {
     expect(canApprove(owner, staff)).toEqual({ ok: false, reason: "KHONG_CHO_DUYET" });
+  });
+
+  // Vế status của requireOwner: OWNER nhưng bị khoá cũng phải bị chặn như không
+  // phải OWNER. Trước khi có test này, xoá vế `actor.status !== "ACTIVE"` khỏi
+  // requireOwner không làm test nào đỏ.
+  it("OWNER nhưng đang DISABLED thì không duyệt được ai", () => {
+    expect(canApprove(ownerBiKhoa, pending)).toEqual({ ok: false, reason: "KHONG_PHAI_OWNER" });
   });
 });
 
@@ -41,6 +49,14 @@ describe("canChangeRole", () => {
   it("STAFF không đổi role của ai", () => {
     expect(canChangeRole(staff, pending, "OWNER", 1)).toEqual({ ok: false, reason: "KHONG_PHAI_OWNER" });
   });
+
+  // Vế status của requireOwner — xem ghi chú ở "canApprove".
+  it("OWNER nhưng đang DISABLED thì không đổi role của ai", () => {
+    expect(canChangeRole(ownerBiKhoa, staff, "SALES", 2)).toEqual({
+      ok: false,
+      reason: "KHONG_PHAI_OWNER",
+    });
+  });
 });
 
 describe("canDisable", () => {
@@ -56,7 +72,21 @@ describe("canDisable", () => {
     expect(canDisable(owner, owner2, 1)).toEqual({ ok: false, reason: "OWNER_CUOI_CUNG" });
   });
 
+  // Khi "tự khoá mình" trùng với "OWNER cuối cùng", TU_KHOA_MINH phải thắng:
+  // test "không tự khoá mình" ở trên đã chứng minh tự khoá bị từ chối kể cả khi
+  // còn OWNER khác (activeOwnerCount 2), nên TU_KHOA_MINH là lý do luôn đúng bất
+  // kể còn bao nhiêu OWNER. Trả OWNER_CUOI_CUNG ở đây sẽ ngụ ý sai rằng thêm một
+  // OWNER nữa thì tự khoá được.
+  it("tự khoá mình khi đang là OWNER cuối cùng vẫn báo TU_KHOA_MINH", () => {
+    expect(canDisable(owner, owner, 1)).toEqual({ ok: false, reason: "TU_KHOA_MINH" });
+  });
+
   it("STAFF không khoá được ai", () => {
     expect(canDisable(staff, pending, 1)).toEqual({ ok: false, reason: "KHONG_PHAI_OWNER" });
+  });
+
+  // Vế status của requireOwner — xem ghi chú ở "canApprove".
+  it("OWNER nhưng đang DISABLED thì không khoá được ai", () => {
+    expect(canDisable(ownerBiKhoa, staff, 2)).toEqual({ ok: false, reason: "KHONG_PHAI_OWNER" });
   });
 });
