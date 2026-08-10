@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lt, sql } from "drizzle-orm";
 import { schema } from "@v9/db";
 import { db } from "../db";
 import { env } from "../env";
@@ -28,23 +28,22 @@ export interface PasswordResetDeps {
 }
 
 /**
- * Chỉ MỘT thứ khác nhau giữa dev và prod. Toàn bộ phần còn lại — băm, hết hạn,
- * đếm lần sai, đổi mã lấy mật khẩu mới — chạy y hệt nhau ở cả hai môi trường.
- * Cố ý KHÔNG làm nhánh `if (ma === "999999") cho qua`: một cửa sau riêng nghĩa là
- * luồng chạy ở prod không phải luồng được test nhiều nhất.
- * §5.2 docs/plans/2026-08-10-staff-auth-design.md.
+ * Sáu chữ số ngẫu nhiên mã hoá — **đoạn code duy nhất trong repo sinh ra bí mật
+ * thật ở production**.
  *
- * Điều kiện là `NODE_ENV`, KHÔNG phải "SMTP chưa cấu hình" — thiếu SMTP là trạng
- * thái mặc định của một prod mới dựng, và nếu thiếu config bật được mã cố định thì
- * cả shop mở bằng sáu con số. `env.ts` còn ném lúc khởi động nếu `AUTH_DEV_OTP` có
- * mặt ở production.
+ * Tách khỏi `sinhMa()` và export CHỈ để test được. `sinhMa()` trả `env.devOtp`
+ * ngay dòng đầu ở mọi môi trường không phải production, nên khi nó còn ôm cả phần
+ * rejection sampling thì đoạn quan trọng nhất của file này có coverage đúng 0% —
+ * không test nào trong repo từng chạy qua nó. Hàm này cố ý KHÔNG đọc `env`: đó là
+ * điều kiện để test gọi thẳng, không phải dựng lại `NODE_ENV`.
  *
  * crypto.getRandomValues chứ KHÔNG phải Math.random — mã đoán được là mã không
  * bảo vệ gì, và Math.random không hứa hẹn gì về việc đoán được hay không.
+ *
+ * Trả **chuỗi** đã `padStart`, không phải số: `"000123"` là mã hợp lệ, và một số
+ * `123` đánh mất ba chữ số 0 ở đầu. Người gọi không được parse nó thành số.
  */
-function sinhMa(): string {
-  if (!env.isProduction) return env.devOtp;
-
+export function sinhMaNgauNhien(): string {
   // Rejection sampling thay cho `% 1_000_000` thẳng: 2^32 không chia hết cho 10^6
   // nên phép chia dư làm 967.296 giá trị đầu tiên hay gặp hơn phần còn lại. Độ
   // lệch nhỏ, nhưng vòng lặp này rẻ hơn việc để lại một câu hỏi "chỗ này lệch bao
@@ -57,6 +56,23 @@ function sinhMa(): string {
     v = buf[0] ?? 0;
   } while (v >= NGUONG);
   return String(v % 1_000_000).padStart(6, "0");
+}
+
+/**
+ * Chỉ MỘT thứ khác nhau giữa dev và prod. Toàn bộ phần còn lại — băm, hết hạn,
+ * đếm lần sai, đổi mã lấy mật khẩu mới — chạy y hệt nhau ở cả hai môi trường.
+ * Cố ý KHÔNG làm nhánh `if (ma === "999999") cho qua`: một cửa sau riêng nghĩa là
+ * luồng chạy ở prod không phải luồng được test nhiều nhất.
+ * §5.2 docs/plans/2026-08-10-staff-auth-design.md.
+ *
+ * Điều kiện là `NODE_ENV`, KHÔNG phải "SMTP chưa cấu hình" — thiếu SMTP là trạng
+ * thái mặc định của một prod mới dựng, và nếu thiếu config bật được mã cố định thì
+ * cả shop mở bằng sáu con số. `env.ts` còn ném lúc khởi động nếu `AUTH_DEV_OTP` có
+ * mặt ở production.
+ */
+function sinhMa(): string {
+  if (!env.isProduction) return env.devOtp;
+  return sinhMaNgauNhien();
 }
 
 /**
@@ -73,11 +89,38 @@ export async function taoMaDatLaiMatKhau(staffUserId: string): Promise<string> {
   const codeHash = await Bun.password.hash(ma);
 
   await db.transaction(async (tx) => {
+    // KHOÁ hàng `staff_users` của chính người này TRƯỚC, rồi mới UPDATE + INSERT.
+    //
+    // Một transaction bao hai câu ghi là ĐIỀU KIỆN CẦN NHƯNG KHÔNG ĐỦ cho bất biến
+    // "tối đa MỘT hàng used_at IS NULL". Mức cô lập mặc định là READ COMMITTED: câu
+    // `UPDATE ... SET used_at` của T2 chỉ nhìn thấy các hàng đã commit tại thời điểm
+    // nó bắt đầu, nên hàng T1 vừa INSERT (chưa commit) KHÔNG bị nó đánh dấu — hai
+    // transaction cùng UPDATE "không có hàng nào", cùng INSERT, và cùng commit. Đo
+    // thật trước khi có dòng khoá này: 8 lời gọi song song để lại 5 mã cùng sống.
+    //
+    // Hậu quả không chỉ là rác: `kiemTraMa` lấy đúng hàng MỚI NHẤT, nên các mã kia
+    // vô hiệu với chính nhân viên đã nhận email chứa chúng. Và nó phá đúng bất biến
+    // mà comment của `password_reset_codes_active_idx` nói index dựa vào.
+    //
+    // `FOR UPDATE` trên hàng staff_users tuần tự hoá hai lời gọi cho CÙNG một người
+    // — T2 chờ T1 commit rồi mới đọc lại, lúc đó mã của T1 đã hiện ra và bị đánh
+    // dấu — trong khi hai người khác nhau khoá hai hàng khác nhau nên không đụng
+    // nhau. Cùng mẫu với `activeOwnersLockedQuery` ở `services/staff.ts`; và cũng
+    // như ở đó, khoá PHẢI đặt qua `tx`, không phải `db`: gọi bằng `db` trong callback
+    // của `db.transaction` mở một connection KHÁC và khoá đặt trên đó vô nghĩa.
+    //
+    // Không cần migration cho cách này — một unique index thật trên
+    // `(staff_user_id) WHERE used_at IS NULL` cũng ép được bất biến, nhưng đổi lại
+    // là một migration cộng với việc mọi lời gọi phải xử lý `23505`.
+    await tx
+      .select({ id: schema.staffUsers.id })
+      .from(schema.staffUsers)
+      .where(eq(schema.staffUsers.id, staffUserId))
+      .for("update");
+
     // Xin mã mới thì mã cũ chết ngay. Cùng một transaction với INSERT bên dưới, vì
     // nếu chỉ UPDATE thành công rồi INSERT hỏng thì người dùng mất luôn mã đang cầm
-    // mà không nhận được mã nào — và nếu INSERT chạy trước khi UPDATE commit thì có
-    // lúc hai mã cùng sống, phá bất biến "tối đa MỘT hàng used_at IS NULL" mà partial
-    // index `password_reset_codes_active_idx` dựa vào (xem comment ở schema).
+    // mà không nhận được mã nào.
     await tx
       .update(schema.passwordResetCodes)
       .set({ usedAt: new Date() })
@@ -103,10 +146,34 @@ export type KetQuaKiemTra = { ok: true } | { ok: false; reason: "MA_SAI" | "MA_H
  * Ba lý do chết đều trả CÙNG MỘT `MA_HET_HIEU_LUC` — hết hạn, quá số lần, không có
  * mã nào. Phân biệt được ba trạng thái đó là nói cho người đoán mò biết họ đang ở
  * đâu: "còn hạn nhưng sai" khác hẳn "không có mã nào" khi đang dò email của shop.
+ *
+ * ⚠️ CỔNG "còn lượt không" NẰM TRONG CHÍNH CÂU UPDATE, và chạy TRƯỚC `verify`.
+ * Đây là điểm quan trọng nhất của hàm, đừng tách nó ra thành `if` ở JS cho "dễ đọc".
+ *
+ * Bản trước đọc `attempts` bằng SELECT, chạy `Bun.password.verify` (argon2id, ~115ms),
+ * rồi mới UPDATE — check-then-act không khoá. Mọi request lọt vào cửa sổ ~115ms đó
+ * đều đọc cùng một `attempts` cũ và đều đi qua cổng. Đo thật trên cùng một mã:
+ *
+ *     SONG SONG N=20: MA_SAI=20  MA_HET_HIEU_LUC=0   attempts_cuoi=20
+ *     TUẦN TỰ  N=20: MA_SAI=5   MA_HET_HIEU_LUC=15  attempts_cuoi=5
+ *
+ * Tức là giới hạn 5 lần — hàng rào DUY NHẤT giữa sáu con số và một tài khoản — chỉ
+ * tồn tại với kẻ tấn công chịu xếp hàng. Bộ đếm vẫn tăng đúng bằng SQL (`attempts + 1`
+ * tính ở Postgres, không phải ở JS); **đếm đúng ≠ chặn đúng**, và comment cũ ở đây
+ * tuyên bố nhầm cái thứ hai từ cái thứ nhất.
+ *
+ * Dồn cả bốn điều kiện vào `WHERE` làm cổng thành nguyên tử: Postgres khoá hàng theo
+ * từng câu UPDATE, và ở READ COMMITTED câu bị chặn sẽ ĐỌC LẠI hàng rồi áp lại `WHERE`
+ * sau khi câu trước commit — nên `attempts < 5` được đánh giá trên giá trị mới nhất,
+ * không phải trên snapshot cũ. Không có hàng trả về ⇒ hết lượt / hết hạn / đã dùng.
+ *
+ * Lợi ích thứ hai, không nhỏ: argon2id (64MB, ~115ms) không còn chạy cho mã đã cạn
+ * lượt, nên endpoint này thôi là vòi CPU miễn phí. Rate limit theo IP vẫn là việc
+ * riêng còn thiếu.
  */
 export async function kiemTraMa(staffUserId: string, ma: string): Promise<KetQuaKiemTra> {
-  const [row] = await db
-    .select()
+  const [moiNhat] = await db
+    .select({ id: schema.passwordResetCodes.id })
     .from(schema.passwordResetCodes)
     .where(
       and(
@@ -117,28 +184,36 @@ export async function kiemTraMa(staffUserId: string, ma: string): Promise<KetQua
     .orderBy(desc(schema.passwordResetCodes.createdAt))
     .limit(1);
 
-  if (!row) return { ok: false, reason: "MA_HET_HIEU_LUC" };
-  if (row.expiresAt.getTime() < Date.now()) return { ok: false, reason: "MA_HET_HIEU_LUC" };
-  if (row.attempts >= SO_LAN_TOI_DA) return { ok: false, reason: "MA_HET_HIEU_LUC" };
+  if (!moiNhat) return { ok: false, reason: "MA_HET_HIEU_LUC" };
 
-  if (!(await Bun.password.verify(ma, row.codeHash))) {
-    // `attempts + 1` tính Ở POSTGRES, không phải `row.attempts + 1` tính ở JS: hai
-    // lần đoán chạy song song cùng đọc `attempts = 3` rồi cùng ghi `4` thì kẻ tấn
-    // công được thêm lượt miễn phí mỗi lần bắn kèm. Giới hạn 5 lần là hàng rào duy
-    // nhất giữa sáu con số và một tài khoản — nó phải đếm đúng khi bị bắn song song.
-    await db
-      .update(schema.passwordResetCodes)
-      .set({ attempts: sql`${schema.passwordResetCodes.attempts} + 1` })
-      .where(eq(schema.passwordResetCodes.id, row.id));
-    return { ok: false, reason: "MA_SAI" };
-  }
+  // Câu này VỪA tiêu một lượt VỪA quyết định có được đoán hay không — một lần chạm
+  // DB, không có khe hở giữa đọc và ghi. `expires_at > now()` để Postgres tự so giờ:
+  // so bằng `Date.now()` ở JS là lấy đồng hồ của một máy khác với máy đã ghi hàng.
+  const [hang] = await db
+    .update(schema.passwordResetCodes)
+    .set({ attempts: sql`${schema.passwordResetCodes.attempts} + 1` })
+    .where(
+      and(
+        eq(schema.passwordResetCodes.id, moiNhat.id),
+        lt(schema.passwordResetCodes.attempts, SO_LAN_TOI_DA),
+        isNull(schema.passwordResetCodes.usedAt),
+        gt(schema.passwordResetCodes.expiresAt, sql`now()`),
+      ),
+    )
+    .returning({ codeHash: schema.passwordResetCodes.codeHash });
+
+  if (!hang) return { ok: false, reason: "MA_HET_HIEU_LUC" };
+
+  // `attempts` tăng cả khi đoán ĐÚNG. Chấp nhận được: mã chết ngay ở câu UPDATE
+  // dưới đây, nên cái lượt vừa tiêu không còn ai dùng tới.
+  if (!(await Bun.password.verify(ma, hang.codeHash))) return { ok: false, reason: "MA_SAI" };
 
   // Đánh dấu đã dùng ngay khi xác minh đúng: mã dùng được một lần, kể cả khi các
   // bước sau (sinh token, đổi mật khẩu) hỏng. Hỏng theo hướng đóng, không mở.
   await db
     .update(schema.passwordResetCodes)
     .set({ usedAt: new Date() })
-    .where(eq(schema.passwordResetCodes.id, row.id));
+    .where(eq(schema.passwordResetCodes.id, moiNhat.id));
   return { ok: true };
 }
 

@@ -127,6 +127,20 @@ services:
       STAFF_APP_URL: https://staff.${ROOT_DOMAIN}
       SUPERTOKENS_CONNECTION_URI: http://supertokens:3567
       SUPERTOKENS_API_KEY: ${SUPERTOKENS_API_KEY}
+      # Khối `environment:` này liệt kê TỪNG biến một, nên biến nào không có tên ở
+      # đây thì không tới container — kể cả khi `.env` trên VPS đã điền đủ. Thiếu
+      # `SMTP_HOST` làm `env.smtp` thành `null`, `emailDaCauHinh` thành false, và
+      # route quên-mật-khẩu trả 503 VĨNH VIỄN: đường email không phải "chưa cấu
+      # hình", nó không nối được. Bốn biến còn lại là `required()` trong `env.ts`
+      # một khi `SMTP_HOST` có mặt — thiếu thì API không khởi động.
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+      # KHÔNG thêm AUTH_DEV_OTP vào đây. `env.ts` ném lúc khởi động nếu biến đó có
+      # mặt ở NODE_ENV=production — mã đặt lại cố định ở prod là cả shop mở bằng
+      # sáu con số. Việc API chết là hành vi ĐÚNG, không phải lỗi cấu hình cần vá.
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
       interval: 10s

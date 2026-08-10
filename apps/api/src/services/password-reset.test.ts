@@ -6,6 +6,7 @@ import {
   doiMatKhauBangMa,
   kiemTraMa,
   type PasswordResetDeps,
+  sinhMaNgauNhien,
   taoMaDatLaiMatKhau,
   timStaffTheoEmail,
 } from "./password-reset";
@@ -95,6 +96,61 @@ beforeAll(async () => {
 
 afterAll(cleanAwaited);
 
+/**
+ * Đây là nhánh CHỈ chạy ở production, và trước khi được tách ra khỏi `sinhMa()` nó
+ * có coverage đúng 0%: `sinhMa()` trả `env.devOtp` ngay dòng đầu ở mọi môi trường
+ * không phải production, nên đoạn code duy nhất trong repo sinh ra bí mật thật chưa
+ * từng chạy trong một test nào. Test dưới đây gọi thẳng hàm thuần, không dựng lại
+ * `NODE_ENV` — đó là lý do hàm cố ý không đọc `env`.
+ */
+describe("sinhMaNgauNhien", () => {
+  it("luôn đúng 6 ký tự và chỉ gồm chữ số", () => {
+    for (let i = 0; i < 5_000; i++) {
+      expect(sinhMaNgauNhien()).toMatch(/^\d{6}$/);
+    }
+  });
+
+  it("GIỮ số 0 ở đầu — mã là chuỗi, không phải số", () => {
+    // `"000123"` là mã hợp lệ; parse thành số rồi in lại cho ra `"123"`, và nhân
+    // viên gõ đúng thứ nhận được trong email vẫn bị báo sai. Ép sinh tới khi gặp
+    // một mã bắt đầu bằng 0 (xác suất ~10% mỗi lần, nên vòng này gần như chắc chắn
+    // dừng sớm) rồi khoá đúng tính chất đó.
+    let coSoKhongODau = "";
+    for (let i = 0; i < 1_000 && !coSoKhongODau; i++) {
+      const ma = sinhMaNgauNhien();
+      if (ma.startsWith("0")) coSoKhongODau = ma;
+    }
+    expect(coSoKhongODau).toMatch(/^0\d{5}$/);
+    expect(coSoKhongODau).toHaveLength(6);
+    // Đối chứng: đây chính là thứ một lần parse-rồi-in-lại sẽ làm hỏng.
+    expect(String(Number(coSoKhongODau))).not.toBe(coSoKhongODau);
+  });
+
+  it("không lệch thô: mọi chữ số 0–9 đều xuất hiện ở MỌI vị trí", () => {
+    // 60.000 mẫu, kỳ vọng 6.000 lần cho mỗi cặp (vị trí, chữ số). Test này không
+    // chứng minh phân phối đều — nó bắt các kiểu hỏng thô: `% 1_000_000` mất một
+    // dải giá trị, `padStart` sai, hay một vị trí bị ghim cứng.
+    const N = 60_000;
+    const dem = Array.from({ length: 6 }, () => new Map<string, number>());
+    for (let i = 0; i < N; i++) {
+      const ma = sinhMaNgauNhien();
+      for (let vt = 0; vt < 6; vt++) {
+        const c = ma[vt] ?? "";
+        dem[vt]?.set(c, (dem[vt]?.get(c) ?? 0) + 1);
+      }
+    }
+    for (let vt = 0; vt < 6; vt++) {
+      for (let d = 0; d <= 9; d++) {
+        const soLan = dem[vt]?.get(String(d)) ?? 0;
+        // Ngưỡng = một nửa kỳ vọng (6.000), tức cách kỳ vọng ~41 độ lệch chuẩn:
+        // test flaky vì ngẫu nhiên là test bị người ta tắt đi, và cái cần bắt ở đây
+        // là hỏng thô chứ không phải lệch vài phần nghìn.
+        expect(soLan).toBeGreaterThan(N / 10 / 2);
+      }
+    }
+  });
+});
+
 describe("taoMaDatLaiMatKhau", () => {
   it("ngoài production luôn sinh đúng 999999", async () => {
     const ma = await taoMaDatLaiMatKhau(ID);
@@ -104,6 +160,16 @@ describe("taoMaDatLaiMatKhau", () => {
   it("xin mã mới thì mã cũ chết — chỉ còn đúng một mã sống", async () => {
     await taoMaDatLaiMatKhau(ID);
     await taoMaDatLaiMatKhau(ID);
+    expect(await maConSong(ID)).toHaveLength(1);
+  });
+
+  // Bản trước gói UPDATE + INSERT trong một transaction và coi thế là đủ. Không đủ:
+  // ở READ COMMITTED, `UPDATE ... SET used_at` của T2 không nhìn thấy hàng T1 vừa
+  // INSERT (chưa commit) nên không đánh dấu nó. Đo thật: 8 lời gọi song song để lại
+  // 5 mã cùng sống. Test tuần tự ở ngay trên KHÔNG bắt được — nó chỉ chứng minh hai
+  // lời gọi nối đuôi nhau thì ổn.
+  it("8 lời gọi SONG SONG cho cùng một người: vẫn chỉ còn đúng MỘT mã sống", async () => {
+    await Promise.all(Array.from({ length: 8 }, () => taoMaDatLaiMatKhau(ID)));
     expect(await maConSong(ID)).toHaveLength(1);
   });
 
@@ -158,10 +224,31 @@ describe("kiemTraMa", () => {
   });
 
   it("không có mã nào thì báo hết hiệu lực, không phải crash", async () => {
-    await db
-      .delete(schema.passwordResetCodes)
-      .where(eq(schema.passwordResetCodes.staffUserId, ID));
+    await db.delete(schema.passwordResetCodes).where(eq(schema.passwordResetCodes.staffUserId, ID));
     expect(await kiemTraMa(ID, "999999")).toEqual({ ok: false, reason: "MA_HET_HIEU_LUC" });
+  });
+
+  // ⚠️ TEST NÀY PHẢI SONG SONG. Test "sai 5 lần" ở trên đoán trong vòng `for`, tức
+  // là tuần tự, và nó XANH kể cả trên bản code không chặn được gì: đo trên bản cũ,
+  // tuần tự N=20 cho MA_SAI=5 (đúng) trong khi song song N=20 cho MA_SAI=20 và
+  // attempts_cuoi=20 (giới hạn không tồn tại). Kẻ tấn công không có lý do gì phải
+  // xếp hàng, nên hình dạng của test phải khớp hình dạng của cuộc tấn công.
+  //
+  // Cửa sổ bị khai thác là ~115ms của `Bun.password.verify` (argon2id) nằm GIỮA lúc
+  // đọc `attempts` và lúc ghi nó. Mọi request vào trong cửa sổ đó đều đọc cùng một
+  // giá trị cũ và đều đi qua cổng.
+  it("bắn SONG SONG 20 lần đoán sai: nhiều nhất 5 lần được chấp nhận", async () => {
+    const ma = await taoMaDatLaiMatKhau(ID);
+
+    const ketQua = await Promise.all(Array.from({ length: 20 }, () => kiemTraMa(ID, "000000")));
+    const soLanDuocChapNhan = ketQua.filter((r) => !r.ok && r.reason === "MA_SAI").length;
+
+    expect(soLanDuocChapNhan).toBeLessThanOrEqual(5);
+    // Chặn kiểu "trả MA_HET_HIEU_LUC cho tất cả" cũng thoả `<= 5` nhưng là hỏng
+    // theo hướng khác: mã còn hạn, chưa dùng, phải cho đoán ít nhất một lần.
+    expect(soLanDuocChapNhan).toBeGreaterThan(0);
+    // Và cơn bão phải THỰC SỰ giết mã, không chỉ đếm đẹp: sau đó mã ĐÚNG cũng chết.
+    expect(await kiemTraMa(ID, ma)).toEqual({ ok: false, reason: "MA_HET_HIEU_LUC" });
   });
 });
 
