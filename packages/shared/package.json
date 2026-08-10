@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./client": "./src/client.ts",
-    "./domain/money": "./src/domain/money.ts"
+    "./domain/money": "./src/domain/money.ts",
+    "./domain/staff": "./src/domain/staff.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
