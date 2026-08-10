@@ -45,7 +45,7 @@
     "vehicles": "Đội xe",
     "rental": "Thuê xe",
     "shop": "Shop",
-    "legal": "Trang prototype. Nội dung xe và ảnh chưa phải dữ liệu thật."
+    "legal": "Trang prototype. Thông tin và ảnh xe lấy từ danh mục của shop. Riêng ảnh bìa trang chủ là ảnh AI tạm."
   },
   "placeholder": {
     "imageTag": "Ảnh AI tạm — chưa phải xe của shop",

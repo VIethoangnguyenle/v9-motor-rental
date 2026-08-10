@@ -37,13 +37,29 @@ bun run db:migrate           # apply migration
 bun run db:generate          # sinh migration cho bảng thường
 bun run db:custom            # migration trống để viết SQL tay
 bun test                     # bun test, toàn repo
-bun run typecheck            # cả 5 workspace
+bun run typecheck            # 5 workspace + scripts/ (xem ngay dưới)
 bun run lint                 # eslint, có ép ranh giới kiến trúc
 bun run format               # prettier
 bun run bench                # đo /health, exit 1 nếu vượt perf budget
+bun run directus:setup       # cấu hình Directus, chạy lại được nhiều lần
 ```
 
 Prod: `docker compose -f compose.prod.yaml up -d`.
+
+**`typecheck` là hai lệnh nối bằng `&&`, không phải một:**
+
+```
+bun run --filter '*' typecheck && ./node_modules/.bin/tsc --noEmit -p scripts/tsconfig.json
+```
+
+Nửa sau tồn tại vì `--filter '*'` **chỉ đi qua workspace**, mà `scripts/` (nơi có
+`directus-setup.ts`) không phải workspace — nó không có `package.json`. Chỉ chạy nửa đầu thì
+`scripts/` **không được typecheck lần nào** và lệnh vẫn xanh: đúng cái bẫy bỏ-qua-im-lặng mà file
+này cảnh báo ở mục `bun run --filter '*'` bên dưới, chỉ khác là lần này thứ bị bỏ sót không phải
+một workspace thiếu script mà là một thư mục không bao giờ là workspace.
+
+Hệ quả: thư mục code mới nằm **ngoài** `apps/` và `packages/` phải được thêm vào một `tsconfig`
+nào đó có người gọi, nếu không nó vô hình với `bun run typecheck`.
 
 ---
 
@@ -239,6 +255,45 @@ chặn dữ liệu**. Một cấu hình chặn tất là hỏng, không phải a
 `CREATE ROLE` là đối tượng **cấp cluster**, không phải cấp database — migration phải bọc trong
 `DO $$ IF NOT EXISTS $$`, `CREATE TABLE IF NOT EXISTS` không có tương đương cho role.
 
+### Probe asset công khai — bắt drift của cấu hình KHÔNG nằm trong git
+
+Probe DDL ở trên bảo vệ **schema**. Ba lệnh dưới bảo vệ thứ khác hẳn: collection, role Public và
+preset transform của Directus sống trong **database của Directus**, không trong repo. `git clone`
+không mang chúng theo, và ai đó bấm vài nút trong Data Studio thì không để lại dấu vết nào trong
+diff. Nguồn sự thật viết ra được là `scripts/directus-setup.ts`, áp lại bằng
+`bun run directus:setup` (chạy nhiều lần vô hại) — nhưng **script không tự chạy**, nên phải probe.
+
+Chạy sau mỗi lần nâng version Directus, và sau mỗi lần dựng lại môi trường:
+
+```bash
+# ① PHẢI ra 200 và content-type: image/*  (KHÔNG kèm token — role Public phải đọc được)
+curl -sI "http://localhost:8055/assets/<uuid-một-ảnh-xe>?key=web" | grep -i '^HTTP\|^content-type'
+#   → HTTP/1.1 200 OK  /  Content-Type: image/png
+
+# ② PHẢI bị từ chối — transform tuỳ ý là vòi CPU miễn phí cho bot
+curl -s "http://localhost:8055/assets/<uuid>?width=9999" | head -c 120
+#   → 400, "code":"INVALID_QUERY" — Only configured presets can be used
+
+# ③ PHẢI 403 — Directus không được phơi dữ liệu nghiệp vụ ra internet
+curl -s "http://localhost:8055/items/vehicles" | head -c 120
+#   → "code":"FORBIDDEN"
+```
+
+⚠️ Dùng `grep` chứ **không** `head -3` ở lệnh ①: Directus nhét một khối CSP dài lên đầu response,
+nên `head -3` chỉ ra được dòng `HTTP/1.1 200` với hai header bảo mật — đúng cái `Content-Type` cần
+đọc thì bị cắt mất. Một probe hiển thị thiếu thứ nó tuyên bố kiểm là probe không kiểm gì; xem mục
+"Hàng rào phải được probe" bên dưới. Với ② và ③ thì đọc **body**, vì mã lỗi phân biệt được nguyên
+nhân (`INVALID_QUERY` vs `FORBIDDEN`) còn status code thì không.
+
+Ba lệnh đo ba thứ khác nhau và **không thay thế được cho nhau**: lệnh ① rằng ảnh vẫn ra được (hỏng
+là trang trắng ảnh), lệnh ② rằng `storage_asset_transform = presets` còn nguyên (hỏng là mỗi
+`?width=` lạ thành một lần resize + một entry cache), lệnh ③ rằng role Public vẫn **chỉ** đọc
+`directus_files` (hỏng là `plate` và toàn bộ hàng `draft` ra internet — vòng qua chính lớp lọc mà
+`apps/api` dựng lên).
+
+Lấy `<uuid>`: `SELECT file_id FROM vehicle_photos LIMIT 1;`. Chi tiết và cách dọn ở
+`docs/runbooks/directus-vehicles.md`.
+
 ### Xác thực: SuperTokens cho `apps/staff`, không có gì cho `apps/web`
 
 `apps/api/src/plugins/auth.ts` phơi `/auth/*` qua framework `custom` của `supertokens-node`
@@ -351,10 +406,16 @@ chứ không ở bước đọc code.
 
 ## Việc còn để lại
 
+**Đợt kế tiếp:** `booking_requests` + form gửi yêu cầu thuê trên `apps/web`. Đó là mảnh còn thiếu
+để đội xe đang hiển thị sinh ra được việc — hiện khách xem xong không có đường nào gửi yêu cầu.
+Ràng buộc copy của form nằm ở `apps/web/AGENTS.md` (không hứa xe còn trống).
+
 **Nghiệp vụ (cần brainstorm riêng trước khi code):** chính sách tính ngày thuê và bảng giá ·
-schema `vehicles`, `customers`, `rentals`, `booking_requests` kèm exclusion constraint chống đặt
+schema `customers`, `rentals`, `booking_requests` — `rentals` kèm exclusion constraint chống đặt
 trùng · bốn tính năng của `apps/staff`: lịch, thống kê, lên đơn/bàn giao, quản lý khách hàng ·
 vai trò `SALES` làm gì.
+
+`vehicles` và `vehicle_photos` **đã xong** (migration `0002`–`0004`, đợt 3).
 
 **Kỹ thuật:** enforce auth trên route thật (SuperTokens đã nối, chưa route nào dùng) · `next-intl`
 khi thật sự có tiếng Anh · upload ảnh lên MinIO.
@@ -373,3 +434,16 @@ Cả hai đều chờ **đúng một** thứ: **file logo thật của shop**.
 **Deploy:** đang gác. Secret SSH đã đặt; còn thiếu `ssh-copy-id` lên VPS, `ROOT_DOMAIN` +
 `CADDY_EMAIL`, bootstrap `~/v9-motor-rental`, và `docker login ghcr.io` trên VPS (repo private nên
 image cũng private). Chi tiết trong Agent Memory.
+
+⚠️ **Chặn deploy: Directus đang cầm credential ROOT của MinIO ở prod.**
+`compose.prod.yaml` truyền `STORAGE_S3_KEY: ${MINIO_ROOT_USER}` và
+`STORAGE_S3_SECRET: ${MINIO_ROOT_PASSWORD}` — tức là service phơi ra internet nhiều nhất lại giữ
+đúng cái khoá mở được **mọi** bucket, kể cả `checkins` (ảnh tình trạng xe lúc bàn giao, thứ dùng
+làm bằng chứng khi tranh chấp). Một lỗ hổng trong Directus thành quyền toàn bộ object storage.
+
+`.env.example` đã có câu cảnh báo đúng chỗ đó, và nó **không ép được gì** — đây chính là ví dụ của
+mục "ranh giới repo ép vs cấu hình local" bên trên: một dòng comment không phải hàng rào.
+
+Trước khi stack chạm VPS thật: tạo **access key MinIO riêng cho Directus**, policy giới hạn đúng
+bucket `vehicles`, rồi trỏ `STORAGE_S3_KEY`/`STORAGE_S3_SECRET` vào cặp key đó. Ở dev thì dùng
+root vẫn chấp nhận được — dev không phơi ra internet và volume vứt đi được.

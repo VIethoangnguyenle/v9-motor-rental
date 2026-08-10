@@ -2,8 +2,9 @@
 
 Luật chung của repo ở [`../../CLAUDE.md`](../../CLAUDE.md). Đọc file đó trước.
 
-Drizzle schema + migration SQL. Phiên scaffold **chưa có bảng nghiệp vụ nào** — `src/schema/`
-cố ý rỗng.
+Drizzle schema + migration SQL. Bảng nghiệp vụ đã có: `vehicles` và `vehicle_photos`
+(`src/schema/vehicles.ts`, từ migration `0002`). `customers`, `rentals` và `booking_requests`
+thì **chưa** — xem §Việc còn để lại của `../../CLAUDE.md`.
 
 ## `drizzle-kit push` bị **cấm**
 
@@ -20,7 +21,20 @@ Cả bốn script của package này (`generate`, `custom`, `migrate`, `studio`)
 `--env-file=../../.env` và gọi **thẳng binary** trong `node_modules/.bin`, không qua `bun x`.
 Không phải rườm rà — xem mục kế tiếp.
 
-Migration hiện có: `0000_btree_gist` (bật extension) · `0001_service_roles` (role + schema cho Directus và SuperTokens).
+Migration hiện có:
+
+| File                        | Nội dung                                                                               |
+| --------------------------- | -------------------------------------------------------------------------------------- |
+| `0000_btree_gist`           | bật extension                                                                          |
+| `0001_service_roles`        | role + schema cho Directus và SuperTokens                                              |
+| `0002_tearful_plazm`        | `vehicles` + `vehicle_photos`, CHECK `slug`/`status`, partial index cho xe `published` |
+| `0003_puzzling_pete_wisdom` | CHECK tiền không âm và `engine_cc > 0`                                                 |
+| `0004_real_mantis`          | hàm `set_updated_at()` + trigger `vehicles_set_updated_at`                             |
+
+`0002` và `0003` do `db:generate` sinh — kể cả bốn CHECK, vì chúng khai bằng `check()` ngay trong
+`src/schema/vehicles.ts`. `0004` thì **phải** là `db:custom`: Drizzle không mô tả được TRIGGER, nên
+không có gì để sinh ra từ đó. `0004` để tên hàm chung (`set_updated_at`) chứ không gắn riêng vào
+`vehicles` — bảng sau chỉ cần thêm `CREATE TRIGGER`, không cần hàm mới.
 
 ## `db:migrate` KHÔNG dùng `drizzle-kit migrate`
 
@@ -122,8 +136,24 @@ Service phải bắt SQLSTATE `23P01` → HTTP 409. Nhớ: Bun.SQL để SQLSTAT
 
 ## Test
 
-`src/btree-gist.test.ts` chứng minh extension dùng được thật: nó tạo bảng tạm có exclusion
-constraint trong một transaction, khẳng định INSERT chồng lấn bị chặn bằng `23P01`, khẳng định
-chạm đầu-đuôi **được** chấp nhận, rồi ROLLBACK. Không commit một dòng schema nghiệp vụ nào.
+Test ở đây **chạm Postgres thật** — không mock. Ràng buộc cần chứng minh (CHECK, partial index,
+exclusion constraint, TRIGGER) đều sống ở tầng database, nên một bản mock chỉ chứng minh chính nó.
+Vì vậy cần Postgres đang chạy: `docker compose up -d`.
 
-Test cần Postgres đang chạy: `docker compose up -d`.
+| File                          | Chứng minh gì                                                                                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/test-support.ts`         | không phải test — hạ tầng dùng chung: `setupDb()` mở kết nối cho **một** file và tự `afterAll`, `inRollback()` chạy trong transaction rồi luôn ROLLBACK |
+| `src/btree-gist.test.ts`      | extension dùng được thật: bảng tạm có exclusion constraint, INSERT chồng lấn bị chặn bằng `23P01`, chạm đầu-đuôi **được** chấp nhận. Không commit gì.   |
+| `src/vehicles-schema.test.ts` | ràng buộc của `0002`–`0004`: CHECK `status`/`slug`/tiền/`engine_cc`, cascade của `vehicle_photos`, và trigger `updated_at` thật sự nhích khi UPDATE     |
+
+`setupDb()` là **hàm**, không phải client khai ở module scope: `bun test` chạy nhiều file trong
+cùng tiến trình với chung module cache, nên một client ở module scope sẽ bị `afterAll` của file nạp
+trước đóng mất trong khi file sau vẫn đang dùng.
+
+`inRollback(fn)` chỉ an toàn **khi `fn` chỉ dùng `tx`**. Client ngoài vẫn nằm trong scope bên trong
+callback; chạm vào nó là ghi ngoài transaction và commit thật — đúng kiểu hỏng mà helper sinh ra để
+chặn.
+
+⚠️ Cạm bẫy khi test trigger của `0004`: `now()` là timestamp của **transaction**, nên sửa một hàng
+ngay sau khi insert nó trong **cùng** transaction cho ra `updated_at == created_at` — không phải vì
+trigger không chạy. `vehicles-schema.test.ts` xử lý bằng cách insert với `created_at` lùi về quá khứ.

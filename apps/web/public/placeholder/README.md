@@ -11,11 +11,19 @@ shop nhỏ có mà chuỗi lớn không có, nên để ảnh giả lên product
 
 ## Nhãn trên UI phải còn nguyên
 
-Mỗi ảnh render ra đều mang nhãn **"Ảnh AI tạm — chưa phải xe của shop"**
-(component `PlaceholderTag` trong `app/page.tsx`).
+Ảnh còn render ra hiện chỉ còn **`hero.jpg`** (trang chủ), và nó mang nhãn
+**"Ảnh AI tạm — chưa phải xe của shop"** (component `PlaceholderTag` trong `app/page.tsx`).
 
-**Gỡ nhãn mà không thay ảnh = nói dối khách.** Thay ảnh thật thì gỡ nhãn, xoá thư mục này, và
-xoá luôn `app/_placeholder-data.ts`.
+Ba file `bike-0*.jpg` **không còn chỗ nào dùng**: lưới xe trên trang chủ, `/xe` và `/xe/[slug]`
+đều lấy ảnh thật từ Directus. Chúng nằm lại chờ cùng một lần dọn với `hero.jpg`.
+
+**Gỡ nhãn mà không thay ảnh = nói dối khách.** Chiều ngược lại cũng sai và đã suýt xảy ra: gắn
+nhãn "ảnh tạm" lên ảnh xe thật lấy từ Directus là nói sai theo hướng còn lại. Nhãn thuộc về đúng
+tấm ảnh giả, không thuộc về trang.
+
+Thay `hero.jpg` bằng ảnh thật thì gỡ nhãn, xoá `PlaceholderTag` cùng khoá
+`placeholder.imageTag` trong `messages/vi.json`, và xoá cả thư mục này.
+(`app/_placeholder-data.ts` **đã bị xoá** cùng đợt danh mục đội xe — không đi tìm nó nữa.)
 
 ## Khi có ảnh thật
 

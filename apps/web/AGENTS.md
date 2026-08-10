@@ -83,6 +83,43 @@ màu**. Xem §9 của `DESIGN.md`.
 ngôn ngữ, dựng bộ máy routing đa ngôn ngữ lúc này là chi phí không có người trả. Thêm khi thật sự
 có tiếng Anh, không sớm hơn.
 
+## ⚠️ Ảnh Directus hỏng sạch ở dev — và thông báo lỗi trỏ nhầm chỗ
+
+Triệu chứng: mọi ảnh xe qua `next/image` trả **400** với
+
+```
+"url" parameter is not allowed
+```
+
+Câu đó đọc như `remotePatterns` khai thiếu. **Không phải.** `remotePatterns` trong
+`next.config.ts` đã đúng và vẫn đúng — đi sửa nó là mất buổi chiều.
+
+Nguyên nhân thật là **chốt chặn thứ hai**: Next 16.3 thêm một SSRF guard trong
+`fetchExternalImage`, từ chối mọi ảnh remote có host **resolve về IP private**, rồi gộp lỗi đó vào
+đúng cùng một thông báo với lỗi `remotePatterns`. Ở dev, Directus là `localhost:8055` — private —
+nên **mọi** ảnh xe bị chặn, kể cả khi cấu hình hoàn toàn đúng.
+
+Đổi sang IP LAN **không cứu được**: `192.168.x.x` cũng nằm trong dải private, cùng `10.x`,
+`172.16–31.x` và `127.x`. Không có địa chỉ nội bộ nào lách qua guard này, vì bịt đúng chúng là
+việc guard sinh ra để làm.
+
+Cách xử lý đã chọn, trong `next.config.ts`:
+
+```ts
+dangerouslyAllowLocalIP: process.env.NODE_ENV === "development",
+```
+
+**Cờ này KHÔNG được true ở production, và biểu thức trên là lý do nó an toàn** — không phải một
+`true` kèm lời hứa nhớ tắt. Bật ở prod là mở lại đúng lỗ SSRF mà guard dựng lên để bịt: image
+optimizer nhận URL từ **query string của người ngoài**, nên một cờ mở sẽ biến `/_next/image` thành
+công cụ để người lạ bắt server đi fetch địa chỉ nội bộ của chính hạ tầng — metadata endpoint của
+cloud, service chỉ nghe trên mạng riêng, Postgres, MinIO — rồi đọc kết quả qua response. Đó là
+port scan có ủy quyền, chạy từ bên trong.
+
+Prod không cần cờ này: `NEXT_PUBLIC_DIRECTUS_URL` trỏ vào host công khai (`data.<domain>`), host đó
+resolve ra IP public, guard cho qua. Nếu một ngày ảnh prod hỏng vì guard, câu trả lời đúng là **sửa
+địa chỉ Directus**, không phải mở cờ.
+
 ## ⚠️ Build không cần API, nhưng hỏng im lặng nếu API chết
 
 Với `revalidate = 60`, Next fetch `/health` ngay lúc `next build`. Nếu API không tới được, Eden
