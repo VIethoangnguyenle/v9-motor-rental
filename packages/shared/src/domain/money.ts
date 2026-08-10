@@ -5,6 +5,20 @@
  */
 export type Vnd = number;
 
+/**
+ * ⚠️ Phụ thuộc vào **dữ liệu locale ICU của runtime**, và `Intl` hỏng trong IM LẶNG:
+ * runtime không có `vi-VN` thì nó KHÔNG ném lỗi, chỉ lặng lẽ rơi về `en-US` và in
+ * `450,000` thay vì `450.000` — người Việt đọc thành 450 đồng.
+ *
+ * Đã xảy ra thật: `apps/web/Dockerfile` build bằng Node bản Alpine, mà bản đó dựng
+ * với ICU tối giản (chỉ `en`), nên MỌI trang tĩnh và cả `generateMetadata` ra số
+ * sai. Fix là `apk add icu-data-full` — xem comment ở Dockerfile.
+ *
+ * Bun và Node bản glibc đã có ICU đầy đủ, nên máy dev KHÔNG BAO GIỜ thấy lỗi này —
+ * và `bun test` cũng không, vì Bun luôn mang sẵn ICU. Hàng rào nằm ở chỗ khác: một
+ * câu `node -e` ngay trong stage build của `apps/web/Dockerfile`, chạy trên đúng
+ * runtime thiếu ICU, làm đỏ image build thay vì đẻ ra trang tĩnh in sai tiền.
+ */
 const formatter = new Intl.NumberFormat("vi-VN");
 
 /**
