@@ -86,8 +86,10 @@ jobs:
           #   - apps/staff khai ARG VITE_API_URL (Vite nướng nó vào bundle JS
           #     lúc build — đặt runtime trong compose.prod.yaml vô tác dụng).
           #   - apps/web khai ARG NEXT_PUBLIC_API_URL và
-          #     ARG NEXT_PUBLIC_DIRECTUS_URL (next.config.ts đọc cái sau lúc
-          #     build để dựng images.remotePatterns — cùng bản chất build-time).
+          #     ARG NEXT_PUBLIC_DIRECTUS_URL. CẢ HAI đều là build-time: Next thay
+          #     mọi process.env.NEXT_PUBLIC_* bằng hằng số lúc compile (kể cả
+          #     trong chunk SSR), còn next.config.ts đọc cái sau để dựng
+          #     images.remotePatterns. Đặt lại lúc chạy trong compose vô tác dụng.
           #   - apps/api không khai ARG nào trong ba cái này.
           # Docker xử lý build-arg không được Dockerfile tiêu thụ bằng một
           # WARNING ("... were not consumed"), KHÔNG fail build — verify cục

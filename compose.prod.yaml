@@ -140,12 +140,19 @@ services:
       api:
         condition: service_healthy
     environment:
-      NEXT_PUBLIC_API_URL: https://api.${ROOT_DOMAIN}
+      # PORT là biến runtime THẬT: server.js của bản standalone đọc nó lúc khởi động.
       PORT: "3000"
-    # KHÔNG đặt NEXT_PUBLIC_DIRECTUS_URL ở đây — next.config.ts đọc nó LÚC BUILD
-    # để dựng images.remotePatterns, nên nó đi qua --build-arg (xem
-    # apps/web/Dockerfile và .github/workflows/deploy.yml). Đặt runtime ở đây
-    # không có tác dụng gì — cùng bản chất VITE_API_URL của staff bên dưới.
+    # KHÔNG đặt biến NEXT_PUBLIC_* nào ở đây — không phải NEXT_PUBLIC_DIRECTUS_URL,
+    # cũng không phải NEXT_PUBLIC_API_URL. Next thay `process.env.NEXT_PUBLIC_*`
+    # bằng HẰNG SỐ lúc compile, nên đặt lại lúc chạy không có tác dụng gì — đúng
+    # bản chất VITE_API_URL của staff bên dưới. Đo trên bản dựng: chuỗi
+    # `process.env.NEXT_PUBLIC_API_URL` KHÔNG còn trong chunk SSR nào, chỉ còn
+    # `("http://localhost:3001")` nướng sẵn.
+    # Cả hai đi qua --build-arg; xem apps/web/Dockerfile và deploy.yml.
+    #
+    # Trước đây dòng `NEXT_PUBLIC_API_URL: https://api.${ROOT_DOMAIN}` nằm ở đây và
+    # KHÔNG làm gì cả — tệ hơn cả vô dụng, vì nó dạy người đọc rằng đổi API URL của
+    # web là sửa compose rồi restart. Không phải: phải build lại image.
 
   staff:
     image: ghcr.io/viethoangnguyenle/v9-motor-rental-staff:latest

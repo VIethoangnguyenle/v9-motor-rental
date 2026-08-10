@@ -130,15 +130,34 @@ thật đầu tiên.
 Không phải lỗi build, nhưng là một phút xấu xí sau mỗi lần deploy. Biết trước để không đi debug
 nhầm chỗ.
 
+## ⚠️ `NEXT_PUBLIC_*` nướng lúc build, KHÔNG đọc lúc chạy
+
+Điểm này từng bị ghi ngược ở ba chỗ (`.env.example`, bảng so sánh dưới đây, `compose.prod.yaml`)
+và cả ba đều đã sửa. Next thay `process.env.NEXT_PUBLIC_*` bằng **hằng số lúc compile** — không
+chỉ trong bundle client mà **cả trong chunk SSR**. Đo trên bản dựng:
+
+```bash
+bun --env-file=.env run --filter @v9/web build
+grep -r "process.env.NEXT_PUBLIC_API_URL" .next/server/   # → rỗng
+grep -ro '("http://localhost:3001")' .next/server/chunks/ssr/  # → có
+```
+
+Hệ quả thực tế: đổi `NEXT_PUBLIC_API_URL` hay `NEXT_PUBLIC_DIRECTUS_URL` trong compose rồi
+restart container **không có tác dụng gì**. Phải build lại image; `deploy.yml` truyền cả hai qua
+`--build-arg`. Đây đúng là ràng buộc đã ghi cho `VITE_API_URL` của `apps/staff` — hai app giống
+nhau ở điểm này, không khác nhau.
+
+Biến runtime thật duy nhất của web là `PORT`, do `server.js` của bản standalone đọc.
+
 ## Khác biệt với apps/staff
 
-|           | `apps/web`                                | `apps/staff`                              |
-| --------- | ----------------------------------------- | ----------------------------------------- |
-| Framework | Next 16                                   | Vite                                      |
-| Mô hình   | server-first (RSC)                        | client-first (SPA + TanStack Query)       |
-| Biến env  | `process.env.NEXT_PUBLIC_*`, đọc lúc chạy | `import.meta.env.VITE_*`, nướng lúc build |
-| JSX       | `jsx: "preserve"`                         | `jsx: "react-jsx"`                        |
-| SEO       | quan trọng                                | vô nghĩa                                  |
+|           | `apps/web`                                   | `apps/staff`                              |
+| --------- | -------------------------------------------- | ----------------------------------------- |
+| Framework | Next 16                                      | Vite                                      |
+| Mô hình   | server-first (RSC)                           | client-first (SPA + TanStack Query)       |
+| Biến env  | `process.env.NEXT_PUBLIC_*`, nướng lúc build | `import.meta.env.VITE_*`, nướng lúc build |
+| JSX       | `jsx: "preserve"`                            | `jsx: "react-jsx"`                        |
+| SEO       | quan trọng                                   | vô nghĩa                                  |
 
 ## Chạy
 
