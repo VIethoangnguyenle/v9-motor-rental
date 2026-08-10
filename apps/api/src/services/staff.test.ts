@@ -16,6 +16,16 @@ import {
 // afterAll không chạy khi lần trước bị Ctrl-C, và hàng sót lại làm assertion sai lệch.
 const P = "ztest-";
 const clean = () => db.delete(schema.staffUsers).where(like(schema.staffUsers.id, `${P}%`));
+// `clean()` trả về query builder của Drizzle — có `.then` (thenable) nhưng KHÔNG phải
+// `instanceof Promise`. Bun's `afterAll(clean)` chỉ đợi khi nhận đúng một Promise thật;
+// truyền thẳng thenable vào thì hook "xong" ngay lập tức trong khi DELETE còn đang bay,
+// và tiến trình thoát trước khi nó chạm tới Postgres — hàng `ztest-%` sống sót qua lần
+// chạy tưởng chừng sạch. Đã đo bằng test tối giản: `afterAll(clean)` để sót hàng,
+// `afterAll(async () => { await clean(); })` thì không. Bọc trong async function ép nó
+// thành Promise thật.
+const cleanAwaited = async () => {
+  await clean();
+};
 
 /** Ghi lại lời gọi thay vì gọi SuperTokens thật — service không cần biết ai thu hồi. */
 function spyDeps() {
@@ -40,7 +50,7 @@ beforeAll(async () => {
   });
 });
 
-afterAll(clean);
+afterAll(cleanAwaited);
 
 describe("createPendingStaff", () => {
   it("người mới luôn ra PENDING và role STAFF, không nhận role từ input", async () => {
