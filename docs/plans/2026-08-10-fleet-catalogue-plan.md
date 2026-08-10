@@ -533,13 +533,13 @@ git commit -m "fix(directus): lưu file vào MinIO — trước đó upload mấ
 
 **Ba sự thật đo được ở Task 0, script phải tôn trọng:**
 
-| Thao tác                       | Được?  | Cách làm trong script                               |
-| ------------------------------ | ------ | --------------------------------------------------- |
-| Adopt bảng có sẵn              | ✅     | `POST /collections` với **chỉ** khoá `meta`         |
-| Sửa interface của field có sẵn | ✅     | `PATCH /fields/<collection>/<field>`                |
-| Tạo field mới                  | ❌ DDL | không làm — mọi cột đến từ migration                |
-| `POST /relations`              | ❌ DDL | thay bằng `INSERT INTO directus.directus_relations` |
-| `DELETE /collections`          | ❌ DDL | dọn bằng SQL                                        |
+| Thao tác                       | Được?  | Cách làm trong script                                                                                 |
+| ------------------------------ | ------ | ----------------------------------------------------------------------------------------------------- |
+| Adopt bảng có sẵn              | ✅     | ~~`POST /collections` với **chỉ** khoá `meta`~~ → **`PATCH /collections/<tên>`**, xem §7.2 design doc |
+| Sửa interface của field có sẵn | ✅     | `PATCH /fields/<collection>/<field>`                                                                  |
+| Tạo field mới                  | ❌ DDL | không làm — mọi cột đến từ migration                                                                  |
+| `POST /relations`              | ❌ DDL | thay bằng `INSERT INTO directus.directus_relations`                                                   |
+| `DELETE /collections`          | ❌ DDL | dọn bằng SQL                                                                                          |
 
 - [ ] **Step 1: Viết script**
 
@@ -548,7 +548,8 @@ Tạo `scripts/directus-setup.ts`. Yêu cầu cứng: **idempotent** — kiểm-
 Thứ tự bắt buộc:
 
 1. `POST /auth/login` lấy `access_token`.
-2. Adopt `vehicles` rồi `vehicle_photos` — `GET /fields/<collection>` trước; nếu 403/404 thì `POST /collections` với chỉ `meta`. (Bảng tự hiện trong `GET /collections` kể cả khi chưa adopt, nên **đừng** dùng endpoint đó để kiểm — đó là bẫy đã gặp ở Task 0.)
+2. ~~Adopt `vehicles` rồi `vehicle_photos` — `GET /fields/<collection>` trước; nếu 403/404 thì `POST /collections` với chỉ `meta`. (Bảng tự hiện trong `GET /collections` kể cả khi chưa adopt, nên **đừng** dùng endpoint đó để kiểm — đó là bẫy đã gặp ở Task 0.)~~
+   **⚠️ Cả hai vế đều sai, đã sửa ở §7.2 design doc — giữ nguyên chữ ở đây vì plan là bản ghi, không phải tài liệu tra cứu.** Đo lại trên Directus 11.17.4: (a) `POST /collections` **từ chối** bảng đã có (`Collection "vehicles" already exists`, HTTP 400) — phải dùng `PATCH /collections/<tên>`, endpoint này upsert; (b) `GET /fields/<collection>` **không** phân biệt được đã adopt hay chưa — với token admin nó trả 200 kèm `meta: null` cho bảng chưa adopt. Tín hiệu đúng là `GET /collections/<tên>` → `meta === null` nghĩa là chưa adopt. Bản chạy được nằm ở `scripts/directus-setup.ts` (bước 2).
 3. `PATCH /fields/...` cho interface:
 
 | Field                  | Cấu hình                                                         |

@@ -90,9 +90,32 @@ hàng `published`, nên `status` bên trong nó là hằng số và làm khoá t
 
 `NULLS LAST` phải viết ra ở **cả hai** nơi, index lẫn `ORDER BY`. Mặc định của Postgres cho `DESC`
 là `NULLS FIRST`, và planner **không** coi hai thứ đó thay thế được cho nhau kể cả khi `created_at`
-là `NOT NULL`. Đo bằng EXPLAIN trên 20k hàng `published`: `ORDER BY sort, created_at DESC` rơi
-xuống Incremental Sort, chỉ `ORDER BY sort, created_at DESC NULLS LAST` mới ra Index Scan sạch.
-Mất index ở đây là mất trong im lặng — không lỗi, không cảnh báo, chỉ chậm.
+là `NOT NULL`.
+
+Đo lại bằng EXPLAIN trên 20k hàng `published` (bản trước của đoạn này ghi tên kế hoạch **sai**, nay
+sửa — kết luận thì vẫn đúng):
+
+| Truy vấn                                              | Kế hoạch                                                 |
+| ----------------------------------------------------- | -------------------------------------------------------- |
+| `ORDER BY sort, created_at DESC NULLS LAST`           | `Index Scan using vehicles_published_idx` — sạch         |
+| `+ , id` (bản đang chạy)                              | `Incremental Sort` · **Presorted Key: sort, created_at** |
+| `ORDER BY sort, created_at DESC` (thiếu `NULLS LAST`) | `Incremental Sort` · **Presorted Key: sort**             |
+
+Hai chi tiết quan trọng, và cả hai đều bị bản trước nói sai:
+
+1. **Nối `id` làm khoá phụ thứ ba KHÔNG làm mất index.** Prefix `(sort, created_at)` vẫn khớp —
+   `Presorted Key` giữ nguyên hai cột, chỉ thêm một bước sắp trong từng nhóm bằng nhau. Cái giá
+   của việc bỏ `NULLS LAST` là `Presorted Key` **tụt từ hai cột xuống một**, tức toàn bộ thứ tự
+   `created_at` phải sắp lại — chứ không phải "index thành vô dụng" như đã viết.
+2. **Ở đúng hình dạng truy vấn của endpoint** — không `LIMIT`, đọc mọi hàng `published` — planner
+   **không dùng index ở cả ba trường hợp**: nó chọn `Sort → Seq Scan`, vì quét tuần tự toàn bảng
+   rẻ hơn index scan cộng heap fetch khi phải lấy hết. Ba kế hoạch trong bảng trên chỉ hiện ra khi
+   ép (`SET enable_seqscan = off`) hoặc khi có `LIMIT`.
+
+Nghĩa là index này hôm nay là **bảo hiểm cho lúc thêm phân trang**, không phải thứ đang tăng tốc
+endpoint hiện tại. Giữ nó, và giữ `NULLS LAST` nguyên văn, vì ngày thêm `LIMIT` thì mệnh đề viết
+lệch sẽ mất index trong im lặng — không lỗi, không cảnh báo, chỉ chậm. Khoá bằng test `.toSQL()`
+trong `apps/api/src/services/vehicles.test.ts`, không bằng comment.
 
 Cả hai bảng khai trong `packages/db/src/schema/` rồi sinh bằng `bun run db:generate` — đây là "bảng
 thường" theo bảng phân loại ở `packages/db/CLAUDE.md`. `drizzle-orm@0.45.2` diễn đạt được cả
@@ -283,18 +306,22 @@ lộ ra rằng một slug nào đó _có tồn tại nhưng chưa đăng_, tức
 
 Response khai bằng TypeBox:
 
-| Trường                        | Ghi chú                                                                                                                                |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`, `slug`, `make`, `model` |                                                                                                                                        |
-| `year`, `odoKm`, `color`      | nullable                                                                                                                               |
-| `engineCc`                    |                                                                                                                                        |
-| `pricePerDay`, `deposit`      | `Vnd` — số nguyên đồng                                                                                                                 |
-| `description`                 | chỉ ở endpoint chi tiết                                                                                                                |
-| ảnh                           | danh sách trả `photo: { fileId, alt } \| null` (**một object, không phải mảng**); chi tiết trả `photos: { fileId, alt }[]` theo `sort` |
+| Trường                        | Ghi chú                                                                                                                                                                                   |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`, `slug`, `make`, `model` |                                                                                                                                                                                           |
+| `year`, `odoKm`, `color`      | nullable                                                                                                                                                                                  |
+| `engineCc`                    |                                                                                                                                                                                           |
+| `pricePerDay`, `deposit`      | `Vnd` — số nguyên đồng                                                                                                                                                                    |
+| `description`                 | chỉ ở endpoint chi tiết                                                                                                                                                                   |
+| ảnh                           | danh sách trả `photo: { fileId, alt } \| null` (**một object, không phải mảng**); chi tiết trả **cả hai**: `photo` (ảnh đầu, cho OG image) **và** `photos: { fileId, alt }[]` theo `sort` |
 
 Hai endpoint cố ý khác shape ở chỗ ảnh: lưới xe chỉ dùng được một ảnh, và trả cả bộ ở đó nghĩa là
 mỗi lần vào trang danh sách kéo về hàng chục uuid không ai dùng. `null` khi xe chưa có ảnh nào —
 trạng thái này có thật, vì Directus cho lưu bản ghi trước rồi upload ảnh sau.
+
+Endpoint chi tiết giữ **cả** `photo` lẫn `photos` (`VehicleDetail extends VehicleSummary`): bảng ở
+trên từng bỏ sót `photo` số ít. Nó không thừa — `generateMetadata` cần đúng một ảnh cho OG image và
+không nên phải tự biết "ảnh đầu tiên của mảng" là quy ước ở đâu ra.
 
 **API trả `fileId`, không trả URL ảnh.** Web dựng `/assets/{fileId}?key=web` từ
 `NEXT_PUBLIC_DIRECTUS_URL`. Đổi domain Directus sau này là sửa một biến môi trường, không phải đi
@@ -304,9 +331,10 @@ sửa dữ liệu đã nướng vào hàng chục trang HTML tĩnh.
 schema. Cái chặn là schema — không phải một câu `SELECT` viết cẩn thận, vì câu `SELECT` đó sẽ thành
 `SELECT *` vào một ngày nào đó.
 
-`packages/shared` **không đổi gì**: `formatVnd()` và `type Vnd` đã có sẵn trong
-`src/domain/money.ts`. Đợt này không sinh thêm domain logic nào — danh mục xe là dữ liệu, không phải
-phép tính.
+`packages/shared` **không sinh thêm domain logic nào** — danh mục xe là dữ liệu, không phải phép
+tính; `formatVnd()` và `type Vnd` đã có sẵn trong `src/domain/money.ts`. (Bản trước viết "không đổi
+gì", rộng hơn sự thật: đợt này package có thêm **export `./domain/money`** trong `package.json`
+(`29b4138`) để `apps/web` gọi được `formatVnd`. Thêm đường ra, không thêm logic.)
 
 ## 6. `apps/web`
 
@@ -323,8 +351,12 @@ phép tính.
   sinh. Gỡ nhãn mà chưa thay ảnh là nói dối khách (`PRODUCT.md` nguyên tắc #2).
 - Viết lại `messages.vehicles.empty` — câu hiện tại ("bảng vehicles chưa được tạo") sai ngay sau đợt
   này. Trạng thái rỗng mới phải nói về việc _chưa có xe nào được đăng_, không nói về schema.
-- `next.config.ts` thêm `images.remotePatterns` cho `data.$ROOT_DOMAIN` và `localhost:8055`. Thiếu
-  thì `next/image` từ chối thẳng, không phải cảnh báo.
+- `next.config.ts` thêm `images.remotePatterns`. Thiếu thì `next/image` từ chối thẳng, không phải
+  cảnh báo. **Bản dựng ra tốt hơn ý định ở đây, và tài liệu mới là chỗ sai:** mục này viết "cho
+  `data.$ROOT_DOMAIN` **và** `localhost:8055`", tức hai pattern hard-code. `next.config.ts:12-19`
+  suy ra **đúng một** pattern từ `NEXT_PUBLIC_DIRECTUS_URL` (`new URL(...)` → protocol/hostname/
+  port, `pathname: "/assets/**"`). Đúng hơn: mỗi môi trường chỉ tin đúng cái Directus của nó, và
+  liệt kê `localhost` trong bản prod là mở một cửa không ai cần. Giữ bản đã dựng.
 - `.env.example` và compose thêm `NEXT_PUBLIC_DIRECTUS_URL`.
 
 ### 6.1 Không làm JSON-LD `Product` / `offers`
@@ -349,14 +381,51 @@ trống_, vì lịch xe không nằm ở Directus.
 Ghi ra đây để nó là một lỗ **đã biết** thay vì một lỗ tưởng đã bịt: câu "không trang nào hứa xe còn
 trống" đúng với phần code, không đúng với phần dữ liệu.
 
-### 6.2 Khi API chết lúc build
+### 6.2 Khi API chết — ba thời điểm, ba cách xử lý khác nhau
 
-`generateStaticParams()` trả `[]` thay vì ném lỗi. CI không có Postgres, nên ném lỗi biến "chưa có
-DB" thành build đỏ ở mọi PR. `dynamicParams = true` khiến trang xe vẫn render được lúc chạy.
+Bản đầu của mục này chỉ nghĩ tới **lúc build**. Đó là thời điểm ít hại nhất trong ba, và bỏ sót hai
+thời điểm kia đã sinh ra hai lỗi thật (bắt được ở vòng review cuối). Ghi lại đủ cả ba:
 
-Đây là cùng đánh đổi mà `apps/web/AGENTS.md` đã ghi cho `/health` ("build không cần API, nhưng hỏng
-im lặng nếu API chết") — giữ nhất quán, không phát minh luật mới. Hệ quả cũng giống: một khoảng xấu
-xí ngay sau deploy cho tới lần revalidate đầu tiên.
+| Thời điểm                                     | Hành vi đúng                               | Vì sao                                                          |
+| --------------------------------------------- | ------------------------------------------ | --------------------------------------------------------------- |
+| **build** (`generateStaticParams`)            | nuốt lỗi, trả `[]`                         | CI không có Postgres; ném lỗi = build đỏ ở mọi PR               |
+| **build/chạy** (danh sách `/`, `/xe`)         | nuốt lỗi nhưng **đánh dấu** `failed: true` | vẫn xanh, nhưng không được nói câu sai thay cho trạng thái rỗng |
+| **chạy / revalidate** (chi tiết `/xe/[slug]`) | **ném lỗi**                                | trả `null` ở đây làm ISR cache một trang 404 đè lên trang thật  |
+
+**Build.** `generateStaticParams()` trả `[]` thay vì ném lỗi. `dynamicParams = true` giữ cho trang
+xe vẫn render được lúc chạy. Cùng đánh đổi mà `apps/web/AGENTS.md` đã ghi cho `/health` — giữ nhất
+quán, không phát minh luật mới. Hệ quả: một khoảng xấu xí ngay sau deploy cho tới lần revalidate
+đầu tiên.
+
+**Danh sách.** `fetchVehicles()` trả `{ vehicles, failed }`, **không** trả `[]` trơn. `[]` trơn làm
+`/` và `/xe` render `messages.vehicles.empty` — _"Chưa có xe nào được đăng"_ — và một bản build lúc
+API chết sẽ **nướng câu đó vào HTML tĩnh**. Đó là một lời khẳng định sai về shop, phát ra cho khách
+lẫn Googlebot, và không tự lộ ra vì nó trông y hệt trạng thái rỗng hợp lệ. Ba nhánh, không hai:
+`failed` → câu trung tính `vehicles.loadFailed`; rỗng → `vehicles.empty`; còn lại → lưới.
+`generateStaticParams` vẫn chỉ dùng `.vehicles`, nên hành vi lúc build không đổi.
+
+Đánh đổi còn lại, chấp nhận có ý thức: gọi lúc CHẠY mà API chết thì ISR cache nhánh `failed` đè lên
+trang tốt cho tới hết cửa sổ revalidate. Chịu được vì câu hiển thị là "chưa tải được", không phải
+một khẳng định sai.
+
+**Chi tiết.** Đây là ca gây hại nhất và là ca bản đầu bỏ sót hoàn toàn. `fetchVehicle()` chỉ được
+trả `null` khi API nói **404**; mọi status khác phải **ném**. Lý do đo được: trang đã prerender
+200, giết API, chờ quá cửa sổ 300s rồi request lại → Next chạy `notFound()`, và
+`.next/server/app/xe/<slug>.meta` **bị ghi đè**: `x-nextjs-prerender` biến mất, `"status": 404`,
+stale-time 300. Cái 404 đó sống thêm trọn một cửa sổ nữa **sau khi API đã hồi phục** — sự cố 10
+giây của API biến thành 5 phút 404 cho khách và cho Googlebot. Ném lỗi thì Next giữ nguyên bản
+stale và phục vụ tiếp trang cũ, đúng thứ ta muốn.
+
+Đo lại sau khi sửa (cùng kịch bản): request sau khi hết hạn trả **200**, HTML vẫn có `450.000 ₫`,
+`.meta` vẫn `"x-nextjs-prerender": "1"`, và log server có
+`API lỗi khi lấy xe honda-cb500x-01: HTTP 503: fetch failed — connect ECONNREFUSED 127.0.0.1:3001`.
+
+Cùng đường đó vá luôn một dòng log vô dụng: bản trước in `JSON.stringify(error.value)`, mà `value`
+là một `Error` nên nó ra đúng `{}` — quan sát nguyên văn `[web] không lấy được danh sách xe: {}`
+trong output `next build`. Nay in `HTTP <status>: <message> — <cause>`.
+
+Eden đặt `error.status = 503` cho lỗi kết nối và `404` cho 404 thật, nên hai ca phân biệt được bằng
+đúng một trường — đã kiểm cả hai chiều, không suy từ type.
 
 ## 7. Rủi ro chính và chốt chặn đặt trước
 
