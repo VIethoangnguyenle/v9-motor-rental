@@ -50,6 +50,13 @@
       "when": 1786380751581,
       "tag": "0006_spooky_proteus",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786381585435,
+      "tag": "0007_little_micromacro",
+      "breakpoints": true
     }
   ]
 }

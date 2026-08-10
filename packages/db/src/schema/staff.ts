@@ -44,6 +44,15 @@ export const staffUsers = pgTable(
       onDelete: "set null",
     }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * KHÔNG có trigger `set_updated_at()` như `vehicles` (xem `0004_real_mantis.sql`).
+     * Trigger đó tồn tại vì `vehicles` có HAI đường ghi — Directus ghi thẳng vào
+     * Postgres, vòng qua `apps/api` — nên `updatedAt` set ở tầng app bị bỏ qua trên
+     * đường ghi kia. `staff_users` chỉ có MỘT đường ghi (`apps/api`), nên service tự
+     * set `updatedAt: new Date()` mỗi lần UPDATE là đủ; thêm trigger ở đây là thừa.
+     * Đây là lựa chọn có chủ đích, không phải thiếu sót — đừng thêm trigger, và đừng
+     * bỏ set `updatedAt` ở service với lý do "đã có cơ chế lo hộ".
+     */
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -51,7 +60,7 @@ export const staffUsers = pgTable(
     check("staff_users_status_valid", sql`${t.status} IN ('PENDING', 'ACTIVE', 'DISABLED')`),
     // Partial index: màn duyệt LUÔN lọc đúng tập này, và tập này gần như luôn rỗng.
     // Cùng lý lẽ với partial index của `vehicles`.
-    index("staff_users_pending")
+    index("staff_users_pending_idx")
       .on(t.createdAt)
       .where(sql`${t.status} = 'PENDING'`),
   ],
@@ -77,8 +86,16 @@ export const passwordResetCodes = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    check("prc_attempts_nonneg", sql`${t.attempts} >= 0`),
-    index("prc_active")
+    check("password_reset_codes_attempts_nonneg", sql`${t.attempts} >= 0`),
+    // Không cần (staff_user_id, created_at DESC) dù truy vấn thật ORDER BY
+    // created_at DESC LIMIT 1: `taoMaDatLaiMatKhau` đánh dấu MỌI mã chưa dùng
+    // của người đó là đã dùng TRƯỚC KHI chèn mã mới, nên ở trạng thái ổn định
+    // mỗi người có TỐI ĐA MỘT hàng `used_at IS NULL` — sắp xếp một hàng là miễn
+    // phí, không cần cột `created_at` trong index. Bất biến này nằm ở tầng ứng
+    // dụng, không ở DB: nếu sau này ai bỏ bước vô hiệu hoá mã cũ đó, index này
+    // lặng lẽ không còn đủ — truy vấn O(1) thành quét nhiều hàng, không có lỗi
+    // ở đâu cả.
+    index("password_reset_codes_active_idx")
       .on(t.staffUserId)
       .where(sql`${t.usedAt} IS NULL`),
   ],
