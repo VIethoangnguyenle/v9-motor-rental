@@ -17,11 +17,7 @@ export interface StaffActor {
 }
 
 export type StaffDenyReason =
-  | "KHONG_PHAI_OWNER"
-  | "TU_DUYET_MINH"
-  | "KHONG_CHO_DUYET"
-  | "TU_KHOA_MINH"
-  | "OWNER_CUOI_CUNG";
+  "KHONG_PHAI_OWNER" | "TU_DUYET_MINH" | "KHONG_CHO_DUYET" | "TU_KHOA_MINH" | "OWNER_CUOI_CUNG";
 
 /** Discriminated union, không throw — pattern 3 của repo. */
 export type Permission = { ok: true } | { ok: false; reason: StaffDenyReason };

@@ -29,23 +29,23 @@ docker compose up -d     # postgres + minio + directus + supertokens
 
 ## File Structure
 
-| File | Trách nhiệm |
-| --- | --- |
-| `packages/shared/src/domain/staff.ts` | Luật thuần về quyền: ai duyệt/đổi role/khoá được ai. Không import gì. |
-| `packages/db/src/schema/staff.ts` | Bảng `staff_users`, `password_reset_codes`. |
-| `apps/api/src/env.ts` (sửa) | Thêm `isProduction`, `devOtp`, `smtp`; fail-fast khi `AUTH_DEV_OTP` xuất hiện ở prod. |
-| `apps/api/src/plugins/auth.ts` (sửa) | Override `EmailPassword.init`: tắt reset cũ, thêm formFields, bọc `signUpPOST`. Export helper dựng `PreParsedRequest`. |
-| `apps/api/src/plugins/staff-guard.ts` | Luật mặc định chặn + hai danh sách công khai. |
-| `apps/api/src/services/staff.ts` | Đọc/ghi `staff_users`: load, list pending, approve, đổi role, khoá. |
-| `apps/api/src/services/password-reset.ts` | Sinh mã, băm, hết hạn, đếm lần sai, đổi mã lấy mật khẩu mới. |
-| `apps/api/src/services/email.ts` | Gửi mail bằng nodemailer. Chỗ duy nhất biết SMTP. |
-| `apps/api/src/routes/staff.ts` | HTTP + response schema cho `/staff/*`. |
-| `scripts/staff-bootstrap.ts` | Tạo OWNER đầu tiên, chạy lại nhiều lần vô hại. |
-| `apps/staff/src/lib/auth.ts` | Init `supertokens-web-js`, wrapper đăng nhập/đăng ký/đăng xuất. |
-| `apps/staff/src/lib/me.ts` | Query `/staff/me` dùng chung cho guard và UI. |
-| `apps/staff/src/router.tsx` (sửa) | Hai nhánh route: công khai và được bảo vệ. |
-| `apps/staff/src/pages/dang-nhap.tsx` · `dang-ky.tsx` · `quen-mat-khau.tsx` · `cho-duyet.tsx` · `nhan-vien.tsx` | Màn hình. |
-| `eslint.config.js` (sửa) | Cho `api-plugins` → `api-services`; vẫn cấm `api-plugins` → `db`. |
+| File                                                                                                           | Trách nhiệm                                                                                                            |
+| -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `packages/shared/src/domain/staff.ts`                                                                          | Luật thuần về quyền: ai duyệt/đổi role/khoá được ai. Không import gì.                                                  |
+| `packages/db/src/schema/staff.ts`                                                                              | Bảng `staff_users`, `password_reset_codes`.                                                                            |
+| `apps/api/src/env.ts` (sửa)                                                                                    | Thêm `isProduction`, `devOtp`, `smtp`; fail-fast khi `AUTH_DEV_OTP` xuất hiện ở prod.                                  |
+| `apps/api/src/plugins/auth.ts` (sửa)                                                                           | Override `EmailPassword.init`: tắt reset cũ, thêm formFields, bọc `signUpPOST`. Export helper dựng `PreParsedRequest`. |
+| `apps/api/src/plugins/staff-guard.ts`                                                                          | Luật mặc định chặn + hai danh sách công khai.                                                                          |
+| `apps/api/src/services/staff.ts`                                                                               | Đọc/ghi `staff_users`: load, list pending, approve, đổi role, khoá.                                                    |
+| `apps/api/src/services/password-reset.ts`                                                                      | Sinh mã, băm, hết hạn, đếm lần sai, đổi mã lấy mật khẩu mới.                                                           |
+| `apps/api/src/services/email.ts`                                                                               | Gửi mail bằng nodemailer. Chỗ duy nhất biết SMTP.                                                                      |
+| `apps/api/src/routes/staff.ts`                                                                                 | HTTP + response schema cho `/staff/*`.                                                                                 |
+| `scripts/staff-bootstrap.ts`                                                                                   | Tạo OWNER đầu tiên, chạy lại nhiều lần vô hại.                                                                         |
+| `apps/staff/src/lib/auth.ts`                                                                                   | Init `supertokens-web-js`, wrapper đăng nhập/đăng ký/đăng xuất.                                                        |
+| `apps/staff/src/lib/me.ts`                                                                                     | Query `/staff/me` dùng chung cho guard và UI.                                                                          |
+| `apps/staff/src/router.tsx` (sửa)                                                                              | Hai nhánh route: công khai và được bảo vệ.                                                                             |
+| `apps/staff/src/pages/dang-nhap.tsx` · `dang-ky.tsx` · `quen-mat-khau.tsx` · `cho-duyet.tsx` · `nhan-vien.tsx` | Màn hình.                                                                                                              |
+| `eslint.config.js` (sửa)                                                                                       | Cho `api-plugins` → `api-services`; vẫn cấm `api-plugins` → `db`.                                                      |
 
 ---
 
@@ -67,6 +67,7 @@ Expected: `On branch feat/staff-auth`, nothing to commit.
 TDD nghiêm, đây là `packages/shared`. Test trước, luôn luôn.
 
 **Files:**
+
 - Create: `packages/shared/src/domain/staff.ts`
 - Test: `packages/shared/src/domain/staff.test.ts`
 - Modify: `packages/shared/src/index.ts`, `packages/shared/package.json`
@@ -109,7 +110,10 @@ describe("canChangeRole", () => {
   });
 
   it("không hạ role của OWNER cuối cùng — kể cả chính mình", () => {
-    expect(canChangeRole(owner, owner, "STAFF", 1)).toEqual({ ok: false, reason: "OWNER_CUOI_CUNG" });
+    expect(canChangeRole(owner, owner, "STAFF", 1)).toEqual({
+      ok: false,
+      reason: "OWNER_CUOI_CUNG",
+    });
   });
 
   it("còn OWNER khác thì hạ role được", () => {
@@ -117,7 +121,10 @@ describe("canChangeRole", () => {
   });
 
   it("STAFF không đổi role của ai", () => {
-    expect(canChangeRole(staff, pending, "OWNER", 1)).toEqual({ ok: false, reason: "KHONG_PHAI_OWNER" });
+    expect(canChangeRole(staff, pending, "OWNER", 1)).toEqual({
+      ok: false,
+      reason: "KHONG_PHAI_OWNER",
+    });
   });
 });
 
@@ -169,11 +176,7 @@ export interface StaffActor {
 }
 
 export type StaffDenyReason =
-  | "KHONG_PHAI_OWNER"
-  | "TU_DUYET_MINH"
-  | "KHONG_CHO_DUYET"
-  | "TU_KHOA_MINH"
-  | "OWNER_CUOI_CUNG";
+  "KHONG_PHAI_OWNER" | "TU_DUYET_MINH" | "KHONG_CHO_DUYET" | "TU_KHOA_MINH" | "OWNER_CUOI_CUNG";
 
 /** Discriminated union, không throw — pattern 3 của repo. */
 export type Permission = { ok: true } | { ok: false; reason: StaffDenyReason };
@@ -272,6 +275,7 @@ git commit -m "feat(shared): luật quyền nhân viên — và OWNER cuối cù
 ## Task 3: Schema `staff_users` + `password_reset_codes`
 
 **Files:**
+
 - Create: `packages/db/src/schema/staff.ts`
 - Modify: `packages/db/src/schema/index.ts`
 - Create (sinh ra): `packages/db/migrations/0005_*.sql`
@@ -418,6 +422,7 @@ git commit -m "feat(db): staff_users + password_reset_codes, role và status kho
 ## Task 4: `env.ts` — `999999` và hàng rào chống nó lọt ra prod
 
 **Files:**
+
 - Modify: `apps/api/src/env.ts`
 - Create: `apps/api/src/env.test.ts`
 - Modify: `.env.example`
@@ -435,12 +440,15 @@ import { describe, expect, it } from "bun:test";
  * quan sát được hành vi fail-fast thật.
  */
 async function bootWith(extra: Record<string, string>) {
-  const proc = Bun.spawn(["bun", "-e", 'import("./src/env.ts").then(() => console.log("BOOT_OK"))'], {
-    cwd: import.meta.dir + "/..",
-    env: { ...process.env, ...extra },
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+  const proc = Bun.spawn(
+    ["bun", "-e", 'import("./src/env.ts").then(() => console.log("BOOT_OK"))'],
+    {
+      cwd: import.meta.dir + "/..",
+      env: { ...process.env, ...extra },
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
   const [out, err] = await Promise.all([
     new Response(proc.stdout).text(),
     new Response(proc.stderr).text(),
@@ -550,6 +558,7 @@ git commit -m "feat(api): mã dev 999999 gắn vào NODE_ENV, và prod không kh
 Đây là cái bẫy §4.1 của design doc: `/auth/*` là catch-all nên `POST /auth/user/password/reset/token` **đang sống** và sẽ gửi mail từ `noreply@supertokens.io`.
 
 **Files:**
+
 - Modify: `apps/api/src/plugins/auth.ts`
 
 - [ ] **Step 1: Xác nhận endpoint đó đang thật sự sống**
@@ -615,6 +624,7 @@ git commit -m "fix(api): tắt luồng reset dựng sẵn của SuperTokens — 
 ## Task 6: Service `staff.ts`
 
 **Files:**
+
 - Create: `apps/api/src/services/staff.ts`
 - Test: `apps/api/src/services/staff.test.ts`
 
@@ -765,7 +775,10 @@ function toStaffUser(row: Record<string, unknown>): StaffUser {
 }
 
 export async function loadStaff(id: string): Promise<StaffUser | null> {
-  const [row] = await db.select(columns).from(schema.staffUsers).where(eq(schema.staffUsers.id, id));
+  const [row] = await db
+    .select(columns)
+    .from(schema.staffUsers)
+    .where(eq(schema.staffUsers.id, id));
   return row ? toStaffUser(row) : null;
 }
 
@@ -827,7 +840,13 @@ export async function approveStaff(
 
   await db
     .update(schema.staffUsers)
-    .set({ status: "ACTIVE", role, approvedAt: new Date(), approvedBy: actorId, updatedAt: new Date() })
+    .set({
+      status: "ACTIVE",
+      role,
+      approvedAt: new Date(),
+      approvedBy: actorId,
+      updatedAt: new Date(),
+    })
     .where(eq(schema.staffUsers.id, targetId));
   return { ok: true };
 }
@@ -861,7 +880,10 @@ export async function changeStaffRole(
  * access token hết hạn. Đây là lý do chính chọn "role trong DB" thay vì "role
  * trong claim" (§2 design doc) — bỏ dòng revoke đi là vứt luôn lý do đó.
  */
-export async function disableStaff(actorId: string, targetId: string): Promise<StaffMutationResult> {
+export async function disableStaff(
+  actorId: string,
+  targetId: string,
+): Promise<StaffMutationResult> {
   const ctx = await actorAndTarget(actorId, targetId);
   if (!ctx) return { ok: false, reason: "KHONG_TIM_THAY" };
 
@@ -899,6 +921,7 @@ git commit -m "feat(api): service staff_users — khoá tài khoản thu hồi s
 Guard plugin cần gọi `services/staff.ts`, nhưng policy hiện tại cho `api-plugins` đi tới `api-plugins | api-infra | shared-domain`. Task này mở đúng một cạnh và **không** mở cạnh `api-plugins → db`.
 
 **Files:**
+
 - Modify: `eslint.config.js:217-226`
 
 - [ ] **Step 1: Sửa policy**
@@ -983,6 +1006,7 @@ git commit -m "chore(lint): api-plugins gọi được api-services, và probe t
 ## Task 8: Guard "mặc định chặn"
 
 **Files:**
+
 - Modify: `apps/api/src/plugins/auth.ts` (export helper dựng `PreParsedRequest`)
 - Create: `apps/api/src/plugins/staff-guard.ts`
 - Test: `apps/api/src/plugins/staff-guard.test.ts`
@@ -1087,8 +1111,11 @@ const CAN_SESSION_KHONG_CAN_ACTIVE: ReadonlyArray<{ method: string; pattern: Reg
   { method: "GET", pattern: /^\/staff\/me$/ },
 ];
 
-const khop = (list: ReadonlyArray<{ method: string; pattern: RegExp }>, method: string, path: string) =>
-  list.some((r) => (r.method === "*" || r.method === method) && r.pattern.test(path));
+const khop = (
+  list: ReadonlyArray<{ method: string; pattern: RegExp }>,
+  method: string,
+  path: string,
+) => list.some((r) => (r.method === "*" || r.method === method) && r.pattern.test(path));
 
 /**
  * ⚠️ KHÔNG dùng `.state()` cho danh tính người gọi. `store` của Elysia là MỘT
@@ -1109,9 +1136,13 @@ export const staffGuard = new Elysia({ name: "staff-guard" })
     // sessionRequired: false → không ném khi thiếu session, ta tự quyết mã lỗi.
     // CollectingResponse hứng header refresh của SuperTokens; ta không trả nó về
     // vì 401 đã đủ tín hiệu cho interceptor của supertokens-web-js đi refresh.
-    const session = await Session.getSession(toPreParsedRequest(request), new CollectingResponse(), {
-      sessionRequired: false,
-    });
+    const session = await Session.getSession(
+      toPreParsedRequest(request),
+      new CollectingResponse(),
+      {
+        sessionRequired: false,
+      },
+    );
     if (!session) return { staff: null };
     return { staff: await loadStaff(session.getUserId()), userId: session.getUserId() };
   })
@@ -1137,7 +1168,8 @@ export const staffGuard = new Elysia({ name: "staff-guard" })
 
 /** Dùng trong route cần role cụ thể. Trả `null` khi đủ quyền. */
 export function requireRole(staff: { role: StaffRole } | null, role: StaffRole) {
-  if (!staff || staff.role !== role) return { message: "Không đủ quyền", code: "THIEU_QUYEN" as const };
+  if (!staff || staff.role !== role)
+    return { message: "Không đủ quyền", code: "THIEU_QUYEN" as const };
   return null;
 }
 ```
@@ -1192,6 +1224,7 @@ git commit -m "feat(api): mặc định chặn — route không khai công khai 
 ## Task 9: `signUpPOST` ghi `staff_users`, kèm lớp bù trừ
 
 **Files:**
+
 - Modify: `apps/api/src/plugins/auth.ts`
 
 - [ ] **Step 1: Bọc `signUpPOST`**
@@ -1291,6 +1324,7 @@ git commit -m "feat(api): đăng ký ghi staff_users ở trạng thái PENDING, 
 ## Task 10: Service quên mật khẩu bằng mã 6 số
 
 **Files:**
+
 - Create: `apps/api/src/services/email.ts`
 - Create: `apps/api/src/services/password-reset.ts`
 - Test: `apps/api/src/services/password-reset.test.ts`
@@ -1589,6 +1623,7 @@ git commit -m "feat(api): quên mật khẩu bằng mã 6 số — token SuperTo
 ## Task 11: Route `/staff/*`
 
 **Files:**
+
 - Create: `apps/api/src/routes/staff.ts`
 - Modify: `apps/api/src/index.ts`
 
@@ -1811,6 +1846,7 @@ git commit -m "feat(api): route /staff/* — duyệt, đổi role, khoá, và ph
 ## Task 12: Script tạo OWNER đầu tiên
 
 **Files:**
+
 - Create: `scripts/staff-bootstrap.ts`
 - Modify: `package.json`
 
@@ -1917,6 +1953,7 @@ git commit -m "feat(scripts): staff:bootstrap tạo OWNER đầu tiên, chạy l
 ## Task 13: Siết CORS
 
 **Files:**
+
 - Modify: `apps/api/src/index.ts`
 
 - [ ] **Step 1: Xác nhận `apps/web` không gọi API từ trình duyệt**
@@ -1943,7 +1980,7 @@ const app = new Elysia()
       credentials: true,
       allowedHeaders: ["content-type", ...supertokens.getAllCORSHeaders()],
     }),
-  )
+  );
 ```
 
 kèm `import supertokens from "supertokens-node";`.
@@ -1991,6 +2028,7 @@ git commit -m "fix(api): CORS chỉ nhận origin của staff — không phản 
 ## Task 14: `apps/staff` — nối SuperTokens
 
 **Files:**
+
 - Modify: `apps/staff/package.json`
 - Create: `apps/staff/src/lib/auth.ts`, `apps/staff/src/lib/me.ts`
 - Modify: `apps/staff/src/main.tsx`
@@ -2125,6 +2163,7 @@ git commit -m "feat(staff): nối supertokens-web-js, Eden ăn theo interceptor 
 ## Task 15: Router hai nhánh + guard
 
 **Files:**
+
 - Modify: `apps/staff/src/router.tsx`, `apps/staff/src/main.tsx`
 
 - [ ] **Step 1: Viết lại router**
@@ -2153,7 +2192,11 @@ const rootRoute = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: () => <Outlet />,
 });
 
-const congKhai = createRoute({ getParentRoute: () => rootRoute, id: "cong-khai", component: Outlet });
+const congKhai = createRoute({
+  getParentRoute: () => rootRoute,
+  id: "cong-khai",
+  component: Outlet,
+});
 
 /**
  * Guard. Trang `/` (health) nằm dưới nhánh này CÓ CHỦ Ý: nó là bằng chứng
@@ -2224,6 +2267,7 @@ Expected: FAIL — không tìm thấy `./pages/dang-nhap` v.v. Task 16 tạo ch�
 ## Task 16: Năm màn hình
 
 **Files:**
+
 - Create: `apps/staff/src/pages/dang-nhap.tsx`, `dang-ky.tsx`, `quen-mat-khau.tsx`, `cho-duyet.tsx`, `nhan-vien.tsx`
 
 - [ ] **Step 1: Đăng nhập**
@@ -2637,6 +2681,7 @@ git commit -m "feat(staff): đăng nhập, đăng ký, quên mật khẩu, chờ
 ## Task 17: PWA không được cache `/auth` và `/staff`
 
 **Files:**
+
 - Modify: `apps/staff/vite.config.ts`
 
 - [ ] **Step 1: Thêm denylist**
@@ -2676,21 +2721,25 @@ git commit -m "fix(staff): service worker không cache /auth và /staff"
 Bốn file đang **nói sai** sau đợt này. Tài liệu là deliverable ngang hàng với code trong repo này.
 
 **Files:**
+
 - Modify: `CLAUDE.md`, `apps/api/CLAUDE.md`, `apps/staff/CLAUDE.md`, `PRODUCT.md`
 
 - [ ] **Step 1: `CLAUDE.md` gốc**
 
 Sửa mục "Xác thực: SuperTokens cho `apps/staff`, không có gì cho `apps/web`":
+
 - Bỏ câu "**Hiện chưa route nào enforce auth và chưa có màn hình đăng nhập**".
 - Thêm: luật mặc định chặn nằm ở `apps/api/src/plugins/staff-guard.ts`, hai danh sách công khai, và mã dev `999999` gắn vào `NODE_ENV` chứ không vào việc thiếu SMTP.
 
 Sửa mục "Việc còn để lại":
+
 - Bỏ `enforce auth trên route thật (SuperTokens đã nối, chưa route nào dùng)`.
 - Thêm vào phần nghiệp vụ: `rentals` phải FK tới `staff_users` cho "ai bàn giao xe".
 
 - [ ] **Step 2: `apps/api/CLAUDE.md`**
 
 Sửa mục "Seam auth":
+
 - "**Chưa có:** không route nghiệp vụ nào enforce auth" → mô tả mặc định chặn.
 - Thêm cảnh báo: `POST /auth/user/password/reset/token` **đã tắt bằng override** và phải trả 404; nếu một ngày nó trả 400 trở lại thì override đã mất và hệ thống có hai luồng reset song song.
 

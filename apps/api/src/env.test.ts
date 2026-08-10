@@ -6,12 +6,15 @@ import { describe, expect, it } from "bun:test";
  * quan sát được hành vi fail-fast thật.
  */
 async function bootWith(extra: Record<string, string>) {
-  const proc = Bun.spawn(["bun", "-e", 'import("./src/env.ts").then(() => console.log("BOOT_OK"))'], {
-    cwd: import.meta.dir + "/..",
-    env: { ...process.env, ...extra },
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+  const proc = Bun.spawn(
+    ["bun", "-e", 'import("./src/env.ts").then(() => console.log("BOOT_OK"))'],
+    {
+      cwd: import.meta.dir + "/..",
+      env: { ...process.env, ...extra },
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
   const [out, err] = await Promise.all([
     new Response(proc.stdout).text(),
     new Response(proc.stderr).text(),

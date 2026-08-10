@@ -52,13 +52,19 @@ async function withOnlyTestOwnersActive<T>(fn: () => Promise<T>): Promise<T> {
   const ids = ambient.map((r) => r.id).filter((id) => !id.startsWith(P));
 
   if (ids.length > 0) {
-    await db.update(schema.staffUsers).set({ status: "DISABLED" }).where(inArray(schema.staffUsers.id, ids));
+    await db
+      .update(schema.staffUsers)
+      .set({ status: "DISABLED" })
+      .where(inArray(schema.staffUsers.id, ids));
   }
   try {
     return await fn();
   } finally {
     if (ids.length > 0) {
-      await db.update(schema.staffUsers).set({ status: "ACTIVE" }).where(inArray(schema.staffUsers.id, ids));
+      await db
+        .update(schema.staffUsers)
+        .set({ status: "ACTIVE" })
+        .where(inArray(schema.staffUsers.id, ids));
     }
   }
 }

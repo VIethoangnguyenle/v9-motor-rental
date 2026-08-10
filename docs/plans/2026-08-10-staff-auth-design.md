@@ -16,13 +16,13 @@ thì đòi session.
 
 Năm quyết định đã chốt trong phiên brainstorm 2026-08-10:
 
-| # | Câu hỏi | Chốt |
-| --- | --- | --- |
-| 1 | Ai tạo tài khoản nhân viên | Tự đăng ký, OWNER duyệt |
-| 2 | Role và trạng thái duyệt ở đâu | Bảng `staff_users` trong `public` |
-| 3 | Kênh đặt lại mật khẩu | SMTP của shop + đường cứu do OWNER phát mã |
-| 4 | SDK frontend | `supertokens-web-js` (headless) |
-| 5 | Phạm vi đợt này | Auth + quản lý nhân viên + luật mặc định chặn |
+| #   | Câu hỏi                        | Chốt                                          |
+| --- | ------------------------------ | --------------------------------------------- |
+| 1   | Ai tạo tài khoản nhân viên     | Tự đăng ký, OWNER duyệt                       |
+| 2   | Role và trạng thái duyệt ở đâu | Bảng `staff_users` trong `public`             |
+| 3   | Kênh đặt lại mật khẩu          | SMTP của shop + đường cứu do OWNER phát mã    |
+| 4   | SDK frontend                   | `supertokens-web-js` (headless)               |
+| 5   | Phạm vi đợt này                | Auth + quản lý nhân viên + luật mặc định chặn |
 
 Cộng một quyết định phát sinh giữa phiên: luồng đặt lại mật khẩu dùng **mã 6 số**, và ở môi trường
 không phải production mã đó là **`999999`**.
@@ -36,14 +36,14 @@ trước khi tin bất cứ đoạn nào bên dưới.
 
 **Đã kiểm bằng cách chạy hoặc đọc `node_modules`, không phải đọc tài liệu rồi đoán:**
 
-| Điều | Bằng chứng |
-| --- | --- |
-| `verifySession` có bản cho framework `custom` | `lib/build/recipe/session/framework/custom.d.ts` — nhận `BaseRequest`/`BaseResponse`, khớp `PreParsedRequest`/`CollectingResponse` đang dùng |
-| `SMTPService` có sẵn cho emailpassword | `lib/build/recipe/emailpassword/emaildelivery/services/smtp` |
-| `nodemailer` đã có trong cây phụ thuộc | dependency của `supertokens-node@24.0.3` (`^8.0.2`) |
-| `supertokens-web-js` tồn tại, bản mới nhất | `0.16.0` |
-| `@elysiajs/cors@1.4.2` mặc định | `origin = true`, `credentials = true`, headers **phản chiếu** chứ không phát `*` (đọc `dist/index.mjs`) |
-| `EmailPassword` và `Session` đã init thật và `/auth/*` gọi tới core | `apps/api/CLAUDE.md` — `POST /auth/signup` với body rỗng trả `Missing input param: formFields` |
+| Điều                                                                | Bằng chứng                                                                                                                                   |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `verifySession` có bản cho framework `custom`                       | `lib/build/recipe/session/framework/custom.d.ts` — nhận `BaseRequest`/`BaseResponse`, khớp `PreParsedRequest`/`CollectingResponse` đang dùng |
+| `SMTPService` có sẵn cho emailpassword                              | `lib/build/recipe/emailpassword/emaildelivery/services/smtp`                                                                                 |
+| `nodemailer` đã có trong cây phụ thuộc                              | dependency của `supertokens-node@24.0.3` (`^8.0.2`)                                                                                          |
+| `supertokens-web-js` tồn tại, bản mới nhất                          | `0.16.0`                                                                                                                                     |
+| `@elysiajs/cors@1.4.2` mặc định                                     | `origin = true`, `credentials = true`, headers **phản chiếu** chứ không phát `*` (đọc `dist/index.mjs`)                                      |
+| `EmailPassword` và `Session` đã init thật và `/auth/*` gọi tới core | `apps/api/CLAUDE.md` — `POST /auth/signup` với body rỗng trả `Missing input param: formFields`                                               |
 
 **Còn là giả định, phải kiểm lúc implement:**
 
@@ -150,9 +150,9 @@ Ba điểm cố ý:
 `packages/shared/src/domain/staff.ts`, **test trước** theo TDD nghiêm (luật của `packages/shared`):
 
 ```ts
-canApprove(actor, target)                       // chỉ OWNER, không tự duyệt mình
-canChangeRole(actor, target, activeOwnerCount)  // không hạ role OWNER cuối cùng
-canDisable(actor, target, activeOwnerCount)     // không tự khoá mình, không khoá OWNER cuối
+canApprove(actor, target); // chỉ OWNER, không tự duyệt mình
+canChangeRole(actor, target, activeOwnerCount); // không hạ role OWNER cuối cùng
+canDisable(actor, target, activeOwnerCount); // không tự khoá mình, không khoá OWNER cuối
 ```
 
 Luật "OWNER cuối cùng" là chỗ dễ tự khoá mình ra khỏi hệ thống nhất, và nó là hàm thuần không cần
@@ -167,13 +167,13 @@ Guard là plugin Elysia (`name: "require-staff"`) đăng ký **trước** mọi 
 `onBeforeHandle` phạm vi global, đọc session bằng `verifySession` của framework `custom` rồi
 `SELECT staff_users WHERE id = userId`.
 
-| Tình trạng | Kết quả |
-| --- | --- |
-| Không có session | `401` |
-| Có session, không có hàng `staff_users` | `403 CHUA_CO_HO_SO` |
-| `PENDING` | `403 CHO_DUYET` |
-| `DISABLED` | `403 DA_KHOA` + `revokeAllSessionsForUser` |
-| `ACTIVE`, thiếu role | `403 THIEU_QUYEN` |
+| Tình trạng                              | Kết quả                                    |
+| --------------------------------------- | ------------------------------------------ |
+| Không có session                        | `401`                                      |
+| Có session, không có hàng `staff_users` | `403 CHUA_CO_HO_SO`                        |
+| `PENDING`                               | `403 CHO_DUYET`                            |
+| `DISABLED`                              | `403 DA_KHOA` + `revokeAllSessionsForUser` |
+| `ACTIVE`, thiếu role                    | `403 THIEU_QUYEN`                          |
 
 Công khai là **danh sách khai tường minh** ngay trong plugin đó — và có **hai** danh sách, không phải
 một:
@@ -181,9 +181,9 @@ một:
 ```ts
 // Không cần session chút nào.
 const CONG_KHAI = [
-  { method: "*",    pattern: /^\/auth\// },
-  { method: "GET",  pattern: /^\/health/ },
-  { method: "GET",  pattern: /^\/vehicles(\/|$)/ },          // apps/web SSG cần
+  { method: "*", pattern: /^\/auth\// },
+  { method: "GET", pattern: /^\/health/ },
+  { method: "GET", pattern: /^\/vehicles(\/|$)/ }, // apps/web SSG cần
   { method: "POST", pattern: /^\/staff\/password-reset\/(request|confirm)$/ },
 ];
 
@@ -288,7 +288,7 @@ nhiều mã khác nhau. Nghĩa là không cần cấu hình gì thì dev vẫn r
 
 Cố ý **không** làm thành nhánh `if (code === "999999") cho qua`. Một cửa sau riêng nghĩa là luồng
 chạy ở prod không phải luồng được test nhiều nhất — đúng loại lệch dev/prod repo này đã dính. Ở đây
-dev chỉ *sinh ra* một mã đoán trước được; đường xác minh vẫn là đường thật.
+dev chỉ _sinh ra_ một mã đoán trước được; đường xác minh vẫn là đường thật.
 
 Hai hàng rào quanh nó, vì một dòng comment trong `.env.example` không ép được gì:
 
@@ -350,10 +350,10 @@ giác của `apps/web` — không bê sang.
 
 ```ts
 cors({
-  origin: [env.staffAppUrl],                                   // KHÔNG phản chiếu Origin
+  origin: [env.staffAppUrl], // KHÔNG phản chiếu Origin
   credentials: true,
   allowedHeaders: ["content-type", ...supertokens.getAllCORSHeaders()],
-})
+});
 ```
 
 Hiện `cors()` gọi không tham số: `origin: true` phản chiếu **bất kỳ** Origin nào kèm
@@ -393,21 +393,21 @@ vụ đúng một lần dùng, và nó chạy đua với chính internet nếu A
 
 Không tiêu chí nào được tuyên bố đạt nếu chưa chạy lệnh và đọc output.
 
-| # | Tiêu chí | Cách verify |
-| --- | --- | --- |
-| 1 | Luồng reset cũ của SuperTokens đã tắt | `POST /auth/user/password/reset/token` → **404** |
-| 2 | Mặc định chặn có thật | fixture route đăng ký sau guard, không cookie → **401** (test tự động) |
-| 3 | Cấu hình dev không lọt vào prod | `NODE_ENV=production` + `AUTH_DEV_OTP` → app **không khởi động** |
-| 4 | Đăng ký ra `PENDING` | signup → `GET /staff/users` → `403 CHO_DUYET` |
-| 5 | Duyệt có hiệu lực | OWNER approve → gọi lại → `200` |
-| 6 | Khoá có hiệu lực **ngay** | disable → session đang mở bị chặn, không đợi token hết hạn |
-| 7 | Mã 6 số đúng luật | sai 5 lần chết · quá 10 phút chết · xin mã mới giết mã cũ |
-| 8 | Không dò được email | request với email không tồn tại → vẫn `200` |
-| 9 | CORS đã siết | `curl -H 'Origin: https://ke-la.com'` → **không** có `access-control-allow-origin` |
-| 10 | Refresh token tự động | để access token hết hạn → gọi API qua Eden → vẫn `200` |
-| 11 | Không tự khoá được OWNER cuối | unit test `packages/shared/src/domain/staff.test.ts` |
-| 12 | Toàn bộ vẫn xanh | `bun test`, `bun run typecheck`, `bun run lint`, ba probe boundaries |
-| 13 | Cookie chạy trên subdomain thật | đăng nhập trên stack đã deploy — **không kiểm được ở localhost** |
+| #   | Tiêu chí                              | Cách verify                                                                        |
+| --- | ------------------------------------- | ---------------------------------------------------------------------------------- |
+| 1   | Luồng reset cũ của SuperTokens đã tắt | `POST /auth/user/password/reset/token` → **404**                                   |
+| 2   | Mặc định chặn có thật                 | fixture route đăng ký sau guard, không cookie → **401** (test tự động)             |
+| 3   | Cấu hình dev không lọt vào prod       | `NODE_ENV=production` + `AUTH_DEV_OTP` → app **không khởi động**                   |
+| 4   | Đăng ký ra `PENDING`                  | signup → `GET /staff/users` → `403 CHO_DUYET`                                      |
+| 5   | Duyệt có hiệu lực                     | OWNER approve → gọi lại → `200`                                                    |
+| 6   | Khoá có hiệu lực **ngay**             | disable → session đang mở bị chặn, không đợi token hết hạn                         |
+| 7   | Mã 6 số đúng luật                     | sai 5 lần chết · quá 10 phút chết · xin mã mới giết mã cũ                          |
+| 8   | Không dò được email                   | request với email không tồn tại → vẫn `200`                                        |
+| 9   | CORS đã siết                          | `curl -H 'Origin: https://ke-la.com'` → **không** có `access-control-allow-origin` |
+| 10  | Refresh token tự động                 | để access token hết hạn → gọi API qua Eden → vẫn `200`                             |
+| 11  | Không tự khoá được OWNER cuối         | unit test `packages/shared/src/domain/staff.test.ts`                               |
+| 12  | Toàn bộ vẫn xanh                      | `bun test`, `bun run typecheck`, `bun run lint`, ba probe boundaries               |
+| 13  | Cookie chạy trên subdomain thật       | đăng nhập trên stack đã deploy — **không kiểm được ở localhost**                   |
 
 Tiêu chí **#2** là quan trọng nhất. Nếu guard im lặng không chạy thì mọi thứ còn lại chỉ là trang trí,
 và đó đúng là kiểu suy thoái đã xảy ra bốn lần trong dự án này.

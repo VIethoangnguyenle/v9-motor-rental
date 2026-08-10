@@ -39,7 +39,10 @@ describe("canChangeRole", () => {
   });
 
   it("không hạ role của OWNER cuối cùng — kể cả chính mình", () => {
-    expect(canChangeRole(owner, owner, "STAFF", 1)).toEqual({ ok: false, reason: "OWNER_CUOI_CUNG" });
+    expect(canChangeRole(owner, owner, "STAFF", 1)).toEqual({
+      ok: false,
+      reason: "OWNER_CUOI_CUNG",
+    });
   });
 
   it("còn OWNER khác thì hạ role được", () => {
@@ -47,7 +50,10 @@ describe("canChangeRole", () => {
   });
 
   it("STAFF không đổi role của ai", () => {
-    expect(canChangeRole(staff, pending, "OWNER", 1)).toEqual({ ok: false, reason: "KHONG_PHAI_OWNER" });
+    expect(canChangeRole(staff, pending, "OWNER", 1)).toEqual({
+      ok: false,
+      reason: "KHONG_PHAI_OWNER",
+    });
   });
 
   // Vế status của requireOwner — xem ghi chú ở "canApprove".
