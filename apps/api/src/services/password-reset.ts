@@ -271,9 +271,22 @@ export async function doiMatKhauBangMa(
   // sẽ lệch nhau ở lần đầu tiên một trong hai được sửa.
   if (reset.status !== "OK") return { ok: false, reason: "MAT_KHAU_YEU" };
 
-  // Đổi mật khẩu là lúc thu hồi mọi phiên cũ — kể cả phiên đang chạy trên máy kẻ
-  // đã chiếm tài khoản. Không thu hồi thì đổi mật khẩu chỉ chặn được lần đăng nhập
-  // sau của họ, không chặn phiên họ đang mở.
+  // Thu hồi session ở core. ⚠️ ĐỌC KỸ NÓ LÀM ĐƯỢC GÌ VÀ KHÔNG LÀM ĐƯỢC GÌ — bản
+  // đầu của comment này nói quá, và đã đo lại 2026-08-11 trên stack thật:
+  //
+  //   /auth/session/refresh với cookie cũ  → 401  (refresh token chết ngay)
+  //   supertokens.session_info của user    → 0 hàng
+  //   /staff/me với cùng cookie cũ         → 200  ← VẪN SỐNG
+  //
+  // Access token của SuperTokens là JWT tự xác thực cục bộ; `getSession` không hỏi
+  // core trừ khi truyền `checkDatabase: true`. Nên kẻ đang cầm token **không gia hạn
+  // được nữa**, nhưng vẫn dùng được tới khi token hết hạn (mặc định 1 giờ).
+  //
+  // Khác hẳn đường KHOÁ TÀI KHOẢN: `status = 'DISABLED'` có hiệu lực **ngay**, vì
+  // staff-guard đọc `staff_users` ở mỗi request. Đó mới là công tắc ngắt tức thì —
+  // đổi mật khẩu thì không phải. Muốn reset cũng ngắt ngay thì rẻ nhất là thêm một
+  // cột kiểu `sessions_invalid_before` và cho guard so với `iat` của token: tận dụng
+  // đúng lần đọc DB đã có, không thêm query, không gọi core mỗi request.
   await deps.revokeSessions(staff.id);
   return { ok: true };
 }
