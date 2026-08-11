@@ -73,17 +73,20 @@ Guard là plugin Elysia gắn `resolve` + `onBeforeHandle` phạm vi **`global`*
 hồ sơ `ACTIVE` trong `staff_users`. Route đợt sau (`rentals`, `customers`) **quên khai là bị
 chặn**, không phải lọt — đó là toàn bộ điểm của plugin này: không ai phải _nhớ_ bật bảo vệ.
 
-| Tình trạng                                   | HTTP  | `code`           | Ai trả                      |
-| -------------------------------------------- | ----- | ---------------- | --------------------------- |
-| không có session, hoặc token hỏng/hết hạn    | `401` | `CHUA_DANG_NHAP` | guard                       |
-| có session nhưng không có hàng `staff_users` | `403` | `CHUA_CO_HO_SO`  | guard                       |
-| `PENDING`                                    | `403` | `CHO_DUYET`      | guard                       |
-| `DISABLED`                                   | `403` | `DA_KHOA`        | guard                       |
-| `ACTIVE` nhưng sai role                      | `403` | `THIEU_QUYEN`    | `requireRole()` trong route |
+| Tình trạng                                     | HTTP  | `code`               | Ai trả                      |
+| ---------------------------------------------- | ----- | -------------------- | --------------------------- |
+| không có session, hoặc token hỏng/hết hạn      | `401` | `CHUA_DANG_NHAP`     | guard                       |
+| token cấp **trước** mốc thu hồi của chủ nó     | `401` | `PHIEN_HET_HIEU_LUC` | guard                       |
+| có session nhưng không có hàng `staff_users`   | `403` | `CHUA_CO_HO_SO`      | guard                       |
+| `PENDING`                                      | `403` | `CHO_DUYET`          | guard                       |
+| `DISABLED` (với token cấp **sau** mốc thu hồi) | `403` | `DA_KHOA`            | guard                       |
+| `ACTIVE` nhưng sai role                        | `403` | `THIEU_QUYEN`        | `requireRole()` trong route |
 
 Hai danh sách chứ không phải một: `CONG_KHAI` (không cần session) và
 `CAN_SESSION_KHONG_CAN_ACTIVE` (**đúng một mục** — `GET /staff/me`, để màn "chờ duyệt" đọc được
 chính trạng thái của mình). `DISABLED` bị chặn ở cả hai nhánh cần session.
+
+Hàng thứ hai của bảng đứng **trên** mọi hàng `403` không phải để cho đẹp: xem mục kế tiếp.
 
 Ba chi tiết trong file đó trông sửa được nhưng không:
 
@@ -112,6 +115,65 @@ curl -s -o /dev/null -w '%{http_code}\n' localhost:3001/khong-ton-tai   # 404
 
 Type `Role` (`OWNER` | `STAFF` | `SALES`) và `AuthContext` đã export sẵn ở `auth.ts`; nguồn thật
 của role/status là `StaffRole`/`StaffStatus` ở `@v9/shared/domain/staff`.
+
+### ⚠️ Thu hồi session cần **HAI** cơ chế — chúng giết hai loại token khác nhau
+
+`Session.revokeAllSessionsForUser` **một mình là không đủ**, và cách nó thiếu thì im lặng: nó xoá
+session ở core nên **refresh token chết ngay**, nhưng **access token đang cầm thì không**. Access
+token của SuperTokens là **JWT tự xác thực cục bộ** — `getSession` không hỏi core trừ khi truyền
+`checkDatabase: true`. Đo 2026-08-11 trên stack thật, với đúng cookie cũ sau khi đổi mật khẩu, khi
+mới chỉ có `revokeSessions`:
+
+```
+/auth/session/refresh        → 401     (refresh token chết ngay)
+supertokens.session_info     → 0 hàng  (core đã xoá session)
+/staff/me  cùng cookie đó    → 200     ← VẪN SỐNG, tới khi token hết hạn (mặc định 1 giờ)
+```
+
+Cơ chế thứ hai là cột `staff_users.sessions_invalid_before`, và **nó mới là công tắc ngắt tức thì**:
+
+| Cơ chế                                | Giết gì                   | Có hiệu lực khi nào                       |
+| ------------------------------------- | ------------------------- | ----------------------------------------- |
+| `revokeAllSessionsForUser`            | **refresh** token, ở core | ngay — nhưng chỉ chặn việc _gia hạn_      |
+| `staff_users.sessions_invalid_before` | **access** token đang cầm | ngay ở request kế tiếp, qua `staff-guard` |
+
+Nó rẻ vì **ăn theo lần đọc DB đã có**: guard đã `loadStaff()` một hàng `staff_users` ở mỗi request
+được bảo vệ, cột mới đi kèm trong đúng câu `SELECT` đó. Đo được, không suy luận — đếm
+`pg_stat_all_tables` quanh 200 lần `GET /staff/me`: `public.staff_users` **1,000 lượt quét/request**
+và `supertokens.session_info` **0**. Thời điểm cấp token lấy từ `session.getAccessTokenPayload().iat`
+— hàm **đồng bộ**, chỉ `return this.userDataInAccessToken`. **Đừng đổi sang `getTimeCreated()`**:
+nó `await getSessionInformation()`, tức một lời gọi sang core cho **mỗi** request được bảo vệ, đúng
+cái giá mà việc không dùng `checkDatabase: true` sinh ra để tránh.
+
+Bất biến, và nó là thứ dễ vỡ nhất ở đây: **hễ gọi `revokeSessions` thì phải gọi
+`dongDauThuHoiSession`**. Hiện có đúng hai chỗ — `doiMatKhauBangMa` (`services/password-reset.ts`)
+và `disableStaff` (`services/staff.ts`). Thêm chỗ thứ ba mà quên đóng dấu là thủng lại y như cũ, và
+không có gì báo. Thứ tự trong mỗi chỗ là **revoke trước, đóng dấu sau**: chết máy giữa hai lời gọi
+theo thứ tự này để lại "refresh chết, access sống ≤1 giờ"; theo thứ tự ngược lại để lại "access
+chết, refresh sống" — kẻ tấn công refresh một lần là có token mới cấp _sau_ mốc, tức sống mãi.
+
+**⚠️ Cạm bẫy độ phân giải — chỗ dễ sai nhất.** `iat` của JWT tính bằng **giây** (làm tròn xuống),
+`now()` của Postgres có micro giây. `tokenDaBiThuHoi` **phải** cắt mốc xuống giây rồi so `<` nghiêm
+ngặt. So thẳng thì: đóng dấu 10:00:00.500 · người dùng đăng nhập lại 10:00:00.900 · token mang
+`iat = 10:00:00` → bị coi là "trước mốc" → **đá văng chính người vừa đổi mật khẩu xong**, ngay lần
+đăng nhập đầu tiên. Đó là biến "quên mật khẩu" thành tính năng không dùng được — hỏng nặng hơn lỗ
+đang vá. Đánh đổi đã chấp nhận theo chiều ngược lại: token cấp trong **cùng giây** với lúc đóng dấu
+sống sót; cửa sổ đó dưới một giây và không thu hẹp được vì `iat` không có độ phân giải nhỏ hơn.
+
+Hệ quả cho test: một bài test chạy hết trong vài chục mili giây **nằm gọn trong cửa sổ đó** và sẽ
+xanh/đỏ tuỳ vị trí so với biên giây. `staff-guard-thu-hoi.test.ts` đẩy mình ra khỏi cửa sổ bằng
+`choSangGiayMoi()` — tường minh, có comment, không phải "sleep cho hết flaky".
+
+**401, KHÔNG phải 403**, và phép kiểm đứng **trước** cả `DISABLED` lẫn ngoại lệ `/staff/me`:
+
+- 401 là tín hiệu để interceptor của `supertokens-web-js` đi `/auth/session/refresh`; refresh thất
+  bại (core đã xoá session) nên SDK dọn session và `apps/staff` đá người dùng về `/dang-nhap`. 403
+  thì SDK **không** refresh, cookie rác nằm lại và người dùng kẹt ở màn lỗi.
+- Đứng trước mọi phép kiểm trạng thái vì token cấp trước mốc **không còn là credential** — câu hỏi
+  của tầng xác thực, phải trả lời trước mọi câu hỏi về quyền. Hệ quả quan sát được: người vừa bị
+  khoá mà còn cầm token cũ nhận `401`, không phải `403 DA_KHOA`. Thông điệp "đã bị khoá" không mất
+  — nó tới sau một vòng đăng nhập (SuperTokens không biết gì về `staff_users` nên vẫn cho đăng
+  nhập), và lúc đó token mới nằm sau mốc.
 
 ### ⚠️ `POST /auth/user/password/reset/token` PHẢI trả **404**
 

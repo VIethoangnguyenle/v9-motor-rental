@@ -35,6 +35,24 @@ export const staffUsers = pgTable(
     status: text("status").notNull().default("PENDING"),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     /**
+     * Mốc thu hồi session: access token cấp TRƯỚC mốc này không còn giá trị.
+     *
+     * Tồn tại vì `Session.revokeAllSessionsForUser` KHÔNG đủ. Access token của
+     * SuperTokens là JWT tự xác thực cục bộ, nên thu hồi ở core chỉ giết refresh
+     * token — token đang cầm vẫn dùng được tới khi hết hạn (mặc định 1 giờ). Đo
+     * 2026-08-11 với đúng cookie cũ sau khi đổi mật khẩu: `/auth/session/refresh`
+     * → 401, `supertokens.session_info` → 0 hàng, `/staff/me` → **200**.
+     *
+     * Cột này là công tắc ngắt tức thì, và nó rẻ vì `staff-guard` ĐÃ đọc một hàng
+     * `staff_users` ở mỗi request được bảo vệ — không thêm query nào, không phải
+     * hỏi core mỗi request (`checkDatabase: true` sẽ làm đúng thế).
+     *
+     * `null` = chưa từng thu hồi, tức là mọi token đều hợp lệ. Đó là lý do cột
+     * nullable thay vì `DEFAULT now()`: một mặc định `now()` sẽ đóng dấu cho MỌI
+     * hàng cũ lúc migrate và đá văng toàn bộ nhân viên đang đăng nhập.
+     */
+    sessionsInvalidBefore: timestamp("sessions_invalid_before", { withTimezone: true }),
+    /**
      * FK tự trỏ về chính bảng này. `ON DELETE SET NULL` chứ không phải mặc định:
      * không có action thì xoá một nhân viên từng duyệt người khác sẽ bị chặn, và
      * đó chính là thứ các test dọn dữ liệu `ztest-%` làm. Toàn vẹn tham chiếu giữ

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { Elysia } from "elysia";
-import { staffGuard } from "./staff-guard";
+import { staffGuard, tokenDaBiThuHoi } from "./staff-guard";
 
 /**
  * Fixture route đăng ký SAU guard. Đây là hàng rào "mặc định chặn": route này
@@ -48,5 +48,57 @@ describe("staffGuard", () => {
   it("route trong plugin RIÊNG nối sau guard → vẫn 401 (topology của index.ts)", async () => {
     const res = await appGhepPlugin.handle(new Request("http://localhost/rentals"));
     expect(res.status).toBe(401);
+  });
+});
+
+/**
+ * Phép so mốc thu hồi — tách thành hàm thuần CHỈ để khoá được ca dưới-một-giây
+ * bằng số cố định. Bản e2e (`staff-guard-thu-hoi.test.ts`) chạy với token thật
+ * nhưng thời điểm cấp token do đồng hồ quyết, nên nó KHÔNG chứng minh được cạnh
+ * này một cách ổn định. Hai bài đo hai thứ khác nhau, không thay nhau được.
+ *
+ * `iat` tính bằng giây; mốc thu hồi là `timestamptz` có micro giây.
+ */
+describe("tokenDaBiThuHoi", () => {
+  /** 2026-08-11T10:00:00.500Z — cố ý lệch 500ms khỏi biên giây. */
+  const MOC = new Date(Date.UTC(2026, 7, 11, 10, 0, 0, 500));
+  const GIAY = (d: Date) => Math.floor(d.getTime() / 1000);
+
+  it("chưa từng thu hồi → mọi token đều qua", () => {
+    expect(tokenDaBiThuHoi(null, GIAY(MOC) - 3600)).toBe(false);
+  });
+
+  it("token cấp trước mốc một giây → bị thu hồi", () => {
+    expect(tokenDaBiThuHoi(MOC, GIAY(MOC) - 1)).toBe(true);
+  });
+
+  it("token cấp một giờ trước (kẻ đang cầm cookie cũ) → bị thu hồi", () => {
+    expect(tokenDaBiThuHoi(MOC, GIAY(MOC) - 3600)).toBe(true);
+  });
+
+  /**
+   * ⚠️ BÀI QUAN TRỌNG NHẤT của cả cơ chế này. Đóng dấu lúc 10:00:00.500, người
+   * dùng đăng nhập lại lúc 10:00:00.900 → token mang `iat = 10:00:00` (JWT làm
+   * tròn xuống giây). So thẳng `iat*1000 < moc` cho ra "bị thu hồi" và đá văng
+   * chính người vừa đổi mật khẩu xong — tức "quên mật khẩu" thành tính năng
+   * không dùng được, hỏng nặng hơn lỗ hổng đang vá.
+   *
+   * Bỏ `Math.floor(...)` trong `tokenDaBiThuHoi` thì ĐÚNG bài này đỏ.
+   */
+  it("đăng nhập lại trong CÙNG GIÂY với lúc đóng dấu → vẫn vào được", () => {
+    expect(tokenDaBiThuHoi(MOC, GIAY(MOC))).toBe(false);
+  });
+
+  it("token cấp sau mốc → vào được", () => {
+    expect(tokenDaBiThuHoi(MOC, GIAY(MOC) + 1)).toBe(false);
+  });
+
+  /** Hình dạng token đổi = mất khả năng kiểm → chặn, không phải cho qua. */
+  it("không đọc được iat mà đã có mốc → hỏng theo chiều ĐÓNG", () => {
+    expect(tokenDaBiThuHoi(MOC, null)).toBe(true);
+  });
+
+  it("không đọc được iat và chưa từng thu hồi → không ảnh hưởng ai", () => {
+    expect(tokenDaBiThuHoi(null, null)).toBe(false);
   });
 });

@@ -324,7 +324,9 @@ sai theo chiều an toàn.
 | `CAN_SESSION_KHONG_CAN_ACTIVE` | có session, **không** đòi `ACTIVE` | đúng một mục: `GET /staff/me`                                                                  | màn "chờ duyệt" phải đọc được chính trạng thái của mình; thiếu ngoại lệ này thì người `PENDING` nhìn một màn hình trắng  |
 
 `DISABLED` bị chặn ở **cả hai** nhánh cần session, kể cả `/staff/me`: người bị khoá không cần một
-màn hình giải thích, họ cần không vào được.
+màn hình giải thích, họ cần không vào được. (Với token cấp **trước** lúc bị khoá thì mã trả về là
+`401 PHIEN_HET_HIEU_LUC` chứ không phải `403 DA_KHOA` — xem "Thu hồi session cần HAI cơ chế" bên
+dưới.)
 
 **Danh tính chia đôi có chủ ý.** SuperTokens giữ đúng hai thứ — mật khẩu và session. Role, trạng
 thái duyệt và hồ sơ (họ tên, số điện thoại) nằm ở `public.staff_users`, nơi **migration làm chủ**
@@ -367,6 +369,19 @@ con số:
   `NODE_ENV=production` — cấu hình dev lọt vào prod thì app không chạy, chứ không chạy sai. Một
   dòng comment trong `.env.example` không ép được gì; xem mục "ranh giới repo ép vs cấu hình
   local" bên dưới.
+
+**Thu hồi session cần HAI cơ chế, không phải một.** `Session.revokeAllSessionsForUser` giết
+**refresh** token ngay, nhưng **không** giết access token đang cầm — access token là JWT tự xác
+thực cục bộ, `getSession` không hỏi core trừ khi truyền `checkDatabase: true`. Đo 2026-08-11: sau
+khi đổi mật khẩu, cookie cũ cho `/auth/session/refresh` → 401 và `supertokens.session_info` → 0
+hàng, nhưng `/staff/me` **vẫn 200** cho tới khi token hết hạn (mặc định 1 giờ). Công tắc ngắt tức
+thì là cột `staff_users.sessions_invalid_before`: `staff-guard` so nó với `iat` của token và trả
+`401 PHIEN_HET_HIEU_LUC`. Nó **không thêm query nào** — dùng lại đúng hàng `staff_users` guard đã
+đọc (đo: 1,000 lượt quét bảng đó / request, 0 lượt chạm `supertokens.session_info`).
+
+Bất biến: **hễ thu hồi thì đóng dấu**, và mốc **phải cắt xuống giây** trước khi so — `iat` tính
+bằng giây còn `now()` có micro giây, so thẳng là đá văng chính người vừa đổi mật khẩu xong. Chi
+tiết, thứ tự hai lời gọi, và lý do dùng 401 chứ không 403: `apps/api/CLAUDE.md`.
 
 `apps/web` **không** dùng auth. Khách gửi yêu cầu thuê không cần tài khoản — bắt đăng nhập chỉ làm
 giảm số yêu cầu nhận được, mà yêu cầu chính là thứ web sinh ra để tạo.

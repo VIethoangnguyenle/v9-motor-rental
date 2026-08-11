@@ -10,6 +10,7 @@ import {
   taoMaDatLaiMatKhau,
   timStaffTheoEmail,
 } from "./password-reset";
+import { loadStaff } from "./staff";
 
 // Tiền tố riêng cho file này (`ztest-prc-`), không dùng chung `ztest-` với
 // staff.test.ts: `bun test` chạy nhiều file trong CÙNG một tiến trình và không
@@ -276,6 +277,12 @@ describe("doiMatKhauBangMa", () => {
       // vẫn sống — nạn nhân đổi mật khẩu xong vẫn bị đọc trộm.
       { ten: "revokeSessions", args: [ID] },
     ]);
+
+    // ...nhưng `revokeSessions` MỘT MÌNH không đủ: nó giết refresh token, còn
+    // access token đang cầm là JWT tự xác thực cục bộ nên sống tới khi hết hạn
+    // (đo 2026-08-11: `/staff/me` với cookie cũ vẫn ra 200). Cái dấu dưới đây
+    // mới là thứ `staff-guard` đọc để ngắt tức thì.
+    expect((await loadStaff(ID))?.sessionsInvalidBefore).toBeInstanceOf(Date);
   });
 
   it("mã sai: trả MA_SAI và KHÔNG gọi deps nào cả", async () => {

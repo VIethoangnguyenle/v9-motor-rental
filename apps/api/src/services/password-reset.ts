@@ -2,6 +2,7 @@ import { and, desc, eq, gt, isNull, lt, sql } from "drizzle-orm";
 import { schema } from "@v9/db";
 import { db } from "../db";
 import { env } from "../env";
+import { dongDauThuHoiSession } from "./staff";
 
 const HAN_DUNG_MS = 10 * 60 * 1000;
 const SO_LAN_TOI_DA = 5;
@@ -271,22 +272,26 @@ export async function doiMatKhauBangMa(
   // sẽ lệch nhau ở lần đầu tiên một trong hai được sửa.
   if (reset.status !== "OK") return { ok: false, reason: "MAT_KHAU_YEU" };
 
-  // Thu hồi session ở core. ⚠️ ĐỌC KỸ NÓ LÀM ĐƯỢC GÌ VÀ KHÔNG LÀM ĐƯỢC GÌ — bản
-  // đầu của comment này nói quá, và đã đo lại 2026-08-11 trên stack thật:
+  // ⚠️ HAI BƯỚC, và cần cả hai — chúng giết hai loại token khác nhau.
+  //
+  // Số đo giữ lại vì nó là lý do bước thứ hai tồn tại. 2026-08-11, trên stack
+  // thật, với đúng cookie cũ, khi ở đây CHỈ có `revokeSessions`:
   //
   //   /auth/session/refresh với cookie cũ  → 401  (refresh token chết ngay)
   //   supertokens.session_info của user    → 0 hàng
   //   /staff/me với cùng cookie cũ         → 200  ← VẪN SỐNG
   //
   // Access token của SuperTokens là JWT tự xác thực cục bộ; `getSession` không hỏi
-  // core trừ khi truyền `checkDatabase: true`. Nên kẻ đang cầm token **không gia hạn
-  // được nữa**, nhưng vẫn dùng được tới khi token hết hạn (mặc định 1 giờ).
+  // core trừ khi truyền `checkDatabase: true` — mà cờ đó bắt MỌI request được bảo
+  // vệ phải gọi sang core, tức đổi một lỗ hổng lấy một phụ thuộc cứng trên đường
+  // nóng nhất. Nên kẻ đang cầm token không gia hạn được nữa, nhưng vẫn dùng được
+  // tới khi token hết hạn (mặc định 1 giờ).
   //
-  // Khác hẳn đường KHOÁ TÀI KHOẢN: `status = 'DISABLED'` có hiệu lực **ngay**, vì
-  // staff-guard đọc `staff_users` ở mỗi request. Đó mới là công tắc ngắt tức thì —
-  // đổi mật khẩu thì không phải. Muốn reset cũng ngắt ngay thì rẻ nhất là thêm một
-  // cột kiểu `sessions_invalid_before` và cho guard so với `iat` của token: tận dụng
-  // đúng lần đọc DB đã có, không thêm query, không gọi core mỗi request.
+  // `dongDauThuHoiSession` đóng nốt vế đó: `staff-guard` so `iat` của token với
+  // mốc và trả 401 nếu token cấp trước mốc — dùng lại đúng hàng `staff_users` mà
+  // guard đã đọc, không thêm query nào. Thứ tự (revoke trước, đóng dấu sau) là có
+  // chủ đích; lý do ở chính `dongDauThuHoiSession`.
   await deps.revokeSessions(staff.id);
+  await dongDauThuHoiSession(staff.id);
   return { ok: true };
 }

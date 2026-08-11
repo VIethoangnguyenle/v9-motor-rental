@@ -207,6 +207,10 @@ describe("disableStaff", () => {
     expect(await loadStaff(`${P}new`)).toMatchObject({ status: "DISABLED" });
     // Khoá mà không thu hồi thì session cũ vẫn sống trong SuperTokens.
     expect(daThuHoi).toEqual([`${P}new`]);
+    // Và phải ĐÓNG DẤU nữa — `revokeSessions` chỉ giết refresh token, access
+    // token đang cầm là JWT tự xác thực nên nó sống tới khi hết hạn (đo
+    // 2026-08-11). Bất biến của repo: hễ thu hồi thì đóng dấu.
+    expect((await loadStaff(`${P}new`))?.sessionsInvalidBefore).toBeInstanceOf(Date);
   });
 
   it("không tự khoá mình, và KHÔNG thu hồi session của ai cả", async () => {
@@ -215,6 +219,9 @@ describe("disableStaff", () => {
     expect(res).toEqual({ ok: false, reason: "TU_KHOA_MINH" });
     // Bị từ chối mà vẫn thu hồi là đá văng chính người đang thao tác.
     expect(daThuHoi).toEqual([]);
+    // Cùng lý lẽ cho cái dấu: đóng dấu ở nhánh bị từ chối là tự đá mình ra khỏi
+    // hệ thống bằng một thao tác đã KHÔNG xảy ra.
+    expect((await loadStaff(`${P}owner`))?.sessionsInvalidBefore).toBeNull();
   });
 });
 

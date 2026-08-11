@@ -30,11 +30,20 @@ Migration hiện có:
 | `0002_tearful_plazm`        | `vehicles` + `vehicle_photos`, CHECK `slug`/`status`, partial index cho xe `published` |
 | `0003_puzzling_pete_wisdom` | CHECK tiền không âm và `engine_cc > 0`                                                 |
 | `0004_real_mantis`          | hàm `set_updated_at()` + trigger `vehicles_set_updated_at`                             |
+| `0005_tidy_machine_man`     | `staff_users` + `password_reset_codes`, CHECK `role`/`status`, partial index           |
+| `0006_spooky_proteus`       | FK tự trỏ `staff_users.approved_by → staff_users.id`, `ON DELETE SET NULL`             |
+| `0007_little_micromacro`    | đổi tên index/constraint của `0005` sang quy ước dài của Drizzle                       |
+| `0008_flaky_carlie_cooper`  | `staff_users.sessions_invalid_before` — mốc thu hồi access token                       |
 
 `0002` và `0003` do `db:generate` sinh — kể cả bốn CHECK, vì chúng khai bằng `check()` ngay trong
 `src/schema/vehicles.ts`. `0004` thì **phải** là `db:custom`: Drizzle không mô tả được TRIGGER, nên
 không có gì để sinh ra từ đó. `0004` để tên hàm chung (`set_updated_at`) chứ không gắn riêng vào
 `vehicles` — bảng sau chỉ cần thêm `CREATE TRIGGER`, không cần hàm mới.
+
+`0005`–`0008` cũng do `db:generate` sinh. `staff_users` cố ý **không** có trigger `set_updated_at`
+dù `vehicles` có: trigger đó tồn tại vì `vehicles` có HAI đường ghi (Directus ghi thẳng vào
+Postgres, vòng qua `apps/api`), còn `staff_users` chỉ có một — lý do đầy đủ nằm trong comment của
+`src/schema/staff.ts`, đừng "thống nhất" hai bảng.
 
 ## `db:migrate` KHÔNG dùng `drizzle-kit migrate`
 

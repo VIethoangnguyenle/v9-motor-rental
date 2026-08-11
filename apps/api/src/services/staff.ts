@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { schema } from "@v9/db";
 import {
   canApprove,
@@ -20,6 +20,8 @@ export interface StaffUser {
   readonly status: StaffStatus;
   readonly approvedBy: string | null;
   readonly createdAt: Date;
+  /** Mốc thu hồi session — xem `dongDauThuHoiSession`. `null` = chưa từng thu hồi. */
+  readonly sessionsInvalidBefore: Date | null;
 }
 
 /**
@@ -42,6 +44,7 @@ const columns = {
   status: schema.staffUsers.status,
   approvedBy: schema.staffUsers.approvedBy,
   createdAt: schema.staffUsers.createdAt,
+  sessionsInvalidBefore: schema.staffUsers.sessionsInvalidBefore,
 };
 
 /**
@@ -58,6 +61,7 @@ function toStaffUser(row: {
   status: string;
   approvedBy: string | null;
   createdAt: Date;
+  sessionsInvalidBefore: Date | null;
 }): StaffUser {
   return {
     ...row,
@@ -103,6 +107,45 @@ export async function createPendingStaff(input: {
     fullName: input.fullName,
     phone: input.phone ?? null,
   });
+}
+
+/**
+ * Đóng dấu "mọi access token cấp trước lúc này đều hết giá trị".
+ *
+ * ⚠️ Đi CẶP với `deps.revokeSessions`, không thay thế nó — hai cơ chế giết hai
+ * thứ khác nhau và thiếu cái nào cũng để lại một nửa lỗ hổng:
+ *   • `revokeAllSessionsForUser` xoá session ở core ⇒ **refresh token** chết ngay.
+ *     Access token thì KHÔNG: nó là JWT tự xác thực cục bộ, `getSession` không hỏi
+ *     core trừ khi truyền `checkDatabase: true`.
+ *   • Cột này ⇒ **access token** đang cầm chết ngay ở request kế tiếp, vì
+ *     `staff-guard` đã đọc sẵn hàng `staff_users` này rồi.
+ * Bỏ vế đầu thì kẻ tấn công gia hạn được vô hạn; bỏ vế sau thì hắn còn đúng một
+ * chu kỳ access token (mặc định 1 giờ) — đã đo 2026-08-11, xem comment ở cột
+ * `sessions_invalid_before` trong `packages/db/src/schema/staff.ts`.
+ *
+ * Bất biến của repo: **hễ thu hồi thì đóng dấu**. Chỗ nào gọi `revokeSessions`
+ * mà quên hàm này là chỗ đó thủng lại — hiện có đúng hai chỗ, `disableStaff` ngay
+ * dưới và `doiMatKhauBangMa` ở `password-reset.ts`.
+ *
+ * Gọi SAU `revokeSessions`, không phải trước. Nếu tiến trình chết đúng giữa hai
+ * lời gọi: thứ tự này để lại "refresh đã chết, access còn sống ≤1 giờ" (đúng bằng
+ * lỗ hổng cũ), còn thứ tự ngược lại để lại "access chết, refresh còn sống" — kẻ
+ * tấn công refresh một lần là có token mới cấp SAU mốc, tức là sống mãi.
+ *
+ * `now()` của Postgres chứ không phải `new Date()` của tiến trình API: mốc này
+ * được so với `iat` do SuperTokens core cấp, nên càng ít đồng hồ tham gia càng
+ * tốt. Cùng lý lẽ với `expires_at > now()` trong `kiemTraMa`. Lưu ý `now()` là
+ * giờ MỞ TRANSACTION — hàm này cố ý chạy ngoài transaction (một câu lệnh = một
+ * transaction ngầm) nên hai giá trị bằng nhau; đừng chuyển nó vào trong một
+ * transaction dài, mốc sẽ lùi về quá khứ đúng bằng thời gian transaction đó chạy.
+ */
+export async function dongDauThuHoiSession(userId: string): Promise<Date | null> {
+  const [row] = await db
+    .update(schema.staffUsers)
+    .set({ sessionsInvalidBefore: sql`now()`, updatedAt: new Date() })
+    .where(eq(schema.staffUsers.id, userId))
+    .returning({ moc: schema.staffUsers.sessionsInvalidBefore });
+  return row?.moc ?? null;
 }
 
 function asActor(s: StaffUser): StaffActor {
@@ -224,12 +267,13 @@ export async function changeStaffRole(
  * Cùng lý do transaction như `changeStaffRole`: đếm OWNER (có khoá `FOR UPDATE`)
  * và khoá tài khoản phải đọc-ghi trên cùng một `tx`, không phải trên `db`.
  *
- * `deps.revokeSessions` được gọi SAU KHI transaction commit — vì sao vẫn cần thu
- * hồi dù `staff-guard` đã đọc DB mỗi request: guard chặn được người DISABLED ngay
- * từ request kế tiếp, nhưng session cũ (access token + refresh token) vẫn còn
- * sống trong SuperTokens cho tới khi hết hạn hoặc bị thu hồi. Dọn nó là vệ sinh,
- * không phải trang trí — đây là lý do chính repo chọn "role đọc từ DB" thay vì
- * "role nhét trong claim của token" (§2 design doc).
+ * Thu hồi chạy SAU KHI transaction commit, và là HAI bước chứ không một:
+ * `deps.revokeSessions` (giết refresh token ở core) rồi `dongDauThuHoiSession`
+ * (giết access token đang cầm). Trên đường này bản thân `status = 'DISABLED'` đã
+ * chặn ngay từ request kế tiếp — nên dấu ở đây trông như thừa, và nó tồn tại vì
+ * bất biến **hễ thu hồi thì đóng dấu** phải đúng ở MỌI chỗ thu hồi. Một bất biến
+ * chỉ đúng ở một trong hai chỗ là bất biến người sau sẽ chép sai; xem
+ * `dongDauThuHoiSession`.
  */
 export async function disableStaff(
   deps: StaffDeps,
@@ -254,6 +298,9 @@ export async function disableStaff(
     return { ok: true } as const;
   });
 
-  if (result.ok) await deps.revokeSessions(targetId);
+  if (result.ok) {
+    await deps.revokeSessions(targetId);
+    await dongDauThuHoiSession(targetId);
+  }
   return result;
 }
