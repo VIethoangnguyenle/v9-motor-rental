@@ -41,5 +41,11 @@ coverage/
 # impeccable ghi hook cho Codex CLI vào đây, nội dung hard-code path máy local
 .codex/
 
+# index của codegraph — DB 2 MB dựng lại được bằng `codegraph init`, không phải
+# nguồn sự thật. Tự nó có .codegraph/.gitignore chặn DB, nhưng chính file đó lại
+# untracked nên `git status` bẩn vĩnh viễn; chặn cả thư mục cho gọn, cùng lối với
+# .codex/ ngay trên.
+.codegraph/
+
 # artifact của gstack /browse skill
 .gstack/
