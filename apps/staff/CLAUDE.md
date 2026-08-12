@@ -88,6 +88,24 @@ không có warning trong console, manifest vẫn parse được.
 
 Shop đã có logo ngoài đời. Thay hai file này trước khi ship.
 
+## Cấu trúc component: hai tầng, ranh giới là "có biết domain không"
+
+```
+components/ui/      không biết domain — không import lib/api, không biết Me hay StaffRole là gì
+components/auth/    form đăng nhập · đăng ký · quên mật khẩu · đổi mật khẩu
+components/staff/   bảng nhân viên và hành động trên dòng
+components/layout/  nav dùng chung
+hooks/              use-me.ts
+pages/              lắp component lại, không tự dựng form
+```
+
+`ui/` không biết domain **là điều kiện để dùng lại được** ở bốn màn hình nghiệp vụ sắp làm (lịch ·
+thống kê · bàn giao · khách hàng). Một `TextField` biết `StaffRole` là một `TextField` chỉ dùng được
+ở màn hình nhân viên.
+
+**Form dùng `useMutation`, không cuộn tay `isSubmitting`/`error`.** Đó là pattern đã có trong app
+(`staff-list-page.tsx`), không phải pattern thứ hai.
+
 ## Xác thực: năm màn hình, và **một** hàng rào ở `beforeLoad`
 
 Cây route chia **hai nhánh**, và việc treo route vào nhánh nào _là_ toàn bộ cơ chế phân quyền của

@@ -87,6 +87,17 @@ và là lý do TDD nghiêm khả thi ở đó.
 `type Vnd = number`. VND không có đơn vị phụ. Mọi phép chia **phải** đi qua `roundVnd()` —
 không được để số lẻ rò ra ngoài dưới dạng `Vnd`.
 
+### Định danh tiếng Anh, nội dung tiếng Việt
+
+Component · tên file · hàm · biến · type · hằng · URL route · mã lỗi trong hợp đồng API: **tiếng
+Anh**. Comment · tài liệu · chuỗi hiển thị cho người dùng: **tiếng Việt**.
+
+Ranh giới đó không tuỳ hứng: thứ máy đọc thì tiếng Anh, thứ người đọc thì tiếng Việt. Repo có ~2000
+dòng comment giải thích _vì sao_ — dịch chúng là phá đúng thứ có giá trị nhất.
+
+⚠️ **Luật này KHÔNG ép được bằng máy.** Không linter nào kiểm được "tên phải là tiếng Anh". Đây là
+quy ước trong tài liệu, không phải hàng rào — xem mục "ranh giới repo ép vs cấu hình local".
+
 ### TDD nghiêm cho `packages/shared`
 
 Test trước, luôn luôn, cho mọi thứ trong `src/domain/`. Việc infra và UI thì dùng
