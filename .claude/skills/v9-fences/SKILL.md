@@ -1,7 +1,20 @@
-# Bộ probe hàng rào kiến trúc
+---
+name: v9-fences
+description: Probe hàng rào kiến trúc của v9-rental (eslint-plugin-boundaries). Dùng khi đụng vào eslint.config.js, khi nâng version eslint/typescript-eslint/eslint-plugin-boundaries, khi thêm thư mục code mới, hoặc khi cần chứng minh ranh giới routes/services/infra còn hiệu lực. Bốn lệnh probe và cách đọc kết quả.
+---
 
-Tách khỏi `../CLAUDE.md` để file đó giữ luật chứ không giữ lệnh. **Luật vẫn ở `CLAUDE.md`**;
-đây là bốn lệnh để chứng minh luật còn hiệu lực.
+# Probe hàng rào kiến trúc
+
+Hàng rào này đã **suy thoái im lặng bốn lần** trong dự án — mỗi lần đều `exit 0`, đều trông như
+đang bảo vệ, đều không kiểm gì. Lần thứ tư nạn nhân là chính bộ probe viết ra để chống chuyện đó.
+
+Vì vậy: **exit code không chứng minh gì. Phải đọc tên luật trong thông báo lỗi.**
+
+## Trước khi sửa `eslint.config.js`
+
+Ba thứ trong file đó trông như rác cần dọn, xoá cái nào cũng làm hàng rào im lặng ngừng hoạt động:
+`import/resolver` với `extensions`/`engines`/`preserveSymlinks` · `mode: "full"` trên element
+một-file · các element `api-root`/`shared-root`. Mỗi chỗ có comment giải thích hậu quả.
 
 Chạy sau mỗi lần đụng `eslint.config.js` hoặc nâng version plugin — và **đọc tên luật trong thông
 báo lỗi**, đừng nhìn exit code.

@@ -5,18 +5,24 @@ Hệ quản lý cho shop cho thuê mô tô phân khối lớn ở TP.HCM. UI ti�
 Repo này được phát triển **chủ yếu bởi AI agent**. Vì vậy ranh giới do máy ép và tài liệu này là
 deliverable ngang hàng với code, không phải phụ lục.
 
-**File này giữ luật — thứ đúng cho cả repo và ít khi đổi.** Chi tiết theo workspace nằm ở
-`CLAUDE.md` của workspace đó và **thắng** file này khi nói cùng một chuyện. Ba thứ đổi thường
-xuyên đã tách ra: [`docs/ROADMAP.md`](docs/ROADMAP.md) · [`docs/DEBT.md`](docs/DEBT.md) ·
-[`docs/FENCES.md`](docs/FENCES.md).
+**File này là router: giữ luật chung, trỏ đi nơi khác cho chiều sâu.** Nó nạp lại mỗi phiên nên
+độ dài của nó là chi phí lặp — thứ chỉ cần khi làm một việc cụ thể thì không thuộc về đây.
 
-> Thiết kế và lý do đằng sau mọi quyết định:
-> `docs/plans/2026-08-04-scaffolding-design.md` (đợt 1 — nền móng),
-> `docs/plans/2026-08-05-round2-directus-staff-design.md` (đợt 2 — Directus, `apps/staff`, thu hẹp `apps/web`),
-> `docs/plans/2026-08-10-staff-auth-design.md` (đợt auth — danh tính chia đôi, mặc định chặn, mã 6 số).
-> Khi tài liệu này và design doc mâu thuẫn, **design doc thắng** — và hãy sửa file này.
+## Gặp việc này → mở cái này
 
----
+| Việc                                                            | Ở đâu                                       | Nạp thế nào  |
+| --------------------------------------------------------------- | ------------------------------------------- | ------------ |
+| Đụng `eslint.config.js`, nâng version plugin, thêm thư mục code | skill `v9-fences`                           | theo việc    |
+| Auth, role, session, đăng ký/duyệt nhân viên, FK tới nhân viên  | skill `v9-auth`                             | theo việc    |
+| Directus: ảnh xe, quyền Public, sau khi nâng version            | skill `v9-directus`                         | theo việc    |
+| Chuẩn bị deploy, sửa `compose.prod.yaml`                        | skill `v9-deploy`                           | theo việc    |
+| Viết code trong một workspace                                   | `CLAUDE.md` của workspace đó                | theo thư mục |
+| Đợt kế tiếp, việc nghiệp vụ cần brainstorm                      | [`docs/ROADMAP.md`](docs/ROADMAP.md)        |              |
+| Nợ đã biết                                                      | [`docs/DEBT.md`](docs/DEBT.md)              |              |
+| Lý do đằng sau một quyết định cũ                                | [`docs/plans/`](docs/plans/) · Agent Memory |              |
+
+`CLAUDE.md` của workspace **thắng** file này khi hai bên nói cùng một chuyện; design doc trong
+`docs/plans/` thắng cả hai. Thấy mâu thuẫn thì **nêu cho người**, đừng tự chọn bên.
 
 ## Repo map
 
@@ -100,33 +106,24 @@ verification-before-completion thay cho test-first.
 
 ### ⚠️ Hai cái bẫy của Bun.SQL — hỏng im lặng nếu làm sai
 
-**SQLSTATE nằm ở `.errno`, KHÔNG phải `.code`.** Bun.SQL bọc mọi lỗi server-side thành
-`PostgresError` với `.code` luôn bằng `"ERR_POSTGRES_SERVER_ERROR"`, nên `e.code === "23P01"` là
-điều kiện **không bao giờ đúng** — va chạm booking rơi ra 500 thay vì 409, và unit test không bắt
-được vì phải có Postgres thật mới lộ.
+**SQLSTATE nằm ở `.errno`, KHÔNG phải `.code`** (`.code` luôn là `"ERR_POSTGRES_SERVER_ERROR"`),
+nên `e.code === "23P01"` là điều kiện **không bao giờ đúng** — va chạm booking rơi ra 500 thay vì
+409, và unit test không bắt được vì phải có Postgres thật mới lộ.
 
-**Lỗi trong transaction làm hỏng cả transaction.** Muốn thử insert rồi xử lý va chạm mà vẫn dùng
-tiếp transaction đó thì bọc câu có thể lỗi trong `tx.savepoint(...)`.
+**Lỗi trong transaction làm hỏng cả transaction** — bọc câu có thể lỗi trong `tx.savepoint(...)`.
 
-Chi tiết và ba chỗ đang dựa vào lý lẽ này: [`apps/api/CLAUDE.md`](apps/api/CLAUDE.md).
+Chi tiết, cùng ba chỗ đang dựa vào `SELECT ... FOR UPDATE`:
+[`apps/api/CLAUDE.md`](apps/api/CLAUDE.md).
 
 ## Perf budget — vượt là coi như fail, không phải góp ý
 
-| Thao tác               | p95     |
-| ---------------------- | ------- |
-| `GET /health`          | < 5 ms  |
-| Đọc một record theo id | < 25 ms |
-| Truy vấn availability  | < 50 ms |
-
+`GET /health` < 5 ms · đọc một record theo id < 25 ms · availability < 50 ms (p95).
 `bun run bench` exit 1 khi vượt.
 
-Baseline **2026-08-05** (máy dev, stack còn ít container): p50 1,28 ms · p95 2,26 ms · 34.968 rps.
-Đo lại 2026-08-10 với đủ postgres + minio + directus + supertokens: p95 2,88 ms · p99 16,78 ms ·
-23.314 rps — p95 vẫn trong budget; p99 và rps xấu đi **do máy chật, không do code** (`/health`
-không chạm Postgres).
-
-Cố ý **không** ghi đè baseline bằng số mới: đo lại trên máy đang ồn rồi gọi đó là baseline là rửa
-số liệu, và lần sau có regression thật sẽ không ai thấy.
+Baseline **2026-08-05**: p50 1,28 ms · p95 2,26 ms · 34.968 rps. Đo lại 2026-08-10 với đủ
+container: p95 2,88 ms · p99 16,78 ms — p95 vẫn trong budget; p99 và rps xấu đi **do máy chật,
+không do code**. Cố ý **không** ghi đè baseline bằng số đo trên máy đang ồn: đó là rửa số liệu, và
+lần sau có regression thật sẽ không ai thấy.
 
 ## Ràng buộc phiên bản và công cụ
 
@@ -144,16 +141,6 @@ Schema chỉ đi qua migration file. Đó là điều kiện để dev và prod 
 
 `db:migrate` dùng migrator tự viết trên `bun-sql` (`packages/db/scripts/migrate.ts`), **không**
 dùng `drizzle-kit migrate` — CLI đó không hỗ trợ `bun-sql` và sẽ đòi cài driver Postgres thứ hai.
-
-### Tailwind v4 — **không có `tailwind.config.js`**
-
-Cả hai frontend dùng Tailwind 4. V4 khai theme **trong CSS** bằng `@theme`; đi tìm file config JS
-rồi kết luận "chưa cấu hình" là hiểu sai. `apps/web` cắm qua PostCSS, `apps/staff` qua Vite plugin
-— khác nhau vì hai cơ chế build, **không** phải thiếu nhất quán.
-
-`postcss.config.mjs` không nằm trong tsconfig nào nên phải được `disableTypeChecked` trong
-`eslint.config.js`. Bỏ `.mjs` ra khỏi khối đó thì lint chết với `was not found by the project
-service` — lỗi **parse**, không phải lỗi luật.
 
 ### `bun run --filter '*'` **im lặng bỏ qua** workspace thiếu script
 
@@ -182,20 +169,13 @@ Kiểm bằng cách chạy với env sạch, không phải bằng cách đọc l
 env -u DATABASE_URL bun run dev     # PHẢI thấy cả 3 app lên, không có "Thiếu biến môi trường"
 ```
 
-### `exactOptionalPropertyTypes`: bật ở `packages/*`, tắt ở `apps/{web,staff}`
+### Hai cờ trông như quên nhưng là cố ý
 
-Không phải quên. Cờ này đánh nhau với mẫu JSX `prop={cond ? value : undefined}` vì React khai
-`prop?: T` chứ không phải `prop?: T | undefined`. Đừng "sửa" theo hướng nào cả.
+`exactOptionalPropertyTypes` bật ở `packages/*`, tắt ở `apps/{web,staff}` — nó đánh nhau với mẫu
+JSX `prop={cond ? value : undefined}`. Đừng "sửa" theo hướng nào cả.
 
-### Biến env của frontend bị nướng vào bundle **lúc build**
-
-`VITE_API_URL` (staff) và `NEXT_PUBLIC_*` (web) đều bị thay bằng hằng số lúc compile. Đặt chúng
-lúc chạy trong compose **không có tác dụng gì** — phải build lại image; `deploy.yml` truyền qua
-`--build-arg`. Chi tiết ở [`apps/staff/CLAUDE.md`](apps/staff/CLAUDE.md) và
-[`apps/web/AGENTS.md`](apps/web/AGENTS.md).
-
-`vite-plugin-pwa` **không** chạy ở `vite dev`, nên mọi hành vi PWA chỉ quan sát được trên bản
-build. Đừng kiểm ở dev rồi kết luận PWA hỏng.
+`VITE_API_URL` và `NEXT_PUBLIC_*` bị nướng vào bundle **lúc build**, đặt lúc chạy không có tác
+dụng gì. `vite-plugin-pwa` **không** chạy ở `vite dev`. Chi tiết ở `CLAUDE.md` của hai app đó.
 
 ## Ba service dùng chung một Postgres — chỉ migration được đổi schema
 
@@ -211,94 +191,27 @@ Directus và SuperTokens kết nối bằng role riêng **không có quyền DDL
 không chạm `public` chút nào.
 
 Ép ở tầng database chứ **không** bằng cấu hình của tool: toggle trong UI là thứ người sau bật lại
-được và không để lại dấu vết nào trong repo.
+được và không để lại dấu vết nào trong repo. Probe DDL sau mỗi lần nâng version Directus hoặc
+SuperTokens: skill `v9-directus`.
 
-**Kiểm lại sau mỗi lần nâng version Directus hoặc SuperTokens:**
+### Cấu hình Directus KHÔNG nằm trong git
 
-```bash
-# PHẢI ra: ERROR: permission denied for schema public
-docker compose exec -T postgres psql -U v9 -d v9_rental -c \
-  "SET ROLE directus_app; CREATE TABLE public.x (id int);"
-```
-
-Bằng chứng thu được từ chính UI Directus khi bấm _Create Field_:
-`must be owner of table probe_vehicles`. Dữ liệu vẫn ghi được bình thường — **chặn schema, không
-chặn dữ liệu**. Một cấu hình chặn tất là hỏng, không phải an toàn.
-
-`CREATE ROLE` là đối tượng **cấp cluster**, không phải cấp database — migration phải bọc trong
-`DO $$ IF NOT EXISTS $$`, `CREATE TABLE IF NOT EXISTS` không có tương đương cho role.
-
-### Probe asset công khai — bắt drift của cấu hình KHÔNG nằm trong git
-
-Collection, role Public và preset transform của Directus sống trong **database của Directus**,
-không trong repo: `git clone` không mang chúng theo, và ai đó bấm vài nút trong Data Studio thì
-không để lại dấu vết nào trong diff. Nguồn sự thật viết ra được là `scripts/directus-setup.ts`,
-áp lại bằng `bun run directus:setup` — nhưng **script không tự chạy, và nó mù với quyền ai đó tự
-thêm**, nên phải probe.
-
-Ba lệnh probe, cách đọc kết quả, và cách dọn tay:
-[`docs/runbooks/directus-vehicles.md`](docs/runbooks/directus-vehicles.md) §"Quyền công khai hẹp
-tới mức nào". Chạy sau mỗi lần nâng version Directus và sau mỗi lần dựng lại môi trường.
-
-### Xác thực: SuperTokens cho `apps/staff`, không có gì cho `apps/web`
-
-**Luật là mặc định chặn.** Route nào không nằm trong danh sách công khai thì đòi session hợp lệ
-**và** hồ sơ `ACTIVE` trong `staff_users`. Route nghiệp vụ đợt sau (`rentals`, `customers`)
-**quên khai là bị chặn**, không phải lọt.
-
-**Danh tính chia đôi có chủ ý.** SuperTokens giữ đúng hai thứ — mật khẩu và session. Role, trạng
-thái duyệt và hồ sơ nằm ở `public.staff_users`, nơi **migration làm chủ**. Lý do quyết định nhất:
-`rentals` đợt sau phải FK tới hàng nhân viên ("ai chốt đơn, ai bàn giao xe"), mà FK sang
-`supertokens.*` là buộc dữ liệu nghiệp vụ vào schema **do tool khác làm chủ và tự đổi mỗi lần nâng
-version**. Lý do thứ hai: khoá tài khoản phải có hiệu lực **ngay**, mà role nhét trong claim của
-token thì nhân viên nghỉ việc vẫn vào được tới lúc token hết hạn.
-
-Đánh đổi theo chiều ngược lại: `staff_users.email` là **bản sao**, nguồn sự thật vẫn ở
-SuperTokens — đổi email nhân viên phải đồng bộ hai nơi.
-
-**Nhân viên tự đăng ký → `PENDING` → OWNER duyệt.** `createPendingStaff` cố ý **không nhận**
-`role`/`status` làm tham số, nên không ai tự chọn được quyền của mình. Hệ quả là hệ thống tự khoá
-chính nó lúc mới dựng, nên OWNER **đầu tiên** tạo bằng script:
-
-```bash
-STAFF_OWNER_EMAIL=chu@shop.vn bun run staff:bootstrap   # chạy lại nhiều lần vô hại
-```
-
-**Quên mật khẩu đi bằng mã 6 số, không phải link** — hai đường vào (SMTP của shop, và OWNER phát
-mã đọc qua Zalo) dùng chung một bảng và một đường xác minh. Ngoài production mã **luôn** là
-`999999`, và điều kiện là **`NODE_ENV`**, KHÔNG phải "SMTP chưa cấu hình" — thiếu config là mặc
-định của một prod mới dựng, nếu thiếu config bật được mã cố định thì hàng rào tự tắt đúng lúc nó
-cần nhất. `apps/api/src/env.ts` **ném lúc khởi động** nếu `AUTH_DEV_OTP` xuất hiện ở
-`NODE_ENV=production`.
-
-**Thu hồi session cần HAI cơ chế.** `revokeAllSessionsForUser` giết refresh token nhưng **không**
-giết access token đang cầm (JWT tự xác thực cục bộ). Công tắc ngắt tức thì là cột
-`staff_users.sessions_invalid_before`. Bất biến: **hễ thu hồi thì đóng dấu**.
-
-Bảng mã lỗi đầy đủ, thứ tự hai lời gọi, cạm bẫy cắt-xuống-giây, và lý do dùng 401 chứ không 403:
-[`apps/api/CLAUDE.md`](apps/api/CLAUDE.md).
-
-`apps/web` **không** dùng auth — khách gửi yêu cầu thuê không cần tài khoản. Directus giữ hệ tài
-khoản riêng; hai nơi đăng nhập là **chấp nhận có ý thức**.
+Collection, role Public và preset transform sống trong database của Directus. `git clone` không
+mang chúng theo, và bấm nút trong Data Studio không để lại dấu vết nào trong diff. Nguồn sự thật
+viết ra được là `scripts/directus-setup.ts` — nhưng nó **không tự chạy** và **mù với quyền ai đó
+tự thêm**. Ba probe bắt drift: skill `v9-directus`.
 
 ## ⚠️ Hàng rào phải được probe, không được tin
 
-Trong phiên scaffold, `eslint-plugin-boundaries` đã **suy thoái im lặng ba lần** — mỗi lần đều
-`exit 0`, đều trông như đang bảo vệ, đều không kiểm tra gì. Nguy hiểm nhất là lần thứ ba:
-`import "@v9/db"` lọt hoàn toàn trong khi chỉ `import "../../../db/src"` bị chặn — mà không ai
-viết đường dẫn tương đối xuyên package. Lần thứ tư nạn nhân là **chính bộ probe** viết ra để
+`eslint-plugin-boundaries` đã **suy thoái im lặng bốn lần** trong dự án — mỗi lần đều `exit 0`,
+đều trông như đang bảo vệ, đều không kiểm gì. Lần thứ tư nạn nhân là chính bộ probe viết ra để
 chống chuyện đó.
-
-**Trong `eslint.config.js` có ba thứ trông như rác cần dọn nhưng xoá cái nào cũng làm hàng rào im
-lặng ngừng hoạt động:** `import/resolver` với `extensions`/`engines`/`preserveSymlinks`,
-`mode: "full"` trên các element một-file, và các element `api-root`/`shared-root`. Mỗi chỗ đều có
-comment giải thích hậu quả. Đọc trước khi sửa.
-
-**Sau mỗi lần đụng `eslint.config.js` hoặc nâng version plugin, chạy lại bốn probe ở**
-[`docs/FENCES.md`](docs/FENCES.md) — và **đọc tên luật trong thông báo lỗi**.
 
 Config linter "chạy được và exit 0" **không chứng minh điều gì**. Probe exit 1 **cũng chưa chứng
 minh gì** nếu bạn không đọc nó nổ vì luật nào.
+
+Sau mỗi lần đụng `eslint.config.js` hoặc nâng version plugin: chạy bốn probe của skill
+`v9-fences`, và **đọc tên luật trong thông báo lỗi**.
 
 ## Bộ công cụ AI — dùng khi nào, **không** dùng khi nào
 
@@ -351,11 +264,3 @@ Bước (g) không phải hình thức. Trong phiên scaffold, mọi lỗi nghi�
 chứ không ở bước đọc code.
 
 ---
-
-## Roadmap và nợ — ở file riêng
-
-Hai thứ này đổi thường xuyên còn luật thì không, nên tách ra để file này không phình theo mỗi đợt:
-
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — đợt kế tiếp, việc nghiệp vụ cần brainstorm, deploy.
-- [`docs/DEBT.md`](docs/DEBT.md) — năm món nợ của đợt auth, nợ có hạn (`mode` của boundaries), và
-  **chặn deploy**: Directus đang cầm credential ROOT của MinIO ở prod.
