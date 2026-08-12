@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
+import { AppNav } from "../components/layout/app-nav";
 import { useMe } from "../hooks/use-me";
 import { api } from "../lib/api";
 import { dangXuat } from "../lib/auth";
@@ -26,20 +27,7 @@ export function HealthPage() {
 
   return (
     <main className="p-6 font-mono">
-      {/* Thanh điều hướng tối thiểu. Không có nó thì OWNER đăng nhập xong không
-          có đường nào tới /nhan-vien, và không có đường nào đăng xuất. */}
-      <nav className="flex items-center gap-4 border-b pb-3 text-sm">
-        <strong>{me?.fullName}</strong>
-        <span className="text-gray-600">{me?.role}</span>
-        {me?.role === "OWNER" && (
-          <Link to="/nhan-vien" className="underline">
-            Nhân viên
-          </Link>
-        )}
-        <button onClick={() => void thoat()} className="ml-auto underline">
-          Đăng xuất
-        </button>
-      </nav>
+      <AppNav me={me} onSignOut={() => void thoat()} />
 
       <h1 className="mt-4 text-xl font-bold">V9 Staff — scaffold</h1>
       <p className="mt-3">

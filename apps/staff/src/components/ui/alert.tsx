@@ -7,6 +7,12 @@ const TONE: Record<AlertTone, string> = {
   info: "bg-gray-100",
 };
 
-export function Alert({ tone, children }: { readonly tone: AlertTone; readonly children: React.ReactNode }) {
+export function Alert({
+  tone,
+  children,
+}: {
+  readonly tone: AlertTone;
+  readonly children: React.ReactNode;
+}) {
   return <p className={`rounded p-3 text-sm ${TONE[tone]}`}>{children}</p>;
 }
