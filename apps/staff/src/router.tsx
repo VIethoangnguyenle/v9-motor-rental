@@ -69,7 +69,16 @@ const duocBaoVe = createRoute({
     // Đăng xuất TRƯỚC khi chuyển trang: để nguyên session của người bị khoá thì
     // họ quay lại `/` và guard chạy lại đúng vòng này mãi mãi.
     if (decision.type === "signOutThenRedirect") {
-      await dangXuat(context.queryClient);
+      // signOut hỏng thì VẪN phải đẩy người dùng ra ngoài. Để lọt exception ở đây
+      // là `throw redirect` không chạy, và TanStack dựng màn lỗi mặc định tiếng
+      // Anh — trên chính đường guard, tức chỗ tệ nhất để kẹt lại. Cache đã được
+      // `dangXuat` dọn trong `finally` rồi, nên bỏ qua lỗi ở đây không để lại
+      // dữ liệu người cũ.
+      try {
+        await dangXuat(context.queryClient);
+      } catch {
+        // Cố ý nuốt: không có hành động nào khác đúng hơn là chuyển trang.
+      }
       throw redirect({ to: decision.to, search: { ly_do: decision.reason } });
     }
 
