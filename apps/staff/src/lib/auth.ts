@@ -1,3 +1,4 @@
+import type { QueryClient } from "@tanstack/react-query";
 import SuperTokens from "supertokens-web-js";
 import EmailPassword from "supertokens-web-js/recipe/emailpassword";
 import Session from "supertokens-web-js/recipe/session";
@@ -74,5 +75,19 @@ export async function dangKy(input: {
   return { ok: false as const, message: "Không đăng ký được, thử lại sau" };
 }
 
-export const dangXuat = () => Session.signOut();
+/**
+ * Nhận `QueryClient` qua tham số chứ không import singleton — cùng lý lẽ với
+ * `createAppRouter`: hai `QueryClient` là hai cache, và dọn nhầm cache thì không
+ * có lỗi nào ở đâu.
+ *
+ * `qc.clear()` không phải chi tiết nhỏ: `Session.signOut()` chỉ xoá session, còn
+ * `["me"]` và `["staff-users"]` nằm lại trong memory — người kế tiếp đăng nhập
+ * trên cùng tab đọc được dữ liệu của người trước cho tới lần refetch.
+ *
+ * Đổi CHỮ KÝ thay vì dặn dò: mọi chỗ gọi buộc phải truyền, do compiler ép.
+ */
+export const dangXuat = async (qc: QueryClient) => {
+  await Session.signOut();
+  qc.clear();
+};
 export const coSession = () => Session.doesSessionExist();

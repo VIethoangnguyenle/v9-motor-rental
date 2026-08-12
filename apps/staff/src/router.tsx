@@ -69,7 +69,7 @@ const duocBaoVe = createRoute({
     // Đăng xuất TRƯỚC khi chuyển trang: để nguyên session của người bị khoá thì
     // họ quay lại `/` và guard chạy lại đúng vòng này mãi mãi.
     if (decision.type === "signOutThenRedirect") {
-      await dangXuat();
+      await dangXuat(context.queryClient);
       throw redirect({ to: decision.to, search: { ly_do: decision.reason } });
     }
 

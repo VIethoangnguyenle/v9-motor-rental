@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useMe } from "../hooks/use-me";
@@ -5,6 +6,7 @@ import { dangXuat } from "../lib/auth";
 
 export function ChoDuyetPage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   // Poll: OWNER bấm duyệt ở máy khác, nhân viên không phải đoán lúc nào tải lại.
   const { me, isPending } = useMe({ refetchInterval: 15_000 });
 
@@ -15,7 +17,7 @@ export function ChoDuyetPage() {
   }, [me?.status, navigate]);
 
   async function thoat() {
-    await dangXuat();
+    await dangXuat(qc);
     await navigate({ to: "/dang-nhap" });
   }
 

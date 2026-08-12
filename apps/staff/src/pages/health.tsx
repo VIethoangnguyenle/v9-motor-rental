@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMe } from "../hooks/use-me";
 import { api } from "../lib/api";
@@ -6,6 +6,7 @@ import { dangXuat } from "../lib/auth";
 
 export function HealthPage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   // Cache đã ấm: guard của router gọi `layMe` trước khi trang này render.
   const { me } = useMe();
 
@@ -19,7 +20,7 @@ export function HealthPage() {
   });
 
   async function thoat() {
-    await dangXuat();
+    await dangXuat(qc);
     await navigate({ to: "/dang-nhap" });
   }
 
