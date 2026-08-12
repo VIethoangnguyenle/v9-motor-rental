@@ -1,0 +1,41 @@
+# Nợ đã biết
+
+Tách khỏi `CLAUDE.md` vì đây là danh sách việc-phải-làm, không phải luật. Trộn hai loại lại là
+cách một danh sách như thế này biến mất khỏi tầm nhìn.
+
+Không cái nào dưới đây tự báo. Roadmap ở [`ROADMAP.md`](ROADMAP.md).
+
+## Nợ của đợt auth
+
+Năm chỗ dưới đây **đã biết là thiếu** khi đợt auth land, không phải phát hiện sau.
+
+| Nợ                                                                                     | Hậu quả nếu bỏ qua                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Không có rate limit theo IP** trên `/staff/password-reset/request` và `/auth/signup` | `Bun.password.hash` là argon2id **64 MB, ~115 ms mỗi lời gọi** (đo trên máy dev: `m=65536,t=2`, hash 115,3 ms) — và nó nằm trên một endpoint công khai. Vài chục request/giây ghim CPU và ăn sạch RAM của một VPS đơn. Bản sửa TOCTOU của `kiemTraMa` đã cắt phần lớn (mã cạn lượt **không còn** chạy argon2), nhưng mỗi lần xin mã mới vẫn mua được 5 lượt verify. `/auth/signup` thì đẩy việc băm sang SuperTokens core và để lại một hàng `PENDING` cho mỗi request. |
+| **Email so sánh phân biệt hoa thường**                                                 | `staff_users` khai `UNIQUE(email)` trên text thô, và `timStaffTheoEmail` so bằng `=`. `supertokens-node` chỉ `.trim()` form field (`emailpassword/api/utils.js`), không hạ hoa thường. Nhân viên gõ khác hoa thường → không tìm thấy → route trả 200 chung chung (cố ý, để không lộ email) → **không bao giờ nhận được mã, và không có gì để chẩn đoán**. Sửa đúng: `UNIQUE INDEX ON staff_users (lower(email))` + chuẩn hoá **cả** đường ghi lẫn đường đọc.            |
+| **Timing oracle ~190×** ở `/staff/password-reset/request`                              | Email không tồn tại trả về sau đúng một `SELECT` (đo: p95 0,61 ms); email có thật tốn thêm ~115 ms vì `taoMaDatLaiMatKhau` băm mã. Thân response giống hệt nhau, đồng hồ thì không — đúng cái mà "luôn trả 200" sinh ra để giấu.                                                                                                                                                                                                                                        |
+| **Không ai dọn mã hết hạn**                                                            | Hàng `used_at IS NULL` đã quá `expires_at` nằm lại vĩnh viễn. Chúng làm phình đúng `password_reset_codes_active_idx` — partial index đó tồn tại **nhờ giả định** tập này gần như luôn rỗng (xem comment trong `packages/db/src/schema/staff.ts`).                                                                                                                                                                                                                       |
+| **Tên hàm tiếng Việt/Anh lẫn lộn trong `apps/api/src/services/`**                      | `vehicles.ts` và `staff.ts` đặt tên tiếng Anh (`listPublishedVehicles`, `approveStaff`), `password-reset.ts` đặt tiếng Việt (`taoMaDatLaiMatKhau`, `kiemTraMa`). Cả hai quy ước đều ổn; **trộn thì không** — người sau phải đoán mỗi lần gọi một service. Cần chốt một hướng rồi đổi một lượt, không sửa lẻ tẻ.                                                                                                                                                         |
+
+## ⚠️ Nợ có hạn — phải trả trước một mốc cụ thể
+
+`mode` trong `eslint.config.js` đã deprecated ở `eslint-plugin-boundaries` v7, và nó
+in cảnh báo mỗi lần lint. Bản thay là `partialMatch: false`. Phải chuyển **trước** khi nâng
+boundaries lên major kế tiếp, vì mục "hàng rào phải được probe" của `../CLAUDE.md` ghi rõ: xoá `mode: "full"`
+làm hàng rào **im lặng** ngừng hoạt động. Nếu một bản major xoá `mode` mà chưa chuyển, hàng rào tự
+tắt và mọi thứ vẫn exit 0 — đúng kiểu suy thoái đã xảy ra bốn lần trong dự án này. Chuyển xong phải
+chạy lại cả ba probe và **đọc tên luật**, không nhìn exit code.
+
+## ⚠️ Chặn deploy: Directus đang cầm credential ROOT của MinIO ở prod
+
+`compose.prod.yaml` truyền `STORAGE_S3_KEY: ${MINIO_ROOT_USER}` và
+`STORAGE_S3_SECRET: ${MINIO_ROOT_PASSWORD}` — tức là service phơi ra internet nhiều nhất lại giữ
+đúng cái khoá mở được **mọi** bucket, kể cả `checkins` (ảnh tình trạng xe lúc bàn giao, thứ dùng
+làm bằng chứng khi tranh chấp). Một lỗ hổng trong Directus thành quyền toàn bộ object storage.
+
+`.env.example` đã có câu cảnh báo đúng chỗ đó, và nó **không ép được gì** — đây chính là ví dụ của
+mục "ranh giới repo ép vs cấu hình local" trong `../CLAUDE.md`: một dòng comment không phải hàng rào.
+
+Trước khi stack chạm VPS thật: tạo **access key MinIO riêng cho Directus**, policy giới hạn đúng
+bucket `vehicles`, rồi trỏ `STORAGE_S3_KEY`/`STORAGE_S3_SECRET` vào cặp key đó. Ở dev thì dùng
+root vẫn chấp nhận được — dev không phơi ra internet và volume vứt đi được.
