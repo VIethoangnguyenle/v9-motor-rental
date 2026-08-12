@@ -18,7 +18,7 @@ import {
   redirect,
 } from "@tanstack/react-router";
 import { coSession, dangXuat } from "./lib/auth";
-import { decideEntry, type LoginReason } from "./lib/guard-decision";
+import { LOGIN_REASONS, decideEntry, type LoginReason } from "./lib/guard-decision";
 import { layMe } from "./lib/me";
 import { ChoDuyetPage } from "./pages/cho-duyet";
 import { DangKyPage } from "./pages/dang-ky";
@@ -73,24 +73,31 @@ const duocBaoVe = createRoute({
       throw redirect({ to: decision.to, search: { ly_do: decision.reason } });
     }
 
-    // Hai nhánh tường minh chứ không truyền `decision.to` động: `redirect({ to })`
-    // của TanStack nhận đường dẫn đã biết kiểu, và `/cho-duyet` không khai
-    // `validateSearch` nên hai đích không dùng chung được một lời gọi.
-    if (decision.to === "/cho-duyet") throw redirect({ to: "/cho-duyet" });
-    throw redirect({ to: "/dang-nhap" });
+    // `decision.to` truyền động được và vẫn được kiểm kiểu: `redirect({ to })` nhận
+    // `RedirectTarget` — thay bằng một đường dẫn không có trong cây route là TS2322.
+    //
+    // `never` dưới đây là hàng rào, không phải phòng thủ thừa: thêm một arm vào
+    // `EntryDecision` mà quên xử lý ở đây là **lỗi biên dịch**, thay vì một cú rơi
+    // im lặng về `/dang-nhap` — đúng kiểu hỏng mà cả pha này sinh ra để diệt.
+    if (decision.type !== "redirect") {
+      const chuaXuLy: never = decision;
+      throw new Error(`decideEntry trả về nhánh chưa xử lý: ${JSON.stringify(chuaXuLy)}`);
+    }
+    throw redirect({ to: decision.to });
   },
 });
 
 const dangNhapRoute = createRoute({
   getParentRoute: () => congKhai,
   path: "/dang-nhap",
-  // Chỉ nhận giá trị trong danh sách trắng. Query string là dữ liệu người dùng gõ
-  // được — để lọt chuỗi tuỳ ý vào đây là để lọt nó vào JSX của trang đăng nhập.
+  // Chỉ nhận giá trị trong danh sách trắng — LẤY TỪ `LOGIN_REASONS`, không chép
+  // tay từng chuỗi: thêm một `LoginReason` mới mà quên sửa chỗ này (rất dễ quên,
+  // vì `tsc` không báo gì) trước đây sẽ lặng lẽ lọc mất lý do và người dùng thấy
+  // trang đăng nhập trắng trơn, không banner. Query string là dữ liệu người dùng
+  // gõ được — để lọt chuỗi tuỳ ý vào đây là để lọt nó vào JSX của trang đăng nhập.
   validateSearch: (search: Record<string, unknown>): { ly_do?: LoginReason } => {
-    const v = search["ly_do"];
-    return v === "disabled" || v === "no-profile" || v === "password-changed"
-      ? { ly_do: v }
-      : {};
+    const found = LOGIN_REASONS.find((r) => r === search["ly_do"]);
+    return found ? { ly_do: found } : {};
   },
   component: DangNhapPage,
 });

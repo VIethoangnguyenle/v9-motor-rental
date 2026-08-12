@@ -12,7 +12,13 @@
  */
 import type { Me, MeResult } from "./me";
 
-export type LoginReason = "disabled" | "no-profile" | "password-changed";
+// Danh sách RUNTIME là nguồn sự thật, kiểu suy ra từ nó — không phải ngược lại.
+// `validateSearch` ở `router.tsx` lặp qua mảng này để lọc query string; nếu kiểu
+// đứng một mình (chỉ trong type-level) thì thêm một thành viên ở đây không ép
+// được `router.tsx` cập nhật theo — `tsc` xanh, còn giá trị mới bị lọc mất và
+// người dùng thấy trang đăng nhập trắng trơn, không banner, không lỗi.
+export const LOGIN_REASONS = ["disabled", "no-profile", "password-changed"] as const;
+export type LoginReason = (typeof LOGIN_REASONS)[number];
 
 /**
  * Union literal chứ không phải `string`: `redirect({ to })` của TanStack Router
