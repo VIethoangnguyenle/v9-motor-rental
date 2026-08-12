@@ -126,7 +126,8 @@ mở toang ngay lần đầu ai đó quên — và nó im lặng.
 
 Guard làm đúng bốn việc, theo thứ tự: `Session.doesSessionExist()` sai → `/dang-nhap` · đọc
 `/staff/me` qua `ensureQueryData` (không được thì coi như không vào được) · `PENDING` →
-`/cho-duyet` · `DISABLED` → **`signOut()` trước** rồi mới về `/dang-nhap?ly_do=da-khoa`.
+`/cho-duyet` · `DISABLED` → **`signOut()` trước** rồi mới về `/dang-nhap?ly_do=disabled` — giá
+trị lấy từ `LOGIN_REASONS` ở `lib/guard-decision.ts` (còn có `no-profile`), không chép tay.
 
 Thứ tự ở ca cuối không phải chi tiết: để nguyên session của người bị khoá thì họ quay lại `/`, guard
 chạy lại đúng vòng đó, và app kẹt trong vòng chuyển hướng vô tận.

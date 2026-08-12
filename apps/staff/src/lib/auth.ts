@@ -86,17 +86,14 @@ export async function dangKy(input: {
  *
  * Đổi CHỮ KÝ thay vì dặn dò: mọi chỗ gọi buộc phải truyền, do compiler ép.
  *
- * `finally` chứ không phải hai câu tuần tự, và đây là chỗ dễ "đơn giản hoá" sai:
- * `Session.signOut()` NÉM được. Đường 401 (session đã chết) thì SDK trả về êm,
- * nên những đường còn ném lại đúng là hai ca tệ nhất — server đã xoá session rồi
- * mới trả 5xx, hoặc mạng đứt sau khi server đã commit. Cả hai: session chết thật,
- * mà `qc.clear()` không chạy nếu viết tuần tự, và trang thì không chuyển đi đâu.
- * Tab nằm lại với màn hình đã đăng nhập và cache còn nguyên `["me"]` +
- * `["staff-users"]` — đúng cái lỗ hàm này sinh ra để bịt. `apps/staff` KHÔNG có
- * global handler cho 401 nào dọn hộ (đã kiểm).
- *
- * Giá của chiều ngược lại gần như bằng 0: nếu session thật sự còn sống thì dọn
- * cache chỉ tốn một lần refetch dữ liệu của chính người đó.
+ * `finally` chứ không phải hai câu tuần tự — dễ bị "đơn giản hoá" lại sai:
+ * `Session.signOut()` NÉM được (mạng lỗi, server đã xoá session rồi mới trả
+ * 5xx, `STGeneralError`, …). Đường 401 SDK tự nuốt, không ném — các đường ném
+ * còn lại thì KHÔNG chứng minh được session còn sống: `fetch` ném cả khi
+ * request chưa kịp rời máy (DNS hỏng, connection refused), lúc đó session còn
+ * nguyên. Coi như đã chết vẫn là phía an toàn: `apps/staff` không có global
+ * handler nào dọn hộ 401 (đã kiểm), và đoán sai chiều ngược lại chỉ tốn một
+ * lần refetch dữ liệu của chính người đó.
  */
 export const dangXuat = async (qc: QueryClient) => {
   try {
