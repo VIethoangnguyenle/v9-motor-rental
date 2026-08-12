@@ -20,6 +20,16 @@ describe("decideEntry", () => {
     expect(decideEntry(false, null)).toEqual({ type: "redirect", to: "/dang-nhap" });
   });
 
+  /**
+   * Có session nhưng không đọc được kết quả — hôm nay chỗ gọi thật không sinh ra
+   * được trạng thái này (`queryFn` luôn resolve một object), nên đây là phòng thủ.
+   * Vẫn test: điều kiện `!hasSession || !result` có hai nửa, và một nửa không có
+   * ca nào chạm là một nửa đổi thành `&&` mà cả bộ test vẫn xanh.
+   */
+  it("ca 1b: có session nhưng không có kết quả → về đăng nhập, không đăng xuất", () => {
+    expect(decideEntry(true, null)).toEqual({ type: "redirect", to: "/dang-nhap" });
+  });
+
   it("ca 2: 403 DA_KHOA → đăng xuất TRƯỚC rồi mới chuyển, kèm lý do", () => {
     expect(decideEntry(true, { ok: false, code: "DA_KHOA" })).toEqual({
       type: "signOutThenRedirect",
