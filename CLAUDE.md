@@ -89,11 +89,13 @@ không được để số lẻ rò ra ngoài dưới dạng `Vnd`.
 
 ### Định danh tiếng Anh, nội dung tiếng Việt
 
-Component · tên file · hàm · biến · type · hằng · URL route · mã lỗi trong hợp đồng API: **tiếng
-Anh**. Comment · tài liệu · chuỗi hiển thị cho người dùng: **tiếng Việt**.
+Component · tên file · hàm · biến · type · hằng · URL route (cả hai frontend) · mã lỗi trong hợp
+đồng API: **tiếng Anh**. Comment · tài liệu · chuỗi hiển thị cho người dùng: **tiếng Việt**.
 
 Ranh giới đó không tuỳ hứng: thứ máy đọc thì tiếng Anh, thứ người đọc thì tiếng Việt. Repo có ~2000
 dòng comment giải thích _vì sao_ — dịch chúng là phá đúng thứ có giá trị nhất.
+
+Áp cho định danh **mới**. Chỗ cũ còn tiếng Việt là nợ đang trả, không phải ngoại lệ của luật.
 
 ⚠️ **Luật này KHÔNG ép được bằng máy.** Không linter nào kiểm được "tên phải là tiếng Anh". Đây là
 quy ước trong tài liệu, không phải hàng rào — xem mục "ranh giới repo ép vs cấu hình local".

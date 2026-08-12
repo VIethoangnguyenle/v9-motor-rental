@@ -103,8 +103,12 @@ pages/              lắp component lại, không tự dựng form
 thống kê · bàn giao · khách hàng). Một `TextField` biết `StaffRole` là một `TextField` chỉ dùng được
 ở màn hình nhân viên.
 
-**Form dùng `useMutation`, không cuộn tay `isSubmitting`/`error`.** Đó là pattern đã có trong app
-(`staff-list-page.tsx`), không phải pattern thứ hai.
+**Form dùng `useMutation`, không cuộn tay state "đang gửi"/"lỗi".** `useMutation` đã cho sẵn hai
+thứ đó; cuộn tay là cách chúng lệch nhau giữa các form. Bảng nhân viên đã dùng `useMutation` cho
+các nút hành động — nên đây là mở rộng một pattern đã có, không phải pattern thứ hai.
+
+Cấu trúc trên là đích của đợt tách component. Mục _Xác thực_ ngay dưới còn mô tả trạng thái trước
+đợt đó — nó được viết lại khi đợt xong.
 
 ## Xác thực: năm màn hình, và **một** hàng rào ở `beforeLoad`
 
