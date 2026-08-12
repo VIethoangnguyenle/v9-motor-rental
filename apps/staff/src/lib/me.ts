@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { api } from "./api";
+import { maLoi } from "./loi";
 
 /**
  * Kiểu SUY RA từ chính `response` schema của `GET /staff/me`, không gõ tay lại.
@@ -15,21 +16,24 @@ import { api } from "./api";
 export type Me = NonNullable<Awaited<ReturnType<typeof api.staff.me.get>>["data"]>;
 
 /**
+ * Kết quả đọc hồ sơ. Trước đây hàm này trả `Me | null` và **nuốt mã lỗi** — đó
+ * đúng là lỗi làm nhánh DISABLED của router thành code chết: API trả
+ * `403 DA_KHOA` có chủ ý, frontend vứt đi, guard chỉ còn thấy `null`.
+ * §1.1 docs/plans/2026-08-13-staff-auth-fix-design.md.
+ */
+export type MeResult = { ok: true; me: Me } | { ok: false; code: string | null };
+
+/**
  * Một nguồn duy nhất cho "tôi là ai": guard của router và UI đọc CÙNG cache của
  * TanStack Query. Hai chỗ gọi riêng là hai chỗ lệch nhau kể từ lần đầu tiên ai
  * đó thêm một điều kiện vào một trong hai.
- *
- * `null` gộp mọi lý do không đọc được hồ sơ (401 chưa đăng nhập · 403 đã khoá /
- * chưa có hồ sơ · mạng chết). Guard đối xử với tất cả như nhau: về `/dang-nhap`.
- * Phân biệt chúng ở đây chỉ có ích nếu có màn hình nào hành động khác nhau —
- * chưa có.
  */
 export const meQuery = {
   queryKey: ["me"] as const,
-  queryFn: async (): Promise<Me | null> => {
+  queryFn: async (): Promise<MeResult> => {
     const res = await api.staff.me.get();
-    if (res.error) return null;
-    return res.data;
+    if (res.error) return { ok: false, code: maLoi(res.error.value) };
+    return { ok: true, me: res.data };
   },
 };
 
