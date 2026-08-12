@@ -1,13 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { useMe } from "../hooks/use-me";
 import { dangXuat } from "../lib/auth";
-import { meQuery } from "../lib/me";
 
 export function ChoDuyetPage() {
   const navigate = useNavigate();
   // Poll: OWNER bấm duyệt ở máy khác, nhân viên không phải đoán lúc nào tải lại.
-  const { data: me, isPending } = useQuery({ ...meQuery, refetchInterval: 15_000 });
+  const { me, isPending } = useMe({ refetchInterval: 15_000 });
 
   // Chuyển trang trong effect, KHÔNG trong thân render: `navigate` lúc render là
   // cập nhật state của component khác giữa lúc React đang render cái này.

@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useMe } from "../hooks/use-me";
 import { api } from "../lib/api";
 import { dangXuat } from "../lib/auth";
-import { meQuery } from "../lib/me";
 
 export function HealthPage() {
   const navigate = useNavigate();
   // Cache đã ấm: guard của router gọi `layMe` trước khi trang này render.
-  const { data: me } = useQuery(meQuery);
+  const { me } = useMe();
 
   const { data, error, isPending } = useQuery({
     queryKey: ["health"],

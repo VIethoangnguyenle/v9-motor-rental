@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { useMe } from "../hooks/use-me";
 import { api } from "../lib/api";
 import { thongDiepLoi } from "../lib/loi";
-import { meQuery } from "../lib/me";
 
 /**
  * Duyệt LUÔN đặt role `STAFF`. Đợt này cố ý không phơi việc đổi vai trò ra UI:
@@ -16,7 +16,7 @@ const ROLE_KHI_DUYET = "STAFF" as const;
 export function NhanVienPage() {
   const qc = useQueryClient();
   // Cache đã ấm: guard của router gọi `layMe` trước khi trang này render.
-  const { data: me } = useQuery(meQuery);
+  const { me } = useMe();
   // Giữ cả tên: chủ shop đọc mã qua Zalo cho một CON NGƯỜI, nên màn hình phải
   // nói mã này của ai. UUID không giúp được việc đó.
   const [ma, setMa] = useState<{ ten: string; code: string } | null>(null);

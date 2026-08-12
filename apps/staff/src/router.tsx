@@ -18,6 +18,7 @@ import {
   redirect,
 } from "@tanstack/react-router";
 import { coSession, dangXuat } from "./lib/auth";
+import { decideEntry, type LoginReason } from "./lib/guard-decision";
 import { layMe } from "./lib/me";
 import { ChoDuyetPage } from "./pages/cho-duyet";
 import { DangKyPage } from "./pages/dang-ky";
@@ -57,31 +58,40 @@ const duocBaoVe = createRoute({
   id: "duoc-bao-ve",
   component: Outlet,
   beforeLoad: async ({ context }) => {
-    if (!(await coSession())) throw redirect({ to: "/dang-nhap" });
+    // KHÔNG gọi `layMe` khi chưa có session: nó sẽ bắn một request `/staff/me`
+    // chắc chắn 401 trên mọi lần mở app lúc chưa đăng nhập.
+    const hasSession = await coSession();
+    const result = hasSession ? await layMe(context.queryClient) : null;
+    const decision = decideEntry(hasSession, result);
 
-    const me = await layMe(context.queryClient);
-    // `null` = 401/403/mạng chết. Không phân biệt: mọi ca đều là "không vào được".
-    if (!me) throw redirect({ to: "/dang-nhap" });
+    if (decision.type === "allow") return { me: decision.me };
 
-    if (me.status === "PENDING") throw redirect({ to: "/cho-duyet" });
-    if (me.status === "DISABLED") {
-      // Đăng xuất TRƯỚC khi chuyển trang: để nguyên session của người bị khoá thì
-      // họ quay lại `/` và guard chạy lại đúng vòng này mãi mãi.
+    // Đăng xuất TRƯỚC khi chuyển trang: để nguyên session của người bị khoá thì
+    // họ quay lại `/` và guard chạy lại đúng vòng này mãi mãi.
+    if (decision.type === "signOutThenRedirect") {
       await dangXuat();
-      throw redirect({ to: "/dang-nhap", search: { ly_do: "da-khoa" } });
+      throw redirect({ to: decision.to, search: { ly_do: decision.reason } });
     }
 
-    return { me };
+    // Hai nhánh tường minh chứ không truyền `decision.to` động: `redirect({ to })`
+    // của TanStack nhận đường dẫn đã biết kiểu, và `/cho-duyet` không khai
+    // `validateSearch` nên hai đích không dùng chung được một lời gọi.
+    if (decision.to === "/cho-duyet") throw redirect({ to: "/cho-duyet" });
+    throw redirect({ to: "/dang-nhap" });
   },
 });
 
 const dangNhapRoute = createRoute({
   getParentRoute: () => congKhai,
   path: "/dang-nhap",
-  // Chỉ nhận đúng một giá trị. Query string là dữ liệu người dùng gõ được —
-  // để lọt chuỗi tuỳ ý vào đây là để lọt nó vào JSX của trang đăng nhập.
-  validateSearch: (search: Record<string, unknown>): { ly_do?: "da-khoa" } =>
-    search["ly_do"] === "da-khoa" ? { ly_do: "da-khoa" } : {},
+  // Chỉ nhận giá trị trong danh sách trắng. Query string là dữ liệu người dùng gõ
+  // được — để lọt chuỗi tuỳ ý vào đây là để lọt nó vào JSX của trang đăng nhập.
+  validateSearch: (search: Record<string, unknown>): { ly_do?: LoginReason } => {
+    const v = search["ly_do"];
+    return v === "disabled" || v === "no-profile" || v === "password-changed"
+      ? { ly_do: v }
+      : {};
+  },
   component: DangNhapPage,
 });
 

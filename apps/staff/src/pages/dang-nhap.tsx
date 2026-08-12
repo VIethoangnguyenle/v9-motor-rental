@@ -5,7 +5,8 @@ import { dangNhap } from "../lib/auth";
 export function DangNhapPage() {
   const navigate = useNavigate();
   // `strict: false` để trang không phải import ngược `router.tsx` (chu trình
-  // module). Giá trị đã được `validateSearch` của route lọc còn đúng "da-khoa".
+  // module). Giá trị đã được `validateSearch` của route lọc còn đúng danh sách
+  // trắng — chỉ "disabled" | "no-profile" | "password-changed" | undefined.
   const search = useSearch({ strict: false });
   const [email, setEmail] = useState("");
   const [matKhau, setMatKhau] = useState("");
@@ -28,9 +29,14 @@ export function DangNhapPage() {
     <main className="mx-auto max-w-sm p-6">
       <h1 className="text-xl font-bold">Đăng nhập</h1>
 
-      {search.ly_do === "da-khoa" && (
+      {search.ly_do === "disabled" && (
         <p className="mt-3 rounded bg-amber-100 p-3 text-sm">
           Tài khoản của bạn đã bị khoá. Liên hệ chủ shop.
+        </p>
+      )}
+      {search.ly_do === "no-profile" && (
+        <p className="mt-3 rounded bg-amber-100 p-3 text-sm">
+          Tài khoản chưa có hồ sơ nhân viên. Liên hệ chủ shop để được tạo hồ sơ.
         </p>
       )}
 
