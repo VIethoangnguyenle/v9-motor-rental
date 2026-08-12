@@ -204,6 +204,29 @@ response mang nhiều cookie (`sAccessToken`, `sRefreshToken`, cộng cookie xo�
 chỉ giữ cái cuối — mất access token thì session chết sau đúng một chu kỳ refresh, tức **hỏng muộn
 và trông như một lỗi khác**. `auth.test.ts` giữ chỗ này bằng một lần đăng nhập thật.
 
+### ⚠️ Kiểm bằng `curl` thì PHẢI gửi `st-auth-mode: cookie`
+
+Triệu chứng **giống hệt** mục ngay trên — `POST /auth/signin` trả `{"status":"OK"}` mà không có
+`Set-Cookie` nào — nhưng nguyên nhân không nằm ở code, và đi sửa theo mục trên là sửa thứ đang
+chạy đúng.
+
+`defaultGetTokenTransferMethod` của `supertokens-node` đọc header `st-auth-mode` lúc tạo session;
+thiếu header đó thì rơi về **`"header"`**, tức token đi ra bằng `st-access-token` chứ không bằng
+cookie (`recipe/session/sessionRequestFunctions.js`, nhánh `outputTransferMethod === "any"`).
+Trình duyệt không dính vì SDK web tự gửi `st-auth-mode: cookie`; `curl` thì không tự gửi gì cả.
+
+```bash
+# SAI — 200 OK, jar rỗng, trông y như bug CollectingResponse ở trên
+curl -c jar -X POST localhost:3001/auth/signin -H 'rid: emailpassword' -H 'Content-Type: application/json' -d '...'
+
+# ĐÚNG
+curl -c jar -X POST localhost:3001/auth/signin -H 'rid: emailpassword' -H 'st-auth-mode: cookie' ...
+```
+
+Và đọc **body**, đừng đọc status code: sai mật khẩu vẫn là `200` kèm
+`{"status":"WRONG_CREDENTIALS_ERROR"}` — đó là quy ước FDI của SuperTokens, nên một vòng lặp
+`curl -w '%{http_code}'` sẽ báo mọi lần đăng nhập đều thành công.
+
 ### ⚠️ KHÔNG dùng `.state()` của Elysia để mang danh tính người gọi
 
 `store` của Elysia là **một object dùng chung cho cả tiến trình**, không phải per-request. Hai
