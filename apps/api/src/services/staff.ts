@@ -207,7 +207,7 @@ async function countActiveOwnersLocked(tx: StaffTx): Promise<number> {
   return rows.length;
 }
 
-export type StaffMutationResult = Permission | { ok: false; reason: "KHONG_TIM_THAY" };
+export type StaffMutationResult = Permission | { ok: false; reason: "NOT_FOUND" };
 
 export async function approveStaff(
   actorId: string,
@@ -215,7 +215,7 @@ export async function approveStaff(
   role: StaffRole,
 ): Promise<StaffMutationResult> {
   const ctx = await loadActorAndTarget(actorId, targetId);
-  if (!ctx) return { ok: false, reason: "KHONG_TIM_THAY" };
+  if (!ctx) return { ok: false, reason: "NOT_FOUND" };
 
   const allowed = canApprove(asActor(ctx.actor), asActor(ctx.target));
   if (!allowed.ok) return allowed;
@@ -244,7 +244,7 @@ export async function changeStaffRole(
   newRole: StaffRole,
 ): Promise<StaffMutationResult> {
   const ctx = await loadActorAndTarget(actorId, targetId);
-  if (!ctx) return { ok: false, reason: "KHONG_TIM_THAY" };
+  if (!ctx) return { ok: false, reason: "NOT_FOUND" };
 
   return db.transaction(async (tx) => {
     const allowed = canChangeRole(
@@ -281,7 +281,7 @@ export async function disableStaff(
   targetId: string,
 ): Promise<StaffMutationResult> {
   const ctx = await loadActorAndTarget(actorId, targetId);
-  if (!ctx) return { ok: false, reason: "KHONG_TIM_THAY" };
+  if (!ctx) return { ok: false, reason: "NOT_FOUND" };
 
   const result = await db.transaction(async (tx) => {
     const allowed = canDisable(

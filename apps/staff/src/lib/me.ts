@@ -27,7 +27,7 @@ export type StaffRow = NonNullable<Awaited<ReturnType<typeof api.staff.users.get
 /**
  * Kết quả đọc hồ sơ. Trước đây hàm này trả `Me | null` và **nuốt mã lỗi** — đó
  * đúng là lỗi làm nhánh DISABLED của router thành code chết: API trả
- * `403 DA_KHOA` có chủ ý, frontend vứt đi, guard chỉ còn thấy `null`.
+ * `403 ACCOUNT_DISABLED` có chủ ý, frontend vứt đi, guard chỉ còn thấy `null`.
  * §1.1 docs/plans/2026-08-13-staff-auth-fix-design.md.
  */
 export type MeResult = { ok: true; me: Me } | { ok: false; code: string | null };

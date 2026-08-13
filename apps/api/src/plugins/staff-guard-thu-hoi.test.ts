@@ -204,7 +204,7 @@ describe("đổi mật khẩu ngắt session đang mở", () => {
     // đã chết nhưng access token trong cookie thì chưa.
     const me = await get("/staff/me", cookieCu);
     expect(me.status).toBe(401);
-    expect(await me.json()).toMatchObject({ code: "PHIEN_HET_HIEU_LUC" });
+    expect(await me.json()).toMatchObject({ code: "SESSION_EXPIRED" });
     // `/staff/me` là ngoại lệ "cần session, không cần ACTIVE" — phép kiểm thu hồi
     // phải đứng TRƯỚC nó, nếu không đây là cửa hậu.
     expect((await get("/rentals-gia", cookieCu)).status).toBe(401);
@@ -264,19 +264,19 @@ describe("khoá tài khoản cũng ngắt session đang mở", () => {
     expect(await disableStaff(staffDeps, ownerId, id)).toEqual({ ok: true });
     expect(await docMoc(id)).toBeInstanceOf(Date);
 
-    // `status = 'DISABLED'` một mình đã ra 403 DA_KHOA — nên 401 ở đây là bằng
+    // `status = 'DISABLED'` một mình đã ra 403 ACCOUNT_DISABLED — nên 401 ở đây là bằng
     // chứng phép kiểm thu hồi chạy TRƯỚC phép kiểm trạng thái. Chủ đích: token
     // cấp trước mốc không còn là credential, và câu hỏi đó thuộc tầng xác thực,
     // phải trả lời trước mọi câu hỏi về quyền.
     const res = await get("/staff/me", cookieCu);
     expect(res.status).toBe(401);
-    expect(await res.json()).toMatchObject({ code: "PHIEN_HET_HIEU_LUC" });
+    expect(await res.json()).toMatchObject({ code: "SESSION_EXPIRED" });
 
     // Và thông điệp "đã bị khoá" KHÔNG mất — nó tới sau một vòng đăng nhập, vì
     // SuperTokens không biết gì về `staff_users`.
     const cookieMoi = await dangNhap(EMAIL_KHOA, MAT_KHAU);
     const sauKhiDangNhapLai = await get("/staff/me", cookieMoi);
     expect(sauKhiDangNhapLai.status).toBe(403);
-    expect(await sauKhiDangNhapLai.json()).toMatchObject({ code: "DA_KHOA" });
+    expect(await sauKhiDangNhapLai.json()).toMatchObject({ code: "ACCOUNT_DISABLED" });
   });
 });

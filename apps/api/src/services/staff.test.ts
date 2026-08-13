@@ -117,7 +117,7 @@ describe("approveStaff", () => {
 
   it("người không phải OWNER bị từ chối", async () => {
     const res = await approveStaff(`${P}new`, `${P}owner`, "STAFF");
-    expect(res).toEqual({ ok: false, reason: "KHONG_PHAI_OWNER" });
+    expect(res).toEqual({ ok: false, reason: "NOT_OWNER" });
   });
 });
 
@@ -141,7 +141,7 @@ describe("changeStaffRole", () => {
   it("không hạ được OWNER cuối cùng", async () => {
     await withOnlyTestOwnersActive(async () => {
       const res = await changeStaffRole(`${P}owner`, `${P}owner`, "STAFF");
-      expect(res).toEqual({ ok: false, reason: "OWNER_CUOI_CUNG" });
+      expect(res).toEqual({ ok: false, reason: "LAST_OWNER" });
     });
   });
 
@@ -216,7 +216,7 @@ describe("disableStaff", () => {
   it("không tự khoá mình, và KHÔNG thu hồi session của ai cả", async () => {
     const { deps, daThuHoi } = spyDeps();
     const res = await disableStaff(deps, `${P}owner`, `${P}owner`);
-    expect(res).toEqual({ ok: false, reason: "TU_KHOA_MINH" });
+    expect(res).toEqual({ ok: false, reason: "CANNOT_DISABLE_SELF" });
     // Bị từ chối mà vẫn thu hồi là đá văng chính người đang thao tác.
     expect(daThuHoi).toEqual([]);
     // Cùng lý lẽ cho cái dấu: đóng dấu ở nhánh bị từ chối là tự đá mình ra khỏi

@@ -159,7 +159,8 @@ export const staffGuard = new Elysia({ name: "staff-guard" })
     const method = request.method.toUpperCase();
     if (khop(CONG_KHAI, method, path)) return;
 
-    if (userId === null) return status(401, { message: "Chưa đăng nhập", code: "CHUA_DANG_NHAP" });
+    if (userId === null)
+      return status(401, { message: "Chưa đăng nhập", code: "NOT_AUTHENTICATED" });
 
     /**
      * Thu hồi tức thì — đứng TRƯỚC mọi phép kiểm trạng thái bên dưới, kể cả
@@ -169,8 +170,8 @@ export const staffGuard = new Elysia({ name: "staff-guard" })
      * trước mốc thu hồi **không còn là credential**, nên đây là chuyện của tầng
      * xác thực và phải trả lời trước mọi câu hỏi về quyền. Hệ quả quan sát được:
      * người vừa bị khoá mà còn cầm token cũ nhận `401` chứ không phải
-     * `403 DA_KHOA`; họ đăng nhập lại được (SuperTokens không biết `staff_users`),
-     * và khi đó token mới nằm sau mốc nên `403 DA_KHOA` mới hiện ra — thông điệp
+     * `403 ACCOUNT_DISABLED`; họ đăng nhập lại được (SuperTokens không biết `staff_users`),
+     * và khi đó token mới nằm sau mốc nên `403 ACCOUNT_DISABLED` mới hiện ra — thông điệp
      * "tài khoản đã bị khoá" không mất, chỉ tới sau một vòng đăng nhập.
      *
      * **401 chứ KHÔNG phải 403**, và đây là toàn bộ lý do cơ chế này dùng được:
@@ -183,13 +184,13 @@ export const staffGuard = new Elysia({ name: "staff-guard" })
     if (tokenDaBiThuHoi(staff?.sessionsInvalidBefore ?? null, iatGiay)) {
       return status(401, {
         message: "Phiên đăng nhập đã hết hiệu lực — vui lòng đăng nhập lại",
-        code: "PHIEN_HET_HIEU_LUC",
+        code: "SESSION_EXPIRED",
       });
     }
 
     // DISABLED bị chặn ở MỌI route cần session, kể cả nhánh "chờ duyệt" bên dưới.
     if (staff?.status === "DISABLED") {
-      return status(403, { message: "Tài khoản đã bị khoá", code: "DA_KHOA" });
+      return status(403, { message: "Tài khoản đã bị khoá", code: "ACCOUNT_DISABLED" });
     }
 
     // Nhánh thứ hai: có session là đủ. PENDING và "chưa có hồ sơ" đi qua để
@@ -200,9 +201,9 @@ export const staffGuard = new Elysia({ name: "staff-guard" })
     // Có session nhưng thiếu hàng = lớp bù trừ của signUpPOST đã hỏng (§2.1
     // design doc). Trả 403 có mã riêng thay vì crash — người dùng thấy được lý
     // do, OWNER tìm ra được dấu vết.
-    if (!staff) return status(403, { message: "Tài khoản chưa có hồ sơ", code: "CHUA_CO_HO_SO" });
+    if (!staff) return status(403, { message: "Tài khoản chưa có hồ sơ", code: "NO_PROFILE" });
     if (staff.status === "PENDING") {
-      return status(403, { message: "Tài khoản đang chờ duyệt", code: "CHO_DUYET" });
+      return status(403, { message: "Tài khoản đang chờ duyệt", code: "PENDING_APPROVAL" });
     }
   });
 
@@ -217,7 +218,7 @@ export interface StaffContext {
 /** Dùng trong route cần role cụ thể. Trả `null` khi đủ quyền. */
 export function requireRole(staff: { role: StaffRole } | null, role: StaffRole) {
   if (!staff || staff.role !== role) {
-    return { message: "Không đủ quyền", code: "THIEU_QUYEN" as const };
+    return { message: "Không đủ quyền", code: "FORBIDDEN" as const };
   }
   return null;
 }

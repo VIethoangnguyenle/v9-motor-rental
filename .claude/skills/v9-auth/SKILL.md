@@ -62,7 +62,7 @@ JWT tự xác thực cục bộ. Hiện có đúng hai chỗ gọi cặp này: `
 ## Kiểm nhanh khi API đang chạy
 
 ```bash
-curl -s localhost:3001/staff/me          # 401 CHUA_DANG_NHAP  — guard đang phủ
+curl -s localhost:3001/staff/me          # 401 NOT_AUTHENTICATED  — guard đang phủ
 curl -s localhost:3001/health            # 200 {"status":"ok"} — công khai
 curl -s -o /dev/null -w '%{http_code}\n' localhost:3001/khong-ton-tai   # 404 — đối chứng bắt buộc
 ```

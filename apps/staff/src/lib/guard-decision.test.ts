@@ -30,16 +30,16 @@ describe("decideEntry", () => {
     expect(decideEntry(true, null)).toEqual({ type: "redirect", to: "/login" });
   });
 
-  it("ca 2: 403 DA_KHOA → đăng xuất TRƯỚC rồi mới chuyển, kèm lý do", () => {
-    expect(decideEntry(true, { ok: false, code: "DA_KHOA" })).toEqual({
+  it("ca 2: 403 ACCOUNT_DISABLED → đăng xuất TRƯỚC rồi mới chuyển, kèm lý do", () => {
+    expect(decideEntry(true, { ok: false, code: "ACCOUNT_DISABLED" })).toEqual({
       type: "signOutThenRedirect",
       to: "/login",
       reason: "disabled",
     });
   });
 
-  it("ca 3: 403 CHUA_CO_HO_SO → cũng đăng xuất, lý do riêng", () => {
-    expect(decideEntry(true, { ok: false, code: "CHUA_CO_HO_SO" })).toEqual({
+  it("ca 3: 403 NO_PROFILE → cũng đăng xuất, lý do riêng", () => {
+    expect(decideEntry(true, { ok: false, code: "NO_PROFILE" })).toEqual({
       type: "signOutThenRedirect",
       to: "/login",
       reason: "no-profile",
@@ -56,7 +56,7 @@ describe("decideEntry", () => {
       type: "redirect",
       to: "/login",
     });
-    expect(decideEntry(true, { ok: false, code: "CHUA_DANG_NHAP" })).toEqual({
+    expect(decideEntry(true, { ok: false, code: "NOT_AUTHENTICATED" })).toEqual({
       type: "redirect",
       to: "/login",
     });
@@ -71,7 +71,7 @@ describe("decideEntry", () => {
 
   /**
    * Hôm nay API KHÔNG trả được nhánh này: `staff-guard.ts` chặn DISABLED trước cả
-   * ngoại lệ `/staff/me`, nên người bị khoá luôn ra 403 DA_KHOA (ca 2). Giữ ca này
+   * ngoại lệ `/staff/me`, nên người bị khoá luôn ra 403 ACCOUNT_DISABLED (ca 2). Giữ ca này
    * để nếu ngoại lệ đó đổi thì đây là chỗ đúng — và để tính không-tới-được của nó
    * là một tính chất ĐƯỢC TEST, không phải một lỗi im lặng.
    */

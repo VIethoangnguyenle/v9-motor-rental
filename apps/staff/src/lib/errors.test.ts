@@ -72,7 +72,7 @@ describe("parseApiError", () => {
 
 describe("errorCode", () => {
   it("ca 1: hình dạng đúng → trả về code", () => {
-    expect(errorCode({ message: "x", code: "DA_KHOA" })).toBe("DA_KHOA");
+    expect(errorCode({ message: "x", code: "ACCOUNT_DISABLED" })).toBe("ACCOUNT_DISABLED");
   });
 
   it("ca 2: 422 validation của Elysia → null, không phải chuỗi rỗng hay undefined", () => {
@@ -102,9 +102,9 @@ describe("errorCode", () => {
 
 describe("errorMessage", () => {
   it("ca 1: hình dạng đúng → hiện nguyên văn message của backend, không phải mặc định", () => {
-    expect(errorMessage({ message: "Tài khoản đã bị khoá", code: "DA_KHOA" }, "mặc định")).toBe(
-      "Tài khoản đã bị khoá",
-    );
+    expect(
+      errorMessage({ message: "Tài khoản đã bị khoá", code: "ACCOUNT_DISABLED" }, "mặc định"),
+    ).toBe("Tài khoản đã bị khoá");
   });
 
   it("ca 2: 422 validation của Elysia → rơi về mặc định vì parseApiError không đọc được", () => {

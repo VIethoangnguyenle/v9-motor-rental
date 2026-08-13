@@ -39,10 +39,10 @@ export function decideEntry(hasSession: boolean, result: MeResult | null): Entry
   if (!result.ok) {
     // Chỉ đăng xuất khi server NÓI RÕ tài khoản không dùng được nữa. `code === null`
     // gộp cả mạng chết — huỷ session hợp lệ vì wifi chớp là hỏng theo chiều sai.
-    if (result.code === "DA_KHOA") {
+    if (result.code === "ACCOUNT_DISABLED") {
       return { type: "signOutThenRedirect", to: LOGIN, reason: "disabled" };
     }
-    if (result.code === "CHUA_CO_HO_SO") {
+    if (result.code === "NO_PROFILE") {
       return { type: "signOutThenRedirect", to: LOGIN, reason: "no-profile" };
     }
     return { type: "redirect", to: LOGIN };

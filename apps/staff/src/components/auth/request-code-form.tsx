@@ -17,7 +17,7 @@ export interface PasswordResetMessage {
  *   • 200: backend cố ý trả 200 cho cả email không tồn tại (§5.1 design doc) —
  *     phân biệt được hai ca là biến endpoint này thành máy dò danh sách nhân
  *     viên của shop. Vậy nên "đã gửi" ở đây là câu điều kiện, không phải lời hứa.
- *   • 503 `CHUA_CAU_HINH_EMAIL`: chưa có SMTP — trạng thái mặc định của một prod
+ *   • 503 `EMAIL_NOT_CONFIGURED`: chưa có SMTP — trạng thái mặc định của một prod
  *     mới dựng. Mã vẫn phát được bằng nút "Phát mã" của chủ shop, nên đường đi
  *     tiếp là CÓ THẬT: nhắn chủ shop, rồi gõ mã vào đây.
  *
@@ -40,7 +40,7 @@ export function RequestCodeForm({
         onDone({
           kind: "problem",
           text:
-            errorCode(res.error.value) === "CHUA_CAU_HINH_EMAIL"
+            errorCode(res.error.value) === "EMAIL_NOT_CONFIGURED"
               ? "Hệ thống chưa gửi được email — nhắn chủ shop để lấy mã, rồi gõ vào đây."
               : `${message} — nếu không nhận được mã, nhắn chủ shop để lấy mã.`,
         });

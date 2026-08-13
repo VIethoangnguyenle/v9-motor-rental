@@ -189,12 +189,12 @@ describe("kiemTraMa", () => {
     expect(await kiemTraMa(ID, ma)).toEqual({ ok: true });
     // Không đánh dấu đã dùng thì cùng một mã mở được tài khoản nhiều lần —
     // kể cả sau khi nhân viên đã đổi xong mật khẩu.
-    expect(await kiemTraMa(ID, ma)).toEqual({ ok: false, reason: "MA_HET_HIEU_LUC" });
+    expect(await kiemTraMa(ID, ma)).toEqual({ ok: false, reason: "CODE_EXPIRED" });
   });
 
-  it("mã sai thì báo MA_SAI và tăng số lần thử đúng 1", async () => {
+  it("mã sai thì báo WRONG_CODE và tăng số lần thử đúng 1", async () => {
     await taoMaDatLaiMatKhau(ID);
-    expect(await kiemTraMa(ID, "000000")).toEqual({ ok: false, reason: "MA_SAI" });
+    expect(await kiemTraMa(ID, "000000")).toEqual({ ok: false, reason: "WRONG_CODE" });
     const [row] = await maConSong(ID);
     // Khoá đúng con số, không chỉ "hàng có tồn tại": bộ đếm không tăng thì giới
     // hạn 5 lần là trang trí, và test "sai 5 lần thì mã chết" bên dưới sẽ xanh
@@ -205,9 +205,9 @@ describe("kiemTraMa", () => {
   it("sai 5 lần thì mã chết kể cả sau đó nhập đúng", async () => {
     const ma = await taoMaDatLaiMatKhau(ID);
     for (let i = 0; i < 5; i++) {
-      expect(await kiemTraMa(ID, "000000")).toEqual({ ok: false, reason: "MA_SAI" });
+      expect(await kiemTraMa(ID, "000000")).toEqual({ ok: false, reason: "WRONG_CODE" });
     }
-    expect(await kiemTraMa(ID, ma)).toEqual({ ok: false, reason: "MA_HET_HIEU_LUC" });
+    expect(await kiemTraMa(ID, ma)).toEqual({ ok: false, reason: "CODE_EXPIRED" });
   });
 
   it("mã hết hạn thì không dùng được", async () => {
@@ -221,17 +221,17 @@ describe("kiemTraMa", () => {
           isNull(schema.passwordResetCodes.usedAt),
         ),
       );
-    expect(await kiemTraMa(ID, ma)).toEqual({ ok: false, reason: "MA_HET_HIEU_LUC" });
+    expect(await kiemTraMa(ID, ma)).toEqual({ ok: false, reason: "CODE_EXPIRED" });
   });
 
   it("không có mã nào thì báo hết hiệu lực, không phải crash", async () => {
     await db.delete(schema.passwordResetCodes).where(eq(schema.passwordResetCodes.staffUserId, ID));
-    expect(await kiemTraMa(ID, "999999")).toEqual({ ok: false, reason: "MA_HET_HIEU_LUC" });
+    expect(await kiemTraMa(ID, "999999")).toEqual({ ok: false, reason: "CODE_EXPIRED" });
   });
 
   // ⚠️ TEST NÀY PHẢI SONG SONG. Test "sai 5 lần" ở trên đoán trong vòng `for`, tức
   // là tuần tự, và nó XANH kể cả trên bản code không chặn được gì: đo trên bản cũ,
-  // tuần tự N=20 cho MA_SAI=5 (đúng) trong khi song song N=20 cho MA_SAI=20 và
+  // tuần tự N=20 cho WRONG_CODE=5 (đúng) trong khi song song N=20 cho WRONG_CODE=20 và
   // attempts_cuoi=20 (giới hạn không tồn tại). Kẻ tấn công không có lý do gì phải
   // xếp hàng, nên hình dạng của test phải khớp hình dạng của cuộc tấn công.
   //
@@ -242,14 +242,14 @@ describe("kiemTraMa", () => {
     const ma = await taoMaDatLaiMatKhau(ID);
 
     const ketQua = await Promise.all(Array.from({ length: 20 }, () => kiemTraMa(ID, "000000")));
-    const soLanDuocChapNhan = ketQua.filter((r) => !r.ok && r.reason === "MA_SAI").length;
+    const soLanDuocChapNhan = ketQua.filter((r) => !r.ok && r.reason === "WRONG_CODE").length;
 
     expect(soLanDuocChapNhan).toBeLessThanOrEqual(5);
-    // Chặn kiểu "trả MA_HET_HIEU_LUC cho tất cả" cũng thoả `<= 5` nhưng là hỏng
+    // Chặn kiểu "trả CODE_EXPIRED cho tất cả" cũng thoả `<= 5` nhưng là hỏng
     // theo hướng khác: mã còn hạn, chưa dùng, phải cho đoán ít nhất một lần.
     expect(soLanDuocChapNhan).toBeGreaterThan(0);
     // Và cơn bão phải THỰC SỰ giết mã, không chỉ đếm đẹp: sau đó mã ĐÚNG cũng chết.
-    expect(await kiemTraMa(ID, ma)).toEqual({ ok: false, reason: "MA_HET_HIEU_LUC" });
+    expect(await kiemTraMa(ID, ma)).toEqual({ ok: false, reason: "CODE_EXPIRED" });
   });
 });
 
@@ -285,28 +285,28 @@ describe("doiMatKhauBangMa", () => {
     expect((await loadStaff(ID))?.sessionsInvalidBefore).toBeInstanceOf(Date);
   });
 
-  it("mã sai: trả MA_SAI và KHÔNG gọi deps nào cả", async () => {
+  it("mã sai: trả WRONG_CODE và KHÔNG gọi deps nào cả", async () => {
     await taoMaDatLaiMatKhau(ID);
     const { deps, nhatKy } = spyDeps();
 
     expect(await doiMatKhauBangMa(deps, EMAIL, "000000", "matkhaumoi-rat-dai")).toEqual({
       ok: false,
-      reason: "MA_SAI",
+      reason: "WRONG_CODE",
     });
     // Điểm quan trọng nhất của test này: gọi `taoTokenDatLai` TRƯỚC khi kiểm mã
     // là phát token đặt lại mật khẩu cho kẻ đang đoán mò sáu con số.
     expect(nhatKy).toEqual([]);
   });
 
-  it("email không tồn tại: KHONG_TIM_THAY, không gọi deps nào", async () => {
+  it("email không tồn tại: NOT_FOUND, không gọi deps nào", async () => {
     const { deps, nhatKy } = spyDeps();
     expect(
       await doiMatKhauBangMa(deps, `${P}khong-co@v9.vn`, "999999", "matkhaumoi-rat-dai"),
-    ).toEqual({ ok: false, reason: "KHONG_TIM_THAY" });
+    ).toEqual({ ok: false, reason: "NOT_FOUND" });
     expect(nhatKy).toEqual([]);
   });
 
-  it("người DISABLED: KHONG_TIM_THAY, không gọi deps nào", async () => {
+  it("người DISABLED: NOT_FOUND, không gọi deps nào", async () => {
     // Mã sinh ra trước khi bị khoá vẫn nằm trong DB — luồng quên mật khẩu không
     // được là đường để người bị khoá tự mở lại tài khoản.
     await taoMaDatLaiMatKhau(ID_KHOA);
@@ -314,7 +314,7 @@ describe("doiMatKhauBangMa", () => {
 
     expect(await doiMatKhauBangMa(deps, EMAIL_KHOA, "999999", "matkhaumoi-rat-dai")).toEqual({
       ok: false,
-      reason: "KHONG_TIM_THAY",
+      reason: "NOT_FOUND",
     });
     expect(nhatKy).toEqual([]);
   });

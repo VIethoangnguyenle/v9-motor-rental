@@ -10,7 +10,7 @@ import { env } from "../env";
  * mật khẩu, tức là hỏng đúng lúc có người đang cần nó. §5.3 design doc.
  *
  * `transport` là `null` khi chưa cấu hình SMTP: thiếu credential thì app VẪN CHẠY,
- * chỉ có đường gửi mail là đóng (route trả 503 CHUA_CAU_HINH_EMAIL). Đường cứu của
+ * chỉ có đường gửi mail là đóng (route trả 503 EMAIL_NOT_CONFIGURED). Đường cứu của
  * OWNER — đọc sáu số qua Zalo — không đi qua file này, nên nó vẫn dùng được.
  */
 const transport = env.smtp

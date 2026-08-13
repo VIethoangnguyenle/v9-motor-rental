@@ -29,7 +29,7 @@ export function StaffRowActions({
           Duyệt
         </button>
       )}
-      {/* Tự khoá mình bị backend chặn (`TU_KHOA_MINH`); ẩn nút để không
+      {/* Tự khoá mình bị backend chặn (`CANNOT_DISABLE_SELF`); ẩn nút để không
           mời người ta bấm vào một lỗi đã biết trước. */}
       {row.status === "ACTIVE" && row.id !== me?.id && (
         <button

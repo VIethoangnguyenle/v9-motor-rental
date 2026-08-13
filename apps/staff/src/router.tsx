@@ -147,7 +147,7 @@ const homeRoute = createRoute({
  *
  * `context.me` tới từ `beforeLoad` của `protectedLayoutRoute` — không đọc lại `/staff/me`.
  * Đây là hàng rào của TRẢI NGHIỆM, không phải của dữ liệu: `/staff/users*` đã
- * tự đòi OWNER ở server (403 `THIEU_QUYEN`). Bỏ chỗ này thì STAFF thấy một
+ * tự đòi OWNER ở server (403 `FORBIDDEN`). Bỏ chỗ này thì STAFF thấy một
  * trang trống toàn lỗi 403, không phải thấy dữ liệu.
  */
 const staffListRoute = createRoute({

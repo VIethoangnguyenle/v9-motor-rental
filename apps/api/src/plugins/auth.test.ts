@@ -184,7 +184,7 @@ describe("signUpPOST ghi staff_users", () => {
 
     // `id` của hàng PHẢI là userId của SuperTokens — đó là toàn bộ cách
     // `staff-guard` tìm được hồ sơ từ session. Lệch là "đăng nhập được nhưng
-    // CHUA_CO_HO_SO" vĩnh viễn.
+    // NO_PROFILE" vĩnh viễn.
     const [user] = await supertokens.listUsersByAccountInfo("public", { email: EMAIL_DANGKY });
     expect(row?.id).toBe(user?.id ?? "");
   });
@@ -225,7 +225,7 @@ describe("signUpPOST ghi staff_users", () => {
       formFields({ email: EMAIL_KENH, password: PASSWORD, hoTen: "Người Xui" }),
     );
     // Đăng ký PHẢI thất bại. Trả "OK" ở đây còn tệ hơn 500: người dùng tưởng có
-    // tài khoản, đăng nhập vào thì bị CHUA_CO_HO_SO không giải thích được.
+    // tài khoản, đăng nhập vào thì bị NO_PROFILE không giải thích được.
     expect(res.status).toBe(500);
 
     // ĐÂY là assertion của cả task. Bỏ `await supertokens.deleteUser(...)` trong

@@ -73,7 +73,7 @@ supertokens.init({
            * Vì vậy HAI lớp, và cần cả hai:
            *   • Lớp 1 (ở đây): insert hỏng → `supertokens.deleteUser` bù trừ, rồi
            *     ném tiếp để người đăng ký thấy lỗi thay vì tưởng đã xong.
-           *   • Lớp 2 (`staff-guard`): có session mà thiếu hàng → `403 CHUA_CO_HO_SO`.
+           *   • Lớp 2 (`staff-guard`): có session mà thiếu hàng → `403 NO_PROFILE`.
            *     Tồn tại vì CHÍNH lớp 1 cũng hỏng được — mất mạng đúng giữa `throw`
            *     và `deleteUser` là đủ.
            */

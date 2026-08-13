@@ -6,7 +6,7 @@
  * kiểu Eden suy ra cho `res.error.value` là hợp của NHIỀU hơn thế, và cả phần
  * thừa đều là response CÓ THẬT:
  *
- *   • 401 `CHUA_DANG_NHAP` · 403 `DA_KHOA` / `CHUA_CO_HO_SO` / `CHO_DUYET` —
+ *   • 401 `NOT_AUTHENTICATED` · 403 `ACCOUNT_DISABLED` / `NO_PROFILE` / `PENDING_APPROVAL` —
  *     `staffGuard` khai `onBeforeHandle({ as: "global" })`, nên Elysia gộp kiểu
  *     trả về của nó vào response của MỌI route, kể cả route công khai.
  *   • 422 validation dựng sẵn của Elysia — hình dạng khác hẳn

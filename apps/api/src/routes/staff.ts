@@ -98,15 +98,15 @@ type LyDo = LyDoQuyen | LyDoMatKhau;
  * hợp lệ" và không ai biết.
  */
 const THONG_DIEP = {
-  KHONG_PHAI_OWNER: "Chỉ chủ shop mới làm được việc này",
-  TU_DUYET_MINH: "Không tự duyệt tài khoản của chính mình",
-  KHONG_CHO_DUYET: "Tài khoản này không ở trạng thái chờ duyệt",
-  TU_KHOA_MINH: "Không tự khoá tài khoản của chính mình",
-  OWNER_CUOI_CUNG: "Đây là chủ shop cuối cùng — không hạ quyền hoặc khoá được",
-  KHONG_TIM_THAY: "Không tìm thấy nhân viên",
-  MA_SAI: "Mã không đúng",
-  MA_HET_HIEU_LUC: "Mã đã hết hạn hoặc đã dùng — xin chủ shop cấp mã mới",
-  MAT_KHAU_YEU: "Mật khẩu mới chưa đạt yêu cầu",
+  NOT_OWNER: "Chỉ chủ shop mới làm được việc này",
+  CANNOT_APPROVE_SELF: "Không tự duyệt tài khoản của chính mình",
+  NOT_PENDING: "Tài khoản này không ở trạng thái chờ duyệt",
+  CANNOT_DISABLE_SELF: "Không tự khoá tài khoản của chính mình",
+  LAST_OWNER: "Đây là chủ shop cuối cùng — không hạ quyền hoặc khoá được",
+  NOT_FOUND: "Không tìm thấy nhân viên",
+  WRONG_CODE: "Mã không đúng",
+  CODE_EXPIRED: "Mã đã hết hạn hoặc đã dùng — xin chủ shop cấp mã mới",
+  WEAK_PASSWORD: "Mật khẩu mới chưa đạt yêu cầu",
 } as const satisfies Record<LyDo, string>;
 
 const loi = (reason: LyDo) => ({ message: THONG_DIEP[reason], code: reason });
@@ -117,12 +117,12 @@ const loi = (reason: LyDo) => ({ message: THONG_DIEP[reason], code: reason });
  * 403 = thiếu quyền · 409 = xung đột luật · 404 = không có hàng đó.
  */
 const MA_HTTP = {
-  KHONG_PHAI_OWNER: 403,
-  TU_DUYET_MINH: 409,
-  KHONG_CHO_DUYET: 409,
-  TU_KHOA_MINH: 409,
-  OWNER_CUOI_CUNG: 409,
-  KHONG_TIM_THAY: 404,
+  NOT_OWNER: 403,
+  CANNOT_APPROVE_SELF: 409,
+  NOT_PENDING: 409,
+  CANNOT_DISABLE_SELF: 409,
+  LAST_OWNER: 409,
+  NOT_FOUND: 404,
 } as const satisfies Record<LyDoQuyen, 403 | 404 | 409>;
 
 /** Ba route OWNER dùng chung đúng bộ mã này. */
@@ -140,7 +140,7 @@ const responseQuanTri = {
  * đúng một mình — `requireRole(null, ...)` luôn từ chối. Viết thế này để không
  * phải rải `!` (non-null assertion) khắp file.
  */
-const THIEU_QUYEN = { message: "Không đủ quyền", code: "THIEU_QUYEN" } as const;
+const FORBIDDEN = { message: "Không đủ quyền", code: "FORBIDDEN" } as const;
 
 export const staff = new Elysia({ name: "staff" })
   .use(staffGuard)
@@ -159,7 +159,7 @@ export const staff = new Elysia({ name: "staff" })
   .get(
     "/staff/me",
     ({ staff, status }) => {
-      if (!staff) return status(404, loi("KHONG_TIM_THAY"));
+      if (!staff) return status(404, loi("NOT_FOUND"));
       return status(200, hoSoCongKhai(staff));
     },
     { response: { 200: staffSchema, 404: loiSchema } },
@@ -182,7 +182,7 @@ export const staff = new Elysia({ name: "staff" })
     "/staff/users/:id/approve",
     async ({ params, body, staff, status }) => {
       const denied = requireRole(staff, "OWNER");
-      if (denied || !staff) return status(403, denied ?? THIEU_QUYEN);
+      if (denied || !staff) return status(403, denied ?? FORBIDDEN);
 
       const res = await approveStaff(staff.id, params.id, body.role);
       if (!res.ok) return status(MA_HTTP[res.reason], loi(res.reason));
@@ -199,7 +199,7 @@ export const staff = new Elysia({ name: "staff" })
     "/staff/users/:id/role",
     async ({ params, body, staff, status }) => {
       const denied = requireRole(staff, "OWNER");
-      if (denied || !staff) return status(403, denied ?? THIEU_QUYEN);
+      if (denied || !staff) return status(403, denied ?? FORBIDDEN);
 
       const res = await changeStaffRole(staff.id, params.id, body.role);
       if (!res.ok) return status(MA_HTTP[res.reason], loi(res.reason));
@@ -221,7 +221,7 @@ export const staff = new Elysia({ name: "staff" })
     "/staff/users/:id/disable",
     async ({ params, staff, status }) => {
       const denied = requireRole(staff, "OWNER");
-      if (denied || !staff) return status(403, denied ?? THIEU_QUYEN);
+      if (denied || !staff) return status(403, denied ?? FORBIDDEN);
 
       const res = await disableStaff(staffDeps, staff.id, params.id);
       if (!res.ok) return status(MA_HTTP[res.reason], loi(res.reason));
@@ -242,7 +242,7 @@ export const staff = new Elysia({ name: "staff" })
       if (denied) return status(403, denied);
 
       const target = await loadStaff(params.id);
-      if (!target) return status(404, loi("KHONG_TIM_THAY"));
+      if (!target) return status(404, loi("NOT_FOUND"));
       return status(200, { code: await taoMaDatLaiMatKhau(target.id) });
     },
     {
@@ -259,7 +259,7 @@ export const staff = new Elysia({ name: "staff" })
       if (!emailDaCauHinh) {
         return status(503, {
           message: "Hệ thống chưa cấu hình email — liên hệ chủ shop để lấy mã",
-          code: "CHUA_CAU_HINH_EMAIL",
+          code: "EMAIL_NOT_CONFIGURED",
         });
       }
 
@@ -281,8 +281,8 @@ export const staff = new Elysia({ name: "staff" })
   )
 
   /**
-   * MỌI thất bại ở đây là 400, kể cả `KHONG_TIM_THAY` — cùng lý do không lộ email
-   * như route trên. Ở các route quản trị thì `KHONG_TIM_THAY` là 404, vì ở đó
+   * MỌI thất bại ở đây là 400, kể cả `NOT_FOUND` — cùng lý do không lộ email
+   * như route trên. Ở các route quản trị thì `NOT_FOUND` là 404, vì ở đó
    * người gọi đã là OWNER và đã được phép biết ai có trong bảng.
    */
   .post(
@@ -296,7 +296,7 @@ export const staff = new Elysia({ name: "staff" })
       body: t.Object({
         email: t.String({ format: "email" }),
         code: t.String({ minLength: 6, maxLength: 6 }),
-        // Chính sách mật khẩu thật do SuperTokens giữ (`MAT_KHAU_YEU`). 8 ký tự ở
+        // Chính sách mật khẩu thật do SuperTokens giữ (`WEAK_PASSWORD`). 8 ký tự ở
         // đây chỉ để chặn thân request rỗng — KHÔNG nhân bản luật sang tầng này,
         // hai bản luật sẽ lệch nhau ở lần đầu một trong hai được sửa.
         matKhauMoi: t.String({ minLength: 8 }),

@@ -13,23 +13,23 @@ describe("canApprove", () => {
   });
 
   it("STAFF không duyệt được ai", () => {
-    expect(canApprove(staff, pending)).toEqual({ ok: false, reason: "KHONG_PHAI_OWNER" });
+    expect(canApprove(staff, pending)).toEqual({ ok: false, reason: "NOT_OWNER" });
   });
 
   it("không tự duyệt chính mình", () => {
     const selfPending: StaffActor = { id: owner.id, role: "OWNER", status: "PENDING" };
-    expect(canApprove(owner, selfPending)).toEqual({ ok: false, reason: "TU_DUYET_MINH" });
+    expect(canApprove(owner, selfPending)).toEqual({ ok: false, reason: "CANNOT_APPROVE_SELF" });
   });
 
   it("người đã ACTIVE thì không duyệt lại", () => {
-    expect(canApprove(owner, staff)).toEqual({ ok: false, reason: "KHONG_CHO_DUYET" });
+    expect(canApprove(owner, staff)).toEqual({ ok: false, reason: "NOT_PENDING" });
   });
 
   // Vế status của requireOwner: OWNER nhưng bị khoá cũng phải bị chặn như không
   // phải OWNER. Trước khi có test này, xoá vế `actor.status !== "ACTIVE"` khỏi
   // requireOwner không làm test nào đỏ.
   it("OWNER nhưng đang DISABLED thì không duyệt được ai", () => {
-    expect(canApprove(ownerBiKhoa, pending)).toEqual({ ok: false, reason: "KHONG_PHAI_OWNER" });
+    expect(canApprove(ownerBiKhoa, pending)).toEqual({ ok: false, reason: "NOT_OWNER" });
   });
 });
 
@@ -41,7 +41,7 @@ describe("canChangeRole", () => {
   it("không hạ role của OWNER cuối cùng — kể cả chính mình", () => {
     expect(canChangeRole(owner, owner, "STAFF", 1)).toEqual({
       ok: false,
-      reason: "OWNER_CUOI_CUNG",
+      reason: "LAST_OWNER",
     });
   });
 
@@ -52,7 +52,7 @@ describe("canChangeRole", () => {
   it("STAFF không đổi role của ai", () => {
     expect(canChangeRole(staff, pending, "OWNER", 1)).toEqual({
       ok: false,
-      reason: "KHONG_PHAI_OWNER",
+      reason: "NOT_OWNER",
     });
   });
 
@@ -60,7 +60,7 @@ describe("canChangeRole", () => {
   it("OWNER nhưng đang DISABLED thì không đổi role của ai", () => {
     expect(canChangeRole(ownerBiKhoa, staff, "SALES", 2)).toEqual({
       ok: false,
-      reason: "KHONG_PHAI_OWNER",
+      reason: "NOT_OWNER",
     });
   });
 });
@@ -71,28 +71,28 @@ describe("canDisable", () => {
   });
 
   it("không tự khoá mình", () => {
-    expect(canDisable(owner, owner, 2)).toEqual({ ok: false, reason: "TU_KHOA_MINH" });
+    expect(canDisable(owner, owner, 2)).toEqual({ ok: false, reason: "CANNOT_DISABLE_SELF" });
   });
 
   it("không khoá OWNER cuối cùng", () => {
-    expect(canDisable(owner, owner2, 1)).toEqual({ ok: false, reason: "OWNER_CUOI_CUNG" });
+    expect(canDisable(owner, owner2, 1)).toEqual({ ok: false, reason: "LAST_OWNER" });
   });
 
-  // Khi "tự khoá mình" trùng với "OWNER cuối cùng", TU_KHOA_MINH phải thắng:
+  // Khi "tự khoá mình" trùng với "OWNER cuối cùng", CANNOT_DISABLE_SELF phải thắng:
   // test "không tự khoá mình" ở trên đã chứng minh tự khoá bị từ chối kể cả khi
-  // còn OWNER khác (activeOwnerCount 2), nên TU_KHOA_MINH là lý do luôn đúng bất
-  // kể còn bao nhiêu OWNER. Trả OWNER_CUOI_CUNG ở đây sẽ ngụ ý sai rằng thêm một
+  // còn OWNER khác (activeOwnerCount 2), nên CANNOT_DISABLE_SELF là lý do luôn đúng bất
+  // kể còn bao nhiêu OWNER. Trả LAST_OWNER ở đây sẽ ngụ ý sai rằng thêm một
   // OWNER nữa thì tự khoá được.
-  it("tự khoá mình khi đang là OWNER cuối cùng vẫn báo TU_KHOA_MINH", () => {
-    expect(canDisable(owner, owner, 1)).toEqual({ ok: false, reason: "TU_KHOA_MINH" });
+  it("tự khoá mình khi đang là OWNER cuối cùng vẫn báo CANNOT_DISABLE_SELF", () => {
+    expect(canDisable(owner, owner, 1)).toEqual({ ok: false, reason: "CANNOT_DISABLE_SELF" });
   });
 
   it("STAFF không khoá được ai", () => {
-    expect(canDisable(staff, pending, 1)).toEqual({ ok: false, reason: "KHONG_PHAI_OWNER" });
+    expect(canDisable(staff, pending, 1)).toEqual({ ok: false, reason: "NOT_OWNER" });
   });
 
   // Vế status của requireOwner — xem ghi chú ở "canApprove".
   it("OWNER nhưng đang DISABLED thì không khoá được ai", () => {
-    expect(canDisable(ownerBiKhoa, staff, 2)).toEqual({ ok: false, reason: "KHONG_PHAI_OWNER" });
+    expect(canDisable(ownerBiKhoa, staff, 2)).toEqual({ ok: false, reason: "NOT_OWNER" });
   });
 });

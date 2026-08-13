@@ -141,10 +141,10 @@ export async function taoMaDatLaiMatKhau(staffUserId: string): Promise<string> {
   return ma;
 }
 
-export type KetQuaKiemTra = { ok: true } | { ok: false; reason: "MA_SAI" | "MA_HET_HIEU_LUC" };
+export type KetQuaKiemTra = { ok: true } | { ok: false; reason: "WRONG_CODE" | "CODE_EXPIRED" };
 
 /**
- * Ba lý do chết đều trả CÙNG MỘT `MA_HET_HIEU_LUC` — hết hạn, quá số lần, không có
+ * Ba lý do chết đều trả CÙNG MỘT `CODE_EXPIRED` — hết hạn, quá số lần, không có
  * mã nào. Phân biệt được ba trạng thái đó là nói cho người đoán mò biết họ đang ở
  * đâu: "còn hạn nhưng sai" khác hẳn "không có mã nào" khi đang dò email của shop.
  *
@@ -155,8 +155,8 @@ export type KetQuaKiemTra = { ok: true } | { ok: false; reason: "MA_SAI" | "MA_H
  * rồi mới UPDATE — check-then-act không khoá. Mọi request lọt vào cửa sổ ~115ms đó
  * đều đọc cùng một `attempts` cũ và đều đi qua cổng. Đo thật trên cùng một mã:
  *
- *     SONG SONG N=20: MA_SAI=20  MA_HET_HIEU_LUC=0   attempts_cuoi=20
- *     TUẦN TỰ  N=20: MA_SAI=5   MA_HET_HIEU_LUC=15  attempts_cuoi=5
+ *     SONG SONG N=20: WRONG_CODE=20  CODE_EXPIRED=0   attempts_cuoi=20
+ *     TUẦN TỰ  N=20: WRONG_CODE=5   CODE_EXPIRED=15  attempts_cuoi=5
  *
  * Tức là giới hạn 5 lần — hàng rào DUY NHẤT giữa sáu con số và một tài khoản — chỉ
  * tồn tại với kẻ tấn công chịu xếp hàng. Bộ đếm vẫn tăng đúng bằng SQL (`attempts + 1`
@@ -185,7 +185,7 @@ export async function kiemTraMa(staffUserId: string, ma: string): Promise<KetQua
     .orderBy(desc(schema.passwordResetCodes.createdAt))
     .limit(1);
 
-  if (!moiNhat) return { ok: false, reason: "MA_HET_HIEU_LUC" };
+  if (!moiNhat) return { ok: false, reason: "CODE_EXPIRED" };
 
   // Câu này VỪA tiêu một lượt VỪA quyết định có được đoán hay không — một lần chạm
   // DB, không có khe hở giữa đọc và ghi. `expires_at > now()` để Postgres tự so giờ:
@@ -203,11 +203,11 @@ export async function kiemTraMa(staffUserId: string, ma: string): Promise<KetQua
     )
     .returning({ codeHash: schema.passwordResetCodes.codeHash });
 
-  if (!hang) return { ok: false, reason: "MA_HET_HIEU_LUC" };
+  if (!hang) return { ok: false, reason: "CODE_EXPIRED" };
 
   // `attempts` tăng cả khi đoán ĐÚNG. Chấp nhận được: mã chết ngay ở câu UPDATE
   // dưới đây, nên cái lượt vừa tiêu không còn ai dùng tới.
-  if (!(await Bun.password.verify(ma, hang.codeHash))) return { ok: false, reason: "MA_SAI" };
+  if (!(await Bun.password.verify(ma, hang.codeHash))) return { ok: false, reason: "WRONG_CODE" };
 
   // Đánh dấu đã dùng ngay khi xác minh đúng: mã dùng được một lần, kể cả khi các
   // bước sau (sinh token, đổi mật khẩu) hỏng. Hỏng theo hướng đóng, không mở.
@@ -236,7 +236,7 @@ export async function timStaffTheoEmail(email: string): Promise<{ id: string } |
 
 export type KetQuaDoiMatKhau =
   | { ok: true }
-  | { ok: false; reason: "MA_SAI" | "MA_HET_HIEU_LUC" | "KHONG_TIM_THAY" | "MAT_KHAU_YEU" };
+  | { ok: false; reason: "WRONG_CODE" | "CODE_EXPIRED" | "NOT_FOUND" | "WEAK_PASSWORD" };
 
 /**
  * Token đặt lại của SuperTokens được sinh Ở ĐÂY và dùng xong ngay trong CÙNG lời
@@ -257,7 +257,7 @@ export async function doiMatKhauBangMa(
   matKhauMoi: string,
 ): Promise<KetQuaDoiMatKhau> {
   const staff = await timStaffTheoEmail(email);
-  if (!staff) return { ok: false, reason: "KHONG_TIM_THAY" };
+  if (!staff) return { ok: false, reason: "NOT_FOUND" };
 
   const check = await kiemTraMa(staff.id, ma);
   if (!check.ok) return check;
@@ -265,12 +265,12 @@ export async function doiMatKhauBangMa(
   const token = await deps.taoTokenDatLai(staff.id, email);
   // `UNKNOWN_USER_ID_ERROR` là ca thật: hàng trong `staff_users` còn nhưng user bên
   // SuperTokens đã biến mất. Với người dùng thì đó vẫn là "không tìm thấy".
-  if (token.status !== "OK" || !token.token) return { ok: false, reason: "KHONG_TIM_THAY" };
+  if (token.status !== "OK" || !token.token) return { ok: false, reason: "NOT_FOUND" };
 
   const reset = await deps.doiMatKhauBangToken(token.token, matKhauMoi);
   // Chính sách mật khẩu do SuperTokens giữ, không nhân bản sang đây — hai bản luật
   // sẽ lệch nhau ở lần đầu tiên một trong hai được sửa.
-  if (reset.status !== "OK") return { ok: false, reason: "MAT_KHAU_YEU" };
+  if (reset.status !== "OK") return { ok: false, reason: "WEAK_PASSWORD" };
 
   // ⚠️ HAI BƯỚC, và cần cả hai — chúng giết hai loại token khác nhau.
   //

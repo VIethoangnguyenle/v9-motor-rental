@@ -48,7 +48,7 @@ beforeAll(async () => {
   if (daCo) userId = daCo.id;
   else await createPendingStaff({ id: ID, email: EMAIL, fullName: "Nhân viên test route" });
   // Một mã còn sống để bài "mã sai" bên dưới thật sự đi tới bước so mã, thay vì
-  // chết sớm ở `MA_HET_HIEU_LUC` và xanh vì lý do khác.
+  // chết sớm ở `CODE_EXPIRED` và xanh vì lý do khác.
   await taoMaDatLaiMatKhau(userId);
 });
 
@@ -63,7 +63,7 @@ describe("guard phủ lên route /staff/*", () => {
   it("GET /staff/me không cookie → 401, KHÔNG phải 404", async () => {
     const res = await goi("/staff/me");
     expect(res.status).toBe(401);
-    expect(await res.json()).toMatchObject({ code: "CHUA_DANG_NHAP" });
+    expect(await res.json()).toMatchObject({ code: "NOT_AUTHENTICATED" });
   });
 
   it("GET /staff/users không cookie → 401 (route OWNER cũng nằm sau guard)", async () => {
@@ -104,20 +104,20 @@ describe("POST /staff/password-reset/request", () => {
 
 describe("POST /staff/password-reset/confirm", () => {
   /**
-   * `MA_SAI` (chứ không phải `KHONG_TIM_THAY` hay `MAT_KHAU_YEU`) chính là bằng
+   * `WRONG_CODE` (chứ không phải `NOT_FOUND` hay `WEAK_PASSWORD`) chính là bằng
    * chứng KHÔNG ai bị đổi mật khẩu: người dùng `ztest-` này không tồn tại bên
    * SuperTokens, nên nếu luồng có đi tới `taoTokenDatLai` thì phản hồi đã là
-   * `KHONG_TIM_THAY`. Nhận được `MA_SAI` nghĩa là nó dừng lại TRƯỚC khi phát ra
+   * `NOT_FOUND`. Nhận được `WRONG_CODE` nghĩa là nó dừng lại TRƯỚC khi phát ra
    * bất kỳ credential đặt lại nào — đúng thứ tự mà `doiMatKhauBangMa` cam kết.
    */
-  it("mã sai → 400 MA_SAI, và không credential nào được phát", async () => {
+  it("mã sai → 400 WRONG_CODE, và không credential nào được phát", async () => {
     const res = await postJson("/staff/password-reset/confirm", {
       email: EMAIL,
       code: "000000",
       matKhauMoi: "MatKhauMoi123",
     });
     expect(res.status).toBe(400);
-    expect(await res.json()).toMatchObject({ code: "MA_SAI" });
+    expect(await res.json()).toMatchObject({ code: "WRONG_CODE" });
   });
 
   it("email lạ → 400 chứ không 404 (404 sẽ lộ email nào có thật)", async () => {
@@ -127,7 +127,7 @@ describe("POST /staff/password-reset/confirm", () => {
       matKhauMoi: "MatKhauMoi123",
     });
     expect(res.status).toBe(400);
-    expect(await res.json()).toMatchObject({ code: "KHONG_TIM_THAY" });
+    expect(await res.json()).toMatchObject({ code: "NOT_FOUND" });
   });
 
   it("thân request không hợp lệ bị chặn ở schema, không tới service", async () => {

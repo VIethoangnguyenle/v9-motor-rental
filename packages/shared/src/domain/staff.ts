@@ -17,7 +17,7 @@ export interface StaffActor {
 }
 
 export type StaffDenyReason =
-  "KHONG_PHAI_OWNER" | "TU_DUYET_MINH" | "KHONG_CHO_DUYET" | "TU_KHOA_MINH" | "OWNER_CUOI_CUNG";
+  "NOT_OWNER" | "CANNOT_APPROVE_SELF" | "NOT_PENDING" | "CANNOT_DISABLE_SELF" | "LAST_OWNER";
 
 /** Discriminated union, không throw — pattern 3 của repo. */
 export type Permission = { ok: true } | { ok: false; reason: StaffDenyReason };
@@ -28,20 +28,20 @@ const deny = (reason: StaffDenyReason): Permission => ({ ok: false, reason });
 /**
  * Vế `actor.status !== "ACTIVE"` là phòng thủ: `staff-guard` ở `apps/api` đã chặn
  * session của người `PENDING`/`DISABLED` từ trước khi request tới được đây, nên
- * actor gần như luôn ACTIVE. Gộp chung một reason `KHONG_PHAI_OWNER` cho cả hai vế
+ * actor gần như luôn ACTIVE. Gộp chung một reason `NOT_OWNER` cho cả hai vế
  * là có ý thức — phía gọi không cần phân biệt "không phải OWNER" với "OWNER nhưng
  * bị khoá", cả hai đều bị từ chối như nhau.
  */
 function requireOwner(actor: StaffActor): Permission | null {
-  if (actor.role !== "OWNER" || actor.status !== "ACTIVE") return deny("KHONG_PHAI_OWNER");
+  if (actor.role !== "OWNER" || actor.status !== "ACTIVE") return deny("NOT_OWNER");
   return null;
 }
 
 export function canApprove(actor: StaffActor, target: StaffActor): Permission {
   const notOwner = requireOwner(actor);
   if (notOwner) return notOwner;
-  if (actor.id === target.id) return deny("TU_DUYET_MINH");
-  if (target.status !== "PENDING") return deny("KHONG_CHO_DUYET");
+  if (actor.id === target.id) return deny("CANNOT_APPROVE_SELF");
+  if (target.status !== "PENDING") return deny("NOT_PENDING");
   return OK;
 }
 
@@ -63,7 +63,7 @@ export function canChangeRole(
   if (notOwner) return notOwner;
   const wouldLoseLastOwner =
     target.role === "OWNER" && newRole !== "OWNER" && activeOwnerCount <= 1;
-  if (wouldLoseLastOwner) return deny("OWNER_CUOI_CUNG");
+  if (wouldLoseLastOwner) return deny("LAST_OWNER");
   return OK;
 }
 
@@ -74,7 +74,7 @@ export function canDisable(
 ): Permission {
   const notOwner = requireOwner(actor);
   if (notOwner) return notOwner;
-  if (actor.id === target.id) return deny("TU_KHOA_MINH");
-  if (target.role === "OWNER" && activeOwnerCount <= 1) return deny("OWNER_CUOI_CUNG");
+  if (actor.id === target.id) return deny("CANNOT_DISABLE_SELF");
+  if (target.role === "OWNER" && activeOwnerCount <= 1) return deny("LAST_OWNER");
   return OK;
 }
