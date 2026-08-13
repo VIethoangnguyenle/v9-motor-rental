@@ -33,11 +33,11 @@ export function initAuth() {
  * repo (xem CLAUDE.md gốc). Màn hình chỉ việc hiện `message`, không phải đọc
  * `status` của SuperTokens ở năm chỗ khác nhau.
  */
-export async function signIn(email: string, matKhau: string) {
+export async function signIn(email: string, password: string) {
   const res = await EmailPassword.signIn({
     formFields: [
       { id: "email", value: email },
-      { id: "password", value: matKhau },
+      { id: "password", value: password },
     ],
   });
 
@@ -53,16 +53,16 @@ export async function signIn(email: string, matKhau: string) {
 
 export async function signUp(input: {
   email: string;
-  matKhau: string;
-  hoTen: string;
-  soDienThoai: string;
+  password: string;
+  fullName: string;
+  phone: string;
 }) {
   const res = await EmailPassword.signUp({
     formFields: [
       { id: "email", value: input.email },
-      { id: "password", value: input.matKhau },
-      { id: "hoTen", value: input.hoTen },
-      { id: "soDienThoai", value: input.soDienThoai },
+      { id: "password", value: input.password },
+      { id: "fullName", value: input.fullName },
+      { id: "phone", value: input.phone },
     ],
   });
 

@@ -46,7 +46,7 @@ supertokens.init({
       signUpFeature: {
         // Hai field thêm vào form đăng ký. SuperTokens tự validate "có mặt";
         // ràng buộc nội dung nằm ở service khi ghi staff_users.
-        formFields: [{ id: "hoTen" }, { id: "soDienThoai", optional: true }],
+        formFields: [{ id: "fullName" }, { id: "phone", optional: true }],
       },
       override: {
         apis: (original) => ({
@@ -105,13 +105,13 @@ supertokens.init({
                     // emailpassword vừa tạo user BẰNG email nên `emails[0]` luôn có.
                     email: response.user.emails[0] ?? "",
                     // ⚠️ `.trim() ||` chứ không phải `??`. Đã đo (2026-08-11):
-                    // SuperTokens từ chối `hoTen: ""` bằng FIELD_ERROR
+                    // SuperTokens từ chối `fullName: ""` bằng FIELD_ERROR
                     // ("Field is not optional") nhưng CHO QUA chuỗi toàn khoảng
                     // trắng `"   "` — validator mặc định chỉ kiểm "có mặt", không
                     // kiểm nội dung. `??` sẽ để lọt một hồ sơ tên rỗng, hiển thị ra
                     // màn duyệt của OWNER thành một hàng trống không tra được là ai.
-                    fullName: field("hoTen")?.trim() || "(chưa đặt tên)",
-                    phone: field("soDienThoai")?.trim() || undefined,
+                    fullName: field("fullName")?.trim() || "(chưa đặt tên)",
+                    phone: field("phone")?.trim() || undefined,
                   });
                 } catch (e) {
                   // CỐ Ý không tách riêng nhánh `23505` (UNIQUE trên

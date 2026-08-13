@@ -116,7 +116,7 @@ const waitForNextSecond = () => Bun.sleep(1000 - (Date.now() % 1000) + 50);
 async function createActiveStaff(email: string, role = "STAFF"): Promise<string> {
   const res = await post(
     "/auth/signup",
-    formFields({ email, password: PASSWORD, hoTen: "Người Kiểm Thử Thu Hồi" }),
+    formFields({ email, password: PASSWORD, fullName: "Người Kiểm Thử Thu Hồi" }),
   );
   expect(await res.json()).toMatchObject({ status: "OK" });
   // `client` (Bun.SQL, element `api-infra`) chứ không Drizzle + `schema`:

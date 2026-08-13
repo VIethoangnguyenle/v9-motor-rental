@@ -24,7 +24,7 @@ const P = "ztest-auth-";
 const EMAIL = `${P}signin@v9.vn`;
 /** Đăng ký "sạch" — kiểm hàng staff_users sinh ra đúng PENDING/STAFF. */
 const EMAIL_SIGNUP = `${P}dangky@v9.vn`;
-/** `hoTen` toàn khoảng trắng — SuperTokens cho qua, ta phải tự đỡ. */
+/** `fullName` toàn khoảng trắng — SuperTokens cho qua, ta phải tự đỡ. */
 const EMAIL_BLANK = `${P}trang@v9.vn`;
 /** Lớp bù trừ: một hàng staff_users chiếm sẵn email này để insert đụng UNIQUE. */
 const EMAIL_TAKEN = `${P}kenh@v9.vn`;
@@ -86,8 +86,8 @@ describe("/auth/* forward cookie của SuperTokens", () => {
       formFields({
         email: EMAIL,
         password: PASSWORD,
-        hoTen: "Người Kiểm Thử",
-        soDienThoai: "0900000001",
+        fullName: "Người Kiểm Thử",
+        phone: "0900000001",
       }),
     );
     // Khẳng định signup OK trước: nếu nó hỏng (policy mật khẩu đổi, formFields
@@ -166,8 +166,8 @@ describe("signUpPOST ghi staff_users", () => {
       formFields({
         email: EMAIL_SIGNUP,
         password: PASSWORD,
-        hoTen: "Nguyễn Văn Test",
-        soDienThoai: "0901234567",
+        fullName: "Nguyễn Văn Test",
+        phone: "0901234567",
       }),
     );
     expect(await res.json()).toMatchObject({ status: "OK" });
@@ -189,8 +189,8 @@ describe("signUpPOST ghi staff_users", () => {
     expect(row?.id).toBe(user?.id ?? "");
   });
 
-  it("hoTen toàn khoảng trắng thành '(chưa đặt tên)', không phải chuỗi rỗng", async () => {
-    // SuperTokens từ chối `hoTen: ""` (FIELD_ERROR "Field is not optional") nhưng
+  it("fullName toàn khoảng trắng thành '(chưa đặt tên)', không phải chuỗi rỗng", async () => {
+    // SuperTokens từ chối `fullName: ""` (FIELD_ERROR "Field is not optional") nhưng
     // CHO QUA `"   "` — validator mặc định chỉ kiểm có mặt, không kiểm nội dung.
     // Đo 2026-08-11. Đây là ca duy nhất tên rỗng lọt được xuống DB.
     const res = await post(
@@ -198,8 +198,8 @@ describe("signUpPOST ghi staff_users", () => {
       formFields({
         email: EMAIL_BLANK,
         password: PASSWORD,
-        hoTen: "   ",
-        soDienThoai: "  ",
+        fullName: "   ",
+        phone: "  ",
       }),
     );
     expect(await res.json()).toMatchObject({ status: "OK" });
@@ -222,7 +222,7 @@ describe("signUpPOST ghi staff_users", () => {
 
     const res = await post(
       "/auth/signup",
-      formFields({ email: EMAIL_TAKEN, password: PASSWORD, hoTen: "Người Xui" }),
+      formFields({ email: EMAIL_TAKEN, password: PASSWORD, fullName: "Người Xui" }),
     );
     // Đăng ký PHẢI thất bại. Trả "OK" ở đây còn tệ hơn 500: người dùng tưởng có
     // tài khoản, đăng nhập vào thì bị NO_PROFILE không giải thích được.
@@ -318,7 +318,7 @@ describe("cookieDomain chỉ được đặt ở production", () => {
   beforeAll(async () => {
     const res = await post(
       "/auth/signup",
-      formFields({ email: EMAIL_COOKIE, password: PASSWORD, hoTen: "Người Đo Cookie" }),
+      formFields({ email: EMAIL_COOKIE, password: PASSWORD, fullName: "Người Đo Cookie" }),
     );
     expect(await res.json()).toMatchObject({ status: "OK" });
   });

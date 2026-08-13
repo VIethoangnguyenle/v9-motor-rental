@@ -6,16 +6,16 @@ import { SubmitButton } from "../ui/submit-button";
 import { TextField } from "../ui/text-field";
 
 /**
- * `soDienThoai` là field optional ở backend (`plugins/auth.ts` khai
- * `{ id: "soDienThoai", optional: true }`) nên form cũng không bắt buộc — hai
+ * `phone` là field optional ở backend (`plugins/auth.ts` khai
+ * `{ id: "phone", optional: true }`) nên form cũng không bắt buộc — hai
  * bên lệch nhau thì người dùng bị chặn ở client vì một luật server không có.
  */
 const FIELDS = [
-  { key: "hoTen", label: "Họ và tên", type: "text", required: true, autoComplete: "name" },
-  { key: "soDienThoai", label: "Số điện thoại", type: "tel", required: false, autoComplete: "tel" },
+  { key: "fullName", label: "Họ và tên", type: "text", required: true, autoComplete: "name" },
+  { key: "phone", label: "Số điện thoại", type: "tel", required: false, autoComplete: "tel" },
   { key: "email", label: "Email", type: "email", required: true, autoComplete: "email" },
   {
-    key: "matKhau",
+    key: "password",
     label: "Mật khẩu (ít nhất 8 ký tự)",
     type: "password",
     required: true,
@@ -25,7 +25,7 @@ const FIELDS = [
 
 export function SignupForm() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ hoTen: "", soDienThoai: "", email: "", matKhau: "" });
+  const [form, setForm] = useState({ fullName: "", phone: "", email: "", password: "" });
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [k]: e.target.value }));
@@ -56,7 +56,7 @@ export function SignupForm() {
           label={label}
           type={type}
           required={required}
-          minLength={key === "matKhau" ? 8 : undefined}
+          minLength={key === "password" ? 8 : undefined}
           autoComplete={autoComplete}
           value={form[key]}
           onChange={set(key)}

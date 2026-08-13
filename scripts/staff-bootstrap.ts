@@ -31,8 +31,8 @@ if (!email) throw new Error("Thiếu STAFF_OWNER_EMAIL — xem .env.example");
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("Thiếu DATABASE_URL — xem .env.example");
 
-const matKhau = process.env.STAFF_OWNER_PASSWORD ?? "DoiMatKhauNgay!1";
-const hoTen = process.env.STAFF_OWNER_NAME ?? "Chủ shop";
+const password = process.env.STAFF_OWNER_PASSWORD ?? "DoiMatKhauNgay!1";
+const fullName = process.env.STAFF_OWNER_NAME ?? "Chủ shop";
 
 // `exactOptionalPropertyTypes` (bật ở scripts/ qua tsconfig.base.json) từ chối gán
 // thẳng `apiKey: string | undefined` vào field khai `apiKey?: string` — khác `T`
@@ -62,11 +62,11 @@ let userId = users[0]?.id;
 if (userId) {
   console.warn(`User SuperTokens đã tồn tại: ${userId}`);
 } else {
-  const created = await EmailPassword.signUp("public", email, matKhau);
+  const created = await EmailPassword.signUp("public", email, password);
   if (created.status !== "OK") throw new Error(`Tạo user thất bại: ${created.status}`);
   userId = created.user.id;
   console.warn(`Đã tạo user SuperTokens: ${userId}`);
-  console.warn(`Mật khẩu tạm: ${matKhau} — ĐỔI NGAY sau lần đăng nhập đầu.`);
+  console.warn(`Mật khẩu tạm: ${password} — ĐỔI NGAY sau lần đăng nhập đầu.`);
 }
 
 const sql = new SQL(databaseUrl);
@@ -74,7 +74,7 @@ const sql = new SQL(databaseUrl);
 try {
   await sql`
     INSERT INTO staff_users (id, email, full_name, role, status, approved_at)
-    VALUES (${userId}, ${email}, ${hoTen}, 'OWNER', 'ACTIVE', now())
+    VALUES (${userId}, ${email}, ${fullName}, 'OWNER', 'ACTIVE', now())
     ON CONFLICT (id) DO UPDATE
       SET role = 'OWNER', status = 'ACTIVE', updated_at = now()
   `;
