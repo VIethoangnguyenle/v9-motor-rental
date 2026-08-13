@@ -43,6 +43,10 @@ const resetDeps: PasswordResetDeps = {
   resetPasswordWithToken: (token, newPassword) =>
     EmailPassword.resetPasswordUsingToken("public", token, newPassword),
   revokeSessions,
+  // `verifyCredentials`, KHÔNG PHẢI `signIn` — chỉ so mật khẩu, không tạo thêm
+  // session. Dùng cho `changePassword` (xem services/password-reset.ts); route
+  // gọi service đó tự nó chưa tồn tại ở đây, chỉ có mặt để `resetDeps` khớp type.
+  verifyPassword: (email, password) => EmailPassword.verifyCredentials("public", email, password),
 };
 
 /**

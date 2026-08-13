@@ -3,6 +3,7 @@ import { schema } from "@v9/db";
 import { and, eq, isNull, like } from "drizzle-orm";
 import { db } from "../db";
 import {
+  changePassword,
   createResetCode,
   findStaffByEmail,
   generateRandomCode,
@@ -67,7 +68,12 @@ interface CallRecord {
  * (pattern 2 của repo). `supertokens.init()` nằm ở `plugins/auth.ts`, mà
  * `services/` bị ESLint cấm import `plugins/`.
  */
-function spyDeps(opts?: { tokenStatus?: string; resetStatus?: string; token?: string }) {
+function spyDeps(opts?: {
+  tokenStatus?: string;
+  resetStatus?: string;
+  token?: string;
+  verifyStatus?: string;
+}) {
   const log: CallRecord[] = [];
   const token = opts?.token ?? "token-supertokens-gia";
   const deps: PasswordResetDeps = {
@@ -82,6 +88,10 @@ function spyDeps(opts?: { tokenStatus?: string; resetStatus?: string; token?: st
     revokeSessions: (userId) => {
       log.push({ name: "revokeSessions", args: [userId] });
       return Promise.resolve();
+    },
+    verifyPassword: (email, password) => {
+      log.push({ name: "verifyPassword", args: [email, password] });
+      return Promise.resolve({ status: opts?.verifyStatus ?? "OK" });
     },
   };
   return { deps, log, token };
@@ -321,5 +331,57 @@ describe("resetPasswordWithCode", () => {
       reason: "NOT_FOUND",
     });
     expect(log).toEqual([]);
+  });
+});
+
+describe("changePassword", () => {
+  const staff = { id: ID, email: EMAIL };
+
+  it("mật khẩu mới trùng mật khẩu cũ: SAME_PASSWORD, KHÔNG gọi deps nào cả", async () => {
+    const { deps, log } = spyDeps();
+
+    // Điểm quan trọng nhất của test này: check này phải chạy TRƯỚC cả
+    // `verifyPassword` (argon2id, ~115ms) lẫn bất cứ thứ gì có thể thu hồi
+    // session. Đổi mật khẩu thành chính nó rồi đá người dùng ra ngoài là một
+    // sự kiện gây hoang mang không cần thiết.
+    expect(await changePassword(deps, staff, "matkhau-hien-tai", "matkhau-hien-tai")).toEqual({
+      ok: false,
+      reason: "SAME_PASSWORD",
+    });
+    expect(log).toEqual([]);
+  });
+
+  it("mật khẩu hiện tại sai: WRONG_CURRENT_PASSWORD, KHÔNG sinh reset token", async () => {
+    const { deps, log } = spyDeps({ verifyStatus: "WRONG_CREDENTIALS_ERROR" });
+
+    // Cùng lớp lỗi với test "mã sai: KHÔNG gọi deps nào cả" ở resetPasswordWithCode:
+    // phát một credential đặt lại mật khẩu cho người vừa xác thực THẤT BẠI là sai
+    // y hệt việc phát nó cho người đang đoán mò mã 6 số.
+    expect(await changePassword(deps, staff, "mat-khau-sai", "matkhau-moi-rat-dai")).toEqual({
+      ok: false,
+      reason: "WRONG_CURRENT_PASSWORD",
+    });
+    expect(log).toEqual([{ name: "verifyPassword", args: [EMAIL, "mat-khau-sai"] }]);
+  });
+
+  it("mật khẩu hiện tại đúng: verify → sinh token → đổi mật khẩu → thu hồi session, đúng thứ tự", async () => {
+    const { deps, log, token } = spyDeps();
+
+    expect(await changePassword(deps, staff, "matkhau-hien-tai", "matkhau-moi-rat-dai")).toEqual({
+      ok: true,
+    });
+
+    expect(log).toEqual([
+      { name: "verifyPassword", args: [EMAIL, "matkhau-hien-tai"] },
+      { name: "createResetToken", args: [ID, EMAIL] },
+      { name: "resetPasswordWithToken", args: [token, "matkhau-moi-rat-dai"] },
+      // Cùng lý do với resetPasswordWithCode: revokeSessions một mình chỉ giết
+      // refresh token, access token đang cầm vẫn sống tới khi hết hạn.
+      { name: "revokeSessions", args: [ID] },
+    ]);
+
+    // ...và cái dấu này mới là thứ ngắt access token đang cầm ngay lập tức —
+    // xem comment ở test tương ứng của resetPasswordWithCode.
+    expect((await loadStaff(ID))?.sessionsInvalidBefore).toBeInstanceOf(Date);
   });
 });

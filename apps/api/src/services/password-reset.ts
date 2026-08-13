@@ -29,6 +29,8 @@ export interface PasswordResetDeps {
   ) => Promise<{ status: string }>;
   /** Ở prod: `Session.revokeAllSessionsForUser(userId)`. */
   readonly revokeSessions: (userId: string) => Promise<unknown>;
+  /** Ở prod: `EmailPassword.verifyCredentials("public", email, password)`. */
+  readonly verifyPassword: (email: string, password: string) => Promise<{ status: string }>;
 }
 
 /**
@@ -293,6 +295,62 @@ export async function resetPasswordWithCode(
   // tới khi token hết hạn (mặc định 1 giờ) — đó là vế `revokeAndStamp` đóng nốt.
   // Vì sao cả hai vế đều cần và vì sao thứ tự revoke-trước-đóng-dấu-sau là bắt
   // buộc: xem `revokeAndStamp`.
+  await revokeAndStamp(deps, staff.id);
+  return { ok: true };
+}
+
+export type ChangePasswordResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: "SAME_PASSWORD" | "WRONG_CURRENT_PASSWORD" | "NOT_FOUND" | "WEAK_PASSWORD";
+    };
+
+/**
+ * Đường thứ hai để đổi mật khẩu, dành cho người ĐANG đăng nhập — khác
+ * `resetPasswordWithCode` ở chỗ không cần mã 6 số, chỉ cần đang cầm session hợp lệ
+ * và gõ đúng mật khẩu hiện tại.
+ *
+ * `deps.verifyPassword` phải là `EmailPassword.verifyCredentials`, KHÔNG phải
+ * `signIn`: `verifyCredentials` chỉ so mật khẩu, không tạo session mới. Dùng
+ * `signIn` ở đây sẽ âm thầm cấp thêm một session bên cạnh session người dùng đang
+ * có sẵn — cái giá không ai cần trả chỉ để kiểm một mật khẩu.
+ *
+ * Check "mật khẩu mới trùng mật khẩu cũ" đứng ĐẦU TIÊN, trước cả `verifyPassword`
+ * — không phải để tối ưu tốc độ (dù argon2id ~115ms mỗi lần cũng không rẻ), mà vì
+ * mọi bước sau nó đều có khả năng thu hồi session. Đổi mật khẩu thành chính nó rồi
+ * bị đá ra ngoài là một sự kiện gây hoang mang không cần thiết — chặn nó trước khi
+ * chạm bất cứ deps nào là cách duy nhất đảm bảo nó không xảy ra.
+ *
+ * Tái dùng `createResetToken` + `resetPasswordWithToken` của đường quên-mật-khẩu
+ * thay vì gọi một API khác của SuperTokens: chính sách mật khẩu (độ dài, độ mạnh)
+ * nhờ vậy chỉ nằm ở đúng MỘT chỗ — bên trong SuperTokens — nên `WEAK_PASSWORD` ở
+ * đây đọc thẳng từ `status` của lời gọi reset, không phải một kiểm tra độ dài viết
+ * tay có thể lệch với luật thật.
+ *
+ * ⚠️ `staff.email` là BẢN SAO (quyết định ① của ADR auth: SuperTokens giữ email
+ * gốc, `staff_users.email` chỉ mirror). Nếu hai nơi từng lệch nhau, `verifyPassword`
+ * sẽ báo sai và người dùng bị chặn đổi mật khẩu — hỏng theo hướng đóng, chấp nhận
+ * được, nhưng không ghi lại thì người debug sau này sẽ mất cả buổi chiều đoán vì
+ * sao mật khẩu đúng mà vẫn báo sai.
+ */
+export async function changePassword(
+  deps: PasswordResetDeps,
+  staff: { id: string; email: string },
+  currentPassword: string,
+  newPassword: string,
+): Promise<ChangePasswordResult> {
+  if (currentPassword === newPassword) return { ok: false, reason: "SAME_PASSWORD" };
+
+  const verify = await deps.verifyPassword(staff.email, currentPassword);
+  if (verify.status !== "OK") return { ok: false, reason: "WRONG_CURRENT_PASSWORD" };
+
+  const token = await deps.createResetToken(staff.id, staff.email);
+  if (token.status !== "OK" || !token.token) return { ok: false, reason: "NOT_FOUND" };
+
+  const reset = await deps.resetPasswordWithToken(token.token, newPassword);
+  if (reset.status !== "OK") return { ok: false, reason: "WEAK_PASSWORD" };
+
   await revokeAndStamp(deps, staff.id);
   return { ok: true };
 }

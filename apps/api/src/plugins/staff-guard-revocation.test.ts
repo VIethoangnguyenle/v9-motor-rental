@@ -168,6 +168,7 @@ const resetDeps: PasswordResetDeps = {
   resetPasswordWithToken: (token, newPassword) =>
     EmailPassword.resetPasswordUsingToken("public", token, newPassword),
   revokeSessions,
+  verifyPassword: (email, password) => EmailPassword.verifyCredentials("public", email, password),
 };
 const staffDeps: StaffDeps = { revokeSessions };
 
