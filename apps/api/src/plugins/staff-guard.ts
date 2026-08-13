@@ -140,6 +140,32 @@ export function isTokenRevoked(revokedAt: Date | null, iatSeconds: number | null
  * sau `.use(staffGuard)`. Đổi thành "scoped"/mặc định thì guard chỉ còn bảo vệ
  * chính plugin này — tức là không bảo vệ gì, và không có gì báo lỗi.
  */
+/**
+ * Mọi mã lỗi guard tự phát ra — KHÔNG đi qua service, nên không có kiểu nào ở
+ * tầng `services/` suy ra được nó. Đây là chỗ DUY NHẤT trong toàn bộ
+ * `ApiErrorCode` (xem `routes/staff.ts`) liệt kê mã bằng tay thay vì suy từ
+ * kiểu trả về của service — vì các mã này ĐÍCH THỰC không có discriminated
+ * union nào đứng sau để suy ra từ đó.
+ */
+export type GuardErrorCode =
+  | "NOT_AUTHENTICATED"
+  | "SESSION_EXPIRED"
+  | "ACCOUNT_DISABLED"
+  | "NO_PROFILE"
+  | "PENDING_APPROVAL"
+  | "FORBIDDEN";
+
+/**
+ * Dựng lỗi guard đã gõ kiểu — cùng lý do `toError` ở `routes/staff.ts`: gõ tay
+ * `code: "..."` trần ở mỗi `status(...)` không có gì chặn một chữ gõ sai, và
+ * lần đổi mã gần nhất (mười sáu mã, hai đợt trước) đúng là loại lỗi này. Ép
+ * `code` qua tham số kiểu `GuardErrorCode` thì một chữ gõ sai ở đây cũng là
+ * lỗi biên dịch, giống hệt các mã suy từ `Reason`.
+ */
+function guardError(code: GuardErrorCode, message: string) {
+  return { message, code };
+}
+
 export const staffGuard = new Elysia({ name: "staff-guard" })
   .resolve({ as: "global" }, async ({ request, path }) => {
     // Thoát sớm cho route công khai: KHÔNG chạm DB. `/health` có perf budget
@@ -161,8 +187,7 @@ export const staffGuard = new Elysia({ name: "staff-guard" })
     const method = request.method.toUpperCase();
     if (matchesRoute(PUBLIC_ROUTES, method, path)) return;
 
-    if (userId === null)
-      return status(401, { message: "Chưa đăng nhập", code: "NOT_AUTHENTICATED" });
+    if (userId === null) return status(401, guardError("NOT_AUTHENTICATED", "Chưa đăng nhập"));
 
     /**
      * Thu hồi tức thì — đứng TRƯỚC mọi phép kiểm trạng thái bên dưới, kể cả
@@ -184,15 +209,15 @@ export const staffGuard = new Elysia({ name: "staff-guard" })
      * trình duyệt và người dùng kẹt ở màn lỗi.
      */
     if (isTokenRevoked(staff?.sessionsInvalidBefore ?? null, iatSeconds)) {
-      return status(401, {
-        message: "Phiên đăng nhập đã hết hiệu lực — vui lòng đăng nhập lại",
-        code: "SESSION_EXPIRED",
-      });
+      return status(
+        401,
+        guardError("SESSION_EXPIRED", "Phiên đăng nhập đã hết hiệu lực — vui lòng đăng nhập lại"),
+      );
     }
 
     // DISABLED bị chặn ở MỌI route cần session, kể cả nhánh "chờ duyệt" bên dưới.
     if (staff?.status === "DISABLED") {
-      return status(403, { message: "Tài khoản đã bị khoá", code: "ACCOUNT_DISABLED" });
+      return status(403, guardError("ACCOUNT_DISABLED", "Tài khoản đã bị khoá"));
     }
 
     // Nhánh thứ hai: có session là đủ. PENDING và "chưa có hồ sơ" đi qua để
@@ -203,9 +228,9 @@ export const staffGuard = new Elysia({ name: "staff-guard" })
     // Có session nhưng thiếu hàng = lớp bù trừ của signUpPOST đã hỏng (§2.1
     // design doc). Trả 403 có mã riêng thay vì crash — người dùng thấy được lý
     // do, OWNER tìm ra được dấu vết.
-    if (!staff) return status(403, { message: "Tài khoản chưa có hồ sơ", code: "NO_PROFILE" });
+    if (!staff) return status(403, guardError("NO_PROFILE", "Tài khoản chưa có hồ sơ"));
     if (staff.status === "PENDING") {
-      return status(403, { message: "Tài khoản đang chờ duyệt", code: "PENDING_APPROVAL" });
+      return status(403, guardError("PENDING_APPROVAL", "Tài khoản đang chờ duyệt"));
     }
   });
 
@@ -220,7 +245,7 @@ export interface StaffContext {
 /** Dùng trong route cần role cụ thể. Trả `null` khi đủ quyền. */
 export function requireRole(staff: { role: StaffRole } | null, role: StaffRole) {
   if (!staff || staff.role !== role) {
-    return { message: "Không đủ quyền", code: "FORBIDDEN" as const };
+    return guardError("FORBIDDEN", "Không đủ quyền");
   }
   return null;
 }

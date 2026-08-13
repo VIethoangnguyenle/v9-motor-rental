@@ -16,6 +16,8 @@
  * `as` cho im: một 422 thật sẽ không có `code` lúc chạy. Hai hàm dưới đọc những
  * gì có mặt và nói thẳng khi không đọc được.
  */
+import type { ApiErrorCode } from "@v9/api";
+
 export interface ApiError {
   readonly message: string;
   readonly code: string;
@@ -38,5 +40,17 @@ export function parseApiError(value: unknown): ApiError | null {
 export const errorMessage = (value: unknown, fallback: string): string =>
   parseApiError(value)?.message ?? fallback;
 
-/** Mã máy đọc được, để phân nhánh. `null` khi thân lỗi không mang mã. */
-export const errorCode = (value: unknown): string | null => parseApiError(value)?.code ?? null;
+/**
+ * Mã máy đọc được, để phân nhánh. `null` khi thân lỗi không mang mã.
+ *
+ * `as ApiErrorCode` ở đây là một CAM KẾT về hợp đồng API, không phải một đảm
+ * bảo lúc chạy: giá trị thật vẫn nguyên là bất cứ gì server gửi — ép kiểu
+ * không đổi được điều đó, nó chỉ cho phép các nơi so sánh `code` (`===`) được
+ * `tsc` kiểm thay vì so một chuỗi trần không ai canh. `parseApiError` ở trên
+ * mới là chỗ kiểm THẬT lúc chạy (đúng hình dạng `{ message, code }`, đúng kiểu
+ * từng field); `errors.test.ts` khoá phần đó lại. Nếu server một ngày trả một
+ * `code` lạ không nằm trong `ApiErrorCode`, hàm này vẫn trả đúng chuỗi đó —
+ * chỉ có TypeScript là "tin" nhầm rằng nó nằm trong tập đã biết.
+ */
+export const errorCode = (value: unknown): ApiErrorCode | null =>
+  (parseApiError(value)?.code as ApiErrorCode | undefined) ?? null;

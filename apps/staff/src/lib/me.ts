@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import type { ApiErrorCode } from "@v9/api";
 import { api } from "./api";
 import { errorCode } from "./errors";
 
@@ -30,7 +31,7 @@ export type StaffRow = NonNullable<Awaited<ReturnType<typeof api.staff.users.get
  * `403 ACCOUNT_DISABLED` có chủ ý, frontend vứt đi, guard chỉ còn thấy `null`.
  * §1.1 docs/plans/2026-08-13-staff-auth-fix-design.md.
  */
-export type MeResult = { ok: true; me: Me } | { ok: false; code: string | null };
+export type MeResult = { ok: true; me: Me } | { ok: false; code: ApiErrorCode | null };
 
 /**
  * Một nguồn duy nhất cho "tôi là ai": guard của router và UI đọc CÙNG cache của

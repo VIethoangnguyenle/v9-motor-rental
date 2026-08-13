@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import EmailPassword from "supertokens-node/recipe/emailpassword";
 import Session from "supertokens-node/recipe/session";
-import { requireRole, staffGuard } from "../plugins/staff-guard";
+import { requireRole, staffGuard, type GuardErrorCode } from "../plugins/staff-guard";
 import { isEmailConfigured, sendResetCodeEmail } from "../services/email";
 import {
   createResetCode,
@@ -88,6 +88,23 @@ type PasswordReason = Extract<ResetPasswordResult, { ok: false }>["reason"];
 type Reason = PermissionReason | PasswordReason;
 
 /**
+ * MỌI mã lỗi `apps/api` có thể trả — nguồn sự thật cho so sánh `code` ở
+ * `apps/staff` (`errorCode()` ở `lib/errors.ts`), thay vì so chuỗi trần.
+ *
+ * Suy từ hai nguồn đã có, không liệt kê tay lần thứ hai:
+ *   • `Reason` — suy thẳng từ kiểu trả về của `services/staff.ts` và
+ *     `services/password-reset.ts` (đã có ở trên, dùng cho `MESSAGES` bên dưới).
+ *   • `GuardErrorCode` — suy từ `plugins/staff-guard.ts`, nơi guard chạy TRƯỚC
+ *     mọi route nên các mã đó không đi qua bất cứ discriminated union nào của
+ *     service để mà suy ra.
+ * `"EMAIL_NOT_CONFIGURED"` là literal tay DUY NHẤT ở đây: route
+ * `/staff/password-reset/request` phát nó thẳng lúc thiếu SMTP, không có union
+ * nào đứng sau để suy ra — hai chỗ liệt kê tay (đây và `GuardErrorCode`) là
+ * TOÀN BỘ phần không suy ra được của `ApiErrorCode`.
+ */
+export type ApiErrorCode = Reason | GuardErrorCode | "EMAIL_NOT_CONFIGURED";
+
+/**
  * Domain trả `reason` (pattern 3 của repo — discriminated union, không throw);
  * route dịch sang HTTP. **Mã giữ nguyên cho frontend, thông điệp cho người đọc**:
  * `apps/staff` phân nhánh theo `code`, không theo chuỗi tiếng Việt.
@@ -140,7 +157,10 @@ const adminResponses = {
  * đúng một mình — `requireRole(null, ...)` luôn từ chối. Viết thế này để không
  * phải rải `!` (non-null assertion) khắp file.
  */
-const FORBIDDEN = { message: "Không đủ quyền", code: "FORBIDDEN" } as const;
+const FORBIDDEN = {
+  message: "Không đủ quyền",
+  code: "FORBIDDEN" satisfies GuardErrorCode,
+} as const;
 
 export const staff = new Elysia({ name: "staff" })
   .use(staffGuard)
@@ -259,7 +279,7 @@ export const staff = new Elysia({ name: "staff" })
       if (!isEmailConfigured) {
         return status(503, {
           message: "Hệ thống chưa cấu hình email — liên hệ chủ shop để lấy mã",
-          code: "EMAIL_NOT_CONFIGURED",
+          code: "EMAIL_NOT_CONFIGURED" satisfies ApiErrorCode,
         });
       }
 

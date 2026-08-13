@@ -65,3 +65,13 @@ console.warn(`api đang chạy tại http://${env.host}:${String(env.port)}`);
 /** Eden Treaty ở frontend lấy type từ đây. */
 export type App = typeof app;
 export { app };
+
+/**
+ * Re-export CHỈ để `apps/staff` so `code` lỗi theo kiểu thay vì chuỗi trần
+ * (`errorCode()` ở `apps/staff/src/lib/errors.ts`). `boundaries/dependencies`
+ * chỉ cho `frontend` import TYPE từ `api-root` — đây là entrypoint DUY NHẤT
+ * `@v9/api` phơi ra (`exports["."]` trong `package.json`), nên không re-export
+ * ở đây thì `ApiErrorCode` không tới được `apps/staff` dù đã export ở
+ * `routes/staff.ts`.
+ */
+export type { ApiErrorCode } from "./routes/staff";
