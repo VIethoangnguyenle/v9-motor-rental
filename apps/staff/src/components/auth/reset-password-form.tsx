@@ -39,7 +39,7 @@ export function ResetPasswordForm({
     onMutate: () => onError(null),
     onSuccess: (res) => {
       if (res.error) onError(errorMessage(res.error.value, "Không đổi được mật khẩu, thử lại sau"));
-      else void navigate({ to: "/dang-nhap" });
+      else void navigate({ to: "/login" });
     },
   });
 

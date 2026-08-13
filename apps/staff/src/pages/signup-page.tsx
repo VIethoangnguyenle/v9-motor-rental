@@ -11,7 +11,7 @@ export function SignupPage() {
 
       <SignupForm />
 
-      <Link to="/dang-nhap" className="mt-4 inline-block text-sm underline">
+      <Link to="/login" className="mt-4 inline-block text-sm underline">
         Đã có tài khoản
       </Link>
     </PageShell>

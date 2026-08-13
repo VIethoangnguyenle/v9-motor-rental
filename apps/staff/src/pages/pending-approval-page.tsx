@@ -18,7 +18,7 @@ export function PendingApprovalPage() {
 
   async function handleSignOut() {
     await signOut(qc);
-    await navigate({ to: "/dang-nhap" });
+    await navigate({ to: "/login" });
   }
 
   return (

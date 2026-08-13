@@ -17,7 +17,7 @@ const me = (status: Me["status"]): Me => ({
 
 describe("decideEntry", () => {
   it("ca 1: không có session → về đăng nhập, không kèm lý do", () => {
-    expect(decideEntry(false, null)).toEqual({ type: "redirect", to: "/dang-nhap" });
+    expect(decideEntry(false, null)).toEqual({ type: "redirect", to: "/login" });
   });
 
   /**
@@ -27,13 +27,13 @@ describe("decideEntry", () => {
    * ca nào chạm là một nửa đổi thành `&&` mà cả bộ test vẫn xanh.
    */
   it("ca 1b: có session nhưng không có kết quả → về đăng nhập, không đăng xuất", () => {
-    expect(decideEntry(true, null)).toEqual({ type: "redirect", to: "/dang-nhap" });
+    expect(decideEntry(true, null)).toEqual({ type: "redirect", to: "/login" });
   });
 
   it("ca 2: 403 DA_KHOA → đăng xuất TRƯỚC rồi mới chuyển, kèm lý do", () => {
     expect(decideEntry(true, { ok: false, code: "DA_KHOA" })).toEqual({
       type: "signOutThenRedirect",
-      to: "/dang-nhap",
+      to: "/login",
       reason: "disabled",
     });
   });
@@ -41,7 +41,7 @@ describe("decideEntry", () => {
   it("ca 3: 403 CHUA_CO_HO_SO → cũng đăng xuất, lý do riêng", () => {
     expect(decideEntry(true, { ok: false, code: "CHUA_CO_HO_SO" })).toEqual({
       type: "signOutThenRedirect",
-      to: "/dang-nhap",
+      to: "/login",
       reason: "no-profile",
     });
   });
@@ -54,18 +54,18 @@ describe("decideEntry", () => {
   it("ca 4: lỗi không rõ hoặc mạng chết → chuyển hướng nhưng KHÔNG đăng xuất", () => {
     expect(decideEntry(true, { ok: false, code: null })).toEqual({
       type: "redirect",
-      to: "/dang-nhap",
+      to: "/login",
     });
     expect(decideEntry(true, { ok: false, code: "CHUA_DANG_NHAP" })).toEqual({
       type: "redirect",
-      to: "/dang-nhap",
+      to: "/login",
     });
   });
 
   it("ca 5: PENDING → màn chờ duyệt", () => {
     expect(decideEntry(true, { ok: true, me: me("PENDING") })).toEqual({
       type: "redirect",
-      to: "/cho-duyet",
+      to: "/pending-approval",
     });
   });
 
@@ -78,7 +78,7 @@ describe("decideEntry", () => {
   it("ca 6: hồ sơ nói DISABLED → đăng xuất rồi chuyển (phòng thủ)", () => {
     expect(decideEntry(true, { ok: true, me: me("DISABLED") })).toEqual({
       type: "signOutThenRedirect",
-      to: "/dang-nhap",
+      to: "/login",
       reason: "disabled",
     });
   });

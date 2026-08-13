@@ -11,12 +11,12 @@ export function LoginPage() {
 
   return (
     <PageShell title="Đăng nhập">
-      {search.ly_do === "disabled" && (
+      {search.reason === "disabled" && (
         <div className="mt-3">
           <Alert tone="warning">Tài khoản của bạn đã bị khoá. Liên hệ chủ shop.</Alert>
         </div>
       )}
-      {search.ly_do === "no-profile" && (
+      {search.reason === "no-profile" && (
         <div className="mt-3">
           <Alert tone="warning">
             Tài khoản chưa có hồ sơ nhân viên. Liên hệ chủ shop để được tạo hồ sơ.
@@ -27,10 +27,10 @@ export function LoginPage() {
       <LoginForm />
 
       <div className="mt-4 flex justify-between text-sm">
-        <Link to="/dang-ky" className="underline">
+        <Link to="/signup" className="underline">
           Tạo tài khoản
         </Link>
-        <Link to="/quen-mat-khau" className="underline">
+        <Link to="/forgot-password" className="underline">
           Quên mật khẩu
         </Link>
       </div>

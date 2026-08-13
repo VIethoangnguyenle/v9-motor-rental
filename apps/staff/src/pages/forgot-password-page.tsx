@@ -45,7 +45,7 @@ export function ForgotPasswordPage() {
         />
       )}
 
-      <Link to="/dang-nhap" className="mt-4 inline-block text-sm underline">
+      <Link to="/login" className="mt-4 inline-block text-sm underline">
         Quay lại đăng nhập
       </Link>
     </PageShell>

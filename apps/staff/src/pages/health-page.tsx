@@ -22,7 +22,7 @@ export function HealthPage() {
 
   async function handleSignOut() {
     await signOut(qc);
-    await navigate({ to: "/dang-nhap" });
+    await navigate({ to: "/login" });
   }
 
   return (

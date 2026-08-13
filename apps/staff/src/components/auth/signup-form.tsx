@@ -39,7 +39,7 @@ export function SignupForm() {
     // Đăng ký xong SuperTokens đã tạo session, nhưng tài khoản ở trạng thái chờ
     // duyệt — nên đi thẳng tới màn giải thích, không phải trang chủ (trang chủ
     // sẽ đá về đây, chỉ tốn thêm một vòng).
-    onSuccess: () => navigate({ to: "/cho-duyet" }),
+    onSuccess: () => navigate({ to: "/pending-approval" }),
   });
 
   return (

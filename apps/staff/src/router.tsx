@@ -28,7 +28,7 @@ import { StaffListPage } from "./pages/staff-list-page";
 import { ForgotPasswordPage } from "./pages/forgot-password-page";
 
 /**
- * Hai nhánh, một hàng rào. Mọi route CẦN đăng nhập treo dưới `duocBaoVe`, nên
+ * Hai nhánh, một hàng rào. Mọi route CẦN đăng nhập treo dưới `protectedLayoutRoute`, nên
  * thêm một trang mới mà quên bảo vệ là chuyện không xảy ra được: chỗ duy nhất
  * để treo là `getParentRoute`, và cả hai lựa chọn đều hiện ra trong diff.
  *
@@ -40,9 +40,9 @@ const rootRoute = createRootRouteWithContext<{ queryClient: QueryClient }>()({
 });
 
 /** Layout route (`id`, không `path`): nhóm route lại mà không thêm đoạn URL nào. */
-const congKhai = createRoute({
+const publicLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
-  id: "cong-khai",
+  id: "public",
   component: Outlet,
 });
 
@@ -53,9 +53,9 @@ const congKhai = createRoute({
  * `ensureMe` đi qua `ensureQueryData`, nên lần điều hướng sau đọc cache chứ không
  * bắn thêm request — guard không được biến mỗi cú click thành một vòng mạng.
  */
-const duocBaoVe = createRoute({
+const protectedLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
-  id: "duoc-bao-ve",
+  id: "protected",
   component: Outlet,
   beforeLoad: async ({ context }) => {
     // KHÔNG gọi `ensureMe` khi chưa có session: nó sẽ bắn một request `/staff/me`
@@ -79,7 +79,7 @@ const duocBaoVe = createRoute({
       } catch {
         // Cố ý nuốt: không có hành động nào khác đúng hơn là chuyển trang.
       }
-      throw redirect({ to: decision.to, search: { ly_do: decision.reason } });
+      throw redirect({ to: decision.to, search: { reason: decision.reason } });
     }
 
     // `decision.to` truyền động được và vẫn được kiểm kiểu: `redirect({ to })` nhận
@@ -87,7 +87,7 @@ const duocBaoVe = createRoute({
     //
     // `never` dưới đây là hàng rào, không phải phòng thủ thừa: thêm một arm vào
     // `EntryDecision` mà quên xử lý ở đây là **lỗi biên dịch**, thay vì một cú rơi
-    // im lặng về `/dang-nhap` — đúng kiểu hỏng mà cả pha này sinh ra để diệt.
+    // im lặng về `/login` — đúng kiểu hỏng mà cả pha này sinh ra để diệt.
     if (decision.type !== "redirect") {
       const unhandled: never = decision;
       throw new Error(`decideEntry trả về nhánh chưa xử lý: ${JSON.stringify(unhandled)}`);
@@ -96,46 +96,46 @@ const duocBaoVe = createRoute({
   },
 });
 
-const dangNhapRoute = createRoute({
-  getParentRoute: () => congKhai,
-  path: "/dang-nhap",
+const loginRoute = createRoute({
+  getParentRoute: () => publicLayoutRoute,
+  path: "/login",
   // Chỉ nhận giá trị trong danh sách trắng — LẤY TỪ `LOGIN_REASONS`, không chép
   // tay từng chuỗi: thêm một `LoginReason` mới mà quên sửa chỗ này (rất dễ quên,
   // vì `tsc` không báo gì) trước đây sẽ lặng lẽ lọc mất lý do và người dùng thấy
   // trang đăng nhập trắng trơn, không banner. Query string là dữ liệu người dùng
   // gõ được — để lọt chuỗi tuỳ ý vào đây là để lọt nó vào JSX của trang đăng nhập.
-  validateSearch: (search: Record<string, unknown>): { ly_do?: LoginReason } => {
-    const found = LOGIN_REASONS.find((r) => r === search["ly_do"]);
-    return found ? { ly_do: found } : {};
+  validateSearch: (search: Record<string, unknown>): { reason?: LoginReason } => {
+    const found = LOGIN_REASONS.find((r) => r === search["reason"]);
+    return found ? { reason: found } : {};
   },
   component: LoginPage,
 });
 
-const dangKyRoute = createRoute({
-  getParentRoute: () => congKhai,
-  path: "/dang-ky",
+const signupRoute = createRoute({
+  getParentRoute: () => publicLayoutRoute,
+  path: "/signup",
   component: SignupPage,
 });
 
-const quenMatKhauRoute = createRoute({
-  getParentRoute: () => congKhai,
-  path: "/quen-mat-khau",
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => publicLayoutRoute,
+  path: "/forgot-password",
   component: ForgotPasswordPage,
 });
 
 /**
- * `/cho-duyet` là route CÔNG KHAI dù chỉ người đã đăng nhập mới thấy nội dung
+ * `/pending-approval` là route CÔNG KHAI dù chỉ người đã đăng nhập mới thấy nội dung
  * thật: nó phải mở được bởi tài khoản PENDING, mà PENDING là đúng cái guard trên
- * kia đá ra. Treo nó dưới `duocBaoVe` thì thành vòng lặp chuyển hướng.
+ * kia đá ra. Treo nó dưới `protectedLayoutRoute` thì thành vòng lặp chuyển hướng.
  */
-const choDuyetRoute = createRoute({
-  getParentRoute: () => congKhai,
-  path: "/cho-duyet",
+const pendingApprovalRoute = createRoute({
+  getParentRoute: () => publicLayoutRoute,
+  path: "/pending-approval",
   component: PendingApprovalPage,
 });
 
-const trangChuRoute = createRoute({
-  getParentRoute: () => duocBaoVe,
+const homeRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
   path: "/",
   component: HealthPage,
 });
@@ -145,14 +145,14 @@ const trangChuRoute = createRoute({
  * trong JSX là điều kiện có thể quên ở trang tiếp theo, còn ở đây nó nằm cạnh
  * chính chỗ khai route.
  *
- * `context.me` tới từ `beforeLoad` của `duocBaoVe` — không đọc lại `/staff/me`.
+ * `context.me` tới từ `beforeLoad` của `protectedLayoutRoute` — không đọc lại `/staff/me`.
  * Đây là hàng rào của TRẢI NGHIỆM, không phải của dữ liệu: `/staff/users*` đã
  * tự đòi OWNER ở server (403 `THIEU_QUYEN`). Bỏ chỗ này thì STAFF thấy một
  * trang trống toàn lỗi 403, không phải thấy dữ liệu.
  */
-const nhanVienRoute = createRoute({
-  getParentRoute: () => duocBaoVe,
-  path: "/nhan-vien",
+const staffListRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/staff",
   beforeLoad: ({ context }) => {
     if (context.me.role !== "OWNER") throw redirect({ to: "/" });
   },
@@ -160,8 +160,13 @@ const nhanVienRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
-  congKhai.addChildren([dangNhapRoute, dangKyRoute, quenMatKhauRoute, choDuyetRoute]),
-  duocBaoVe.addChildren([trangChuRoute, nhanVienRoute]),
+  publicLayoutRoute.addChildren([
+    loginRoute,
+    signupRoute,
+    forgotPasswordRoute,
+    pendingApprovalRoute,
+  ]),
+  protectedLayoutRoute.addChildren([homeRoute, staffListRoute]),
 ]);
 
 /**

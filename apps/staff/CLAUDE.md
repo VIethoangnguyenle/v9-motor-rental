@@ -115,26 +115,26 @@ Cấu trúc trên là đích của đợt tách component. Mục _Xác thực_ n
 Cây route chia **hai nhánh**, và việc treo route vào nhánh nào _là_ toàn bộ cơ chế phân quyền của
 app này:
 
-| Nhánh                       | Route                                                       | Vì sao nằm ở đó                                                                                           |
-| --------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| công khai (`cong-khai`)     | `/dang-nhap` · `/dang-ky` · `/quen-mat-khau` · `/cho-duyet` | ba cái đầu hiển nhiên; `/cho-duyet` thì **không** — xem ngay dưới                                         |
-| được bảo vệ (`duoc-bao-ve`) | `/` (health) · `/nhan-vien` (chỉ OWNER)                     | guard chạy ở `beforeLoad` của chính layout route này, nên mọi route con được bảo vệ mà không phải khai gì |
+| Nhánh                     | Route                                                           | Vì sao nằm ở đó                                                                                           |
+| ------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| công khai (`public`)      | `/login` · `/signup` · `/forgot-password` · `/pending-approval` | ba cái đầu hiển nhiên; `/pending-approval` thì **không** — xem ngay dưới                                  |
+| được bảo vệ (`protected`) | `/` (health) · `/staff` (chỉ OWNER)                             | guard chạy ở `beforeLoad` của chính layout route này, nên mọi route con được bảo vệ mà không phải khai gì |
 
 **Không kiểm quyền trong component.** Chỗ duy nhất để treo một trang mới là `getParentRoute`, và cả
 hai lựa chọn đều hiện ra trong diff. Một trang tự gọi `useQuery(meQuery)` rồi tự kiểm là một trang
 mở toang ngay lần đầu ai đó quên — và nó im lặng.
 
-Guard làm đúng bốn việc, theo thứ tự: `Session.doesSessionExist()` sai → `/dang-nhap` · đọc
+Guard làm đúng bốn việc, theo thứ tự: `Session.doesSessionExist()` sai → `/login` · đọc
 `/staff/me` qua `ensureQueryData` (không được thì coi như không vào được) · `PENDING` →
-`/cho-duyet` · `DISABLED` → **`signOut()` trước** rồi mới về `/dang-nhap?ly_do=disabled` — giá
+`/pending-approval` · `DISABLED` → **`signOut()` trước** rồi mới về `/login?reason=disabled` — giá
 trị lấy từ `LOGIN_REASONS` ở `lib/guard-decision.ts` (còn có `no-profile`), không chép tay.
 
 Thứ tự ở ca cuối không phải chi tiết: để nguyên session của người bị khoá thì họ quay lại `/`, guard
 chạy lại đúng vòng đó, và app kẹt trong vòng chuyển hướng vô tận.
 
-**`/cho-duyet` là route công khai, dù chỉ người đã đăng nhập mới thấy nội dung thật.** Nó phải mở
-được bởi tài khoản `PENDING` — mà `PENDING` chính là thứ guard đá ra. Treo nó dưới `duoc-bao-ve` là
-tạo một vòng lặp chuyển hướng. Cùng lý lẽ với ngoại lệ `GET /staff/me` ở
+**`/pending-approval` là route công khai, dù chỉ người đã đăng nhập mới thấy nội dung thật.** Nó
+phải mở được bởi tài khoản `PENDING` — mà `PENDING` chính là thứ guard đá ra. Treo nó dưới
+`protected` là tạo một vòng lặp chuyển hướng. Cùng lý lẽ với ngoại lệ `GET /staff/me` ở
 `apps/api/src/plugins/staff-guard.ts`: người đang chờ duyệt phải đọc được **lý do** họ bị chặn, nếu
 không họ nhìn một màn hình trắng.
 
@@ -142,7 +142,7 @@ không họ nhìn một màn hình trắng.
 thật sự chạy. Nếu hàng rào chỉ phủ lên những trang chưa ai mở thì nó chưa được chứng minh gì —
 đúng kiểu "cơ chế trông như đang bảo vệ" mà CLAUDE.md gốc đếm được bốn lần.
 
-**Hai hàng rào cho `/nhan-vien`, làm hai việc khác nhau.** `beforeLoad` kiểm `context.me.role !==
+**Hai hàng rào cho `/staff`, làm hai việc khác nhau.** `beforeLoad` kiểm `context.me.role !==
 "OWNER"` là hàng rào của **trải nghiệm**; hàng rào của **dữ liệu** nằm ở server
 (`/staff/users*` trả `403 THIEU_QUYEN`). Bỏ cái ở đây thì `STAFF` không thấy dữ liệu — họ thấy một
 trang trống toàn lỗi 403. Bỏ cái ở server thì mất thật.

@@ -24,33 +24,33 @@ export type LoginReason = (typeof LOGIN_REASONS)[number];
  * Union literal chứ không phải `string`: `redirect({ to })` của TanStack Router
  * nhận đường dẫn đã biết kiểu, truyền một `string` tuỳ ý vào là lỗi biên dịch.
  */
-export type RedirectTarget = "/dang-nhap" | "/cho-duyet";
+export type RedirectTarget = "/login" | "/pending-approval";
 
 export type EntryDecision =
   | { type: "allow"; me: Me }
   | { type: "redirect"; to: RedirectTarget }
-  | { type: "signOutThenRedirect"; to: "/dang-nhap"; reason: LoginReason };
+  | { type: "signOutThenRedirect"; to: "/login"; reason: LoginReason };
 
-const DANG_NHAP = "/dang-nhap" as const;
+const LOGIN = "/login" as const;
 
 export function decideEntry(hasSession: boolean, result: MeResult | null): EntryDecision {
-  if (!hasSession || !result) return { type: "redirect", to: DANG_NHAP };
+  if (!hasSession || !result) return { type: "redirect", to: LOGIN };
 
   if (!result.ok) {
     // Chỉ đăng xuất khi server NÓI RÕ tài khoản không dùng được nữa. `code === null`
     // gộp cả mạng chết — huỷ session hợp lệ vì wifi chớp là hỏng theo chiều sai.
     if (result.code === "DA_KHOA") {
-      return { type: "signOutThenRedirect", to: DANG_NHAP, reason: "disabled" };
+      return { type: "signOutThenRedirect", to: LOGIN, reason: "disabled" };
     }
     if (result.code === "CHUA_CO_HO_SO") {
-      return { type: "signOutThenRedirect", to: DANG_NHAP, reason: "no-profile" };
+      return { type: "signOutThenRedirect", to: LOGIN, reason: "no-profile" };
     }
-    return { type: "redirect", to: DANG_NHAP };
+    return { type: "redirect", to: LOGIN };
   }
 
-  if (result.me.status === "PENDING") return { type: "redirect", to: "/cho-duyet" };
+  if (result.me.status === "PENDING") return { type: "redirect", to: "/pending-approval" };
   if (result.me.status === "DISABLED") {
-    return { type: "signOutThenRedirect", to: DANG_NHAP, reason: "disabled" };
+    return { type: "signOutThenRedirect", to: LOGIN, reason: "disabled" };
   }
   return { type: "allow", me: result.me };
 }
