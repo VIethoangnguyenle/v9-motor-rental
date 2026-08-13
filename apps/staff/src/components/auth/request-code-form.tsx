@@ -36,13 +36,13 @@ export function RequestCodeForm({
     mutationFn: () => api.staff["password-reset"].request.post({ email }),
     onSuccess: (res) => {
       if (res.error) {
-        const fallbackMessage = errorMessage(res.error.value, "Không gửi được yêu cầu");
+        const message = errorMessage(res.error.value, "Không gửi được yêu cầu");
         onDone({
           kind: "problem",
           text:
             errorCode(res.error.value) === "CHUA_CAU_HINH_EMAIL"
               ? "Hệ thống chưa gửi được email — nhắn chủ shop để lấy mã, rồi gõ vào đây."
-              : `${fallbackMessage} — nếu không nhận được mã, nhắn chủ shop để lấy mã.`,
+              : `${message} — nếu không nhận được mã, nhắn chủ shop để lấy mã.`,
         });
       } else {
         onDone({

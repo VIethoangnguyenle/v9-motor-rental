@@ -35,8 +35,8 @@ export function parseApiError(value: unknown): ApiError | null {
  * viết cho người đọc (`THONG_DIEP` trong `apps/api/src/routes/staff.ts`) — hiện
  * nguyên văn, đừng dịch lại ở đây thành bản thứ hai sẽ lệch.
  */
-export const errorMessage = (value: unknown, macDinh: string): string =>
-  parseApiError(value)?.message ?? macDinh;
+export const errorMessage = (value: unknown, fallback: string): string =>
+  parseApiError(value)?.message ?? fallback;
 
 /** Mã máy đọc được, để phân nhánh. `null` khi thân lỗi không mang mã. */
 export const errorCode = (value: unknown): string | null => parseApiError(value)?.code ?? null;
