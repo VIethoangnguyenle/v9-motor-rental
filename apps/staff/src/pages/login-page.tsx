@@ -23,6 +23,11 @@ export function LoginPage() {
           </Alert>
         </div>
       )}
+      {search.reason === "password-changed" && (
+        <div className="mt-3">
+          <Alert tone="info">Đã đổi mật khẩu. Đăng nhập lại bằng mật khẩu mới.</Alert>
+        </div>
+      )}
 
       <LoginForm />
 

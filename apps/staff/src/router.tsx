@@ -20,6 +20,7 @@ import {
 import { hasSession, signOut } from "./lib/auth";
 import { LOGIN_REASONS, decideEntry, type LoginReason } from "./lib/guard-decision";
 import { ensureMe } from "./lib/me";
+import { ChangePasswordPage } from "./pages/change-password-page";
 import { PendingApprovalPage } from "./pages/pending-approval-page";
 import { SignupPage } from "./pages/signup-page";
 import { LoginPage } from "./pages/login-page";
@@ -159,6 +160,20 @@ const staffListRoute = createRoute({
   component: StaffListPage,
 });
 
+/**
+ * `/change-password` phải nằm dưới `protectedLayoutRoute`, không phải
+ * `publicLayoutRoute`: nó gọi `POST /staff/password/change`, route đòi session
+ * hợp lệ + hồ sơ `ACTIVE` (guard mặc định chặn — xem `apps/api/src/routes/staff.ts`).
+ * Treo nhầm sang nhánh công khai thì trang vẫn render cho người CHƯA đăng nhập,
+ * và họ chỉ biết mình bị chặn khi bấm nút xong nhận 401 — đúng kiểu hàng rào
+ * "trông như đang bảo vệ" mà CLAUDE.md gốc cảnh báo.
+ */
+const changePasswordRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/change-password",
+  component: ChangePasswordPage,
+});
+
 const routeTree = rootRoute.addChildren([
   publicLayoutRoute.addChildren([
     loginRoute,
@@ -166,7 +181,7 @@ const routeTree = rootRoute.addChildren([
     forgotPasswordRoute,
     pendingApprovalRoute,
   ]),
-  protectedLayoutRoute.addChildren([homeRoute, staffListRoute]),
+  protectedLayoutRoute.addChildren([homeRoute, staffListRoute, changePasswordRoute]),
 ]);
 
 /**

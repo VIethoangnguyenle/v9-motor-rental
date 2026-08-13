@@ -28,6 +28,9 @@ export function AppNav({
           Nhân viên
         </Link>
       )}
+      <Link to="/change-password" className="underline">
+        Đổi mật khẩu
+      </Link>
       <button onClick={onSignOut} className="ml-auto underline">
         Đăng xuất
       </button>
