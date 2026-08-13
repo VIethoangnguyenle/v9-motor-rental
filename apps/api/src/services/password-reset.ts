@@ -2,7 +2,7 @@ import { and, desc, eq, gt, isNull, lt, sql } from "drizzle-orm";
 import { schema } from "@v9/db";
 import { db } from "../db";
 import { env } from "../env";
-import { stampSessionRevocation } from "./staff";
+import { revokeAndStamp } from "./staff";
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -275,10 +275,12 @@ export async function resetPasswordWithCode(
   // sẽ lệch nhau ở lần đầu tiên một trong hai được sửa.
   if (reset.status !== "OK") return { ok: false, reason: "WEAK_PASSWORD" };
 
-  // ⚠️ HAI BƯỚC, và cần cả hai — chúng giết hai loại token khác nhau.
+  // ⚠️ MỘT lời gọi, không phải hai lời gọi rời — `revokeAndStamp` (services/staff.ts)
+  // tự khoá thứ tự bên trong nó, và từ ngoài không còn cách nào gọi thiếu một vế.
   //
-  // Số đo giữ lại vì nó là lý do bước thứ hai tồn tại. 2026-08-11, trên stack
-  // thật, với đúng cookie cũ, khi ở đây CHỈ có `revokeSessions`:
+  // Số đo dưới đây giữ lại vì nó là lý do vế thứ hai (đóng dấu) tồn tại. Đo
+  // 2026-08-11, trên stack thật, với đúng cookie cũ, khi chỗ này CHỈ có
+  // `revokeSessions` (chưa có `revokeAndStamp`):
   //
   //   /auth/session/refresh với cookie cũ  → 401  (refresh token chết ngay)
   //   supertokens.session_info của user    → 0 hàng
@@ -288,13 +290,9 @@ export async function resetPasswordWithCode(
   // core trừ khi truyền `checkDatabase: true` — mà cờ đó bắt MỌI request được bảo
   // vệ phải gọi sang core, tức đổi một lỗ hổng lấy một phụ thuộc cứng trên đường
   // nóng nhất. Nên kẻ đang cầm token không gia hạn được nữa, nhưng vẫn dùng được
-  // tới khi token hết hạn (mặc định 1 giờ).
-  //
-  // `stampSessionRevocation` đóng nốt vế đó: `staff-guard` so `iat` của token với
-  // mốc và trả 401 nếu token cấp trước mốc — dùng lại đúng hàng `staff_users` mà
-  // guard đã đọc, không thêm query nào. Thứ tự (revoke trước, đóng dấu sau) là có
-  // chủ đích; lý do ở chính `stampSessionRevocation`.
-  await deps.revokeSessions(staff.id);
-  await stampSessionRevocation(staff.id);
+  // tới khi token hết hạn (mặc định 1 giờ) — đó là vế `revokeAndStamp` đóng nốt.
+  // Vì sao cả hai vế đều cần và vì sao thứ tự revoke-trước-đóng-dấu-sau là bắt
+  // buộc: xem `revokeAndStamp`.
+  await revokeAndStamp(deps, staff.id);
   return { ok: true };
 }

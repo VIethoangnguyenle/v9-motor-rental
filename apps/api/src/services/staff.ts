@@ -20,7 +20,7 @@ export interface StaffUser {
   readonly status: StaffStatus;
   readonly approvedBy: string | null;
   readonly createdAt: Date;
-  /** Mốc thu hồi session — xem `stampSessionRevocation`. `null` = chưa từng thu hồi. */
+  /** Mốc thu hồi session — xem `revokeAndStamp`. `null` = chưa từng thu hồi. */
   readonly sessionsInvalidBefore: Date | null;
 }
 
@@ -32,6 +32,19 @@ export interface StaffUser {
  */
 export interface StaffDeps {
   /** Thu hồi mọi session của một người. Ở prod là Session.revokeAllSessionsForUser. */
+  readonly revokeSessions: (userId: string) => Promise<unknown>;
+}
+
+/**
+ * Vỏ tối thiểu mà `revokeAndStamp` cần — cố ý KHÔNG dùng thẳng `StaffDeps`, dù
+ * hai interface hiện giống hệt nhau. `PasswordResetDeps` (password-reset.ts)
+ * không liên quan gì tới các trường khác của `StaffDeps`; nó khớp được nhờ
+ * structural typing, không nhờ kế thừa. Nếu `StaffDeps` sau này phình thêm
+ * trường, ràng buộc đó không được kéo sang `password-reset.ts` — tách riêng
+ * interface này giữ đúng ranh giới đó, và là lý do cả hai deps type hiện có
+ * khớp `revokeAndStamp` mà không phải sửa gì ở phía chúng.
+ */
+export interface RevokeDeps {
   readonly revokeSessions: (userId: string) => Promise<unknown>;
 }
 
@@ -110,27 +123,13 @@ export async function createPendingStaff(input: {
 }
 
 /**
- * Đóng dấu "mọi access token cấp trước lúc này đều hết giá trị".
- *
- * ⚠️ Đi CẶP với `deps.revokeSessions`, không thay thế nó — hai cơ chế giết hai
- * thứ khác nhau và thiếu cái nào cũng để lại một nửa lỗ hổng:
- *   • `revokeAllSessionsForUser` xoá session ở core ⇒ **refresh token** chết ngay.
- *     Access token thì KHÔNG: nó là JWT tự xác thực cục bộ, `getSession` không hỏi
- *     core trừ khi truyền `checkDatabase: true`.
- *   • Cột này ⇒ **access token** đang cầm chết ngay ở request kế tiếp, vì
- *     `staff-guard` đã đọc sẵn hàng `staff_users` này rồi.
- * Bỏ vế đầu thì kẻ tấn công gia hạn được vô hạn; bỏ vế sau thì hắn còn đúng một
- * chu kỳ access token (mặc định 1 giờ) — đã đo 2026-08-11, xem comment ở cột
- * `sessions_invalid_before` trong `packages/db/src/schema/staff.ts`.
- *
- * Bất biến của repo: **hễ thu hồi thì đóng dấu**. Chỗ nào gọi `revokeSessions`
- * mà quên hàm này là chỗ đó thủng lại — hiện có đúng hai chỗ, `disableStaff` ngay
- * dưới và `doiMatKhauBangMa` ở `password-reset.ts`.
- *
- * Gọi SAU `revokeSessions`, không phải trước. Nếu tiến trình chết đúng giữa hai
- * lời gọi: thứ tự này để lại "refresh đã chết, access còn sống ≤1 giờ" (đúng bằng
- * lỗ hổng cũ), còn thứ tự ngược lại để lại "access chết, refresh còn sống" — kẻ
- * tấn công refresh một lần là có token mới cấp SAU mốc, tức là sống mãi.
+ * Đóng dấu "mọi access token cấp trước lúc này đều hết giá trị" — nửa SAU của
+ * cặp thu hồi. KHÔNG `export`: đó là hàng rào thật, không phải lời dặn trong
+ * comment. Gọi nửa này một mình, thiếu `deps.revokeSessions` đi trước, là mở
+ * lại đúng lỗ hổng mà cặp này tồn tại để vá — và giờ không còn cách nào làm
+ * vậy từ ngoài module. Lối vào duy nhất là `revokeAndStamp` ngay dưới; xem đó
+ * để biết vì sao cần cả hai vế và vì sao thứ tự revoke-trước-đóng-dấu-sau là
+ * bắt buộc.
  *
  * `now()` của Postgres chứ không phải `new Date()` của tiến trình API: mốc này
  * được so với `iat` do SuperTokens core cấp, nên càng ít đồng hồ tham gia càng
@@ -139,13 +138,47 @@ export async function createPendingStaff(input: {
  * transaction ngầm) nên hai giá trị bằng nhau; đừng chuyển nó vào trong một
  * transaction dài, mốc sẽ lùi về quá khứ đúng bằng thời gian transaction đó chạy.
  */
-export async function stampSessionRevocation(userId: string): Promise<Date | null> {
+async function stampSessionRevocation(userId: string): Promise<Date | null> {
   const [row] = await db
     .update(schema.staffUsers)
     .set({ sessionsInvalidBefore: sql`now()`, updatedAt: new Date() })
     .where(eq(schema.staffUsers.id, userId))
     .returning({ revokedAt: schema.staffUsers.sessionsInvalidBefore });
   return row?.revokedAt ?? null;
+}
+
+/**
+ * Thu hồi TOÀN BỘ một người trong MỘT lời gọi: `deps.revokeSessions` trước, rồi
+ * đóng dấu `sessions_invalid_before`. Đây là chỗ ép thật của bất biến "hễ thu
+ * hồi thì đóng dấu" — trước bản này nó chỉ là lời dặn trong comment ở đúng hai
+ * chỗ gọi; giờ `stampSessionRevocation` hết `export` nên gọi nửa sau mà quên
+ * nửa đầu không còn viết ra được từ ngoài module này nữa.
+ *
+ * Hai cơ chế giết hai thứ khác nhau, thiếu cái nào cũng để lại một nửa lỗ hổng:
+ *   • `revokeSessions` (ở prod là `Session.revokeAllSessionsForUser`) xoá
+ *     session ở core ⇒ **refresh token** chết ngay. Access token thì KHÔNG: nó
+ *     là JWT tự xác thực cục bộ, `getSession` không hỏi core trừ khi truyền
+ *     `checkDatabase: true`.
+ *   • `stampSessionRevocation` đóng dấu cột `sessions_invalid_before` ⇒
+ *     **access token** đang cầm chết ngay ở request kế tiếp, vì `staff-guard`
+ *     đã đọc sẵn hàng `staff_users` này rồi.
+ * Bỏ vế đầu thì kẻ tấn công gia hạn được vô hạn; bỏ vế sau thì hắn còn đúng một
+ * chu kỳ access token (mặc định 1 giờ) — đo thật 2026-08-11 trên stack thật,
+ * với đúng cookie cũ, khi chỗ gọi chỉ có `revokeSessions`: `/staff/me` vẫn ra
+ * **200**. Transcript đầy đủ nằm ở comment tại chỗ gọi trong `password-reset.ts`
+ * (và ở comment cột `sessions_invalid_before`, `packages/db/src/schema/staff.ts`).
+ *
+ * THỨ TỰ LÀ MỘT YÊU CẦU, không phải chi tiết triển khai: revoke trước, đóng
+ * dấu sau. Nếu tiến trình chết đúng giữa hai bước:
+ *   • revoke-trước-đóng-dấu-sau (thứ tự ở đây) để lại "refresh đã chết, access
+ *     còn sống ≤1 giờ" — đúng bằng lỗ hổng cũ, có giới hạn.
+ *   • đóng-dấu-trước-revoke-sau để lại "access chết, refresh còn sống" — kẻ
+ *     tấn công refresh MỘT LẦN là có token mới, cấp SAU mốc, tức sống mãi mãi.
+ * Đảo thứ tự biến một cửa sổ có giới hạn (≤1 giờ) thành một cửa sổ vô hạn.
+ */
+export async function revokeAndStamp(deps: RevokeDeps, userId: string): Promise<Date | null> {
+  await deps.revokeSessions(userId);
+  return stampSessionRevocation(userId);
 }
 
 function asActor(s: StaffUser): StaffActor {
@@ -267,13 +300,12 @@ export async function changeStaffRole(
  * Cùng lý do transaction như `changeStaffRole`: đếm OWNER (có khoá `FOR UPDATE`)
  * và khoá tài khoản phải đọc-ghi trên cùng một `tx`, không phải trên `db`.
  *
- * Thu hồi chạy SAU KHI transaction commit, và là HAI bước chứ không một:
- * `deps.revokeSessions` (giết refresh token ở core) rồi `stampSessionRevocation`
- * (giết access token đang cầm). Trên đường này bản thân `status = 'DISABLED'` đã
- * chặn ngay từ request kế tiếp — nên dấu ở đây trông như thừa, và nó tồn tại vì
- * bất biến **hễ thu hồi thì đóng dấu** phải đúng ở MỌI chỗ thu hồi. Một bất biến
- * chỉ đúng ở một trong hai chỗ là bất biến người sau sẽ chép sai; xem
- * `stampSessionRevocation`.
+ * Thu hồi chạy SAU KHI transaction commit, bằng `revokeAndStamp` — một lời gọi,
+ * không phải hai lời gọi rời tự ghép ở đây. Trên đường này bản thân
+ * `status = 'DISABLED'` đã chặn ngay từ request kế tiếp — nên gọi
+ * `revokeAndStamp` trông như thừa, và nó tồn tại vì bất biến **hễ thu hồi thì
+ * đóng dấu** phải đúng ở MỌI chỗ thu hồi, không có ngoại lệ vì "đường khác đã
+ * chặn rồi". Xem `revokeAndStamp`.
  */
 export async function disableStaff(
   deps: StaffDeps,
@@ -299,8 +331,7 @@ export async function disableStaff(
   });
 
   if (result.ok) {
-    await deps.revokeSessions(targetId);
-    await stampSessionRevocation(targetId);
+    await revokeAndStamp(deps, targetId);
   }
   return result;
 }
