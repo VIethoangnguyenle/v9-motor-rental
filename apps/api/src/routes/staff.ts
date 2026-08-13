@@ -4,9 +4,11 @@ import Session from "supertokens-node/recipe/session";
 import { requireRole, staffGuard, type GuardErrorCode } from "../plugins/staff-guard";
 import { isEmailConfigured, sendResetCodeEmail } from "../services/email";
 import {
+  changePassword,
   createResetCode,
   findStaffByEmail,
   resetPasswordWithCode,
+  type ChangePasswordResult,
   type PasswordResetDeps,
   type ResetPasswordResult,
 } from "../services/password-reset";
@@ -44,8 +46,8 @@ const resetDeps: PasswordResetDeps = {
     EmailPassword.resetPasswordUsingToken("public", token, newPassword),
   revokeSessions,
   // `verifyCredentials`, KHÔNG PHẢI `signIn` — chỉ so mật khẩu, không tạo thêm
-  // session. Dùng cho `changePassword` (xem services/password-reset.ts); route
-  // gọi service đó tự nó chưa tồn tại ở đây, chỉ có mặt để `resetDeps` khớp type.
+  // session. Dùng cho `changePassword` (xem services/password-reset.ts và route
+  // `POST /staff/password/change` bên dưới).
   verifyPassword: (email, password) => EmailPassword.verifyCredentials("public", email, password),
 };
 
@@ -89,7 +91,8 @@ const okSchema = t.Object({ ok: t.Boolean() });
 
 type PermissionReason = Extract<StaffMutationResult, { ok: false }>["reason"];
 type PasswordReason = Extract<ResetPasswordResult, { ok: false }>["reason"];
-type Reason = PermissionReason | PasswordReason;
+type ChangePasswordReason = Extract<ChangePasswordResult, { ok: false }>["reason"];
+type Reason = PermissionReason | PasswordReason | ChangePasswordReason;
 
 /**
  * MỌI mã lỗi `apps/api` có thể trả — nguồn sự thật cho so sánh `code` ở
@@ -128,6 +131,8 @@ const MESSAGES = {
   WRONG_CODE: "Mã không đúng",
   CODE_EXPIRED: "Mã đã hết hạn hoặc đã dùng — xin chủ shop cấp mã mới",
   WEAK_PASSWORD: "Mật khẩu mới chưa đạt yêu cầu",
+  SAME_PASSWORD: "Mật khẩu mới trùng mật khẩu hiện tại",
+  WRONG_CURRENT_PASSWORD: "Mật khẩu hiện tại không đúng",
 } as const satisfies Record<Reason, string>;
 
 const toError = (reason: Reason) => ({ message: MESSAGES[reason], code: reason });
@@ -326,5 +331,44 @@ export const staff = new Elysia({ name: "staff" })
         matKhauMoi: t.String({ minLength: 8 }),
       }),
       response: { 200: okSchema, 400: errorSchema },
+    },
+  )
+
+  /**
+   * Route này KHÔNG có mặt ở `PUBLIC_ROUTES` lẫn `SESSION_ONLY_ROUTES` của
+   * `staff-guard.ts` — đúng như vậy là cố ý. Guard mặc định CHẶN: route không
+   * được khai ở một trong hai danh sách đó thì tự động đòi session hợp lệ VÀ
+   * hồ sơ `ACTIVE`, không cần route này tự làm gì thêm để "bật" bảo vệ. Đó là
+   * toàn bộ lý do plugin này tồn tại — không ai phải NHỚ bảo vệ một route mới.
+   *
+   * `staff` lấy từ context guard đã `resolve` sẵn cho request này, CỐ Ý không
+   * gọi `loadStaff` lần nữa (xem comment ở `/staff/me` phía trên — cùng lý do,
+   * đây vẫn là đường nóng, không phải lý do riêng của route này).
+   *
+   * ⚠️ Đổi mật khẩu THÀNH CÔNG sẽ ĐĂNG XUẤT người dùng — không phải lựa chọn
+   * UX, mà là hệ quả bắt buộc của `revokeAndStamp` bên trong `changePassword`
+   * (xem `services/password-reset.ts`): mật khẩu mới có hiệu lực đồng nghĩa
+   * mọi session cấp trước đó — kể cả session hiện tại — bị thu hồi ngay ở
+   * request kế tiếp. `apps/staff` PHẢI nói rõ điều này trước khi gửi form,
+   * không phải để người dùng tự hỏi vì sao vừa đổi xong đã bị đá ra ngoài.
+   */
+  .post(
+    "/staff/password/change",
+    async ({ body, staff, status }) => {
+      if (!staff) return status(404, toError("NOT_FOUND"));
+
+      const res = await changePassword(resetDeps, staff, body.currentPassword, body.newPassword);
+      if (!res.ok) return status(400, toError(res.reason));
+      return status(200, { ok: true });
+    },
+    {
+      body: t.Object({
+        currentPassword: t.String({ minLength: 8 }),
+        // Cùng luật với `matKhauMoi` ở route reset phía trên: chính sách mật khẩu
+        // thật do SuperTokens giữ (`WEAK_PASSWORD`). 8 ký tự ở đây chỉ chặn thân
+        // request rỗng — KHÔNG nhân bản luật mạnh/yếu sang tầng này.
+        newPassword: t.String({ minLength: 8 }),
+      }),
+      response: { 200: okSchema, 400: errorSchema, 404: errorSchema },
     },
   );
