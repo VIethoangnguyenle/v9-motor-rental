@@ -3,7 +3,7 @@ import type { Me, StaffRow } from "../../lib/me";
 interface StaffRowActionsProps {
   readonly nv: StaffRow;
   readonly me: Me | null;
-  readonly dangChay: boolean;
+  readonly busy: boolean;
   readonly onApprove: (id: string) => void;
   readonly onDisable: (id: string) => void;
   readonly onIssueCode: (nv: { id: string; ten: string }) => void;
@@ -13,7 +13,7 @@ interface StaffRowActionsProps {
 export function StaffRowActions({
   nv,
   me,
-  dangChay,
+  busy,
   onApprove,
   onDisable,
   onIssueCode,
@@ -23,7 +23,7 @@ export function StaffRowActions({
       {nv.status === "PENDING" && (
         <button
           onClick={() => onApprove(nv.id)}
-          disabled={dangChay}
+          disabled={busy}
           className="rounded border px-2 py-1 disabled:opacity-50"
         >
           Duyệt
@@ -34,7 +34,7 @@ export function StaffRowActions({
       {nv.status === "ACTIVE" && nv.id !== me?.id && (
         <button
           onClick={() => onDisable(nv.id)}
-          disabled={dangChay}
+          disabled={busy}
           className="rounded border px-2 py-1 disabled:opacity-50"
         >
           Khoá
@@ -42,7 +42,7 @@ export function StaffRowActions({
       )}
       <button
         onClick={() => onIssueCode({ id: nv.id, ten: nv.fullName })}
-        disabled={dangChay}
+        disabled={busy}
         className="rounded border px-2 py-1 disabled:opacity-50"
       >
         Phát mã

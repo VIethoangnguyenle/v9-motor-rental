@@ -2,8 +2,10 @@ import { Link } from "@tanstack/react-router";
 import type { Me } from "../../lib/me";
 
 /**
- * Nav dùng chung. Trước đây chôn trong trang health, nên `/nhan-vien` phải tự chế
- * một link "← Trang chủ" và không có đường đăng xuất nào.
+ * Thanh điều hướng tối thiểu, và "tối thiểu" là có chủ ý: không có nó thì đăng
+ * nhập xong không có đường nào tới `/nhan-vien` và không có đường nào đăng xuất.
+ * Trước đây chôn trong trang health, nên `/nhan-vien` phải tự chế một link
+ * "← Trang chủ" thay vì dùng chung nav thật.
  *
  * Link `/nhan-vien` chỉ hiện với OWNER — đây là hàng rào của TRẢI NGHIỆM, không
  * phải của dữ liệu: `beforeLoad` của route đó và `/staff/users*` ở server mới là

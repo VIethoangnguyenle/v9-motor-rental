@@ -79,7 +79,7 @@ export function NhanVienPage() {
       <StaffTable
         rows={dsNhanVien.data ?? []}
         me={me}
-        dangChay={dangChay}
+        busy={dangChay}
         onApprove={duyet.mutate}
         onDisable={khoa.mutate}
         onIssueCode={phatMa.mutate}

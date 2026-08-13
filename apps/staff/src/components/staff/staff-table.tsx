@@ -4,20 +4,13 @@ import { StaffRowActions } from "./staff-row-actions";
 interface StaffTableProps {
   readonly rows: readonly StaffRow[];
   readonly me: Me | null;
-  readonly dangChay: boolean;
+  readonly busy: boolean;
   readonly onApprove: (id: string) => void;
   readonly onDisable: (id: string) => void;
   readonly onIssueCode: (nv: { id: string; ten: string }) => void;
 }
 
-export function StaffTable({
-  rows,
-  me,
-  dangChay,
-  onApprove,
-  onDisable,
-  onIssueCode,
-}: StaffTableProps) {
+export function StaffTable({ rows, me, busy, onApprove, onDisable, onIssueCode }: StaffTableProps) {
   return (
     <table className="mt-4 w-full text-left text-sm">
       <thead>
@@ -41,7 +34,7 @@ export function StaffTable({
             <StaffRowActions
               nv={nv}
               me={me}
-              dangChay={dangChay}
+              busy={busy}
               onApprove={onApprove}
               onDisable={onDisable}
               onIssueCode={onIssueCode}
