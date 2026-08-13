@@ -31,6 +31,28 @@ if (!email) throw new Error("Thiếu STAFF_OWNER_EMAIL — xem .env.example");
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("Thiếu DATABASE_URL — xem .env.example");
 
+const isProduction = process.env.NODE_ENV === "production";
+
+/**
+ * ⚠️ Mật khẩu mặc định bên dưới (`DoiMatKhauNgay!1`) NẰM CÔNG KHAI TRONG GIT —
+ * ai đọc được repo là đọc được nó. Ở dev thì vô hại: máy không lộ ra ngoài, và
+ * volume Postgres/SuperTokens là đồ dùng-rồi-bỏ. Ở production thì không —
+ * account OWNER đầu tiên của cả shop sẽ mang một mật khẩu ai cũng biết trước,
+ * và hệ thống hiện chưa có rate limit theo IP (docs/DEBT.md) nên không có gì
+ * chặn việc thử nó.
+ *
+ * Ném ở đây chứ không in cảnh báo rồi chạy tiếp — đúng lựa chọn `env.ts` đã
+ * làm với `AUTH_DEV_OTP`: một dòng cảnh báo lúc chạy chỉ là lời khuyên, ném
+ * mới ép được thật. Và ném **trước** khi chạm SuperTokens/Postgres, nên
+ * account mang mật khẩu công khai đó không được tạo dù chỉ một lần.
+ */
+if (isProduction && !process.env.STAFF_OWNER_PASSWORD) {
+  throw new Error(
+    "Thiếu STAFF_OWNER_PASSWORD ở NODE_ENV=production — mặc định là mật khẩu " +
+      "công khai trong git, không được dùng ở prod. Đặt biến này rồi chạy lại.",
+  );
+}
+
 const password = process.env.STAFF_OWNER_PASSWORD ?? "DoiMatKhauNgay!1";
 const fullName = process.env.STAFF_OWNER_NAME ?? "Chủ shop";
 
