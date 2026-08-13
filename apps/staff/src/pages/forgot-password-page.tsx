@@ -5,7 +5,7 @@ import { RequestCodeForm } from "../components/auth/request-code-form";
 import { ResetPasswordForm } from "../components/auth/reset-password-form";
 import { PageShell } from "../components/ui/page-shell";
 
-export function QuenMatKhauPage() {
+export function ForgotPasswordPage() {
   const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");

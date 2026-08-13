@@ -3,7 +3,7 @@ import { LoginForm } from "../components/auth/login-form";
 import { Alert } from "../components/ui/alert";
 import { PageShell } from "../components/ui/page-shell";
 
-export function DangNhapPage() {
+export function LoginPage() {
   // `strict: false` để trang không phải import ngược `router.tsx` (chu trình
   // module). Giá trị đã được `validateSearch` của route lọc còn đúng danh sách
   // trắng — chỉ "disabled" | "no-profile" | "password-changed" | undefined.

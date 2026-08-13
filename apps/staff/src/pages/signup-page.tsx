@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { SignupForm } from "../components/auth/signup-form";
 import { PageShell } from "../components/ui/page-shell";
 
-export function DangKyPage() {
+export function SignupPage() {
   return (
     <PageShell title="Tạo tài khoản nhân viên">
       <p className="mt-2 text-sm text-gray-600">

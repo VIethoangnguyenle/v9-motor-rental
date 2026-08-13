@@ -16,7 +16,7 @@ import { errorMessage } from "../lib/errors";
  */
 const ROLE_ON_APPROVE = "STAFF" as const;
 
-export function NhanVienPage() {
+export function StaffListPage() {
   const qc = useQueryClient();
   // Cache đã ấm: guard của router gọi `ensureMe` trước khi trang này render.
   const { me } = useMe();

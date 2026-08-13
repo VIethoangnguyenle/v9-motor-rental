@@ -20,12 +20,12 @@ import {
 import { hasSession, signOut } from "./lib/auth";
 import { LOGIN_REASONS, decideEntry, type LoginReason } from "./lib/guard-decision";
 import { ensureMe } from "./lib/me";
-import { ChoDuyetPage } from "./pages/cho-duyet";
-import { DangKyPage } from "./pages/dang-ky";
-import { DangNhapPage } from "./pages/dang-nhap";
-import { HealthPage } from "./pages/health";
-import { NhanVienPage } from "./pages/nhan-vien";
-import { QuenMatKhauPage } from "./pages/quen-mat-khau";
+import { PendingApprovalPage } from "./pages/pending-approval-page";
+import { SignupPage } from "./pages/signup-page";
+import { LoginPage } from "./pages/login-page";
+import { HealthPage } from "./pages/health-page";
+import { StaffListPage } from "./pages/staff-list-page";
+import { ForgotPasswordPage } from "./pages/forgot-password-page";
 
 /**
  * Hai nhánh, một hàng rào. Mọi route CẦN đăng nhập treo dưới `duocBaoVe`, nên
@@ -108,19 +108,19 @@ const dangNhapRoute = createRoute({
     const found = LOGIN_REASONS.find((r) => r === search["ly_do"]);
     return found ? { ly_do: found } : {};
   },
-  component: DangNhapPage,
+  component: LoginPage,
 });
 
 const dangKyRoute = createRoute({
   getParentRoute: () => congKhai,
   path: "/dang-ky",
-  component: DangKyPage,
+  component: SignupPage,
 });
 
 const quenMatKhauRoute = createRoute({
   getParentRoute: () => congKhai,
   path: "/quen-mat-khau",
-  component: QuenMatKhauPage,
+  component: ForgotPasswordPage,
 });
 
 /**
@@ -131,7 +131,7 @@ const quenMatKhauRoute = createRoute({
 const choDuyetRoute = createRoute({
   getParentRoute: () => congKhai,
   path: "/cho-duyet",
-  component: ChoDuyetPage,
+  component: PendingApprovalPage,
 });
 
 const trangChuRoute = createRoute({
@@ -156,7 +156,7 @@ const nhanVienRoute = createRoute({
   beforeLoad: ({ context }) => {
     if (context.me.role !== "OWNER") throw redirect({ to: "/" });
   },
-  component: NhanVienPage,
+  component: StaffListPage,
 });
 
 const routeTree = rootRoute.addChildren([

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useMe } from "../hooks/use-me";
 import { signOut } from "../lib/auth";
 
-export function ChoDuyetPage() {
+export function PendingApprovalPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   // Poll: OWNER bấm duyệt ở máy khác, nhân viên không phải đoán lúc nào tải lại.
