@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { ResetCodeNotice } from "../components/staff/reset-code-notice";
+import { StaffTable } from "../components/staff/staff-table";
+import { Alert } from "../components/ui/alert";
 import { useMe } from "../hooks/use-me";
 import { api } from "../lib/api";
 import { thongDiepLoi } from "../lib/loi";
@@ -17,8 +20,6 @@ export function NhanVienPage() {
   const qc = useQueryClient();
   // Cache đã ấm: guard của router gọi `layMe` trước khi trang này render.
   const { me } = useMe();
-  // Giữ cả tên: chủ shop đọc mã qua Zalo cho một CON NGƯỜI, nên màn hình phải
-  // nói mã này của ai. UUID không giúp được việc đó.
   const [ma, setMa] = useState<{ ten: string; code: string } | null>(null);
 
   const dsNhanVien = useQuery({
@@ -67,68 +68,22 @@ export function NhanVienPage() {
       </Link>
       <h1 className="mt-2 text-xl font-bold">Nhân viên</h1>
 
-      {ma && (
-        <p className="mt-3 rounded bg-gray-100 p-3 text-sm">
-          Mã đặt lại mật khẩu cho <strong>{ma.ten}</strong>:{" "}
-          <strong className="tracking-widest">{ma.code}</strong> — đọc cho nhân viên qua Zalo. Mã
-          sống 10 phút và chỉ dùng được một lần.
-        </p>
+      <ResetCodeNotice ma={ma} />
+
+      {loi && (
+        <div className="mt-3">
+          <Alert tone="error">{loi}</Alert>
+        </div>
       )}
 
-      {loi && <p className="mt-3 rounded bg-red-100 p-3 text-sm text-red-800">{loi}</p>}
-
-      <table className="mt-4 w-full text-left text-sm">
-        <thead>
-          <tr className="border-b">
-            <th className="py-2">Họ tên</th>
-            <th>Email</th>
-            <th>Điện thoại</th>
-            <th>Vai trò</th>
-            <th>Trạng thái</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {dsNhanVien.data?.map((nv) => (
-            <tr key={nv.id} className="border-b align-top">
-              <td className="py-2">{nv.fullName}</td>
-              <td>{nv.email}</td>
-              <td>{nv.phone ?? "—"}</td>
-              <td>{nv.role}</td>
-              <td>{nv.status}</td>
-              <td className="flex flex-wrap gap-2 py-2">
-                {nv.status === "PENDING" && (
-                  <button
-                    onClick={() => duyet.mutate(nv.id)}
-                    disabled={dangChay}
-                    className="rounded border px-2 py-1 disabled:opacity-50"
-                  >
-                    Duyệt
-                  </button>
-                )}
-                {/* Tự khoá mình bị backend chặn (`TU_KHOA_MINH`); ẩn nút để không
-                    mời người ta bấm vào một lỗi đã biết trước. */}
-                {nv.status === "ACTIVE" && nv.id !== me?.id && (
-                  <button
-                    onClick={() => khoa.mutate(nv.id)}
-                    disabled={dangChay}
-                    className="rounded border px-2 py-1 disabled:opacity-50"
-                  >
-                    Khoá
-                  </button>
-                )}
-                <button
-                  onClick={() => phatMa.mutate({ id: nv.id, ten: nv.fullName })}
-                  disabled={dangChay}
-                  className="rounded border px-2 py-1 disabled:opacity-50"
-                >
-                  Phát mã
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <StaffTable
+        rows={dsNhanVien.data ?? []}
+        me={me}
+        dangChay={dangChay}
+        onApprove={duyet.mutate}
+        onDisable={khoa.mutate}
+        onIssueCode={phatMa.mutate}
+      />
 
       {dsNhanVien.isPending && <p className="mt-3 text-sm text-gray-600">Đang tải…</p>}
       {dsNhanVien.data?.length === 0 && (

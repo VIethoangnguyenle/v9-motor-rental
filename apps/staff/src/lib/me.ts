@@ -16,6 +16,15 @@ import { maLoi } from "./loi";
 export type Me = NonNullable<Awaited<ReturnType<typeof api.staff.me.get>>["data"]>;
 
 /**
+ * Một dòng trong danh sách nhân viên. Suy ra từ chính `GET /staff/users`, không
+ * gõ tay và không mượn `Me` — hai endpoint hôm nay dùng chung `staffSchema` nên
+ * hình dạng trùng nhau, nhưng `Me` nghĩa là "tôi là ai"; mượn nó cho một dòng mô
+ * tả NGƯỜI KHÁC là chỗ người đọc sau vấp, và là chỗ hai endpoint tách nhau ra sẽ
+ * hỏng mà không ai thấy.
+ */
+export type StaffRow = NonNullable<Awaited<ReturnType<typeof api.staff.users.get>>["data"]>[number];
+
+/**
  * Kết quả đọc hồ sơ. Trước đây hàm này trả `Me | null` và **nuốt mã lỗi** — đó
  * đúng là lỗi làm nhánh DISABLED của router thành code chết: API trả
  * `403 DA_KHOA` có chủ ý, frontend vứt đi, guard chỉ còn thấy `null`.
