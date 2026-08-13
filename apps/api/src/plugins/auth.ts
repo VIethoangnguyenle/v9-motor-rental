@@ -157,7 +157,7 @@ supertokens.init({
       //
       // Trình duyệt ở `localhost` **âm thầm vứt** cookie mang `Domain=.example.com`.
       // Hệ quả: `POST /auth/signin` trả 200 kèm Set-Cookie trông hoàn toàn đúng,
-      // không session nào được lưu, và `staff-guard` đá người dùng về `/dang-nhap`
+      // không session nào được lưu, và `staff-guard` đá người dùng về `/login`
       // mãi mãi — không console, không log, không status code sai, không test nào
       // đỏ. Cùng lý lẽ với hàng rào `AUTH_DEV_OTP` ở `env.ts`: điều kiện phải là
       // `NODE_ENV`, không phải "config đó có được điền hay không".

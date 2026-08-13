@@ -8,8 +8,8 @@ Role `OWNER`, `STAFF`; `SALES` để dành, chưa định nghĩa làm gì.
 Bốn tính năng chính **chưa làm**, mỗi cái cần brainstorm nghiệp vụ riêng: lịch · thống kê ·
 lên đơn/bàn giao xe · quản lý khách hàng.
 
-Đã có: **đăng nhập / đăng ký / quên mật khẩu / chờ duyệt / quản lý nhân viên**, cộng trang `health`
-cũ — nay nằm dưới nhánh được bảo vệ, xem mục xác thực bên dưới.
+Đã có: **đăng nhập / đăng ký / quên mật khẩu / chờ duyệt / quản lý nhân viên / đổi mật khẩu**, cộng
+trang `health` cũ — nay nằm dưới nhánh được bảo vệ, xem mục xác thực bên dưới.
 
 ## Styling: Tailwind v4, theme mặc định — **không** dùng `DESIGN.md`
 
@@ -107,10 +107,7 @@ thống kê · bàn giao · khách hàng). Một `TextField` biết `StaffRole` 
 thứ đó; cuộn tay là cách chúng lệch nhau giữa các form. Bảng nhân viên đã dùng `useMutation` cho
 các nút hành động — nên đây là mở rộng một pattern đã có, không phải pattern thứ hai.
 
-Cấu trúc trên là đích của đợt tách component. Mục _Xác thực_ ngay dưới còn mô tả trạng thái trước
-đợt đó — nó được viết lại khi đợt xong.
-
-## Xác thực: năm màn hình, và **một** hàng rào ở `beforeLoad`
+## Xác thực: sáu màn hình, và **một** hàng rào ở `beforeLoad`
 
 Cây route chia **hai nhánh**, và việc treo route vào nhánh nào _là_ toàn bộ cơ chế phân quyền của
 app này:
@@ -118,19 +115,31 @@ app này:
 | Nhánh                     | Route                                                           | Vì sao nằm ở đó                                                                                           |
 | ------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | công khai (`public`)      | `/login` · `/signup` · `/forgot-password` · `/pending-approval` | ba cái đầu hiển nhiên; `/pending-approval` thì **không** — xem ngay dưới                                  |
-| được bảo vệ (`protected`) | `/` (health) · `/staff` (chỉ OWNER)                             | guard chạy ở `beforeLoad` của chính layout route này, nên mọi route con được bảo vệ mà không phải khai gì |
+| được bảo vệ (`protected`) | `/` (health) · `/staff` (chỉ OWNER) · `/change-password`        | guard chạy ở `beforeLoad` của chính layout route này, nên mọi route con được bảo vệ mà không phải khai gì |
 
 **Không kiểm quyền trong component.** Chỗ duy nhất để treo một trang mới là `getParentRoute`, và cả
 hai lựa chọn đều hiện ra trong diff. Một trang tự gọi `useQuery(meQuery)` rồi tự kiểm là một trang
 mở toang ngay lần đầu ai đó quên — và nó im lặng.
 
-Guard làm đúng bốn việc, theo thứ tự: `Session.doesSessionExist()` sai → `/login` · đọc
-`/staff/me` qua `ensureQueryData` (không được thì coi như không vào được) · `PENDING` →
-`/pending-approval` · `DISABLED` → **`signOut()` trước** rồi mới về `/login?reason=disabled` — giá
-trị lấy từ `LOGIN_REASONS` ở `lib/guard-decision.ts` (còn có `no-profile`), không chép tay.
+Guard ở `beforeLoad` chỉ điều phối; quyết định "vào hay bị đá đi đâu" nằm trong `decideEntry`
+(`lib/guard-decision.ts`) — hàm THUẦN, tách khỏi router có chủ ý để test bằng bảy ca không cần dựng
+router thật. Theo thứ tự: không có session → `/login` · đọc `/staff/me` qua `ensureQueryData`
+(không được thì coi như không vào được) · `PENDING` → `/pending-approval` · hồ sơ báo
+`ACCOUNT_DISABLED`/`NO_PROFILE` → **`signOut()` trước** rồi mới về `/login?reason=...` — lý do lấy
+từ `LOGIN_REASONS` ở cùng file (còn có `password-changed`, dùng sau khi tự đổi mật khẩu thành công
+— nhánh đó không qua `decideEntry`, xem `components/auth/change-password-form.tsx`), không chép tay
+sang `router.tsx`.
 
-Thứ tự ở ca cuối không phải chi tiết: để nguyên session của người bị khoá thì họ quay lại `/`, guard
-chạy lại đúng vòng đó, và app kẹt trong vòng chuyển hướng vô tận.
+**Nhánh DISABLED từng là code chết.** Bản trước khi tách hàm này kiểm `if (!me)` đứng TRƯỚC nhánh
+DISABLED trong cùng một khối `beforeLoad` — nhánh DISABLED không bao giờ chạy tới, người bị khoá bị
+đá thẳng về `/login` không kèm lý do nào, và `apps/staff` lúc đó chưa có một test nào để bắt lỗi thứ
+tự này. `decideEntry` rút quyết định ra một hàm thuần thì thứ tự nhánh trở thành thứ test được (bảy
+ca ở `guard-decision.test.ts`), và `router.tsx` ép thêm một lớp ở phía gọi: nhánh cuối của
+`beforeLoad` gán `const unhandled: never = decision` — thêm một arm vào union `EntryDecision` mà
+quên xử lý ở `router.tsx` là **lỗi biên dịch**, không phải một cú rơi im lặng về `/login`.
+
+Thứ tự đăng xuất-trước-chuyển-hướng-sau không phải chi tiết: để nguyên session của người bị khoá
+thì họ quay lại `/`, guard chạy lại đúng vòng đó, và app kẹt trong vòng chuyển hướng vô tận.
 
 **`/pending-approval` là route công khai, dù chỉ người đã đăng nhập mới thấy nội dung thật.** Nó
 phải mở được bởi tài khoản `PENDING` — mà `PENDING` chính là thứ guard đá ra. Treo nó dưới
@@ -144,7 +153,7 @@ thật sự chạy. Nếu hàng rào chỉ phủ lên những trang chưa ai m�
 
 **Hai hàng rào cho `/staff`, làm hai việc khác nhau.** `beforeLoad` kiểm `context.me.role !==
 "OWNER"` là hàng rào của **trải nghiệm**; hàng rào của **dữ liệu** nằm ở server
-(`/staff/users*` trả `403 THIEU_QUYEN`). Bỏ cái ở đây thì `STAFF` không thấy dữ liệu — họ thấy một
+(`/staff/users*` trả `403 FORBIDDEN`). Bỏ cái ở đây thì `STAFF` không thấy dữ liệu — họ thấy một
 trang trống toàn lỗi 403. Bỏ cái ở server thì mất thật.
 
 ### `Session.init()` vá `window.fetch` — Eden ăn theo, không phải bọc lại

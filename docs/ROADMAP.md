@@ -16,7 +16,7 @@ lịch, thống kê, lên đơn/bàn giao, quản lý khách hàng · vai trò `
 `vehicles` và `vehicle_photos` **đã xong** (migration `0002`–`0004`, đợt 3); `staff_users` và
 `password_reset_codes` **đã xong** (migration `0005`–`0007`, đợt auth).
 
-**Kỹ thuật:** `next-intl` khi thật sự có tiếng Anh · upload ảnh lên MinIO · năm món nợ ở [`DEBT.md`](DEBT.md).
+**Kỹ thuật:** `next-intl` khi thật sự có tiếng Anh · upload ảnh lên MinIO · các món nợ ở [`DEBT.md`](DEBT.md).
 **Chặn ở người, không chặn ở code** — hai việc này không tự làm được, cần asset/quyết định từ shop:
 
 Cả hai đều chờ **đúng một** thứ: **file logo thật của shop**.

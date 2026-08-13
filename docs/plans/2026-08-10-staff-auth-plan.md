@@ -1,5 +1,8 @@
 # Auth cho `apps/staff` — Implementation Plan
 
+> Bản ghi lịch sử của đợt auth 2026-08-10. Một số tên và URL trong doc này đã đổi ở đợt
+> 2026-08-13 — xem [`2026-08-13-staff-auth-fix-design.md`](2026-08-13-staff-auth-fix-design.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** `apps/staff` có đăng nhập / đăng ký / quên mật khẩu; OWNER duyệt nhân viên; API chuyển sang mặc định chặn.

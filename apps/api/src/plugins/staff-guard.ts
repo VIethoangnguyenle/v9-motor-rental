@@ -205,7 +205,7 @@ export const staffGuard = new Elysia({ name: "staff-guard" })
      * 401 là tín hiệu để interceptor của `supertokens-web-js` đi
      * `/auth/session/refresh`; refresh thất bại (core đã xoá session ở bước
      * `revokeSessions`) nên SDK dọn session và `apps/staff` đá người dùng về
-     * `/dang-nhap`. Trả 403 thì SDK không refresh, session rác nằm lại trong
+     * `/login`. Trả 403 thì SDK không refresh, session rác nằm lại trong
      * trình duyệt và người dùng kẹt ở màn lỗi.
      */
     if (isTokenRevoked(staff?.sessionsInvalidBefore ?? null, iatSeconds)) {

@@ -10,7 +10,9 @@ lời gọi thu hồi, cạm bẫy cắt-xuống-giây) ở [`apps/api/CLAUDE.md
 file đó tự nạp khi làm việc trong `apps/api`. Skill này giữ **lý do**, thứ không gắn với thư mục
 nào.
 
-Thiết kế đầy đủ: `docs/plans/2026-08-10-staff-auth-design.md`.
+Thiết kế đầy đủ: `docs/plans/2026-08-10-staff-auth-design.md`, tiếp nối bởi
+`docs/plans/2026-08-13-staff-auth-fix-design.md` (ba lỗi vá, đổi mật khẩu tự phục vụ, luật đặt tên
+tiếng Anh, tách component — doc trước là bản ghi lịch sử, không sửa).
 
 ## Năm quyết định ràng buộc mọi đề xuất sau này
 
@@ -48,16 +50,38 @@ hình" — thiếu config là mặc định của prod mới dựng; nếu thi�
 rào tự tắt đúng lúc nó cần nhất. `apps/api/src/env.ts` **ném lúc khởi động** nếu `AUTH_DEV_OTP`
 xuất hiện ở `NODE_ENV=production`.
 
+Từ đợt 2026-08-13 có thêm đường thứ hai, **không thay thế đường trên**: `POST
+/staff/password/change`, dành cho người ĐANG đăng nhập — không cần mã 6 số, chỉ cần gõ đúng mật
+khẩu hiện tại. Dùng chung `createResetToken`/`resetPasswordWithToken` với đường quên-mật-khẩu (chính
+sách mật khẩu chỉ nằm một chỗ, bên trong SuperTokens), và đổi thành công thì **luôn đăng xuất** —
+hệ quả bắt buộc của việc thu hồi session chạy bên trong, không phải lựa chọn UX.
+
 **⑤ `apps/web` không dùng auth.** Khách gửi yêu cầu thuê không cần tài khoản — bắt đăng nhập chỉ
 làm giảm số yêu cầu nhận được, mà yêu cầu chính là thứ web sinh ra để tạo. Directus giữ hệ tài
 khoản riêng; hai nơi đăng nhập là **chấp nhận có ý thức**.
 
 ## Bất biến dễ vỡ nhất
 
-**Hễ thu hồi session thì phải đóng dấu `sessions_invalid_before`.**
-`revokeAllSessionsForUser` giết refresh token nhưng **không** giết access token đang cầm — nó là
-JWT tự xác thực cục bộ. Hiện có đúng hai chỗ gọi cặp này: `doiMatKhauBangMa` và `disableStaff`.
-**Thêm chỗ thứ ba mà quên đóng dấu là thủng lại y như cũ, và không có gì báo.**
+**Hễ thu hồi session thì phải đóng dấu `sessions_invalid_before`.** Hai cơ chế giết hai loại token
+khác nhau, và thiếu cái nào cũng để lại một nửa lỗ hổng: `revokeAllSessionsForUser` xoá session ở
+core nên **refresh token** chết ngay, nhưng access token thì không — nó là JWT tự xác thực cục bộ,
+`getSession` không hỏi core trừ khi truyền `checkDatabase: true`. Đóng dấu cột
+`sessions_invalid_before` mới giết được **access token** đang cầm, ngay ở request kế tiếp
+(`staff-guard` đã đọc sẵn hàng `staff_users` đó cho mỗi request được bảo vệ). Thứ tự bên trong —
+**revoke trước, đóng dấu sau** — quyết định lỗ hổng lớn cỡ nào nếu tiến trình chết giữa hai bước:
+đúng thứ tự để lại "access còn sống tới tối đa 1 giờ"; đảo ngược để lại "refresh còn sống vô hạn" —
+kẻ tấn công refresh đúng một lần là có token mới cấp _sau_ mốc, tức sống mãi.
+
+Từ đợt 2026-08-13, cặp này **không còn là lời dặn trong comment ở từng chỗ gọi**. `revokeAndStamp`
+(`services/staff.ts`) gộp cả hai bước vào **một** hàm, và nửa đóng dấu
+(`stampSessionRevocation`) đã **thôi export** — gọi thiếu một vế không còn viết ra được từ ngoài
+module đó nữa. Cái ép bây giờ là compiler cộng phạm vi module, không phải kỷ luật đọc code của
+người thêm một chỗ thu hồi mới.
+
+Ba chỗ gọi `revokeAndStamp` hôm nay: `disableStaff` (khoá tài khoản), `resetPasswordWithCode`
+(quên mật khẩu, quyết định ④), và `changePassword` (tự đổi mật khẩu đang đăng nhập, cũng quyết
+định ④). Thêm một chỗ thu hồi mới mà gọi thiếu vế đóng dấu vẫn là lỗ hổng như cũ — chỉ là giờ không
+còn cách nào viết ra lỗ hổng đó mà không đi qua `revokeAndStamp`.
 
 ## Kiểm nhanh khi API đang chạy
 

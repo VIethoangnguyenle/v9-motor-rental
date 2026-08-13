@@ -1,5 +1,8 @@
 # Đăng nhập / đăng ký / quên mật khẩu cho `apps/staff` — design doc
 
+> Bản ghi lịch sử của đợt auth 2026-08-10. Một số tên và URL trong doc này đã đổi ở đợt
+> 2026-08-13 — xem [`2026-08-13-staff-auth-fix-design.md`](2026-08-13-staff-auth-fix-design.md).
+
 **Ngày:** 2026-08-10 · **Trạng thái:** đã chốt, chưa implement
 **Tiếp nối:** `2026-08-05-round2-directus-staff-design.md` §4 (SuperTokens core đã dựng, seam đã ghép,
 cố ý chưa có màn đăng nhập và chưa route nào enforce).

@@ -246,7 +246,7 @@ describe("signUpPOST ghi staff_users", () => {
  * `example.com`. Bản đầu của `auth.ts` đặt `cookieDomain` chỉ dựa trên việc biến đó
  * CÓ MẶT, nên ở dev cookie ra đời mang `Domain=.example.com` — trình duyệt ở
  * `localhost` vứt nó trong im lặng: signin trả 200, không session nào tồn tại,
- * guard đá về `/dang-nhap` mãi mãi, không lỗi ở đâu cả.
+ * guard đá về `/login` mãi mãi, không lỗi ở đâu cả.
  *
  * ⚠️ Hai ca dưới **bắt buộc** chạy ở tiến trình con, không phải để cho đẹp: `env.ts`
  * đọc `process.env` lúc import và `supertokens.init()` chỉ chạy MỘT lần cho cả tiến

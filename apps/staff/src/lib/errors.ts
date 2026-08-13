@@ -34,7 +34,7 @@ export function parseApiError(value: unknown): ApiError | null {
 
 /**
  * Thông điệp để hiện cho người dùng. Thông điệp của backend đã là tiếng Việt và
- * viết cho người đọc (`THONG_DIEP` trong `apps/api/src/routes/staff.ts`) — hiện
+ * viết cho người đọc (`MESSAGES` trong `apps/api/src/routes/staff.ts`) — hiện
  * nguyên văn, đừng dịch lại ở đây thành bản thứ hai sẽ lệch.
  */
 export const errorMessage = (value: unknown, fallback: string): string =>

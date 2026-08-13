@@ -133,7 +133,7 @@ export async function createPendingStaff(input: {
  *
  * `now()` của Postgres chứ không phải `new Date()` của tiến trình API: mốc này
  * được so với `iat` do SuperTokens core cấp, nên càng ít đồng hồ tham gia càng
- * tốt. Cùng lý lẽ với `expires_at > now()` trong `kiemTraMa`. Lưu ý `now()` là
+ * tốt. Cùng lý lẽ với `expires_at > now()` trong `verifyCode`. Lưu ý `now()` là
  * giờ MỞ TRANSACTION — hàm này cố ý chạy ngoài transaction (một câu lệnh = một
  * transaction ngầm) nên hai giá trị bằng nhau; đừng chuyển nó vào trong một
  * transaction dài, mốc sẽ lùi về quá khứ đúng bằng thời gian transaction đó chạy.

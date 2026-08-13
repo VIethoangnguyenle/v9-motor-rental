@@ -48,7 +48,7 @@ const NEW_PASSWORD = "matkhau-moi-2026";
  * nghiệp vụ trong plugin RIÊNG. Không import `routes/staff.ts` được — boundaries
  * không có policy `api-plugins → api-routes` — nên hai đường dẫn dưới đây là bản
  * sao đường dẫn, không phải bản sao handler:
- *   • `/staff/me` nằm trong `CAN_SESSION_KHONG_CAN_ACTIVE` (ngoại lệ duy nhất)
+ *   • `/staff/me` nằm trong `SESSION_ONLY_ROUTES` (ngoại lệ duy nhất)
  *   • `/rentals-gia` là route thường, đòi session + ACTIVE
  * Cần cả hai: phép kiểm thu hồi phải đứng TRƯỚC cả ngoại lệ kia, nếu không màn
  * "chờ duyệt" thành cửa hậu cho token đã bị thu hồi.
