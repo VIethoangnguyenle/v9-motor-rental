@@ -3,12 +3,12 @@ import { useNavigate } from "@tanstack/react-router";
 import { AppNav } from "../components/layout/app-nav";
 import { useMe } from "../hooks/use-me";
 import { api } from "../lib/api";
-import { dangXuat } from "../lib/auth";
+import { signOut } from "../lib/auth";
 
 export function HealthPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  // Cache đã ấm: guard của router gọi `layMe` trước khi trang này render.
+  // Cache đã ấm: guard của router gọi `ensureMe` trước khi trang này render.
   const { me } = useMe();
 
   const { data, error, isPending } = useQuery({
@@ -20,14 +20,14 @@ export function HealthPage() {
     },
   });
 
-  async function thoat() {
-    await dangXuat(qc);
+  async function handleSignOut() {
+    await signOut(qc);
     await navigate({ to: "/dang-nhap" });
   }
 
   return (
     <main className="p-6 font-mono">
-      <AppNav me={me} onSignOut={() => void thoat()} />
+      <AppNav me={me} onSignOut={() => void handleSignOut()} />
 
       <h1 className="mt-4 text-xl font-bold">V9 Staff — scaffold</h1>
       <p className="mt-3">

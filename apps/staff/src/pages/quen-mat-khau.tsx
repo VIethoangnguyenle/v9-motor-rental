@@ -6,41 +6,41 @@ import { ResetPasswordForm } from "../components/auth/reset-password-form";
 import { PageShell } from "../components/ui/page-shell";
 
 export function QuenMatKhauPage() {
-  const [buoc, setBuoc] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [matKhauMoi, setMatKhauMoi] = useState("");
-  const [loi, setLoi] = useState<string | null>(null);
-  const [ghiChu, setGhiChu] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
-  function xuLyKetQuaBuoc1(message: PasswordResetMessage) {
+  function handleStep1Result(message: PasswordResetMessage) {
     if (message.kind === "sent") {
-      setGhiChu(message.text);
-      setLoi(null);
+      setNotice(message.text);
+      setError(null);
     } else {
-      setLoi(message.text);
-      setGhiChu(null);
+      setError(message.text);
+      setNotice(null);
     }
-    setBuoc(2);
+    setStep(2);
   }
 
   return (
     <PageShell title="Quên mật khẩu">
-      {buoc === 1 ? (
-        <RequestCodeForm email={email} onEmailChange={setEmail} onDone={xuLyKetQuaBuoc1} />
+      {step === 1 ? (
+        <RequestCodeForm email={email} onEmailChange={setEmail} onDone={handleStep1Result} />
       ) : (
         <ResetPasswordForm
           email={email}
           code={code}
           onCodeChange={setCode}
-          matKhauMoi={matKhauMoi}
-          onMatKhauMoiChange={setMatKhauMoi}
-          ghiChu={ghiChu}
-          loi={loi}
-          onError={setLoi}
+          newPassword={newPassword}
+          onNewPasswordChange={setNewPassword}
+          notice={notice}
+          error={error}
+          onError={setError}
           onBack={() => {
-            setBuoc(1);
-            setLoi(null);
+            setStep(1);
+            setError(null);
           }}
         />
       )}

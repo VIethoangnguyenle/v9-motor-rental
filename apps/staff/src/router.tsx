@@ -17,9 +17,9 @@ import {
   createRouter,
   redirect,
 } from "@tanstack/react-router";
-import { coSession, dangXuat } from "./lib/auth";
+import { hasSession, signOut } from "./lib/auth";
 import { LOGIN_REASONS, decideEntry, type LoginReason } from "./lib/guard-decision";
-import { layMe } from "./lib/me";
+import { ensureMe } from "./lib/me";
 import { ChoDuyetPage } from "./pages/cho-duyet";
 import { DangKyPage } from "./pages/dang-ky";
 import { DangNhapPage } from "./pages/dang-nhap";
@@ -50,7 +50,7 @@ const congKhai = createRoute({
  * Guard. Trang `/` (health) nằm dưới nhánh này CÓ CHỦ Ý: nó là bằng chứng
  * end-to-end rằng guard chạy, thay vì một trang test rỗng không ai mở.
  *
- * `layMe` đi qua `ensureQueryData`, nên lần điều hướng sau đọc cache chứ không
+ * `ensureMe` đi qua `ensureQueryData`, nên lần điều hướng sau đọc cache chứ không
  * bắn thêm request — guard không được biến mỗi cú click thành một vòng mạng.
  */
 const duocBaoVe = createRoute({
@@ -58,11 +58,11 @@ const duocBaoVe = createRoute({
   id: "duoc-bao-ve",
   component: Outlet,
   beforeLoad: async ({ context }) => {
-    // KHÔNG gọi `layMe` khi chưa có session: nó sẽ bắn một request `/staff/me`
+    // KHÔNG gọi `ensureMe` khi chưa có session: nó sẽ bắn một request `/staff/me`
     // chắc chắn 401 trên mọi lần mở app lúc chưa đăng nhập.
-    const hasSession = await coSession();
-    const result = hasSession ? await layMe(context.queryClient) : null;
-    const decision = decideEntry(hasSession, result);
+    const sessionExists = await hasSession();
+    const result = sessionExists ? await ensureMe(context.queryClient) : null;
+    const decision = decideEntry(sessionExists, result);
 
     if (decision.type === "allow") return { me: decision.me };
 
@@ -72,10 +72,10 @@ const duocBaoVe = createRoute({
       // signOut hỏng thì VẪN phải đẩy người dùng ra ngoài. Để lọt exception ở đây
       // là `throw redirect` không chạy, và TanStack dựng màn lỗi mặc định tiếng
       // Anh — trên chính đường guard, tức chỗ tệ nhất để kẹt lại. Cache đã được
-      // `dangXuat` dọn trong `finally` rồi, nên bỏ qua lỗi ở đây không để lại
+      // `signOut` dọn trong `finally` rồi, nên bỏ qua lỗi ở đây không để lại
       // dữ liệu người cũ.
       try {
-        await dangXuat(context.queryClient);
+        await signOut(context.queryClient);
       } catch {
         // Cố ý nuốt: không có hành động nào khác đúng hơn là chuyển trang.
       }
@@ -89,8 +89,8 @@ const duocBaoVe = createRoute({
     // `EntryDecision` mà quên xử lý ở đây là **lỗi biên dịch**, thay vì một cú rơi
     // im lặng về `/dang-nhap` — đúng kiểu hỏng mà cả pha này sinh ra để diệt.
     if (decision.type !== "redirect") {
-      const chuaXuLy: never = decision;
-      throw new Error(`decideEntry trả về nhánh chưa xử lý: ${JSON.stringify(chuaXuLy)}`);
+      const unhandled: never = decision;
+      throw new Error(`decideEntry trả về nhánh chưa xử lý: ${JSON.stringify(unhandled)}`);
     }
     throw redirect({ to: decision.to });
   },

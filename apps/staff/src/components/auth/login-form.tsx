@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { dangNhap } from "../../lib/auth";
+import { signIn } from "../../lib/auth";
 import { SubmitButton } from "../ui/submit-button";
 import { TextField } from "../ui/text-field";
 
@@ -14,7 +14,7 @@ export function LoginForm() {
    * `useMutation` thay cho cặp `dangGui`/`loi` cuộn tay — pattern đã có trong app
    * (bảng nhân viên dùng nó cho các nút hành động), không phải pattern thứ hai.
    *
-   * `dangNhap` trả union chứ không ném (pattern 3 của repo), nên phải ném ở đây
+   * `signIn` trả union chứ không ném (pattern 3 của repo), nên phải ném ở đây
    * thì `mutation.error` mới có gì để hiện.
    *
    * Không tự lo PENDING/DISABLED ở đây: guard của `/` đọc `/staff/me` rồi đẩy đi
@@ -22,7 +22,7 @@ export function LoginForm() {
    */
   const login = useMutation({
     mutationFn: async () => {
-      const res = await dangNhap(email, password);
+      const res = await signIn(email, password);
       if (!res.ok) throw new Error(res.message);
     },
     onSuccess: () => navigate({ to: "/" }),

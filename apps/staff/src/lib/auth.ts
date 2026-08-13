@@ -29,11 +29,11 @@ export function initAuth() {
 }
 
 /**
- * `dangNhap`/`dangKy` trả discriminated union thay vì ném — cùng pattern 3 của
+ * `signIn`/`signUp` trả discriminated union thay vì ném — cùng pattern 3 của
  * repo (xem CLAUDE.md gốc). Màn hình chỉ việc hiện `message`, không phải đọc
  * `status` của SuperTokens ở năm chỗ khác nhau.
  */
-export async function dangNhap(email: string, matKhau: string) {
+export async function signIn(email: string, matKhau: string) {
   const res = await EmailPassword.signIn({
     formFields: [
       { id: "email", value: email },
@@ -51,7 +51,7 @@ export async function dangNhap(email: string, matKhau: string) {
   return { ok: false as const, message: "Không đăng nhập được, thử lại sau" };
 }
 
-export async function dangKy(input: {
+export async function signUp(input: {
   email: string;
   matKhau: string;
   hoTen: string;
@@ -95,11 +95,11 @@ export async function dangKy(input: {
  * handler nào dọn hộ 401 (đã kiểm), và đoán sai chiều ngược lại chỉ tốn một
  * lần refetch dữ liệu của chính người đó.
  */
-export const dangXuat = async (qc: QueryClient) => {
+export const signOut = async (qc: QueryClient) => {
   try {
     await Session.signOut();
   } finally {
     qc.clear();
   }
 };
-export const coSession = () => Session.doesSessionExist();
+export const hasSession = () => Session.doesSessionExist();

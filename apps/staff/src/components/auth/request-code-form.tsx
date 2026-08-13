@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { api } from "../../lib/api";
-import { maLoi, thongDiepLoi } from "../../lib/loi";
+import { errorCode, errorMessage } from "../../lib/errors";
 import { SubmitButton } from "../ui/submit-button";
 import { TextField } from "../ui/text-field";
 
@@ -32,17 +32,17 @@ export function RequestCodeForm({
   readonly onEmailChange: (value: string) => void;
   readonly onDone: (message: PasswordResetMessage) => void;
 }) {
-  const guiYeuCau = useMutation({
+  const requestCode = useMutation({
     mutationFn: () => api.staff["password-reset"].request.post({ email }),
     onSuccess: (res) => {
       if (res.error) {
-        const khac = thongDiepLoi(res.error.value, "Không gửi được yêu cầu");
+        const fallbackMessage = errorMessage(res.error.value, "Không gửi được yêu cầu");
         onDone({
           kind: "problem",
           text:
-            maLoi(res.error.value) === "CHUA_CAU_HINH_EMAIL"
+            errorCode(res.error.value) === "CHUA_CAU_HINH_EMAIL"
               ? "Hệ thống chưa gửi được email — nhắn chủ shop để lấy mã, rồi gõ vào đây."
-              : `${khac} — nếu không nhận được mã, nhắn chủ shop để lấy mã.`,
+              : `${fallbackMessage} — nếu không nhận được mã, nhắn chủ shop để lấy mã.`,
         });
       } else {
         onDone({
@@ -57,7 +57,7 @@ export function RequestCodeForm({
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        guiYeuCau.mutate();
+        requestCode.mutate();
       }}
       className="mt-4 flex flex-col gap-3"
     >
@@ -69,7 +69,7 @@ export function RequestCodeForm({
         value={email}
         onChange={(e) => onEmailChange(e.target.value)}
       />
-      <SubmitButton pending={guiYeuCau.isPending} pendingLabel="Đang gửi…">
+      <SubmitButton pending={requestCode.isPending} pendingLabel="Đang gửi…">
         Gửi mã
       </SubmitButton>
     </form>

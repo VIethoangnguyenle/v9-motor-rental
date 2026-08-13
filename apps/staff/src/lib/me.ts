@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { api } from "./api";
-import { maLoi } from "./loi";
+import { errorCode } from "./errors";
 
 /**
  * Kiểu SUY RA từ chính `response` schema của `GET /staff/me`, không gõ tay lại.
@@ -41,9 +41,9 @@ export const meQuery = {
   queryKey: ["me"] as const,
   queryFn: async (): Promise<MeResult> => {
     const res = await api.staff.me.get();
-    if (res.error) return { ok: false, code: maLoi(res.error.value) };
+    if (res.error) return { ok: false, code: errorCode(res.error.value) };
     return { ok: true, me: res.data };
   },
 };
 
-export const layMe = (qc: QueryClient) => qc.ensureQueryData(meQuery);
+export const ensureMe = (qc: QueryClient) => qc.ensureQueryData(meQuery);

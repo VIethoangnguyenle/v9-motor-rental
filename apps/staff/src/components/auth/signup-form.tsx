@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { dangKy } from "../../lib/auth";
+import { signUp } from "../../lib/auth";
 import { SubmitButton } from "../ui/submit-button";
 import { TextField } from "../ui/text-field";
 
@@ -28,12 +28,12 @@ export function SignupForm() {
   const [form, setForm] = useState({ hoTen: "", soDienThoai: "", email: "", matKhau: "" });
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((truoc) => ({ ...truoc, [k]: e.target.value }));
+    setForm((prev) => ({ ...prev, [k]: e.target.value }));
   };
 
   const signup = useMutation({
     mutationFn: async () => {
-      const res = await dangKy(form);
+      const res = await signUp(form);
       if (!res.ok) throw new Error(res.message);
     },
     // Đăng ký xong SuperTokens đã tạo session, nhưng tài khoản ở trạng thái chờ

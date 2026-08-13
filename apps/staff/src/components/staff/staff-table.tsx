@@ -7,7 +7,7 @@ interface StaffTableProps {
   readonly busy: boolean;
   readonly onApprove: (id: string) => void;
   readonly onDisable: (id: string) => void;
-  readonly onIssueCode: (nv: { id: string; ten: string }) => void;
+  readonly onIssueCode: (row: { id: string; name: string }) => void;
 }
 
 export function StaffTable({ rows, me, busy, onApprove, onDisable, onIssueCode }: StaffTableProps) {
@@ -24,15 +24,15 @@ export function StaffTable({ rows, me, busy, onApprove, onDisable, onIssueCode }
         </tr>
       </thead>
       <tbody>
-        {rows.map((nv) => (
-          <tr key={nv.id} className="border-b align-top">
-            <td className="py-2">{nv.fullName}</td>
-            <td>{nv.email}</td>
-            <td>{nv.phone ?? "—"}</td>
-            <td>{nv.role}</td>
-            <td>{nv.status}</td>
+        {rows.map((row) => (
+          <tr key={row.id} className="border-b align-top">
+            <td className="py-2">{row.fullName}</td>
+            <td>{row.email}</td>
+            <td>{row.phone ?? "—"}</td>
+            <td>{row.role}</td>
+            <td>{row.status}</td>
             <StaffRowActions
-              nv={nv}
+              row={row}
               me={me}
               busy={busy}
               onApprove={onApprove}

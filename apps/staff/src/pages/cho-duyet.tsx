@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useMe } from "../hooks/use-me";
-import { dangXuat } from "../lib/auth";
+import { signOut } from "../lib/auth";
 
 export function ChoDuyetPage() {
   const navigate = useNavigate();
@@ -16,8 +16,8 @@ export function ChoDuyetPage() {
     if (me?.status === "ACTIVE") void navigate({ to: "/" });
   }, [me?.status, navigate]);
 
-  async function thoat() {
-    await dangXuat(qc);
+  async function handleSignOut() {
+    await signOut(qc);
     await navigate({ to: "/dang-nhap" });
   }
 
@@ -41,7 +41,10 @@ export function ChoDuyetPage() {
         </p>
       )}
 
-      <button onClick={() => void thoat()} className="mt-4 rounded border px-3 py-2 text-sm">
+      <button
+        onClick={() => void handleSignOut()}
+        className="mt-4 rounded border px-3 py-2 text-sm"
+      >
         Đăng xuất
       </button>
     </main>

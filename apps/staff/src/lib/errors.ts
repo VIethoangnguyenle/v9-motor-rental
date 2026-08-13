@@ -16,13 +16,13 @@
  * `as` cho im: một 422 thật sẽ không có `code` lúc chạy. Hai hàm dưới đọc những
  * gì có mặt và nói thẳng khi không đọc được.
  */
-export interface LoiApi {
+export interface ApiError {
   readonly message: string;
   readonly code: string;
 }
 
 /** `null` khi thân lỗi không phải hình dạng `{ message, code }` của ta. */
-export function docLoi(value: unknown): LoiApi | null {
+export function parseApiError(value: unknown): ApiError | null {
   if (typeof value !== "object" || value === null) return null;
   if (!("message" in value) || !("code" in value)) return null;
   const { message, code } = value;
@@ -35,8 +35,8 @@ export function docLoi(value: unknown): LoiApi | null {
  * viết cho người đọc (`THONG_DIEP` trong `apps/api/src/routes/staff.ts`) — hiện
  * nguyên văn, đừng dịch lại ở đây thành bản thứ hai sẽ lệch.
  */
-export const thongDiepLoi = (value: unknown, macDinh: string): string =>
-  docLoi(value)?.message ?? macDinh;
+export const errorMessage = (value: unknown, macDinh: string): string =>
+  parseApiError(value)?.message ?? macDinh;
 
 /** Mã máy đọc được, để phân nhánh. `null` khi thân lỗi không mang mã. */
-export const maLoi = (value: unknown): string | null => docLoi(value)?.code ?? null;
+export const errorCode = (value: unknown): string | null => parseApiError(value)?.code ?? null;

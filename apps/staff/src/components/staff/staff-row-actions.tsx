@@ -1,17 +1,17 @@
 import type { Me, StaffRow } from "../../lib/me";
 
 interface StaffRowActionsProps {
-  readonly nv: StaffRow;
+  readonly row: StaffRow;
   readonly me: Me | null;
   readonly busy: boolean;
   readonly onApprove: (id: string) => void;
   readonly onDisable: (id: string) => void;
-  readonly onIssueCode: (nv: { id: string; ten: string }) => void;
+  readonly onIssueCode: (row: { id: string; name: string }) => void;
 }
 
 /** `<td>` các nút hành động cho một dòng nhân viên. */
 export function StaffRowActions({
-  nv,
+  row,
   me,
   busy,
   onApprove,
@@ -20,9 +20,9 @@ export function StaffRowActions({
 }: StaffRowActionsProps) {
   return (
     <td className="flex flex-wrap gap-2 py-2">
-      {nv.status === "PENDING" && (
+      {row.status === "PENDING" && (
         <button
-          onClick={() => onApprove(nv.id)}
+          onClick={() => onApprove(row.id)}
           disabled={busy}
           className="rounded border px-2 py-1 disabled:opacity-50"
         >
@@ -31,9 +31,9 @@ export function StaffRowActions({
       )}
       {/* Tự khoá mình bị backend chặn (`TU_KHOA_MINH`); ẩn nút để không
           mời người ta bấm vào một lỗi đã biết trước. */}
-      {nv.status === "ACTIVE" && nv.id !== me?.id && (
+      {row.status === "ACTIVE" && row.id !== me?.id && (
         <button
-          onClick={() => onDisable(nv.id)}
+          onClick={() => onDisable(row.id)}
           disabled={busy}
           className="rounded border px-2 py-1 disabled:opacity-50"
         >
@@ -41,7 +41,7 @@ export function StaffRowActions({
         </button>
       )}
       <button
-        onClick={() => onIssueCode({ id: nv.id, ten: nv.fullName })}
+        onClick={() => onIssueCode({ id: row.id, name: row.fullName })}
         disabled={busy}
         className="rounded border px-2 py-1 disabled:opacity-50"
       >

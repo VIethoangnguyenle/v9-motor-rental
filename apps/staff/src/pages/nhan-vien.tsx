@@ -6,7 +6,7 @@ import { StaffTable } from "../components/staff/staff-table";
 import { Alert } from "../components/ui/alert";
 import { useMe } from "../hooks/use-me";
 import { api } from "../lib/api";
-import { thongDiepLoi } from "../lib/loi";
+import { errorMessage } from "../lib/errors";
 
 /**
  * Duyệt LUÔN đặt role `STAFF`. Đợt này cố ý không phơi việc đổi vai trò ra UI:
@@ -14,52 +14,58 @@ import { thongDiepLoi } from "../lib/loi";
  * bằng `bun run staff:bootstrap` chứ không bằng một nút bấm nhầm được.
  * `POST /staff/users/:id/role` đã có sẵn cho lúc luật vai trò rõ hơn.
  */
-const ROLE_KHI_DUYET = "STAFF" as const;
+const ROLE_ON_APPROVE = "STAFF" as const;
 
 export function NhanVienPage() {
   const qc = useQueryClient();
-  // Cache đã ấm: guard của router gọi `layMe` trước khi trang này render.
+  // Cache đã ấm: guard của router gọi `ensureMe` trước khi trang này render.
   const { me } = useMe();
-  const [ma, setMa] = useState<{ ten: string; code: string } | null>(null);
+  const [issuedCode, setIssuedCode] = useState<{ name: string; code: string } | null>(null);
 
-  const dsNhanVien = useQuery({
+  const staffQuery = useQuery({
     queryKey: ["staff-users"],
     queryFn: async () => {
       const res = await api.staff.users.get();
-      if (res.error) throw new Error(thongDiepLoi(res.error.value, "Không tải được danh sách"));
+      if (res.error) throw new Error(errorMessage(res.error.value, "Không tải được danh sách"));
       return res.data;
     },
   });
 
-  const lamMoi = () => qc.invalidateQueries({ queryKey: ["staff-users"] });
+  const invalidateStaff = () => qc.invalidateQueries({ queryKey: ["staff-users"] });
 
-  const duyet = useMutation({
+  const approveMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await api.staff.users({ id }).approve.post({ role: ROLE_KHI_DUYET });
-      if (res.error) throw new Error(thongDiepLoi(res.error.value, "Không duyệt được"));
+      const res = await api.staff.users({ id }).approve.post({ role: ROLE_ON_APPROVE });
+      if (res.error) throw new Error(errorMessage(res.error.value, "Không duyệt được"));
     },
-    onSuccess: lamMoi,
+    onSuccess: invalidateStaff,
   });
 
-  const khoa = useMutation({
+  const disableMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await api.staff.users({ id }).disable.post();
-      if (res.error) throw new Error(thongDiepLoi(res.error.value, "Không khoá được"));
+      if (res.error) throw new Error(errorMessage(res.error.value, "Không khoá được"));
     },
-    onSuccess: lamMoi,
+    onSuccess: invalidateStaff,
   });
 
-  const phatMa = useMutation({
-    mutationFn: async (nv: { id: string; ten: string }) => {
-      const res = await api.staff.users({ id: nv.id })["reset-code"].post();
-      if (res.error) throw new Error(thongDiepLoi(res.error.value, "Không phát được mã"));
-      return { ten: nv.ten, code: res.data.code };
+  const issueCodeMutation = useMutation({
+    mutationFn: async (row: { id: string; name: string }) => {
+      const res = await api.staff.users({ id: row.id })["reset-code"].post();
+      if (res.error) throw new Error(errorMessage(res.error.value, "Không phát được mã"));
+      return { name: row.name, code: res.data.code };
     },
-    onSuccess: setMa,
+    onSuccess: setIssuedCode,
   });
 
-  const dangChay = duyet.isPending || khoa.isPending || phatMa.isPending;
-  const loi = (dsNhanVien.error ?? duyet.error ?? khoa.error ?? phatMa.error)?.message;
+  const busy =
+    approveMutation.isPending || disableMutation.isPending || issueCodeMutation.isPending;
+  const error = (
+    staffQuery.error ??
+    approveMutation.error ??
+    disableMutation.error ??
+    issueCodeMutation.error
+  )?.message;
 
   return (
     <main className="p-6">
@@ -68,25 +74,25 @@ export function NhanVienPage() {
       </Link>
       <h1 className="mt-2 text-xl font-bold">Nhân viên</h1>
 
-      <ResetCodeNotice ma={ma} />
+      <ResetCodeNotice issuedCode={issuedCode} />
 
-      {loi && (
+      {error && (
         <div className="mt-3">
-          <Alert tone="error">{loi}</Alert>
+          <Alert tone="error">{error}</Alert>
         </div>
       )}
 
       <StaffTable
-        rows={dsNhanVien.data ?? []}
+        rows={staffQuery.data ?? []}
         me={me}
-        busy={dangChay}
-        onApprove={duyet.mutate}
-        onDisable={khoa.mutate}
-        onIssueCode={phatMa.mutate}
+        busy={busy}
+        onApprove={approveMutation.mutate}
+        onDisable={disableMutation.mutate}
+        onIssueCode={issueCodeMutation.mutate}
       />
 
-      {dsNhanVien.isPending && <p className="mt-3 text-sm text-gray-600">Đang tải…</p>}
-      {dsNhanVien.data?.length === 0 && (
+      {staffQuery.isPending && <p className="mt-3 text-sm text-gray-600">Đang tải…</p>}
+      {staffQuery.data?.length === 0 && (
         <p className="mt-3 text-sm text-gray-600">Chưa có nhân viên nào.</p>
       )}
     </main>
