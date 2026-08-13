@@ -18,7 +18,7 @@ interface RouteMatcher {
  * Route nghiệp vụ của đợt sau (`rentals`, `customers`) quên khai ở đây là bị
  * chặn. Đó là điểm của cả plugin này: không ai phải NHỚ bật bảo vệ.
  */
-const CONG_KHAI: readonly RouteMatcher[] = [
+const PUBLIC_ROUTES: readonly RouteMatcher[] = [
   { method: "*", pattern: /^\/auth\// },
   { method: "GET", pattern: /^\/health/ },
   { method: "GET", pattern: /^\/vehicles(\/|$)/ }, // apps/web SSG cần
@@ -33,20 +33,18 @@ const CONG_KHAI: readonly RouteMatcher[] = [
  * DISABLED vẫn bị chặn ở đây — người bị khoá không cần một màn hình giải thích,
  * họ cần không vào được.
  */
-const CAN_SESSION_KHONG_CAN_ACTIVE: readonly RouteMatcher[] = [
-  { method: "GET", pattern: /^\/staff\/me$/ },
-];
+const SESSION_ONLY_ROUTES: readonly RouteMatcher[] = [{ method: "GET", pattern: /^\/staff\/me$/ }];
 
-const khop = (list: readonly RouteMatcher[], method: string, path: string): boolean =>
+const matchesRoute = (list: readonly RouteMatcher[], method: string, path: string): boolean =>
   list.some((r) => (r.method === "*" || r.method === method) && r.pattern.test(path));
 
-interface Phien {
+interface SessionInfo {
   readonly userId: string;
   /**
    * `iat` của access token, đơn vị **giây** (chuẩn JWT — đã làm tròn xuống).
-   * `null` = token không mang `iat` đọc được; xem `tokenDaBiThuHoi`.
+   * `null` = token không mang `iat` đọc được; xem `isTokenRevoked`.
    */
-  readonly iatGiay: number | null;
+  readonly iatSeconds: number | null;
 }
 
 /**
@@ -66,7 +64,7 @@ interface Phien {
  * `accessToken.js`), nên `iat` nằm ngay trên đó và `validateAccessTokenStructure`
  * đã bắt buộc nó là `number` trước khi session được dựng.
  */
-function docIat(payload: unknown): number | null {
+function readIat(payload: unknown): number | null {
   if (typeof payload !== "object" || payload === null) return null;
   if (!("iat" in payload) || typeof payload.iat !== "number") return null;
   return payload.iat;
@@ -83,7 +81,7 @@ function docIat(payload: unknown): number | null {
  * `CollectingResponse` hứng header refresh của SuperTokens; ta cố ý không trả nó
  * về — 401 đã đủ để interceptor phía client đi gọi `/auth/session/refresh`.
  */
-async function docSession(request: Request): Promise<Phien | null> {
+async function readSession(request: Request): Promise<SessionInfo | null> {
   try {
     const session = await Session.getSession(
       toPreParsedRequest(request),
@@ -91,7 +89,7 @@ async function docSession(request: Request): Promise<Phien | null> {
       { sessionRequired: false },
     );
     if (!session) return null;
-    return { userId: session.getUserId(), iatGiay: docIat(session.getAccessTokenPayload()) };
+    return { userId: session.getUserId(), iatSeconds: readIat(session.getAccessTokenPayload()) };
   } catch (e) {
     if (e instanceof Session.Error) return null;
     throw e;
@@ -117,14 +115,14 @@ async function docSession(request: Request): Promise<Phien | null> {
  * nhỏ hơn để so. Làm tròn LÊN sẽ đóng cửa sổ đó nhưng đá văng mọi lần đăng nhập
  * lại trong cùng giây, tức đổi một lỗ nhỏ lấy một lỗi to hay gặp.
  *
- * `iatGiay === null` (payload không đọc được `iat`) thì HỎNG THEO CHIỀU ĐÓNG: chỉ
+ * `iatSeconds === null` (payload không đọc được `iat`) thì HỎNG THEO CHIỀU ĐÓNG: chỉ
  * xảy ra khi hình dạng token đổi, và lúc đó "im lặng thôi kiểm tra" đúng là kiểu
  * suy thoái mà repo này đếm được bốn lần. Chỉ ảnh hưởng người ĐÃ bị thu hồi.
  */
-export function tokenDaBiThuHoi(mocThuHoi: Date | null, iatGiay: number | null): boolean {
-  if (mocThuHoi === null) return false;
-  if (iatGiay === null) return true;
-  return iatGiay < Math.floor(mocThuHoi.getTime() / 1000);
+export function isTokenRevoked(revokedAt: Date | null, iatSeconds: number | null): boolean {
+  if (revokedAt === null) return false;
+  if (iatSeconds === null) return true;
+  return iatSeconds < Math.floor(revokedAt.getTime() / 1000);
 }
 
 /**
@@ -146,18 +144,22 @@ export const staffGuard = new Elysia({ name: "staff-guard" })
   .resolve({ as: "global" }, async ({ request, path }) => {
     // Thoát sớm cho route công khai: KHÔNG chạm DB. `/health` có perf budget
     // p95 < 5ms và không được phép mọc thêm một query vì đợt này.
-    if (khop(CONG_KHAI, request.method.toUpperCase(), path)) {
-      return { staff: null, userId: null, iatGiay: null };
+    if (matchesRoute(PUBLIC_ROUTES, request.method.toUpperCase(), path)) {
+      return { staff: null, userId: null, iatSeconds: null };
     }
 
-    const phien = await docSession(request);
-    if (phien === null) return { staff: null, userId: null, iatGiay: null };
+    const session = await readSession(request);
+    if (session === null) return { staff: null, userId: null, iatSeconds: null };
 
-    return { staff: await loadStaff(phien.userId), userId: phien.userId, iatGiay: phien.iatGiay };
+    return {
+      staff: await loadStaff(session.userId),
+      userId: session.userId,
+      iatSeconds: session.iatSeconds,
+    };
   })
-  .onBeforeHandle({ as: "global" }, ({ request, path, staff, userId, iatGiay, status }) => {
+  .onBeforeHandle({ as: "global" }, ({ request, path, staff, userId, iatSeconds, status }) => {
     const method = request.method.toUpperCase();
-    if (khop(CONG_KHAI, method, path)) return;
+    if (matchesRoute(PUBLIC_ROUTES, method, path)) return;
 
     if (userId === null)
       return status(401, { message: "Chưa đăng nhập", code: "NOT_AUTHENTICATED" });
@@ -181,7 +183,7 @@ export const staffGuard = new Elysia({ name: "staff-guard" })
      * `/dang-nhap`. Trả 403 thì SDK không refresh, session rác nằm lại trong
      * trình duyệt và người dùng kẹt ở màn lỗi.
      */
-    if (tokenDaBiThuHoi(staff?.sessionsInvalidBefore ?? null, iatGiay)) {
+    if (isTokenRevoked(staff?.sessionsInvalidBefore ?? null, iatSeconds)) {
       return status(401, {
         message: "Phiên đăng nhập đã hết hiệu lực — vui lòng đăng nhập lại",
         code: "SESSION_EXPIRED",
@@ -196,7 +198,7 @@ export const staffGuard = new Elysia({ name: "staff-guard" })
     // Nhánh thứ hai: có session là đủ. PENDING và "chưa có hồ sơ" đi qua để
     // route trả về đúng trạng thái đó — màn hình chờ duyệt cần đọc được chính
     // lý do nó đang bị chặn.
-    if (khop(CAN_SESSION_KHONG_CAN_ACTIVE, method, path)) return;
+    if (matchesRoute(SESSION_ONLY_ROUTES, method, path)) return;
 
     // Có session nhưng thiếu hàng = lớp bù trừ của signUpPOST đã hỏng (§2.1
     // design doc). Trả 403 có mã riêng thay vì crash — người dùng thấy được lý
@@ -212,7 +214,7 @@ export interface StaffContext {
   readonly staff: StaffUser | null;
   readonly userId: string | null;
   /** `iat` của access token, tính bằng giây. Guard đã dùng xong; route hiếm khi cần. */
-  readonly iatGiay: number | null;
+  readonly iatSeconds: number | null;
 }
 
 /** Dùng trong route cần role cụ thể. Trả `null` khi đủ quyền. */

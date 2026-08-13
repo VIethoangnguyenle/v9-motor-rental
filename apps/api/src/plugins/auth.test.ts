@@ -23,14 +23,14 @@ import { auth } from "./auth";
 const P = "ztest-auth-";
 const EMAIL = `${P}signin@v9.vn`;
 /** Đăng ký "sạch" — kiểm hàng staff_users sinh ra đúng PENDING/STAFF. */
-const EMAIL_DANGKY = `${P}dangky@v9.vn`;
+const EMAIL_SIGNUP = `${P}dangky@v9.vn`;
 /** `hoTen` toàn khoảng trắng — SuperTokens cho qua, ta phải tự đỡ. */
-const EMAIL_TRANG = `${P}trang@v9.vn`;
+const EMAIL_BLANK = `${P}trang@v9.vn`;
 /** Lớp bù trừ: một hàng staff_users chiếm sẵn email này để insert đụng UNIQUE. */
-const EMAIL_KENH = `${P}kenh@v9.vn`;
+const EMAIL_TAKEN = `${P}kenh@v9.vn`;
 /** Dùng bởi các tiến trình con đo `cookieDomain` — xem describe cuối file. */
 const EMAIL_COOKIE = `${P}cookie@v9.vn`;
-const EMAILS = [EMAIL, EMAIL_DANGKY, EMAIL_TRANG, EMAIL_KENH, EMAIL_COOKIE];
+const EMAILS = [EMAIL, EMAIL_SIGNUP, EMAIL_BLANK, EMAIL_TAKEN, EMAIL_COOKIE];
 // Mật khẩu phải qua policy mặc định của SuperTokens (>= 8 ký tự, có chữ và số).
 const PASSWORD = "matkhau-test-2026";
 
@@ -147,7 +147,7 @@ interface StaffRow {
   status: string;
 }
 
-const docHang = async (email: string): Promise<StaffRow | undefined> => {
+const readStaffRow = async (email: string): Promise<StaffRow | undefined> => {
   // Annotate chứ không `as`: Bun.SQL suy tham số kiểu của nó từ chỗ nhận, nên
   // `as StaffRow[]` là assertion rỗng và ESLint bắt đúng (`no-unnecessary-type-assertion`).
   const rows: StaffRow[] = await client`
@@ -156,7 +156,7 @@ const docHang = async (email: string): Promise<StaffRow | undefined> => {
   return rows[0];
 };
 
-const demUserSuperTokens = async (email: string): Promise<number> =>
+const countSuperTokensUsers = async (email: string): Promise<number> =>
   (await supertokens.listUsersByAccountInfo("public", { email })).length;
 
 describe("signUpPOST ghi staff_users", () => {
@@ -164,7 +164,7 @@ describe("signUpPOST ghi staff_users", () => {
     const res = await post(
       "/auth/signup",
       formFields({
-        email: EMAIL_DANGKY,
+        email: EMAIL_SIGNUP,
         password: PASSWORD,
         hoTen: "Nguyễn Văn Test",
         soDienThoai: "0901234567",
@@ -172,7 +172,7 @@ describe("signUpPOST ghi staff_users", () => {
     );
     expect(await res.json()).toMatchObject({ status: "OK" });
 
-    const row = await docHang(EMAIL_DANGKY);
+    const row = await readStaffRow(EMAIL_SIGNUP);
     expect(row).toBeDefined();
     expect(row?.full_name).toBe("Nguyễn Văn Test");
     expect(row?.phone).toBe("0901234567");
@@ -185,7 +185,7 @@ describe("signUpPOST ghi staff_users", () => {
     // `id` của hàng PHẢI là userId của SuperTokens — đó là toàn bộ cách
     // `staff-guard` tìm được hồ sơ từ session. Lệch là "đăng nhập được nhưng
     // NO_PROFILE" vĩnh viễn.
-    const [user] = await supertokens.listUsersByAccountInfo("public", { email: EMAIL_DANGKY });
+    const [user] = await supertokens.listUsersByAccountInfo("public", { email: EMAIL_SIGNUP });
     expect(row?.id).toBe(user?.id ?? "");
   });
 
@@ -196,7 +196,7 @@ describe("signUpPOST ghi staff_users", () => {
     const res = await post(
       "/auth/signup",
       formFields({
-        email: EMAIL_TRANG,
+        email: EMAIL_BLANK,
         password: PASSWORD,
         hoTen: "   ",
         soDienThoai: "  ",
@@ -204,7 +204,7 @@ describe("signUpPOST ghi staff_users", () => {
     );
     expect(await res.json()).toMatchObject({ status: "OK" });
 
-    const row = await docHang(EMAIL_TRANG);
+    const row = await readStaffRow(EMAIL_BLANK);
     expect(row?.full_name).toBe("(chưa đặt tên)");
     expect(row?.full_name).not.toBe("");
     // Cùng một phép `.trim() ||`, chiều ngược lại: sđt trắng là KHÔNG có sđt.
@@ -216,13 +216,13 @@ describe("signUpPOST ghi staff_users", () => {
     // email trong `staff_users`: SuperTokens KHÔNG biết gì về hàng này nên nó tạo
     // user bình thường, rồi insert của ta đụng UNIQUE (23505) và ném.
     await client`
-      INSERT INTO staff_users (id, email, full_name) VALUES (${`${P}chiem-cho`}, ${EMAIL_KENH}, 'Chiếm chỗ')
+      INSERT INTO staff_users (id, email, full_name) VALUES (${`${P}chiem-cho`}, ${EMAIL_TAKEN}, 'Chiếm chỗ')
     `;
-    expect(await demUserSuperTokens(EMAIL_KENH)).toBe(0);
+    expect(await countSuperTokensUsers(EMAIL_TAKEN)).toBe(0);
 
     const res = await post(
       "/auth/signup",
-      formFields({ email: EMAIL_KENH, password: PASSWORD, hoTen: "Người Xui" }),
+      formFields({ email: EMAIL_TAKEN, password: PASSWORD, hoTen: "Người Xui" }),
     );
     // Đăng ký PHẢI thất bại. Trả "OK" ở đây còn tệ hơn 500: người dùng tưởng có
     // tài khoản, đăng nhập vào thì bị NO_PROFILE không giải thích được.
@@ -230,10 +230,10 @@ describe("signUpPOST ghi staff_users", () => {
 
     // ĐÂY là assertion của cả task. Bỏ `await supertokens.deleteUser(...)` trong
     // `auth.ts` thì mọi assertion khác trong test này vẫn xanh và chỉ dòng dưới đỏ.
-    expect(await demUserSuperTokens(EMAIL_KENH)).toBe(0);
+    expect(await countSuperTokensUsers(EMAIL_TAKEN)).toBe(0);
 
     // Và hàng chiếm chỗ vẫn nguyên — lớp bù trừ chỉ được dọn thứ chính nó tạo ra.
-    const row = await docHang(EMAIL_KENH);
+    const row = await readStaffRow(EMAIL_TAKEN);
     expect(row?.id).toBe(`${P}chiem-cho`);
     expect(row?.full_name).toBe("Chiếm chỗ");
   });
@@ -263,7 +263,7 @@ describe("signUpPOST ghi staff_users", () => {
  * Chạy trong tiến trình con. In một dòng `V9_COOKIE <json>` rồi thoát ngay —
  * `auth.ts` kéo theo `../db`, và client Bun.SQL còn mở sẽ giữ tiến trình sống.
  */
-const KICH_BAN_CON = `
+const CHILD_SCRIPT = `
 const { Elysia } = await import("elysia");
 const { auth } = await import("./src/plugins/auth.ts");
 const res = await new Elysia().use(auth).handle(
@@ -284,20 +284,20 @@ await Bun.write(
 process.exit(0);
 `;
 
-interface KetQuaCon {
+interface ChildResult {
   status: unknown;
   cookies: string[];
 }
 
-const dangNhap = formFields({ email: EMAIL_COOKIE, password: PASSWORD });
+const signInFields = formFields({ email: EMAIL_COOKIE, password: PASSWORD });
 
-async function dangNhapTrongTienTrinhCon(extra: Record<string, string>): Promise<KetQuaCon> {
-  const proc = Bun.spawn(["bun", "-e", KICH_BAN_CON], {
+async function signInInChildProcess(extra: Record<string, string>): Promise<ChildResult> {
+  const proc = Bun.spawn(["bun", "-e", CHILD_SCRIPT], {
     // Kịch bản import `./src/plugins/auth.ts` theo cwd, và cwd=apps/api cũng là
     // lý do `.env` ở root KHÔNG tự nạp (bun chỉ đọc .env ở đúng cwd) — mọi biến
     // tới từ `process.env` kế thừa bên dưới, nên `extra` thắng tuyệt đối.
     cwd: `${import.meta.dir}/../..`,
-    env: { ...process.env, ...extra, V9_TEST_SIGNIN_BODY: JSON.stringify(dangNhap) },
+    env: { ...process.env, ...extra, V9_TEST_SIGNIN_BODY: JSON.stringify(signInFields) },
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -307,11 +307,11 @@ async function dangNhapTrongTienTrinhCon(extra: Record<string, string>): Promise
   ]);
   await proc.exited;
 
-  const dong = out.split("\n").find((l) => l.startsWith("V9_COOKIE "));
-  if (!dong) {
+  const line = out.split("\n").find((l) => l.startsWith("V9_COOKIE "));
+  if (!line) {
     throw new Error(`Tiến trình con không in kết quả (exit ${proc.exitCode}).\n${out}\n${err}`);
   }
-  return JSON.parse(dong.slice("V9_COOKIE ".length)) as KetQuaCon;
+  return JSON.parse(line.slice("V9_COOKIE ".length)) as ChildResult;
 }
 
 describe("cookieDomain chỉ được đặt ở production", () => {
@@ -324,7 +324,7 @@ describe("cookieDomain chỉ được đặt ở production", () => {
   });
 
   it("dev + ROOT_DOMAIN=example.com → Set-Cookie KHÔNG có Domain=", async () => {
-    const { status, cookies } = await dangNhapTrongTienTrinhCon({
+    const { status, cookies } = await signInInChildProcess({
       NODE_ENV: "development",
       ROOT_DOMAIN: "example.com",
     });
@@ -345,7 +345,7 @@ describe("cookieDomain chỉ được đặt ở production", () => {
     // Vế đối chứng. Thiếu nó thì "không bao giờ đặt cookieDomain" cũng qua được
     // ca dev, và prod mất session khi staff.$ROOT_DOMAIN gọi api.$ROOT_DOMAIN —
     // hỏng ở đúng nơi không quan sát được từ máy dev.
-    const { status, cookies } = await dangNhapTrongTienTrinhCon({
+    const { status, cookies } = await signInInChildProcess({
       NODE_ENV: "production",
       ROOT_DOMAIN: "example.com",
     });

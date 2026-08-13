@@ -20,7 +20,7 @@ export interface StaffUser {
   readonly status: StaffStatus;
   readonly approvedBy: string | null;
   readonly createdAt: Date;
-  /** Mốc thu hồi session — xem `dongDauThuHoiSession`. `null` = chưa từng thu hồi. */
+  /** Mốc thu hồi session — xem `stampSessionRevocation`. `null` = chưa từng thu hồi. */
   readonly sessionsInvalidBefore: Date | null;
 }
 
@@ -139,13 +139,13 @@ export async function createPendingStaff(input: {
  * transaction ngầm) nên hai giá trị bằng nhau; đừng chuyển nó vào trong một
  * transaction dài, mốc sẽ lùi về quá khứ đúng bằng thời gian transaction đó chạy.
  */
-export async function dongDauThuHoiSession(userId: string): Promise<Date | null> {
+export async function stampSessionRevocation(userId: string): Promise<Date | null> {
   const [row] = await db
     .update(schema.staffUsers)
     .set({ sessionsInvalidBefore: sql`now()`, updatedAt: new Date() })
     .where(eq(schema.staffUsers.id, userId))
-    .returning({ moc: schema.staffUsers.sessionsInvalidBefore });
-  return row?.moc ?? null;
+    .returning({ revokedAt: schema.staffUsers.sessionsInvalidBefore });
+  return row?.revokedAt ?? null;
 }
 
 function asActor(s: StaffUser): StaffActor {
@@ -268,12 +268,12 @@ export async function changeStaffRole(
  * và khoá tài khoản phải đọc-ghi trên cùng một `tx`, không phải trên `db`.
  *
  * Thu hồi chạy SAU KHI transaction commit, và là HAI bước chứ không một:
- * `deps.revokeSessions` (giết refresh token ở core) rồi `dongDauThuHoiSession`
+ * `deps.revokeSessions` (giết refresh token ở core) rồi `stampSessionRevocation`
  * (giết access token đang cầm). Trên đường này bản thân `status = 'DISABLED'` đã
  * chặn ngay từ request kế tiếp — nên dấu ở đây trông như thừa, và nó tồn tại vì
  * bất biến **hễ thu hồi thì đóng dấu** phải đúng ở MỌI chỗ thu hồi. Một bất biến
  * chỉ đúng ở một trong hai chỗ là bất biến người sau sẽ chép sai; xem
- * `dongDauThuHoiSession`.
+ * `stampSessionRevocation`.
  */
 export async function disableStaff(
   deps: StaffDeps,
@@ -300,7 +300,7 @@ export async function disableStaff(
 
   if (result.ok) {
     await deps.revokeSessions(targetId);
-    await dongDauThuHoiSession(targetId);
+    await stampSessionRevocation(targetId);
   }
   return result;
 }

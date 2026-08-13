@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { Elysia } from "elysia";
-import { staffGuard, tokenDaBiThuHoi } from "./staff-guard";
+import { isTokenRevoked, staffGuard } from "./staff-guard";
 
 /**
  * Fixture route đăng ký SAU guard. Đây là hàng rào "mặc định chặn": route này
@@ -25,8 +25,8 @@ const call = (path: string) => app.handle(new Request(`http://localhost${path}`)
  * này là chỗ duy nhất chứng minh `as: "global"` thật sự vượt được ranh giới
  * plugin — thứ mà cả hàng rào phụ thuộc vào.
  */
-const rentalsGia = new Elysia({ name: "rentals-gia" }).get("/rentals", () => ({ ok: true }));
-const appGhepPlugin = new Elysia().use(staffGuard).use(rentalsGia);
+const fakeRentals = new Elysia({ name: "fake-rentals" }).get("/rentals", () => ({ ok: true }));
+const pluginApp = new Elysia().use(staffGuard).use(fakeRentals);
 
 describe("staffGuard", () => {
   it("route không khai công khai → 401 khi không có session", async () => {
@@ -46,7 +46,7 @@ describe("staffGuard", () => {
   });
 
   it("route trong plugin RIÊNG nối sau guard → vẫn 401 (topology của index.ts)", async () => {
-    const res = await appGhepPlugin.handle(new Request("http://localhost/rentals"));
+    const res = await pluginApp.handle(new Request("http://localhost/rentals"));
     expect(res.status).toBe(401);
   });
 });
@@ -59,21 +59,21 @@ describe("staffGuard", () => {
  *
  * `iat` tính bằng giây; mốc thu hồi là `timestamptz` có micro giây.
  */
-describe("tokenDaBiThuHoi", () => {
+describe("isTokenRevoked", () => {
   /** 2026-08-11T10:00:00.500Z — cố ý lệch 500ms khỏi biên giây. */
-  const MOC = new Date(Date.UTC(2026, 7, 11, 10, 0, 0, 500));
-  const GIAY = (d: Date) => Math.floor(d.getTime() / 1000);
+  const REVOKED_AT = new Date(Date.UTC(2026, 7, 11, 10, 0, 0, 500));
+  const seconds = (d: Date) => Math.floor(d.getTime() / 1000);
 
   it("chưa từng thu hồi → mọi token đều qua", () => {
-    expect(tokenDaBiThuHoi(null, GIAY(MOC) - 3600)).toBe(false);
+    expect(isTokenRevoked(null, seconds(REVOKED_AT) - 3600)).toBe(false);
   });
 
   it("token cấp trước mốc một giây → bị thu hồi", () => {
-    expect(tokenDaBiThuHoi(MOC, GIAY(MOC) - 1)).toBe(true);
+    expect(isTokenRevoked(REVOKED_AT, seconds(REVOKED_AT) - 1)).toBe(true);
   });
 
   it("token cấp một giờ trước (kẻ đang cầm cookie cũ) → bị thu hồi", () => {
-    expect(tokenDaBiThuHoi(MOC, GIAY(MOC) - 3600)).toBe(true);
+    expect(isTokenRevoked(REVOKED_AT, seconds(REVOKED_AT) - 3600)).toBe(true);
   });
 
   /**
@@ -83,22 +83,22 @@ describe("tokenDaBiThuHoi", () => {
    * chính người vừa đổi mật khẩu xong — tức "quên mật khẩu" thành tính năng
    * không dùng được, hỏng nặng hơn lỗ hổng đang vá.
    *
-   * Bỏ `Math.floor(...)` trong `tokenDaBiThuHoi` thì ĐÚNG bài này đỏ.
+   * Bỏ `Math.floor(...)` trong `isTokenRevoked` thì ĐÚNG bài này đỏ.
    */
   it("đăng nhập lại trong CÙNG GIÂY với lúc đóng dấu → vẫn vào được", () => {
-    expect(tokenDaBiThuHoi(MOC, GIAY(MOC))).toBe(false);
+    expect(isTokenRevoked(REVOKED_AT, seconds(REVOKED_AT))).toBe(false);
   });
 
   it("token cấp sau mốc → vào được", () => {
-    expect(tokenDaBiThuHoi(MOC, GIAY(MOC) + 1)).toBe(false);
+    expect(isTokenRevoked(REVOKED_AT, seconds(REVOKED_AT) + 1)).toBe(false);
   });
 
   /** Hình dạng token đổi = mất khả năng kiểm → chặn, không phải cho qua. */
   it("không đọc được iat mà đã có mốc → hỏng theo chiều ĐÓNG", () => {
-    expect(tokenDaBiThuHoi(MOC, null)).toBe(true);
+    expect(isTokenRevoked(REVOKED_AT, null)).toBe(true);
   });
 
   it("không đọc được iat và chưa từng thu hồi → không ảnh hưởng ai", () => {
-    expect(tokenDaBiThuHoi(null, null)).toBe(false);
+    expect(isTokenRevoked(null, null)).toBe(false);
   });
 });

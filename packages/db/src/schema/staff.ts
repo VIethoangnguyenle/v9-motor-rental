@@ -106,7 +106,7 @@ export const passwordResetCodes = pgTable(
   (t) => [
     check("password_reset_codes_attempts_nonneg", sql`${t.attempts} >= 0`),
     // Không cần (staff_user_id, created_at DESC) dù truy vấn thật ORDER BY
-    // created_at DESC LIMIT 1: `taoMaDatLaiMatKhau` đánh dấu MỌI mã chưa dùng
+    // created_at DESC LIMIT 1: `createResetCode` đánh dấu MỌI mã chưa dùng
     // của người đó là đã dùng TRƯỚC KHI chèn mã mới, nên ở trạng thái ổn định
     // mỗi người có TỐI ĐA MỘT hàng `used_at IS NULL` — sắp xếp một hàng là miễn
     // phí, không cần cột `created_at` trong index. Bất biến này nằm ở tầng ứng

@@ -71,14 +71,14 @@ async function withOnlyTestOwnersActive<T>(fn: () => Promise<T>): Promise<T> {
 
 /** Ghi lại lời gọi thay vì gọi SuperTokens thật — service không cần biết ai thu hồi. */
 function spyDeps() {
-  const daThuHoi: string[] = [];
+  const revoked: string[] = [];
   const deps: StaffDeps = {
     revokeSessions: (userId) => {
-      daThuHoi.push(userId);
+      revoked.push(userId);
       return Promise.resolve();
     },
   };
-  return { deps, daThuHoi };
+  return { deps, revoked };
 }
 
 beforeAll(async () => {
@@ -181,14 +181,14 @@ describe("changeStaffRole", () => {
           changeStaffRole(`${P}o1`, `${P}o1`, "STAFF"),
           changeStaffRole(`${P}o2`, `${P}o2`, "STAFF"),
         ]);
-        const soThanhCong = [a, b].filter((r) => r.ok).length;
-        expect(soThanhCong).toBe(1);
+        const successCount = [a, b].filter((r) => r.ok).length;
+        expect(successCount).toBe(1);
 
-        const conOwner = await db
+        const remainingOwners = await db
           .select({ id: schema.staffUsers.id })
           .from(schema.staffUsers)
           .where(and(eq(schema.staffUsers.role, "OWNER"), eq(schema.staffUsers.status, "ACTIVE")));
-        expect(conOwner.length).toBe(1);
+        expect(remainingOwners.length).toBe(1);
       } finally {
         await db
           .update(schema.staffUsers)
@@ -201,12 +201,12 @@ describe("changeStaffRole", () => {
 
 describe("disableStaff", () => {
   it("OWNER khoá được nhân viên, và session của người đó bị thu hồi", async () => {
-    const { deps, daThuHoi } = spyDeps();
+    const { deps, revoked } = spyDeps();
     const res = await disableStaff(deps, `${P}owner`, `${P}new`);
     expect(res.ok).toBe(true);
     expect(await loadStaff(`${P}new`)).toMatchObject({ status: "DISABLED" });
     // Khoá mà không thu hồi thì session cũ vẫn sống trong SuperTokens.
-    expect(daThuHoi).toEqual([`${P}new`]);
+    expect(revoked).toEqual([`${P}new`]);
     // Và phải ĐÓNG DẤU nữa — `revokeSessions` chỉ giết refresh token, access
     // token đang cầm là JWT tự xác thực nên nó sống tới khi hết hạn (đo
     // 2026-08-11). Bất biến của repo: hễ thu hồi thì đóng dấu.
@@ -214,11 +214,11 @@ describe("disableStaff", () => {
   });
 
   it("không tự khoá mình, và KHÔNG thu hồi session của ai cả", async () => {
-    const { deps, daThuHoi } = spyDeps();
+    const { deps, revoked } = spyDeps();
     const res = await disableStaff(deps, `${P}owner`, `${P}owner`);
     expect(res).toEqual({ ok: false, reason: "CANNOT_DISABLE_SELF" });
     // Bị từ chối mà vẫn thu hồi là đá văng chính người đang thao tác.
-    expect(daThuHoi).toEqual([]);
+    expect(revoked).toEqual([]);
     // Cùng lý lẽ cho cái dấu: đóng dấu ở nhánh bị từ chối là tự đá mình ra khỏi
     // hệ thống bằng một thao tác đã KHÔNG xảy ra.
     expect((await loadStaff(`${P}owner`))?.sessionsInvalidBefore).toBeNull();

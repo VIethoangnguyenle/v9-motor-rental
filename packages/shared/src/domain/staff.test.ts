@@ -5,7 +5,7 @@ const owner: StaffActor = { id: "u-owner", role: "OWNER", status: "ACTIVE" };
 const owner2: StaffActor = { id: "u-owner-2", role: "OWNER", status: "ACTIVE" };
 const staff: StaffActor = { id: "u-staff", role: "STAFF", status: "ACTIVE" };
 const pending: StaffActor = { id: "u-pending", role: "STAFF", status: "PENDING" };
-const ownerBiKhoa: StaffActor = { id: "u-owner-khoa", role: "OWNER", status: "DISABLED" };
+const disabledOwner: StaffActor = { id: "u-owner-khoa", role: "OWNER", status: "DISABLED" };
 
 describe("canApprove", () => {
   it("OWNER duyệt được người đang chờ", () => {
@@ -29,7 +29,7 @@ describe("canApprove", () => {
   // phải OWNER. Trước khi có test này, xoá vế `actor.status !== "ACTIVE"` khỏi
   // requireOwner không làm test nào đỏ.
   it("OWNER nhưng đang DISABLED thì không duyệt được ai", () => {
-    expect(canApprove(ownerBiKhoa, pending)).toEqual({ ok: false, reason: "NOT_OWNER" });
+    expect(canApprove(disabledOwner, pending)).toEqual({ ok: false, reason: "NOT_OWNER" });
   });
 });
 
@@ -58,7 +58,7 @@ describe("canChangeRole", () => {
 
   // Vế status của requireOwner — xem ghi chú ở "canApprove".
   it("OWNER nhưng đang DISABLED thì không đổi role của ai", () => {
-    expect(canChangeRole(ownerBiKhoa, staff, "SALES", 2)).toEqual({
+    expect(canChangeRole(disabledOwner, staff, "SALES", 2)).toEqual({
       ok: false,
       reason: "NOT_OWNER",
     });
@@ -93,6 +93,6 @@ describe("canDisable", () => {
 
   // Vế status của requireOwner — xem ghi chú ở "canApprove".
   it("OWNER nhưng đang DISABLED thì không khoá được ai", () => {
-    expect(canDisable(ownerBiKhoa, staff, 2)).toEqual({ ok: false, reason: "NOT_OWNER" });
+    expect(canDisable(disabledOwner, staff, 2)).toEqual({ ok: false, reason: "NOT_OWNER" });
   });
 });

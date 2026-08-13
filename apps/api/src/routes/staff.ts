@@ -2,13 +2,13 @@ import { Elysia, t } from "elysia";
 import EmailPassword from "supertokens-node/recipe/emailpassword";
 import Session from "supertokens-node/recipe/session";
 import { requireRole, staffGuard } from "../plugins/staff-guard";
-import { emailDaCauHinh, guiMaDatLaiMatKhau } from "../services/email";
+import { isEmailConfigured, sendResetCodeEmail } from "../services/email";
 import {
-  doiMatKhauBangMa,
-  taoMaDatLaiMatKhau,
-  timStaffTheoEmail,
-  type KetQuaDoiMatKhau,
+  createResetCode,
+  findStaffByEmail,
+  resetPasswordWithCode,
   type PasswordResetDeps,
+  type ResetPasswordResult,
 } from "../services/password-reset";
 import {
   approveStaff,
@@ -38,10 +38,10 @@ const revokeSessions = (userId: string) => Session.revokeAllSessionsForUser(user
 const staffDeps: StaffDeps = { revokeSessions };
 
 const resetDeps: PasswordResetDeps = {
-  taoTokenDatLai: (userId, email) =>
+  createResetToken: (userId, email) =>
     EmailPassword.createResetPasswordToken("public", userId, email),
-  doiMatKhauBangToken: (token, matKhauMoi) =>
-    EmailPassword.resetPasswordUsingToken("public", token, matKhauMoi),
+  resetPasswordWithToken: (token, newPassword) =>
+    EmailPassword.resetPasswordUsingToken("public", token, newPassword),
   revokeSessions,
 };
 
@@ -71,7 +71,7 @@ const staffSchema = t.Object({
 });
 
 /** Chỗ DUY NHẤT quyết định field nào của `StaffUser` được ra khỏi API. */
-const hoSoCongKhai = (s: StaffUser) => ({
+const toPublicProfile = (s: StaffUser) => ({
   id: s.id,
   email: s.email,
   fullName: s.fullName,
@@ -80,24 +80,24 @@ const hoSoCongKhai = (s: StaffUser) => ({
   status: s.status,
 });
 
-const loiSchema = t.Object({ message: t.String(), code: t.String() });
+const errorSchema = t.Object({ message: t.String(), code: t.String() });
 const okSchema = t.Object({ ok: t.Boolean() });
 
-type LyDoQuyen = Extract<StaffMutationResult, { ok: false }>["reason"];
-type LyDoMatKhau = Extract<KetQuaDoiMatKhau, { ok: false }>["reason"];
-type LyDo = LyDoQuyen | LyDoMatKhau;
+type PermissionReason = Extract<StaffMutationResult, { ok: false }>["reason"];
+type PasswordReason = Extract<ResetPasswordResult, { ok: false }>["reason"];
+type Reason = PermissionReason | PasswordReason;
 
 /**
  * Domain trả `reason` (pattern 3 của repo — discriminated union, không throw);
  * route dịch sang HTTP. **Mã giữ nguyên cho frontend, thông điệp cho người đọc**:
  * `apps/staff` phân nhánh theo `code`, không theo chuỗi tiếng Việt.
  *
- * `satisfies Record<LyDo, string>` không phải trang trí — `LyDo` suy thẳng từ kiểu
+ * `satisfies Record<Reason, string>` không phải trang trí — `Reason` suy thẳng từ kiểu
  * trả về của hai service, nên thêm một reason ở domain mà quên dịch ở đây là **lỗi
  * biên dịch**. Một `switch` có `default` sẽ nuốt reason mới thành "Yêu cầu không
  * hợp lệ" và không ai biết.
  */
-const THONG_DIEP = {
+const MESSAGES = {
   NOT_OWNER: "Chỉ chủ shop mới làm được việc này",
   CANNOT_APPROVE_SELF: "Không tự duyệt tài khoản của chính mình",
   NOT_PENDING: "Tài khoản này không ở trạng thái chờ duyệt",
@@ -107,30 +107,30 @@ const THONG_DIEP = {
   WRONG_CODE: "Mã không đúng",
   CODE_EXPIRED: "Mã đã hết hạn hoặc đã dùng — xin chủ shop cấp mã mới",
   WEAK_PASSWORD: "Mật khẩu mới chưa đạt yêu cầu",
-} as const satisfies Record<LyDo, string>;
+} as const satisfies Record<Reason, string>;
 
-const loi = (reason: LyDo) => ({ message: THONG_DIEP[reason], code: reason });
+const toError = (reason: Reason) => ({ message: MESSAGES[reason], code: reason });
 
 /**
  * Ba nhóm khác nhau, ba mã khác nhau — gộp tất cả thành 409 (hay 400) làm frontend
  * không phân biệt được "bạn không có quyền" với "luật nghiệp vụ chặn".
  * 403 = thiếu quyền · 409 = xung đột luật · 404 = không có hàng đó.
  */
-const MA_HTTP = {
+const HTTP_STATUS = {
   NOT_OWNER: 403,
   CANNOT_APPROVE_SELF: 409,
   NOT_PENDING: 409,
   CANNOT_DISABLE_SELF: 409,
   LAST_OWNER: 409,
   NOT_FOUND: 404,
-} as const satisfies Record<LyDoQuyen, 403 | 404 | 409>;
+} as const satisfies Record<PermissionReason, 403 | 404 | 409>;
 
 /** Ba route OWNER dùng chung đúng bộ mã này. */
-const responseQuanTri = {
+const adminResponses = {
   200: okSchema,
-  403: loiSchema,
-  404: loiSchema,
-  409: loiSchema,
+  403: errorSchema,
+  404: errorSchema,
+  409: errorSchema,
 };
 
 /**
@@ -159,10 +159,10 @@ export const staff = new Elysia({ name: "staff" })
   .get(
     "/staff/me",
     ({ staff, status }) => {
-      if (!staff) return status(404, loi("NOT_FOUND"));
-      return status(200, hoSoCongKhai(staff));
+      if (!staff) return status(404, toError("NOT_FOUND"));
+      return status(200, toPublicProfile(staff));
     },
-    { response: { 200: staffSchema, 404: loiSchema } },
+    { response: { 200: staffSchema, 404: errorSchema } },
   )
 
   .get(
@@ -170,11 +170,11 @@ export const staff = new Elysia({ name: "staff" })
     async ({ query, staff, status }) => {
       const denied = requireRole(staff, "OWNER");
       if (denied) return status(403, denied);
-      return status(200, (await listStaff(query.status)).map(hoSoCongKhai));
+      return status(200, (await listStaff(query.status)).map(toPublicProfile));
     },
     {
       query: t.Object({ status: t.Optional(statusSchema) }),
-      response: { 200: t.Array(staffSchema), 403: loiSchema },
+      response: { 200: t.Array(staffSchema), 403: errorSchema },
     },
   )
 
@@ -185,13 +185,13 @@ export const staff = new Elysia({ name: "staff" })
       if (denied || !staff) return status(403, denied ?? FORBIDDEN);
 
       const res = await approveStaff(staff.id, params.id, body.role);
-      if (!res.ok) return status(MA_HTTP[res.reason], loi(res.reason));
+      if (!res.ok) return status(HTTP_STATUS[res.reason], toError(res.reason));
       return status(200, { ok: true });
     },
     {
       params: t.Object({ id: t.String() }),
       body: t.Object({ role: roleSchema }),
-      response: responseQuanTri,
+      response: adminResponses,
     },
   )
 
@@ -202,13 +202,13 @@ export const staff = new Elysia({ name: "staff" })
       if (denied || !staff) return status(403, denied ?? FORBIDDEN);
 
       const res = await changeStaffRole(staff.id, params.id, body.role);
-      if (!res.ok) return status(MA_HTTP[res.reason], loi(res.reason));
+      if (!res.ok) return status(HTTP_STATUS[res.reason], toError(res.reason));
       return status(200, { ok: true });
     },
     {
       params: t.Object({ id: t.String() }),
       body: t.Object({ role: roleSchema }),
-      response: responseQuanTri,
+      response: adminResponses,
     },
   )
 
@@ -224,10 +224,10 @@ export const staff = new Elysia({ name: "staff" })
       if (denied || !staff) return status(403, denied ?? FORBIDDEN);
 
       const res = await disableStaff(staffDeps, staff.id, params.id);
-      if (!res.ok) return status(MA_HTTP[res.reason], loi(res.reason));
+      if (!res.ok) return status(HTTP_STATUS[res.reason], toError(res.reason));
       return status(200, { ok: true });
     },
-    { params: t.Object({ id: t.String() }), response: responseQuanTri },
+    { params: t.Object({ id: t.String() }), response: adminResponses },
   )
 
   /**
@@ -242,12 +242,12 @@ export const staff = new Elysia({ name: "staff" })
       if (denied) return status(403, denied);
 
       const target = await loadStaff(params.id);
-      if (!target) return status(404, loi("NOT_FOUND"));
-      return status(200, { code: await taoMaDatLaiMatKhau(target.id) });
+      if (!target) return status(404, toError("NOT_FOUND"));
+      return status(200, { code: await createResetCode(target.id) });
     },
     {
       params: t.Object({ id: t.String() }),
-      response: { 200: t.Object({ code: t.String() }), 403: loiSchema, 404: loiSchema },
+      response: { 200: t.Object({ code: t.String() }), 403: errorSchema, 404: errorSchema },
     },
   )
 
@@ -256,17 +256,17 @@ export const staff = new Elysia({ name: "staff" })
     async ({ body, status }) => {
       // Thiếu SMTP là trạng thái mặc định của một prod mới dựng, nên câu trả lời
       // phải chỉ ra lối đi tiếp — không phải một lỗi cụt.
-      if (!emailDaCauHinh) {
+      if (!isEmailConfigured) {
         return status(503, {
           message: "Hệ thống chưa cấu hình email — liên hệ chủ shop để lấy mã",
           code: "EMAIL_NOT_CONFIGURED",
         });
       }
 
-      const found = await timStaffTheoEmail(body.email);
+      const found = await findStaffByEmail(body.email);
       if (found) {
-        const ma = await taoMaDatLaiMatKhau(found.id);
-        await guiMaDatLaiMatKhau(body.email, ma);
+        const code = await createResetCode(found.id);
+        await sendResetCodeEmail(body.email, code);
       }
 
       // LUÔN 200, kể cả khi email không tồn tại hoặc chủ nó đang bị khoá. Trả 404
@@ -276,7 +276,7 @@ export const staff = new Elysia({ name: "staff" })
     },
     {
       body: t.Object({ email: t.String({ format: "email" }) }),
-      response: { 200: okSchema, 503: loiSchema },
+      response: { 200: okSchema, 503: errorSchema },
     },
   )
 
@@ -288,8 +288,8 @@ export const staff = new Elysia({ name: "staff" })
   .post(
     "/staff/password-reset/confirm",
     async ({ body, status }) => {
-      const res = await doiMatKhauBangMa(resetDeps, body.email, body.code, body.matKhauMoi);
-      if (!res.ok) return status(400, loi(res.reason));
+      const res = await resetPasswordWithCode(resetDeps, body.email, body.code, body.matKhauMoi);
+      if (!res.ok) return status(400, toError(res.reason));
       return status(200, { ok: true });
     },
     {
@@ -301,6 +301,6 @@ export const staff = new Elysia({ name: "staff" })
         // hai bản luật sẽ lệch nhau ở lần đầu một trong hai được sửa.
         matKhauMoi: t.String({ minLength: 8 }),
       }),
-      response: { 200: okSchema, 400: loiSchema },
+      response: { 200: okSchema, 400: errorSchema },
     },
   );

@@ -23,9 +23,9 @@ const transport = env.smtp
     })
   : null;
 
-export const emailDaCauHinh = transport !== null;
+export const isEmailConfigured = transport !== null;
 
-export async function guiMaDatLaiMatKhau(to: string, ma: string): Promise<void> {
+export async function sendResetCodeEmail(to: string, code: string): Promise<void> {
   // Kiểm cả `env.smtp` chứ không chỉ `transport`: TypeScript không suy được rằng
   // `transport !== null` kéo theo `env.smtp !== null`, và `from` nằm ở `env.smtp`.
   if (!transport || !env.smtp) throw new Error("SMTP chưa cấu hình");
@@ -34,7 +34,7 @@ export async function guiMaDatLaiMatKhau(to: string, ma: string): Promise<void> 
     to,
     subject: "Mã đặt lại mật khẩu — V9 Motor Rental",
     text: [
-      `Mã đặt lại mật khẩu của bạn là: ${ma}`,
+      `Mã đặt lại mật khẩu của bạn là: ${code}`,
       "",
       "Mã có hiệu lực trong 10 phút và chỉ dùng được một lần.",
       "Nếu bạn không yêu cầu đặt lại mật khẩu, bỏ qua email này.",

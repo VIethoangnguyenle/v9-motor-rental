@@ -5,9 +5,9 @@ import EmailPassword from "supertokens-node/recipe/emailpassword";
 import Session from "supertokens-node/recipe/session";
 import { client } from "../db";
 import {
-  doiMatKhauBangMa,
+  createResetCode,
+  resetPasswordWithCode,
   type PasswordResetDeps,
-  taoMaDatLaiMatKhau,
 } from "../services/password-reset";
 import { disableStaff, type StaffDeps } from "../services/staff";
 import { auth } from "./auth";
@@ -25,7 +25,7 @@ import { staffGuard } from "./staff-guard";
  *
  * Vì vậy file này đi qua SuperTokens THẬT + Postgres THẬT, không mock: chỗ hỏng
  * nằm đúng ở chỗ ghép giữa token do core cấp và hàng DB do ta ghi — thứ mà mock
- * sẽ che mất. Ba service (`doiMatKhauBangMa`, `disableStaff`) được gọi với deps
+ * sẽ che mất. Ba service (`resetPasswordWithCode`, `disableStaff`) được gọi với deps
  * THẬT, đúng bộ mà `routes/staff.ts` dựng, nên test cũng khoá luôn việc chúng
  * còn đóng dấu hay không.
  */
@@ -40,8 +40,8 @@ const EMAIL_KHOA = `${P}bikhoa@v9.vn`;
 const EMAIL_OWNER = `${P}owner@v9.vn`;
 const EMAILS = [EMAIL, EMAIL_GIAY, EMAIL_KHOA, EMAIL_OWNER];
 // Phải qua policy mặc định của SuperTokens (>= 8 ký tự, có chữ và số).
-const MAT_KHAU = "matkhau-test-2026";
-const MAT_KHAU_MOI = "matkhau-moi-2026";
+const PASSWORD = "matkhau-test-2026";
+const NEW_PASSWORD = "matkhau-moi-2026";
 
 /**
  * Fixture mô phỏng đúng topology của `index.ts`: `auth` → `staffGuard` → route
@@ -76,7 +76,7 @@ const get = (path: string, cookie: string) =>
   app.handle(new Request(`http://localhost${path}`, { headers: { cookie } }));
 
 /** `name=value` của từng Set-Cookie, ghép lại thành header `Cookie` gửi đi. */
-const thanhHeaderCookie = (setCookies: readonly string[]): string =>
+const toCookieHeader = (setCookies: readonly string[]): string =>
   setCookies.map((c) => c.split(";", 1)[0] ?? "").join("; ");
 
 /**
@@ -86,14 +86,14 @@ const thanhHeaderCookie = (setCookies: readonly string[]): string =>
  * SuperTokens trả token qua header và KHÔNG phát `Set-Cookie` nào — mọi bài dưới
  * sẽ 401 vì "không có cookie", tức xanh/đỏ vì lý do hoàn toàn khác.
  */
-async function dangNhap(email: string, matKhau: string): Promise<string> {
-  const res = await post("/auth/signin", formFields({ email, password: matKhau }), {
+async function signIn(email: string, password: string): Promise<string> {
+  const res = await post("/auth/signin", formFields({ email, password }), {
     "st-auth-mode": "cookie",
   });
   expect(await res.json()).toMatchObject({ status: "OK" });
   const cookies = res.headers.getSetCookie();
   expect(cookies.some((c) => c.startsWith("sAccessToken="))).toBe(true);
-  return thanhHeaderCookie(cookies);
+  return toCookieHeader(cookies);
 }
 
 /**
@@ -102,7 +102,7 @@ async function dangNhap(email: string, matKhau: string): Promise<string> {
  * ⚠️ KHÔNG phải "sleep cho hết flaky". Đây là điều kiện ngữ nghĩa của chính cơ
  * chế: guard so `iat` (giây) với mốc thu hồi ĐÃ CẮT xuống giây, nên token cấp
  * trong CÙNG GIÂY với lúc đóng dấu **cố ý** sống sót — đó là cái giá phải trả để
- * người vừa đổi mật khẩu xong đăng nhập lại được ngay (xem `tokenDaBiThuHoi`).
+ * người vừa đổi mật khẩu xong đăng nhập lại được ngay (xem `isTokenRevoked`).
  * Một bài test chạy hết trong vài chục mili giây rơi đúng vào cửa sổ đó và sẽ
  * đỏ/xanh tuỳ vị trí của nó so với biên giây — đã gặp thật: lần chạy đầu, bài
  * `disableStaff` nhận 403 thay vì 401 vì đăng nhập và đóng dấu cùng một giây.
@@ -110,13 +110,13 @@ async function dangNhap(email: string, matKhau: string): Promise<string> {
  * Kẻ tấn công ngoài đời cầm token cũ hàng phút nên không hưởng cửa sổ này; test
  * thì phải tự đẩy mình ra khỏi nó, tường minh, thay vì hy vọng.
  */
-const choSangGiayMoi = () => Bun.sleep(1000 - (Date.now() % 1000) + 50);
+const waitForNextSecond = () => Bun.sleep(1000 - (Date.now() % 1000) + 50);
 
 /** Đăng ký rồi kéo hàng `staff_users` lên ACTIVE — guard đòi ACTIVE cho route thường. */
-async function taoNhanVien(email: string, role = "STAFF"): Promise<string> {
+async function createActiveStaff(email: string, role = "STAFF"): Promise<string> {
   const res = await post(
     "/auth/signup",
-    formFields({ email, password: MAT_KHAU, hoTen: "Người Kiểm Thử Thu Hồi" }),
+    formFields({ email, password: PASSWORD, hoTen: "Người Kiểm Thử Thu Hồi" }),
   );
   expect(await res.json()).toMatchObject({ status: "OK" });
   // `client` (Bun.SQL, element `api-infra`) chứ không Drizzle + `schema`:
@@ -137,7 +137,7 @@ async function taoNhanVien(email: string, role = "STAFF"): Promise<string> {
  * Ném thay vì trả `null`: hình dạng token đổi là chuyện phải nổ to, không phải
  * chuyện để một bài test lặng lẽ đổi sang đo cái khác.
  */
-function docIatTuCookie(cookie: string): number {
+function readIatFromCookie(cookie: string): number {
   const jwt = /sAccessToken=([^;]+)/.exec(cookie)?.[1];
   const than = decodeURIComponent(jwt ?? "").split(".")[1] ?? "";
   const payload: unknown = JSON.parse(Buffer.from(than, "base64url").toString("utf8"));
@@ -148,7 +148,7 @@ function docIatTuCookie(cookie: string): number {
   return payload.iat;
 }
 
-const docMoc = async (id: string): Promise<Date | null> => {
+const readRevokedAt = async (id: string): Promise<Date | null> => {
   const rows: { sessions_invalid_before: Date | null }[] = await client`
     SELECT sessions_invalid_before FROM staff_users WHERE id = ${id}
   `;
@@ -163,10 +163,10 @@ const docMoc = async (id: string): Promise<Date | null> => {
 const revokeSessions = (userId: string) => Session.revokeAllSessionsForUser(userId);
 
 const resetDeps: PasswordResetDeps = {
-  taoTokenDatLai: (userId, email) =>
+  createResetToken: (userId, email) =>
     EmailPassword.createResetPasswordToken("public", userId, email),
-  doiMatKhauBangToken: (token, matKhauMoi) =>
-    EmailPassword.resetPasswordUsingToken("public", token, matKhauMoi),
+  resetPasswordWithToken: (token, newPassword) =>
+    EmailPassword.resetPasswordUsingToken("public", token, newPassword),
   revokeSessions,
 };
 const staffDeps: StaffDeps = { revokeSessions };
@@ -187,27 +187,27 @@ afterAll(clean);
 
 describe("đổi mật khẩu ngắt session đang mở", () => {
   it("cookie cũ chết NGAY, và người vừa đổi đăng nhập lại được ngay", async () => {
-    const id = await taoNhanVien(EMAIL);
-    const cookieCu = await dangNhap(EMAIL, MAT_KHAU);
+    const id = await createActiveStaff(EMAIL);
+    const oldCookie = await signIn(EMAIL, PASSWORD);
 
     // Vế đối chứng, bắt buộc có trước: nếu cookie này vốn đã không vào được thì
     // cái 401 bên dưới không chứng minh gì cả.
-    expect((await get("/staff/me", cookieCu)).status).toBe(200);
-    expect((await get("/rentals-gia", cookieCu)).status).toBe(200);
+    expect((await get("/staff/me", oldCookie)).status).toBe(200);
+    expect((await get("/rentals-gia", oldCookie)).status).toBe(200);
 
-    const ma = await taoMaDatLaiMatKhau(id);
-    await choSangGiayMoi();
-    expect(await doiMatKhauBangMa(resetDeps, EMAIL, ma, MAT_KHAU_MOI)).toEqual({ ok: true });
-    expect(await docMoc(id)).toBeInstanceOf(Date);
+    const code = await createResetCode(id);
+    await waitForNextSecond();
+    expect(await resetPasswordWithCode(resetDeps, EMAIL, code, NEW_PASSWORD)).toEqual({ ok: true });
+    expect(await readRevokedAt(id)).toBeInstanceOf(Date);
 
     // ĐÂY là assertion của cả task. Trước bản sửa, dòng này ra 200: refresh token
     // đã chết nhưng access token trong cookie thì chưa.
-    const me = await get("/staff/me", cookieCu);
+    const me = await get("/staff/me", oldCookie);
     expect(me.status).toBe(401);
     expect(await me.json()).toMatchObject({ code: "SESSION_EXPIRED" });
     // `/staff/me` là ngoại lệ "cần session, không cần ACTIVE" — phép kiểm thu hồi
     // phải đứng TRƯỚC nó, nếu không đây là cửa hậu.
-    expect((await get("/rentals-gia", cookieCu)).status).toBe(401);
+    expect((await get("/rentals-gia", oldCookie)).status).toBe(401);
 
     // 401 chứ không 403: chỉ 401 mới khiến `supertokens-web-js` đi refresh, và
     // refresh thất bại mới là thứ dọn session rác trong trình duyệt.
@@ -216,11 +216,11 @@ describe("đổi mật khẩu ngắt session đang mở", () => {
     // Chống hồi quy cho cạm bẫy độ phân giải giây: đăng nhập lại NGAY LẬP TỨC
     // bằng mật khẩu mới phải vào được. Bài này thật nhưng phụ thuộc đồng hồ (chỉ
     // đỏ khi lần đăng nhập rơi đúng vào cùng giây với lúc đóng dấu); bản khoá
-    // cạnh này một cách tất định là `tokenDaBiThuHoi` ở `staff-guard.test.ts` và
+    // cạnh này một cách tất định là `isTokenRevoked` ở `staff-guard.test.ts` và
     // bài "mốc lệch dưới một giây" ngay dưới.
-    const cookieMoi = await dangNhap(EMAIL, MAT_KHAU_MOI);
-    expect((await get("/staff/me", cookieMoi)).status).toBe(200);
-    expect((await get("/rentals-gia", cookieMoi)).status).toBe(200);
+    const newCookie = await signIn(EMAIL, NEW_PASSWORD);
+    expect((await get("/staff/me", newCookie)).status).toBe(200);
+    expect((await get("/rentals-gia", newCookie)).status).toBe(200);
   });
 
   /**
@@ -230,12 +230,12 @@ describe("đổi mật khẩu ngắt session đang mở", () => {
    * 500ms so với biên giây của `iat`. Đó chính xác là hoàn cảnh "đóng dấu lúc
    * 10:00:00.500, đăng nhập lại lúc 10:00:00.900": guard PHẢI cho qua.
    *
-   * Bỏ `Math.floor(...)` trong `tokenDaBiThuHoi` thì bài này đỏ, mọi lần chạy.
+   * Bỏ `Math.floor(...)` trong `isTokenRevoked` thì bài này đỏ, mọi lần chạy.
    */
   it("mốc thu hồi trễ hơn iat dưới một giây → token vẫn dùng được", async () => {
-    const id = await taoNhanVien(EMAIL_GIAY);
-    const cookie = await dangNhap(EMAIL_GIAY, MAT_KHAU);
-    const iat = docIatTuCookie(cookie);
+    const id = await createActiveStaff(EMAIL_GIAY);
+    const cookie = await signIn(EMAIL_GIAY, PASSWORD);
+    const iat = readIatFromCookie(cookie);
 
     await client`
       UPDATE staff_users SET sessions_invalid_before = to_timestamp(${iat}) + interval '500 milliseconds'
@@ -255,28 +255,28 @@ describe("đổi mật khẩu ngắt session đang mở", () => {
 
 describe("khoá tài khoản cũng ngắt session đang mở", () => {
   it("disableStaff đóng dấu, và cookie cũ ra 401 chứ không 403", async () => {
-    const ownerId = await taoNhanVien(EMAIL_OWNER, "OWNER");
-    const id = await taoNhanVien(EMAIL_KHOA);
-    const cookieCu = await dangNhap(EMAIL_KHOA, MAT_KHAU);
-    expect((await get("/staff/me", cookieCu)).status).toBe(200);
+    const ownerId = await createActiveStaff(EMAIL_OWNER, "OWNER");
+    const id = await createActiveStaff(EMAIL_KHOA);
+    const oldCookie = await signIn(EMAIL_KHOA, PASSWORD);
+    expect((await get("/staff/me", oldCookie)).status).toBe(200);
 
-    await choSangGiayMoi();
+    await waitForNextSecond();
     expect(await disableStaff(staffDeps, ownerId, id)).toEqual({ ok: true });
-    expect(await docMoc(id)).toBeInstanceOf(Date);
+    expect(await readRevokedAt(id)).toBeInstanceOf(Date);
 
     // `status = 'DISABLED'` một mình đã ra 403 ACCOUNT_DISABLED — nên 401 ở đây là bằng
     // chứng phép kiểm thu hồi chạy TRƯỚC phép kiểm trạng thái. Chủ đích: token
     // cấp trước mốc không còn là credential, và câu hỏi đó thuộc tầng xác thực,
     // phải trả lời trước mọi câu hỏi về quyền.
-    const res = await get("/staff/me", cookieCu);
+    const res = await get("/staff/me", oldCookie);
     expect(res.status).toBe(401);
     expect(await res.json()).toMatchObject({ code: "SESSION_EXPIRED" });
 
     // Và thông điệp "đã bị khoá" KHÔNG mất — nó tới sau một vòng đăng nhập, vì
     // SuperTokens không biết gì về `staff_users`.
-    const cookieMoi = await dangNhap(EMAIL_KHOA, MAT_KHAU);
-    const sauKhiDangNhapLai = await get("/staff/me", cookieMoi);
-    expect(sauKhiDangNhapLai.status).toBe(403);
-    expect(await sauKhiDangNhapLai.json()).toMatchObject({ code: "ACCOUNT_DISABLED" });
+    const newCookie = await signIn(EMAIL_KHOA, PASSWORD);
+    const afterReSignIn = await get("/staff/me", newCookie);
+    expect(afterReSignIn.status).toBe(403);
+    expect(await afterReSignIn.json()).toMatchObject({ code: "ACCOUNT_DISABLED" });
   });
 });

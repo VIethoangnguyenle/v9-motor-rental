@@ -2,10 +2,10 @@ import { and, desc, eq, gt, isNull, lt, sql } from "drizzle-orm";
 import { schema } from "@v9/db";
 import { db } from "../db";
 import { env } from "../env";
-import { dongDauThuHoiSession } from "./staff";
+import { stampSessionRevocation } from "./staff";
 
-const HAN_DUNG_MS = 10 * 60 * 1000;
-const SO_LAN_TOI_DA = 5;
+const CODE_TTL_MS = 10 * 60 * 1000;
+const MAX_ATTEMPTS = 5;
 
 /**
  * Deps là tham số (pattern 2 của repo), y như `StaffDeps` ở `staff.ts` và vì đúng
@@ -18,12 +18,15 @@ const SO_LAN_TOI_DA = 5;
  */
 export interface PasswordResetDeps {
   /** Ở prod: `EmailPassword.createResetPasswordToken("public", userId, email)`. */
-  readonly taoTokenDatLai: (
+  readonly createResetToken: (
     userId: string,
     email: string,
   ) => Promise<{ status: string; token?: string }>;
-  /** Ở prod: `EmailPassword.resetPasswordUsingToken("public", token, matKhauMoi)`. */
-  readonly doiMatKhauBangToken: (token: string, matKhauMoi: string) => Promise<{ status: string }>;
+  /** Ở prod: `EmailPassword.resetPasswordUsingToken("public", token, newPassword)`. */
+  readonly resetPasswordWithToken: (
+    token: string,
+    newPassword: string,
+  ) => Promise<{ status: string }>;
   /** Ở prod: `Session.revokeAllSessionsForUser(userId)`. */
   readonly revokeSessions: (userId: string) => Promise<unknown>;
 }
@@ -32,7 +35,7 @@ export interface PasswordResetDeps {
  * Sáu chữ số ngẫu nhiên mã hoá — **đoạn code duy nhất trong repo sinh ra bí mật
  * thật ở production**.
  *
- * Tách khỏi `sinhMa()` và export CHỈ để test được. `sinhMa()` trả `env.devOtp`
+ * Tách khỏi `generateCode()` và export CHỈ để test được. `generateCode()` trả `env.devOtp`
  * ngay dòng đầu ở mọi môi trường không phải production, nên khi nó còn ôm cả phần
  * rejection sampling thì đoạn quan trọng nhất của file này có coverage đúng 0% —
  * không test nào trong repo từng chạy qua nó. Hàm này cố ý KHÔNG đọc `env`: đó là
@@ -44,25 +47,25 @@ export interface PasswordResetDeps {
  * Trả **chuỗi** đã `padStart`, không phải số: `"000123"` là mã hợp lệ, và một số
  * `123` đánh mất ba chữ số 0 ở đầu. Người gọi không được parse nó thành số.
  */
-export function sinhMaNgauNhien(): string {
+export function generateRandomCode(): string {
   // Rejection sampling thay cho `% 1_000_000` thẳng: 2^32 không chia hết cho 10^6
   // nên phép chia dư làm 967.296 giá trị đầu tiên hay gặp hơn phần còn lại. Độ
   // lệch nhỏ, nhưng vòng lặp này rẻ hơn việc để lại một câu hỏi "chỗ này lệch bao
   // nhiêu" trong đoạn code sinh bí mật. Xác suất lặp lại < 0,03%.
-  const NGUONG = Math.floor(2 ** 32 / 1_000_000) * 1_000_000;
+  const THRESHOLD = Math.floor(2 ** 32 / 1_000_000) * 1_000_000;
   const buf = new Uint32Array(1);
   let v: number;
   do {
     crypto.getRandomValues(buf);
     v = buf[0] ?? 0;
-  } while (v >= NGUONG);
+  } while (v >= THRESHOLD);
   return String(v % 1_000_000).padStart(6, "0");
 }
 
 /**
  * Chỉ MỘT thứ khác nhau giữa dev và prod. Toàn bộ phần còn lại — băm, hết hạn,
  * đếm lần sai, đổi mã lấy mật khẩu mới — chạy y hệt nhau ở cả hai môi trường.
- * Cố ý KHÔNG làm nhánh `if (ma === "999999") cho qua`: một cửa sau riêng nghĩa là
+ * Cố ý KHÔNG làm nhánh `if (code === "999999") cho qua`: một cửa sau riêng nghĩa là
  * luồng chạy ở prod không phải luồng được test nhiều nhất.
  * §5.2 docs/plans/2026-08-10-staff-auth-design.md.
  *
@@ -71,9 +74,9 @@ export function sinhMaNgauNhien(): string {
  * cả shop mở bằng sáu con số. `env.ts` còn ném lúc khởi động nếu `AUTH_DEV_OTP` có
  * mặt ở production.
  */
-function sinhMa(): string {
+function generateCode(): string {
   if (!env.isProduction) return env.devOtp;
-  return sinhMaNgauNhien();
+  return generateRandomCode();
 }
 
 /**
@@ -82,12 +85,12 @@ function sinhMa(): string {
  * đường cứu của OWNER phải dùng chung đúng bảng và đúng đường xác minh với đường
  * email, nếu không thì có hai luồng và chỉ một trong hai được test.
  */
-export async function taoMaDatLaiMatKhau(staffUserId: string): Promise<string> {
-  const ma = sinhMa();
+export async function createResetCode(staffUserId: string): Promise<string> {
+  const code = generateCode();
   // Băm TRƯỚC khi mở transaction: `Bun.password.hash` là argon2id, cỡ trăm mili-giây.
   // Băm bên trong transaction là giữ khoá trên các hàng vừa UPDATE suốt ngần ấy thời
   // gian, không đổi lấy được gì — tính nguyên tử ở đây chỉ cần bao hai câu lệnh ghi.
-  const codeHash = await Bun.password.hash(ma);
+  const codeHash = await Bun.password.hash(code);
 
   await db.transaction(async (tx) => {
     // KHOÁ hàng `staff_users` của chính người này TRƯỚC, rồi mới UPDATE + INSERT.
@@ -99,7 +102,7 @@ export async function taoMaDatLaiMatKhau(staffUserId: string): Promise<string> {
     // transaction cùng UPDATE "không có hàng nào", cùng INSERT, và cùng commit. Đo
     // thật trước khi có dòng khoá này: 8 lời gọi song song để lại 5 mã cùng sống.
     //
-    // Hậu quả không chỉ là rác: `kiemTraMa` lấy đúng hàng MỚI NHẤT, nên các mã kia
+    // Hậu quả không chỉ là rác: `verifyCode` lấy đúng hàng MỚI NHẤT, nên các mã kia
     // vô hiệu với chính nhân viên đã nhận email chứa chúng. Và nó phá đúng bất biến
     // mà comment của `password_reset_codes_active_idx` nói index dựa vào.
     //
@@ -134,14 +137,14 @@ export async function taoMaDatLaiMatKhau(staffUserId: string): Promise<string> {
     await tx.insert(schema.passwordResetCodes).values({
       staffUserId,
       codeHash,
-      expiresAt: new Date(Date.now() + HAN_DUNG_MS),
+      expiresAt: new Date(Date.now() + CODE_TTL_MS),
     });
   });
 
-  return ma;
+  return code;
 }
 
-export type KetQuaKiemTra = { ok: true } | { ok: false; reason: "WRONG_CODE" | "CODE_EXPIRED" };
+export type VerifyCodeResult = { ok: true } | { ok: false; reason: "WRONG_CODE" | "CODE_EXPIRED" };
 
 /**
  * Ba lý do chết đều trả CÙNG MỘT `CODE_EXPIRED` — hết hạn, quá số lần, không có
@@ -172,8 +175,8 @@ export type KetQuaKiemTra = { ok: true } | { ok: false; reason: "WRONG_CODE" | "
  * lượt, nên endpoint này thôi là vòi CPU miễn phí. Rate limit theo IP vẫn là việc
  * riêng còn thiếu.
  */
-export async function kiemTraMa(staffUserId: string, ma: string): Promise<KetQuaKiemTra> {
-  const [moiNhat] = await db
+export async function verifyCode(staffUserId: string, code: string): Promise<VerifyCodeResult> {
+  const [latest] = await db
     .select({ id: schema.passwordResetCodes.id })
     .from(schema.passwordResetCodes)
     .where(
@@ -185,36 +188,36 @@ export async function kiemTraMa(staffUserId: string, ma: string): Promise<KetQua
     .orderBy(desc(schema.passwordResetCodes.createdAt))
     .limit(1);
 
-  if (!moiNhat) return { ok: false, reason: "CODE_EXPIRED" };
+  if (!latest) return { ok: false, reason: "CODE_EXPIRED" };
 
   // Câu này VỪA tiêu một lượt VỪA quyết định có được đoán hay không — một lần chạm
   // DB, không có khe hở giữa đọc và ghi. `expires_at > now()` để Postgres tự so giờ:
   // so bằng `Date.now()` ở JS là lấy đồng hồ của một máy khác với máy đã ghi hàng.
-  const [hang] = await db
+  const [row] = await db
     .update(schema.passwordResetCodes)
     .set({ attempts: sql`${schema.passwordResetCodes.attempts} + 1` })
     .where(
       and(
-        eq(schema.passwordResetCodes.id, moiNhat.id),
-        lt(schema.passwordResetCodes.attempts, SO_LAN_TOI_DA),
+        eq(schema.passwordResetCodes.id, latest.id),
+        lt(schema.passwordResetCodes.attempts, MAX_ATTEMPTS),
         isNull(schema.passwordResetCodes.usedAt),
         gt(schema.passwordResetCodes.expiresAt, sql`now()`),
       ),
     )
     .returning({ codeHash: schema.passwordResetCodes.codeHash });
 
-  if (!hang) return { ok: false, reason: "CODE_EXPIRED" };
+  if (!row) return { ok: false, reason: "CODE_EXPIRED" };
 
   // `attempts` tăng cả khi đoán ĐÚNG. Chấp nhận được: mã chết ngay ở câu UPDATE
   // dưới đây, nên cái lượt vừa tiêu không còn ai dùng tới.
-  if (!(await Bun.password.verify(ma, hang.codeHash))) return { ok: false, reason: "WRONG_CODE" };
+  if (!(await Bun.password.verify(code, row.codeHash))) return { ok: false, reason: "WRONG_CODE" };
 
   // Đánh dấu đã dùng ngay khi xác minh đúng: mã dùng được một lần, kể cả khi các
   // bước sau (sinh token, đổi mật khẩu) hỏng. Hỏng theo hướng đóng, không mở.
   await db
     .update(schema.passwordResetCodes)
     .set({ usedAt: new Date() })
-    .where(eq(schema.passwordResetCodes.id, moiNhat.id));
+    .where(eq(schema.passwordResetCodes.id, latest.id));
   return { ok: true };
 }
 
@@ -224,7 +227,7 @@ export async function kiemTraMa(staffUserId: string, ma: string): Promise<KetQua
  * gọi không cần phân biệt hai ca — route trả cùng một 200 chung chung để không ai
  * dò được shop có những email nào (§5.1 design doc).
  */
-export async function timStaffTheoEmail(email: string): Promise<{ id: string } | null> {
+export async function findStaffByEmail(email: string): Promise<{ id: string } | null> {
   const [row] = await db
     .select({ id: schema.staffUsers.id, status: schema.staffUsers.status })
     .from(schema.staffUsers)
@@ -234,7 +237,7 @@ export async function timStaffTheoEmail(email: string): Promise<{ id: string } |
   return { id: row.id };
 }
 
-export type KetQuaDoiMatKhau =
+export type ResetPasswordResult =
   | { ok: true }
   | { ok: false; reason: "WRONG_CODE" | "CODE_EXPIRED" | "NOT_FOUND" | "WEAK_PASSWORD" };
 
@@ -245,29 +248,29 @@ export type KetQuaDoiMatKhau =
  * băm argon2id của sáu con số, hết hạn sau 10 phút và chết sau 5 lần đoán sai.
  * §5.1 docs/plans/2026-08-10-staff-auth-design.md.
  *
- * THỨ TỰ LÀ MỘT YÊU CẦU, không phải chi tiết triển khai: `kiemTraMa` phải chạy
- * xong và trả `ok` TRƯỚC KHI `taoTokenDatLai` được gọi. Sinh token rồi mới kiểm mã
+ * THỨ TỰ LÀ MỘT YÊU CẦU, không phải chi tiết triển khai: `verifyCode` phải chạy
+ * xong và trả `ok` TRƯỚC KHI `createResetToken` được gọi. Sinh token rồi mới kiểm mã
  * là phát ra một credential đặt lại mật khẩu cho kẻ đang đoán mò — kể cả khi hàm
  * này cuối cùng trả về lỗi. Test "mã sai thì không gọi deps nào" khoá đúng điều đó.
  */
-export async function doiMatKhauBangMa(
+export async function resetPasswordWithCode(
   deps: PasswordResetDeps,
   email: string,
-  ma: string,
-  matKhauMoi: string,
-): Promise<KetQuaDoiMatKhau> {
-  const staff = await timStaffTheoEmail(email);
+  code: string,
+  newPassword: string,
+): Promise<ResetPasswordResult> {
+  const staff = await findStaffByEmail(email);
   if (!staff) return { ok: false, reason: "NOT_FOUND" };
 
-  const check = await kiemTraMa(staff.id, ma);
+  const check = await verifyCode(staff.id, code);
   if (!check.ok) return check;
 
-  const token = await deps.taoTokenDatLai(staff.id, email);
+  const token = await deps.createResetToken(staff.id, email);
   // `UNKNOWN_USER_ID_ERROR` là ca thật: hàng trong `staff_users` còn nhưng user bên
   // SuperTokens đã biến mất. Với người dùng thì đó vẫn là "không tìm thấy".
   if (token.status !== "OK" || !token.token) return { ok: false, reason: "NOT_FOUND" };
 
-  const reset = await deps.doiMatKhauBangToken(token.token, matKhauMoi);
+  const reset = await deps.resetPasswordWithToken(token.token, newPassword);
   // Chính sách mật khẩu do SuperTokens giữ, không nhân bản sang đây — hai bản luật
   // sẽ lệch nhau ở lần đầu tiên một trong hai được sửa.
   if (reset.status !== "OK") return { ok: false, reason: "WEAK_PASSWORD" };
@@ -287,11 +290,11 @@ export async function doiMatKhauBangMa(
   // nóng nhất. Nên kẻ đang cầm token không gia hạn được nữa, nhưng vẫn dùng được
   // tới khi token hết hạn (mặc định 1 giờ).
   //
-  // `dongDauThuHoiSession` đóng nốt vế đó: `staff-guard` so `iat` của token với
+  // `stampSessionRevocation` đóng nốt vế đó: `staff-guard` so `iat` của token với
   // mốc và trả 401 nếu token cấp trước mốc — dùng lại đúng hàng `staff_users` mà
   // guard đã đọc, không thêm query nào. Thứ tự (revoke trước, đóng dấu sau) là có
-  // chủ đích; lý do ở chính `dongDauThuHoiSession`.
+  // chủ đích; lý do ở chính `stampSessionRevocation`.
   await deps.revokeSessions(staff.id);
-  await dongDauThuHoiSession(staff.id);
+  await stampSessionRevocation(staff.id);
   return { ok: true };
 }

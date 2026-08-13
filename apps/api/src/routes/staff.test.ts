@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, it } from "bun:test";
 import { Elysia } from "elysia";
 import { staffGuard } from "../plugins/staff-guard";
-import { emailDaCauHinh } from "../services/email";
-import { taoMaDatLaiMatKhau, timStaffTheoEmail } from "../services/password-reset";
+import { isEmailConfigured } from "../services/email";
+import { createResetCode, findStaffByEmail } from "../services/password-reset";
 import { createPendingStaff } from "../services/staff";
 import { staff } from "./staff";
 
@@ -14,11 +14,11 @@ import { staff } from "./staff";
  */
 const app = new Elysia().use(staffGuard).use(staff);
 
-const goi = (path: string, init?: RequestInit) =>
+const call = (path: string, init?: RequestInit) =>
   app.handle(new Request(`http://localhost${path}`, init));
 
 const postJson = (path: string, body: unknown) =>
-  goi(path, {
+  call(path, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -44,12 +44,12 @@ const EMAIL = "ztest-route-staff@v9.vn";
 let userId = ID;
 
 beforeAll(async () => {
-  const daCo = await timStaffTheoEmail(EMAIL);
-  if (daCo) userId = daCo.id;
+  const existing = await findStaffByEmail(EMAIL);
+  if (existing) userId = existing.id;
   else await createPendingStaff({ id: ID, email: EMAIL, fullName: "Nhân viên test route" });
   // Một mã còn sống để bài "mã sai" bên dưới thật sự đi tới bước so mã, thay vì
   // chết sớm ở `CODE_EXPIRED` và xanh vì lý do khác.
-  await taoMaDatLaiMatKhau(userId);
+  await createResetCode(userId);
 });
 
 describe("guard phủ lên route /staff/*", () => {
@@ -61,13 +61,13 @@ describe("guard phủ lên route /staff/*", () => {
    * `index.ts`; đỏ với 200 thì guard đã ngừng chạy.
    */
   it("GET /staff/me không cookie → 401, KHÔNG phải 404", async () => {
-    const res = await goi("/staff/me");
+    const res = await call("/staff/me");
     expect(res.status).toBe(401);
     expect(await res.json()).toMatchObject({ code: "NOT_AUTHENTICATED" });
   });
 
   it("GET /staff/users không cookie → 401 (route OWNER cũng nằm sau guard)", async () => {
-    expect((await goi("/staff/users")).status).toBe(401);
+    expect((await call("/staff/users")).status).toBe(401);
   });
 
   it("POST /staff/users/:id/disable không cookie → 401", async () => {
@@ -82,23 +82,25 @@ describe("POST /staff/password-reset/request", () => {
    * sách nhân viên của shop (§5.1 design doc).
    *
    * Khi chưa cấu hình SMTP thì cả hai cùng ra 503 — vẫn không lộ gì. Bài test
-   * khẳng định đúng cái đang chạy thay vì bỏ qua: đọc `emailDaCauHinh` (cùng
+   * khẳng định đúng cái đang chạy thay vì bỏ qua: đọc `isEmailConfigured` (cùng
    * nguồn sự thật mà route đọc) rồi chốt con số.
    */
-  const mongDoi = emailDaCauHinh ? 200 : 503;
+  const expected = isEmailConfigured ? 200 : 503;
 
-  it(`email không tồn tại → ${String(mongDoi)}, không lộ sự tồn tại`, async () => {
+  it(`email không tồn tại → ${String(expected)}, không lộ sự tồn tại`, async () => {
     const res = await postJson("/staff/password-reset/request", {
       email: "ztest-khong-ton-tai@v9.vn",
     });
-    expect(res.status).toBe(mongDoi);
+    expect(res.status).toBe(expected);
   });
 
   it("email có thật cho ra ĐÚNG cùng phản hồi với email lạ", async () => {
-    const la = await postJson("/staff/password-reset/request", { email: "ztest-la@v9.vn" });
-    const that = await postJson("/staff/password-reset/request", { email: EMAIL });
-    expect(that.status).toBe(la.status);
-    expect(await that.text()).toBe(await la.text());
+    const unknownRes = await postJson("/staff/password-reset/request", {
+      email: "ztest-la@v9.vn",
+    });
+    const knownRes = await postJson("/staff/password-reset/request", { email: EMAIL });
+    expect(knownRes.status).toBe(unknownRes.status);
+    expect(await knownRes.text()).toBe(await unknownRes.text());
   });
 });
 
@@ -106,9 +108,9 @@ describe("POST /staff/password-reset/confirm", () => {
   /**
    * `WRONG_CODE` (chứ không phải `NOT_FOUND` hay `WEAK_PASSWORD`) chính là bằng
    * chứng KHÔNG ai bị đổi mật khẩu: người dùng `ztest-` này không tồn tại bên
-   * SuperTokens, nên nếu luồng có đi tới `taoTokenDatLai` thì phản hồi đã là
+   * SuperTokens, nên nếu luồng có đi tới `createResetToken` thì phản hồi đã là
    * `NOT_FOUND`. Nhận được `WRONG_CODE` nghĩa là nó dừng lại TRƯỚC khi phát ra
-   * bất kỳ credential đặt lại nào — đúng thứ tự mà `doiMatKhauBangMa` cam kết.
+   * bất kỳ credential đặt lại nào — đúng thứ tự mà `resetPasswordWithCode` cam kết.
    */
   it("mã sai → 400 WRONG_CODE, và không credential nào được phát", async () => {
     const res = await postJson("/staff/password-reset/confirm", {
