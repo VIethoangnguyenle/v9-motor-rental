@@ -1,3 +1,5 @@
+import type { Interval } from "./interval";
+
 /**
  * Vòng đời một đơn thuê. Xem §4 của
  * docs/plans/2026-08-15-staff-home-stats-calendar-design.md.
@@ -29,3 +31,46 @@ export function transition(from: RentalStatus, to: RentalStatus): TransitionResu
   const allowed = ALLOWED.some(([f, t]) => f === from && t === to);
   return allowed ? { ok: true } : { ok: false, reason: "INVALID_TRANSITION" };
 }
+
+/**
+ * "Quá hạn" KHÔNG phải một trạng thái trong DB — nó suy ra lúc đọc. Nếu là trạng
+ * thái thì phải có một job đi đổi nó, và trong khoảng job chưa chạy thì database
+ * đang nói dối.
+ *
+ * `now` là THAM SỐ, không gọi `Date.now()` bên trong: đó là điều kiện để test
+ * không phải đóng băng đồng hồ, và để frontend tô màu lịch bằng đúng hàm này.
+ */
+export function isOverdue(r: { status: RentalStatus; endsAt: Date }, now: Date): boolean {
+  return r.status === "ONGOING" && r.endsAt.getTime() < now.getTime();
+}
+
+/** Đưa về `Interval` để dùng lại `overlaps()` — biên [start, end), khớp tstzrange '[)'. */
+export function toInterval(r: { startsAt: Date; endsAt: Date }): Interval {
+  return { start: r.startsAt, end: r.endsAt };
+}
+
+/**
+ * Đơn này tính vào doanh thu của thời điểm nào. `null` = chưa tính.
+ *
+ * ĐỊNH NGHĨA DUY NHẤT — API dùng nó, frontend dùng nó. Hai định nghĩa là hai con
+ * số khác nhau cho cùng một tháng, và không ai biết cái nào đúng.
+ *
+ * Nhánh CANCELLED hôm nay là bất khả thi (`transition` cấm ONGOING → CANCELLED,
+ * nên đơn huỷ không thể có `handedOverAt`). Giữ lại vì đây là chỗ DUY NHẤT còn
+ * đúng nếu một ngày nào đó luật chuyển trạng thái được nới, hoặc một hàng được
+ * sửa tay trong DB.
+ */
+export function revenueAt(r: { status: RentalStatus; handedOverAt: Date | null }): Date | null {
+  if (r.status === "CANCELLED") return null;
+  return r.handedOverAt;
+}
+
+/**
+ * Múi giờ vận hành của shop. "Hôm nay" của một shop ở TP.HCM là ngày theo giờ
+ * Việt Nam, không phải UTC — xem §5.5 design doc để biết vì sao nhầm chỗ này làm
+ * doanh thu sai mỗi sáng rồi TỰ ĐÚNG LẠI lúc 7h.
+ *
+ * Export từ đây để SQL của `apps/api` và phần định dạng của frontend không mỗi
+ * bên giữ một bản.
+ */
+export const SHOP_TIMEZONE = "Asia/Ho_Chi_Minh";
