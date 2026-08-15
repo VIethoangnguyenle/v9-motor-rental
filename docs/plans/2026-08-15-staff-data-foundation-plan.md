@@ -623,6 +623,27 @@ export const rentals = pgTable(
       "rentals_completed_has_return",
       sql`${t.status} <> 'COMPLETED' OR (${t.handedOverAt} IS NOT NULL AND ${t.returnedAt} IS NOT NULL)`,
     ),
+    // Chiều NGƯỢC LẠI của hai CHECK ngay trên, và chiều này nguy hiểm hơn.
+    // Truy vấn doanh thu lọc đúng `handed_over_at IS NOT NULL` và KHÔNG kiểm
+    // trạng thái, nên một hàng BOOKED hoặc CANCELLED mang dấu giao xe sẽ được
+    // ĐẾM VÀO tiền — sai theo hướng thổi phồng doanh thu, và im lặng.
+    //
+    // `transition()` cấm ONGOING → CANCELLED, nhưng đó là luật của ỨNG DỤNG đi
+    // bảo vệ một truy vấn ở tầng DATABASE: nó không đứng trước một câu UPDATE
+    // sửa tay. Cộng với hai CHECK trên, hai cái này làm quan hệ thành HAI CHIỀU.
+    check(
+      "rentals_handover_only_when_out",
+      sql`${t.handedOverAt} IS NULL OR ${t.status} IN ('ONGOING', 'COMPLETED')`,
+    ),
+    check(
+      "rentals_return_only_when_completed",
+      sql`${t.returnedAt} IS NULL OR ${t.status} = 'COMPLETED'`,
+    ),
+    // Trả xe không xảy ra trước khi giao xe.
+    check(
+      "rentals_return_after_handover",
+      sql`${t.returnedAt} IS NULL OR ${t.handedOverAt} IS NULL OR ${t.returnedAt} >= ${t.handedOverAt}`,
+    ),
     // Partial index cho truy vấn doanh thu: đơn chưa giao không bao giờ được đếm,
     // nên chúng không cần nằm trong index.
     index("rentals_revenue_idx")
@@ -944,6 +965,43 @@ describe("rentals — CHECK constraint", () => {
       expect((caught as { errno?: string }).errno).toBe("23514");
     });
   });
+
+  // Chiều nguy hiểm hơn: hàng này KHÔNG biến mất khỏi báo cáo, nó được ĐẾM VÀO
+  // doanh thu — vì truy vấn thống kê lọc `handed_over_at IS NOT NULL` mà không
+  // kiểm trạng thái.
+  it("từ chối đơn CANCELLED mang dấu giao xe", async () => {
+    await inRollback(async (tx) => {
+      await seed(tx);
+      let caught: unknown = null;
+      await tx.savepoint(async (sp) => {
+        try {
+          await sp`
+            INSERT INTO rentals (vehicle_id, customer_id, starts_at, ends_at, total_amount, created_by, status, handed_over_at)
+            VALUES (${vehicleId}, ${customerId}, ${AUG(12)}, ${AUG(17)}, 2500000, ${staffId}, 'CANCELLED', ${AUG(12, 9)})`;
+        } catch (e) {
+          caught = e;
+        }
+      });
+      expect((caught as { errno?: string }).errno).toBe("23514");
+    });
+  });
+
+  it("từ chối trả xe trước khi giao xe", async () => {
+    await inRollback(async (tx) => {
+      await seed(tx);
+      let caught: unknown = null;
+      await tx.savepoint(async (sp) => {
+        try {
+          await sp`
+            INSERT INTO rentals (vehicle_id, customer_id, starts_at, ends_at, total_amount, created_by, status, handed_over_at, returned_at)
+            VALUES (${vehicleId}, ${customerId}, ${AUG(12)}, ${AUG(17)}, 2500000, ${staffId}, 'COMPLETED', ${AUG(15, 9)}, ${AUG(13, 9)})`;
+        } catch (e) {
+          caught = e;
+        }
+      });
+      expect((caught as { errno?: string }).errno).toBe("23514");
+    });
+  });
 });
 
 describe("customers — CHECK số điện thoại", () => {
@@ -960,8 +1018,62 @@ describe("customers — CHECK số điện thoại", () => {
       expect((caught as { errno?: string }).errno).toBe("23514");
     });
   });
+
+  /**
+   * HÀNG RÀO THẬT cho hợp đồng ngầm giữa `packages/shared` và `packages/db`.
+   *
+   * `phone.test.ts` KHÔNG làm được việc này: nó chỉ so `normalizePhone` với một
+   * bản sao regex thứ ba nằm trong chính file đó, và nó không được phép import
+   * `packages/db` (luật `src/domain/**` không import gì). Comment ở hai bên chỉ
+   * làm hợp đồng DỄ TÌM; test này mới làm nó ĐỎ khi lệch.
+   *
+   * Chạy `normalizePhone` thật rồi hỏi Postgres thật — sửa regex một bên mà quên
+   * bên kia thì ca tương ứng đổ ngay.
+   */
+  it("mọi thứ normalizePhone chấp nhận thì Postgres cũng chấp nhận, và ngược lại", async () => {
+    const SAMPLES = [
+      "0912 345 678",
+      "+84912345678",
+      "84987654321",
+      "0281234567",
+      "0912345678",
+      "abc",
+      "",
+      "12345",
+      "1912345678",
+      "091234567890123",
+    ];
+
+    await inRollback(async (tx) => {
+      for (const raw of SAMPLES) {
+        const normalized = normalizePhone(raw);
+        // Khi hàm từ chối, vẫn thử ghi chuỗi THÔ: đó đúng là thứ lọt vào DB nếu
+        // ai đó quên gọi normalizePhone ở tầng service.
+        const candidate = normalized ?? raw;
+
+        let dbAccepted = false;
+        await tx.savepoint(async (sp) => {
+          try {
+            await sp`INSERT INTO customers (full_name, phone) VALUES ('parity', ${candidate})`;
+            dbAccepted = true;
+            // Xoá ngay: nhiều mẫu chuẩn hoá về cùng một số, và UNIQUE(phone) sẽ
+            // làm ca sau trượt vì lý do KHÔNG liên quan tới regex.
+            await sp`DELETE FROM customers WHERE phone = ${candidate}`;
+          } catch {
+            dbAccepted = false;
+          }
+        });
+
+        expect({ raw, dbAccepted }).toEqual({ raw, dbAccepted: normalized !== null });
+      }
+    });
+  });
 });
 ```
+
+Thêm `import { normalizePhone } from "@v9/shared/domain/phone";` vào đầu file test.
+
+⚠️ `packages/db/package.json` chưa khai `@v9/shared` là dependency. Thêm `"@v9/shared": "workspace:*"` vào `dependencies` của nó, nếu không import trên không phân giải được. Đây là **chiều phụ thuộc mới** `db → shared` và nó hợp lệ: `shared/domain` không import gì, nên không có vòng.
 
 - [ ] **Step 2: Chạy test**
 
@@ -969,7 +1081,7 @@ describe("customers — CHECK số điện thoại", () => {
 bun test packages/db/src/schema/rentals-schema.test.ts
 ```
 
-Kỳ vọng: PASS, 9 test (5 ca hàng rào chống trùng · 3 ca CHECK của `rentals` · 1 ca CHECK của `customers`). Cần `docker compose up -d` đang chạy.
+Kỳ vọng: PASS, **12 test** — 5 ca hàng rào chống trùng · 5 ca CHECK của `rentals` · 2 ca của `customers` (1 từ chối + 1 parity). Cần `docker compose up -d` đang chạy.
 
 > Nếu test "TỪ CHỐI đơn thứ hai chồng thời gian" **xanh mà không nên xanh**, hãy kiểm lại migration `0010` đã apply chưa (`bun run db:migrate`). Một constraint chưa tồn tại làm test này đỏ chứ không xanh — nhưng nếu `period` chưa tồn tại thì INSERT sẽ hỏng ở chỗ khác và thông báo sẽ khác.
 

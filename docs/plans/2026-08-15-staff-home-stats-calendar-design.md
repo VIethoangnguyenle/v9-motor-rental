@@ -129,9 +129,15 @@ CHECK (ends_at > starts_at)
 CHECK (status IN ('BOOKED','ONGOING','COMPLETED','CANCELLED'))
 CHECK (total_amount >= 0 AND deposit_amount >= 0)
 
--- Cột dấu thời gian phải khớp trạng thái, ép ở DB chứ không ở service:
+-- Cột dấu thời gian phải khớp trạng thái, ép ở DB chứ không ở service.
+-- Bốn CHECK, không phải hai: chúng đi thành cặp để quan hệ thành HAI CHIỀU.
 CHECK (status <> 'ONGOING'   OR handed_over_at IS NOT NULL)
 CHECK (status <> 'COMPLETED' OR (handed_over_at IS NOT NULL AND returned_at IS NOT NULL))
+CHECK (handed_over_at IS NULL OR status IN ('ONGOING','COMPLETED'))
+CHECK (returned_at    IS NULL OR status = 'COMPLETED')
+
+-- Trả xe không xảy ra trước khi giao xe.
+CHECK (returned_at IS NULL OR handed_over_at IS NULL OR returned_at >= handed_over_at)
 
 -- Hàng rào chống đặt trùng. KHÔNG phải một câu SELECT kiểm trước khi insert —
 -- câu đó luôn thua race condition.
@@ -140,9 +146,25 @@ ALTER TABLE rentals ADD CONSTRAINT rentals_no_overlap
   WHERE (status <> 'CANCELLED');
 ```
 
-Hai `CHECK` về dấu thời gian không phải phòng thủ thừa: doanh thu tính bằng
-`SUM(total_amount) WHERE handed_over_at …`. Một hàng `ONGOING` mà `handed_over_at IS NULL` sẽ
-**biến mất khỏi báo cáo** thay vì gây lỗi. Ép ở DB thì nó không tồn tại được.
+Bốn `CHECK` về dấu thời gian không phải phòng thủ thừa, và **phải đi đủ cả hai chiều**. Doanh thu
+tính bằng `SUM(total_amount) WHERE handed_over_at IS NOT NULL`, **không lọc trạng thái**. Vậy có
+hai kiểu hỏng, ngược nhau:
+
+| Hàng sai                                     | Hậu quả                                              |
+| -------------------------------------------- | ---------------------------------------------------- |
+| `ONGOING` mà `handed_over_at IS NULL`        | **biến mất** khỏi báo cáo                            |
+| `BOOKED`/`CANCELLED` mà có `handed_over_at`  | **được đếm vào tiền** — thổi phồng doanh thu, im lặng |
+
+Bản đầu của thiết kế này chỉ chặn kiểu thứ nhất, và biện minh kiểu thứ hai bằng "`transition()`
+cấm `ONGOING → CANCELLED`". Đó là **luật của ứng dụng đi bảo vệ một truy vấn ở tầng database** —
+nó không đứng trước một câu `UPDATE` sửa tay, đúng mối đe doạ mà `CHECK` số điện thoại ở
+`customers` đã viện ra để tồn tại. Hai chỗ phải được đối xử như nhau, nên quan hệ được ép thành
+tương đương:
+
+```
+handed_over_at IS NOT NULL  ⟺  status IN ('ONGOING','COMPLETED')
+returned_at    IS NOT NULL  ⟺  status = 'COMPLETED'
+```
 
 Đơn `CANCELLED` không chặn chỗ — đó là lý do có mệnh đề `WHERE`.
 
