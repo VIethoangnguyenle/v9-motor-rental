@@ -49,3 +49,6 @@ coverage/
 
 # artifact của gstack /browse skill
 .gstack/
+
+# superpowers brainstorm scratch (mockup HTML, server state)
+.superpowers/
