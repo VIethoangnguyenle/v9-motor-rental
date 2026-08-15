@@ -318,7 +318,7 @@ Gộp `import type { Interval }` lên đầu file cùng các import khác (hiệ
 bun test packages/shared/src/domain/rental.test.ts
 ```
 
-Kỳ vọng: PASS, 15 test.
+Kỳ vọng: PASS, **17 test** trong file này — 6 của Task 1 cộng 11 mới.
 
 - [ ] **Step 5: Commit**
 
@@ -430,7 +430,7 @@ export function normalizePhone(raw: string): string | null {
 bun test packages/shared/src/domain/phone.test.ts
 ```
 
-Kỳ vọng: PASS, 6 test.
+Kỳ vọng: PASS, 5 test.
 
 - [ ] **Step 5: Commit**
 
@@ -483,11 +483,24 @@ export { normalizePhone } from "./domain/phone";
 
 - [ ] **Step 3: Xác minh cả hai đường import đều chạy**
 
+⚠️ Phải chạy từ một file **nằm trong workspace**, không dùng `bun -e`: eval ở thư mục gốc
+không phân giải được dependency kiểu `workspace:*`, nên `bun -e` báo
+`Cannot find module '@v9/shared'` **kể cả khi exports hoàn toàn đúng** — một âm tính giả tốn thời
+gian đi sửa thứ không hỏng.
+
 ```bash
-bun -e 'import { transition } from "@v9/shared"; import { normalizePhone } from "@v9/shared/domain/phone"; console.log(transition("BOOKED","ONGOING"), normalizePhone("+84912345678"))'
+cat > apps/api/__export_probe.ts <<'EOF'
+import { transition, normalizePhone, SHOP_TIMEZONE } from "@v9/shared";
+import { normalizePhone as viaSubpath } from "@v9/shared/domain/phone";
+console.log(JSON.stringify(transition("BOOKED", "ONGOING")), normalizePhone("+84912345678"), SHOP_TIMEZONE, viaSubpath("0912 345 678"));
+EOF
+bun apps/api/__export_probe.ts
+rm -f apps/api/__export_probe.ts
 ```
 
-Kỳ vọng in ra: `{ ok: true } 0912345678`
+Kỳ vọng in ra: `{"ok":true} 0912345678 Asia/Ho_Chi_Minh 0912345678`
+
+Nhớ xoá file probe — `rm` ở trên là một phần của bước, không phải dọn dẹp tuỳ chọn.
 
 - [ ] **Step 4: Typecheck**
 
@@ -956,7 +969,7 @@ describe("customers — CHECK số điện thoại", () => {
 bun test packages/db/src/schema/rentals-schema.test.ts
 ```
 
-Kỳ vọng: PASS, 10 test. Cần `docker compose up -d` đang chạy.
+Kỳ vọng: PASS, 9 test (5 ca hàng rào chống trùng · 3 ca CHECK của `rentals` · 1 ca CHECK của `customers`). Cần `docker compose up -d` đang chạy.
 
 > Nếu test "TỪ CHỐI đơn thứ hai chồng thời gian" **xanh mà không nên xanh**, hãy kiểm lại migration `0010` đã apply chưa (`bun run db:migrate`). Một constraint chưa tồn tại làm test này đỏ chứ không xanh — nhưng nếu `period` chưa tồn tại thì INSERT sẽ hỏng ở chỗ khác và thông báo sẽ khác.
 
