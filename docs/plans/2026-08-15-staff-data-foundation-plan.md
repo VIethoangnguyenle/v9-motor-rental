@@ -784,6 +784,31 @@ git commit -m "feat(db): migration 0009 + 0010 — bảng rentals và hàng rào
 
 Đây là test quan trọng nhất của Plan A. Nó **phải** chạm Postgres thật: exclusion constraint không tồn tại ở tầng nào khác, nên không unit test nào thay thế được.
 
+> ### ⚠️ Ba bẫy đã lộ khi chạy thật — bản đã commit mới là bản đúng
+>
+> Khối code dưới đây là **bản nháp đầu tiên** và nó SAI ở ba chỗ. Bản đúng nằm ở
+> `packages/db/src/schema/rentals-schema.test.ts` đã commit. Giữ lại khối này kèm ba ghi chú
+> vì mỗi lỗi đều là một bài học dùng lại được, không phải một chi tiết của riêng file này.
+>
+> **1. `try/catch` phải bọc CẢ lời gọi `tx.savepoint(...)`, không bọc câu lệnh bên trong.**
+> Nuốt lỗi bên trong callback làm callback trông như thành công, nên `savepoint()` đi RELEASE một
+> sub-transaction Postgres đã đánh dấu abort. Câu RELEASE đó ném `25P02` — một lỗi khác hẳn — và
+> nó ném **ngoài** `try/catch`. Bảy test đổ cùng lúc vì một lý do không liên quan gì tới thứ đang
+> kiểm. `vehicles-schema.test.ts` và `btree-gist.test.ts` vốn đã bọc đúng cách; bản nháp này
+> không đọc chúng đủ kỹ.
+>
+> **2. Ca `ends_at <= starts_at` không được dùng dữ liệu đảo ngược.** Cột sinh `period` tính
+> `tstzrange(starts_at, ends_at, '[)')` **trước** khi CHECK chạy, và hàm dựng range tự từ chối
+> `lower > upper` với SQLSTATE `22000`. Test sẽ đỏ/xanh vì hàm dựng range chứ không phải vì
+> `rentals_period_valid`. Dùng `starts_at == ends_at`: range rỗng là hợp lệ, nên CHECK là thứ duy
+> nhất còn nổ. **Hệ quả thiết kế:** `CHECK (ends_at > starts_at)` trên thực tế chỉ còn canh đúng
+> ca *bằng nhau* — ca lớn hơn đã bị chặn sớm hơn ở tầng kiểu dữ liệu.
+>
+> **3. Khẳng định SQLSTATE là chưa đủ.** `23514` chỉ nói "một CHECK nào đó nổ". Phải khẳng định
+> thêm `.constraint` đúng tên, nếu không một CHECK khác có thể làm test xanh vì nhầm lý do. Và
+> dùng `instanceof SQL.PostgresError` thay cho ép kiểu `(e as { errno?: string })` — ép kiểu vẫn
+> biên dịch im lặng khi hình dạng lỗi đổi.
+
 - [ ] **Step 1: Viết test**
 
 Tạo `packages/db/src/schema/rentals-schema.test.ts`:
@@ -1019,61 +1044,15 @@ describe("customers — CHECK số điện thoại", () => {
     });
   });
 
-  /**
-   * HÀNG RÀO THẬT cho hợp đồng ngầm giữa `packages/shared` và `packages/db`.
-   *
-   * `phone.test.ts` KHÔNG làm được việc này: nó chỉ so `normalizePhone` với một
-   * bản sao regex thứ ba nằm trong chính file đó, và nó không được phép import
-   * `packages/db` (luật `src/domain/**` không import gì). Comment ở hai bên chỉ
-   * làm hợp đồng DỄ TÌM; test này mới làm nó ĐỎ khi lệch.
-   *
-   * Chạy `normalizePhone` thật rồi hỏi Postgres thật — sửa regex một bên mà quên
-   * bên kia thì ca tương ứng đổ ngay.
-   */
-  it("mọi thứ normalizePhone chấp nhận thì Postgres cũng chấp nhận, và ngược lại", async () => {
-    const SAMPLES = [
-      "0912 345 678",
-      "+84912345678",
-      "84987654321",
-      "0281234567",
-      "0912345678",
-      "abc",
-      "",
-      "12345",
-      "1912345678",
-      "091234567890123",
-    ];
-
-    await inRollback(async (tx) => {
-      for (const raw of SAMPLES) {
-        const normalized = normalizePhone(raw);
-        // Khi hàm từ chối, vẫn thử ghi chuỗi THÔ: đó đúng là thứ lọt vào DB nếu
-        // ai đó quên gọi normalizePhone ở tầng service.
-        const candidate = normalized ?? raw;
-
-        let dbAccepted = false;
-        await tx.savepoint(async (sp) => {
-          try {
-            await sp`INSERT INTO customers (full_name, phone) VALUES ('parity', ${candidate})`;
-            dbAccepted = true;
-            // Xoá ngay: nhiều mẫu chuẩn hoá về cùng một số, và UNIQUE(phone) sẽ
-            // làm ca sau trượt vì lý do KHÔNG liên quan tới regex.
-            await sp`DELETE FROM customers WHERE phone = ${candidate}`;
-          } catch {
-            dbAccepted = false;
-          }
-        });
-
-        expect({ raw, dbAccepted }).toEqual({ raw, dbAccepted: normalized !== null });
-      }
-    });
-  });
 });
 ```
 
-Thêm `import { normalizePhone } from "@v9/shared/domain/phone";` vào đầu file test.
-
-⚠️ `packages/db/package.json` chưa khai `@v9/shared` là dependency. Thêm `"@v9/shared": "workspace:*"` vào `dependencies` của nó, nếu không import trên không phân giải được. Đây là **chiều phụ thuộc mới** `db → shared` và nó hợp lệ: `shared/domain` không import gì, nên không có vòng.
+> **Test parity của regex số điện thoại KHÔNG nằm ở file này** — nó ở Task 8
+> (`apps/api/src/services/customers.test.ts`). Lý do là hàng rào kiến trúc, không phải sở thích:
+> `eslint.config.js` cho `db` **chỉ được import `db`**, nên một `import { normalizePhone }` trong
+> `packages/db` là vi phạm `boundaries/element-types` và `bun run lint` sẽ đỏ — ở Task 16, cách chỗ
+> gây lỗi mười task. `api-services` thì đã được phép import cả `db` lẫn `shared-domain`, và đó cũng
+> là tầng thật sự ghi khách hàng, nên parity thuộc về đó.
 
 - [ ] **Step 2: Chạy test**
 
@@ -1081,7 +1060,7 @@ Thêm `import { normalizePhone } from "@v9/shared/domain/phone";` vào đầu fi
 bun test packages/db/src/schema/rentals-schema.test.ts
 ```
 
-Kỳ vọng: PASS, **12 test** — 5 ca hàng rào chống trùng · 5 ca CHECK của `rentals` · 2 ca của `customers` (1 từ chối + 1 parity). Cần `docker compose up -d` đang chạy.
+Kỳ vọng: PASS, **11 test** — 5 ca hàng rào chống trùng · 5 ca CHECK của `rentals` · 1 ca CHECK của `customers`. Cần `docker compose up -d` đang chạy.
 
 > Nếu test "TỪ CHỐI đơn thứ hai chồng thời gian" **xanh mà không nên xanh**, hãy kiểm lại migration `0010` đã apply chưa (`bun run db:migrate`). Một constraint chưa tồn tại làm test này đỏ chứ không xanh — nhưng nếu `period` chưa tồn tại thì INSERT sẽ hỏng ở chỗ khác và thông báo sẽ khác.
 
@@ -1248,7 +1227,61 @@ describe("findCustomerByPhone", () => {
     expect(await findCustomerByPhone("0999999999")).toBeNull();
   });
 });
+
+/**
+ * HÀNG RÀO THẬT cho hợp đồng ngầm giữa `normalizePhone` (@v9/shared) và
+ * `CHECK customers_phone_normalized` (@v9/db). Hai regex ở hai package, không có
+ * gì trong máy ép chúng khớp nhau.
+ *
+ * `phone.test.ts` KHÔNG thay được test này: nó chỉ so `normalizePhone` với một
+ * bản sao regex thứ ba nằm trong chính nó, và `packages/shared/src/domain/**`
+ * bị cấm import mọi thứ. `rentals-schema.test.ts` cũng không: `eslint.config.js`
+ * cho `db` chỉ được import `db`.
+ *
+ * Chỗ này là chỗ DUY NHẤT hợp lệ — `api-services` được phép chạm cả hai — và
+ * cũng là tầng thật sự ghi khách hàng.
+ */
+describe("parity: normalizePhone khớp CHECK của Postgres", () => {
+  const SAMPLES = [
+    "0912 345 678",
+    "+84912345678",
+    "84987654321",
+    "0281234567",
+    "0912345678",
+    "abc",
+    "",
+    "12345",
+    "1912345678",
+    "091234567890123",
+  ];
+
+  it("thứ gì hàm chấp nhận thì DB chấp nhận, thứ gì hàm từ chối thì DB từ chối", async () => {
+    for (const raw of SAMPLES) {
+      const normalized = normalizePhone(raw);
+      // Khi hàm từ chối, vẫn thử ghi chuỗi THÔ: đó đúng là thứ lọt xuống DB nếu
+      // một ngày nào đó ai đó quên gọi normalizePhone ở tầng service.
+      const candidate = normalized ?? raw;
+
+      let dbAccepted = false;
+      try {
+        await db.insert(schema.customers).values({ fullName: `${P}parity`, phone: candidate });
+        dbAccepted = true;
+      } catch {
+        dbAccepted = false;
+      } finally {
+        // Dọn ngay: nhiều mẫu chuẩn hoá về cùng một số, và UNIQUE(phone) sẽ làm
+        // ca sau trượt vì lý do KHÔNG liên quan gì tới regex.
+        await db.delete(schema.customers).where(eq(schema.customers.phone, candidate));
+      }
+
+      // So cả `raw` để thông báo lỗi chỉ thẳng chuỗi nào lệch.
+      expect({ raw, dbAccepted }).toEqual({ raw, dbAccepted: normalized !== null });
+    }
+  });
+});
 ```
+
+Thêm vào đầu file test: `import { normalizePhone } from "@v9/shared/domain/phone";`, `import { eq, like } from "drizzle-orm";` và `import { schema } from "@v9/db";`.
 
 - [ ] **Step 3: Chạy test**
 
@@ -1256,7 +1289,7 @@ describe("findCustomerByPhone", () => {
 bun test apps/api/src/services/customers.test.ts
 ```
 
-Kỳ vọng: PASS, 7 test.
+Kỳ vọng: PASS, **8 test** (3 `createCustomer` · 3 `searchCustomers` · 1 `findCustomerByPhone` · 1 parity).
 
 - [ ] **Step 4: Commit**
 

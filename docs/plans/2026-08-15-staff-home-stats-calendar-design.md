@@ -166,6 +166,16 @@ handed_over_at IS NOT NULL  ⟺  status IN ('ONGOING','COMPLETED')
 returned_at    IS NOT NULL  ⟺  status = 'COMPLETED'
 ```
 
+⚠️ **`CHECK (ends_at > starts_at)` canh ít hơn tên nó gợi ý.** Cột sinh `period` tính
+`tstzrange(starts_at, ends_at, '[)')` **trước** khi CHECK chạy, và chính hàm dựng range đã từ chối
+`lower > upper` với SQLSTATE `22000`. Nghĩa là ca "ngày kết thúc trước ngày bắt đầu" bị chặn ở
+tầng kiểu dữ liệu, không phải bởi CHECK này; phần CHECK thật sự còn canh là ca **bằng nhau**
+(range rỗng — hợp lệ với Postgres, vô nghĩa với một đơn thuê).
+
+Đo được, không suy luận: viết test cho CHECK này bằng dữ liệu đảo ngược thì nó xanh vì `22000` chứ
+không vì `23514`. Giữ CHECK vì ca bằng nhau là ca thật, nhưng đừng ghi vào tài liệu rằng nó là thứ
+chặn khoảng thời gian ngược.
+
 Đơn `CANCELLED` không chặn chỗ — đó là lý do có mệnh đề `WHERE`.
 
 #### Index
