@@ -1,14 +1,12 @@
 /**
- * `customers` và `rentals` CỐ Ý chưa tồn tại — đợt này chỉ dựng danh mục xe,
- * xem §2 của docs/plans/2026-08-10-fleet-catalogue-design.md.
+ * `rentals.period` (tstzrange) và constraint `rentals_no_overlap` sống trong
+ * migration viết tay `0010`, không trong file schema — drizzle-kit không sinh
+ * được cột GENERATED kiểu range lẫn EXCLUDE constraint. Extension `btree_gist`
+ * đã bật từ migration `0000` chính là để câu đó chạy được.
  *
- * Khi bảng `rentals` ra đời, migration của nó phải kèm:
- *
- *   ALTER TABLE rentals ADD CONSTRAINT rentals_no_overlap
- *     EXCLUDE USING gist (vehicle_id WITH =, period WITH &&);
- *
- * với `period` kiểu tstzrange dùng biên [start, end) — khớp overlaps() trong @v9/shared.
- * Extension btree_gist đã được bật sẵn ở migration 0000 để dòng trên chạy được.
+ * Biên của `period` là `[start, end)`, khớp `overlaps()` trong @v9/shared. Đổi
+ * biên ở một bên mà quên bên kia sinh ra lỗi booking chỉ lộ lúc chạy thật.
  */
 export { vehiclePhotos, vehicles } from "./vehicles";
 export { passwordResetCodes, staffUsers } from "./staff";
+export { customers, rentals } from "./rentals";
