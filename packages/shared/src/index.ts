@@ -10,3 +10,13 @@ export {
   type StaffRole,
   type StaffStatus,
 } from "./domain/staff";
+export {
+  SHOP_TIMEZONE,
+  isOverdue,
+  revenueAt,
+  toInterval,
+  transition,
+  type RentalStatus,
+  type TransitionResult,
+} from "./domain/rental";
+export { normalizePhone } from "./domain/phone";

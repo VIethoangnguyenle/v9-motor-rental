@@ -7,7 +7,9 @@
     ".": "./src/index.ts",
     "./client": "./src/client.ts",
     "./domain/money": "./src/domain/money.ts",
-    "./domain/staff": "./src/domain/staff.ts"
+    "./domain/staff": "./src/domain/staff.ts",
+    "./domain/rental": "./src/domain/rental.ts",
+    "./domain/phone": "./src/domain/phone.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
