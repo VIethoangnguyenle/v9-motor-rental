@@ -64,6 +64,20 @@
       "when": 1786457484309,
       "tag": "0008_flaky_carlie_cooper",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786811272991,
+      "tag": "0009_watery_shinobi_shaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786811279881,
+      "tag": "0010_clumsy_jack_power",
+      "breakpoints": true
     }
   ]
 }
