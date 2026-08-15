@@ -117,13 +117,21 @@ verification-before-completion thay cho test-first.
    HTTP. Exception đắt và làm mất type.
 4. **Transaction boundary thuộc service, không thuộc route** — và bắt buộc bắt `23P01` → **409**.
 
-### ⚠️ Hai cái bẫy của Bun.SQL — hỏng im lặng nếu làm sai
+### ⚠️ Ba cái bẫy quanh lỗi Postgres — hỏng im lặng nếu làm sai
 
 **SQLSTATE nằm ở `.errno`, KHÔNG phải `.code`** (`.code` luôn là `"ERR_POSTGRES_SERVER_ERROR"`),
 nên `e.code === "23P01"` là điều kiện **không bao giờ đúng** — va chạm booking rơi ra 500 thay vì
 409, và unit test không bắt được vì phải có Postgres thật mới lộ.
 
-**Lỗi trong transaction làm hỏng cả transaction** — bọc câu có thể lỗi trong `tx.savepoint(...)`.
+**Nhưng `.errno` chỉ đúng cho Bun.SQL TRẦN.** Đi qua Drizzle (`db.insert(...)`), lỗi bị bọc trong
+`DrizzleQueryError` và trên đường đó `.errno` là **`undefined`** — tức `e.errno === "23P01"` cũng
+thành một điều kiện không bao giờ đúng, đúng cái bẫy trên chỉ sâu hơn một tầng. Lỗi thật nằm ở
+`e.cause`. Bảng đo hai tầng: [`apps/api/CLAUDE.md`](apps/api/CLAUDE.md).
+
+**Lỗi trong transaction làm hỏng cả transaction** — bọc câu có thể lỗi trong `tx.savepoint(...)`,
+và `try/catch` phải bọc **cả lời gọi `savepoint`**, không bọc câu lệnh bên trong: nuốt lỗi bên
+trong callback làm nó trông như thành công, rồi `RELEASE` một sub-transaction đã abort ném `25P02`
+ở ngoài tầm bắt của bạn.
 
 Chi tiết, cùng ba chỗ đang dựa vào `SELECT ... FOR UPDATE`:
 [`apps/api/CLAUDE.md`](apps/api/CLAUDE.md).

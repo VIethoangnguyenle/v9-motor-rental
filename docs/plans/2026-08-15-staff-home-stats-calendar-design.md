@@ -258,14 +258,32 @@ của một route công khai. Lịch cần biển số để phân biệt hai ch
 
 ### 5.2 `23P01` → 409, và cái bẫy phải viết đúng
 
+Lỗi bị bọc **hai lần**, và mỗi tầng giấu SQLSTATE một kiểu khác nhau. Đo được, không suy luận:
+
+| Bạn viết                         | Qua Bun.SQL trần              | Qua `db.insert(...)` (Drizzle) |
+| -------------------------------- | ----------------------------- | ------------------------------ |
+| `e.code`                         | `"ERR_POSTGRES_SERVER_ERROR"` | `undefined`                    |
+| `e.errno`                        | `"23P01"` ✅                  | **`undefined`**                |
+| `e instanceof SQL.PostgresError` | `true`                        | **`false`**                    |
+| `e.cause.errno`                  | —                             | `"23P01"` ✅                   |
+
 ```ts
-// ĐÚNG — SQLSTATE nằm ở .errno
-if (e instanceof Error && "errno" in e && e.errno === "23P01") return conflict("RENTAL_OVERLAP");
+function isOverlapViolation(e: unknown): boolean {
+  const cause = e instanceof Error ? e.cause : undefined;
+  const pg = e instanceof SQL.PostgresError ? e : cause instanceof SQL.PostgresError ? cause : null;
+  return pg !== null && pg.errno === "23P01" && pg.constraint === "rentals_no_overlap";
+}
 ```
 
-`e.code` **luôn** là `"ERR_POSTGRES_SERVER_ERROR"`, nên `e.code === "23P01"` là điều kiện không
-bao giờ đúng. Viết sai thì `tsc` xanh, mọi unit test xanh, và va chạm booking rơi ra **500 thay vì
-409** — chỉ lộ ra khi có Postgres thật. Xem `CLAUDE.md` gốc, mục "Hai cái bẫy của Bun.SQL".
+Cả hai tầng đều cho ra **một điều kiện không bao giờ đúng** nếu viết thiếu, và cả hai đều xanh dưới
+`tsc` lẫn mọi test mock. Va chạm booking khi đó rơi ra **500 thay vì 409**.
+
+Kiểm `.constraint` chứ không chỉ SQLSTATE: một exclusion constraint thứ hai trên cùng bảng cũng cho
+`23P01`, và dịch nó thành "xe đã có đơn" là trả sai lý do cho người dùng.
+
+⚠️ **Test schema ở `packages/db` không thay thế được test service.** Nó insert bằng tagged template
+thẳng qua Bun.SQL nên không bao giờ đi qua tầng bọc của Drizzle: nó chứng minh *database* phát
+`23P01`, không chứng minh *service* nhìn thấy hình dạng nào.
 
 Transaction boundary thuộc **service**, không thuộc route. Câu insert có thể lỗi được bọc trong
 `tx.savepoint(...)`, vì một lỗi trong transaction làm hỏng cả transaction.

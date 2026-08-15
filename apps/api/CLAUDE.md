@@ -29,14 +29,45 @@ suy được type ở frontend. Route không khai schema thì frontend nhận `u
 
 `new Elysia({ name: "..." })`. Thiếu `name` thì Elysia chạy lại plugin mỗi lần `.use()`.
 
-## ⚠️ Khi có bảng `rentals`: bắt `23P01` → 409
+## ⚠️ `23P01` → 409: SQLSTATE nằm ở **hai** tầng bọc, không phải một
 
-Chống double-booking nằm ở tầng DB bằng exclusion constraint. Service **bắt buộc** bắt
-`exclusion_violation` và dịch thành 409. Không bắt thì va chạm booking rơi ra thành 500.
+Chống double-booking nằm ở tầng DB bằng exclusion constraint `rentals_no_overlap`. Service **bắt
+buộc** bắt `exclusion_violation` và dịch thành 409. Không bắt thì va chạm booking rơi ra thành 500.
 
-**SQLSTATE của Bun.SQL nằm ở `.errno`, KHÔNG phải `.code`** — `.code` luôn là
-`"ERR_POSTGRES_SERVER_ERROR"`. Viết `e.code === "23P01"` cho ra điều kiện không bao giờ đúng, và
-unit test không bắt được vì phải có Postgres thật mới lộ. Chi tiết ở `../../CLAUDE.md`.
+Bắt đúng khó hơn vẻ ngoài, vì lỗi bị bọc **hai lần** và mỗi tầng giấu SQLSTATE một kiểu khác nhau.
+Đo trên `drizzle-orm@0.45.2` + `bun@1.3.10`, không suy luận:
+
+| Bạn viết                          | Qua `tx\`...\`` (Bun.SQL trần) | Qua `db.insert(...)` (Drizzle) |
+| --------------------------------- | ------------------------------ | ------------------------------ |
+| `e.code`                          | `"ERR_POSTGRES_SERVER_ERROR"`  | `undefined`                    |
+| `e.errno`                         | `"23P01"` ✅                   | **`undefined`**                |
+| `e instanceof SQL.PostgresError`  | `true`                         | **`false`**                    |
+| `e.cause.errno`                   | —                              | `"23P01"` ✅                   |
+
+**Tầng 1 — Bun.SQL:** `.code` luôn là `"ERR_POSTGRES_SERVER_ERROR"`, SQLSTATE thật nằm ở `.errno`.
+
+**Tầng 2 — Drizzle:** query builder bọc lỗi driver vào `DrizzleQueryError` rồi ném cái vỏ đó.
+Trên đường này `.errno` là **`undefined`**, nên `e.errno === "23P01"` cũng là một điều kiện **không
+bao giờ đúng** — đúng cái bẫy tầng 1 sinh ra để cảnh báo, chỉ sâu hơn một nấc. Lỗi thật nằm ở
+`e.cause`.
+
+```ts
+function isOverlapViolation(e: unknown): boolean {
+  const cause = e instanceof Error ? e.cause : undefined;
+  const pg =
+    e instanceof SQL.PostgresError ? e : cause instanceof SQL.PostgresError ? cause : null;
+  // `.constraint` chứ không chỉ SQLSTATE: một exclusion constraint thứ hai trên
+  // cùng bảng cũng cho 23P01, và dịch nó thành "xe đã có đơn" là báo sai lý do.
+  return pg !== null && pg.errno === "23P01" && pg.constraint === "rentals_no_overlap";
+}
+```
+
+⚠️ **Test schema ở `packages/db` KHÔNG chứng minh được điều này.**
+`rentals-schema.test.ts` insert bằng tagged template thẳng qua Bun.SQL, nên nó không bao giờ đi
+qua tầng bọc của Drizzle. Nó chứng minh *database* phát `23P01`; nó **không** chứng minh *service*
+nhìn thấy hình dạng nào. Bằng chứng cho vế thứ hai nằm ở `services/rentals.test.ts`.
+
+Cả hai tầng đều vô hình với `tsc` và với mọi test mock database — chỉ Postgres thật mới lộ.
 
 ## Perf budget
 
