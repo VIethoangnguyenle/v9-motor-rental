@@ -1291,6 +1291,18 @@ bun test apps/api/src/services/customers.test.ts
 
 Kỳ vọng: PASS, **8 test** (3 `createCustomer` · 3 `searchCustomers` · 1 `findCustomerByPhone` · 1 parity).
 
+- [ ] **Step 3b: Chứng minh test parity ĐỎ ĐƯỢC**
+
+Một test parity không đỏ được thì không bảo vệ gì. Nới regex trong
+`packages/shared/src/domain/phone.ts` từ `^0[0-9]{8,10}$` thành **`^0[0-9]{8,14}$`**, chạy lại
+mình test parity: nó PHẢI đỏ, và thông báo phải chỉ đúng mẫu `091234567890123`. Rồi **khôi phục
+`phone.ts` nguyên văn** và chạy lại cho xanh.
+
+⚠️ Phải là `{8,14}`, không phải `{8,12}`. `091234567890123` dài 15 ký tự — `0` cộng **14** chữ số —
+nên dưới `{8,12}` nó vẫn bị từ chối ở cả hai phía, hai bên vẫn đồng ý, và test vẫn xanh. Bước
+chứng minh khi đó không chứng minh gì cả. (Bản đầu của plan này ghi `{8,12}`; sai số học, phát hiện
+lúc chạy thật.)
+
 - [ ] **Step 4: Commit**
 
 ```bash
