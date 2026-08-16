@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { AttentionList } from "../components/stats/attention-list";
 import { RevenueCards } from "../components/stats/revenue-cards";
+import { RentalForm } from "../components/rentals/rental-form";
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { errorMessage } from "../lib/errors";
@@ -8,6 +10,10 @@ import { statsQuery } from "../lib/rentals";
 
 export function StatsPage() {
   const { data, isPending } = useQuery(statsQuery);
+  // Task 7: nút "+ Lên đơn" từng là placeholder `disabled`. `RentalForm` chỉ
+  // mount khi mở — đóng lại (huỷ hoặc tạo xong) là dọn sạch state của form,
+  // không phải tự reset tay từng field.
+  const [formOpen, setFormOpen] = useState(false);
 
   return (
     // `<div>`, không `<main>`: `AppShell` (`components/layout/app-shell.tsx`) đã
@@ -18,15 +24,12 @@ export function StatsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-ink">Thống kê</h1>
-        {/*
-         * Placeholder chưa nối hành động — form lên đơn là Task 7 của Plan C.
-         * `disabled` để không hứa một cú bấm không làm gì (không lặng lẽ vô
-         * dụng — người bấm biết ngay là nó chưa hoạt động).
-         */}
-        <Button type="button" disabled title="Form lên đơn chưa xây — Task 7">
+        <Button type="button" onClick={() => setFormOpen(true)}>
           + Lên đơn
         </Button>
       </div>
+
+      {formOpen && <RentalForm onClose={() => setFormOpen(false)} />}
 
       {isPending && <p className="text-sm text-muted">Đang tải…</p>}
 
