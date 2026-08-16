@@ -38,3 +38,34 @@
   /* Bán kính nhỏ và thống nhất: app mật độ cao, bo nhiều làm hàng bảng rối mắt. */
   --radius-card: 0.375rem;
 }
+
+/*
+ * Ba breakpoint, không phải hai. Tablet KHÔNG phải điện thoại phóng to: ở 768px
+ * còn đủ chỗ cho sidebar và cho một cột thông tin nữa. Không tách ra thì tablet
+ * rơi vào nhánh mobile và phí một nửa màn hình.
+ */
+@utility page-gutter {
+  padding-inline: 1rem;
+  @media (width >= 48rem) {
+    padding-inline: 1.25rem;
+  }
+  @media (width >= 80rem) {
+    padding-inline: 1.5rem;
+  }
+}
+
+@utility card-pad {
+  padding: 0.75rem 0.875rem;
+  @media (width >= 80rem) {
+    padding: 0.875rem 1rem;
+  }
+}
+
+/*
+ * Đáy màn hình trong PWA standalone. `env(safe-area-inset-bottom)` chỉ khác 0 khi
+ * index.html khai `viewport-fit=cover`. Thiếu nó thì bottom nav nằm DƯỚI thanh
+ * home indicator của iPhone, và chỉ hỏng sau khi người dùng CÀI app.
+ */
+@utility pb-safe {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+}
