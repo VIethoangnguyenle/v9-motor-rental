@@ -1,18 +1,73 @@
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import type { Me } from "../../lib/me";
 
 /**
- * Thanh điều hướng tối thiểu, và "tối thiểu" là có chủ ý: không có nó thì đăng
- * nhập xong không có đường nào tới `/staff` và không có đường nào đăng xuất.
- * Trước đây chôn trong trang health, nên `/staff` phải tự chế một link
- * "← Trang chủ" thay vì dùng chung nav thật.
+ * Sáu điểm đến, hai hình dạng. `NAV_ITEMS` là danh sách duy nhất — sidebar
+ * (≥768) hiện cả sáu; bottom nav (<768) chỉ có chỗ cho hai cái đầu trực tiếp
+ * (Trang chủ, Lịch), phần còn lại nằm sau nút **Thêm**. Một nguồn dữ liệu duy
+ * nhất nghĩa là thêm một mục mới chỉ sửa MỘT chỗ, không phải nhớ sửa cả hai
+ * hình dạng.
  *
- * Link `/staff` chỉ hiện với OWNER — đây là hàng rào của TRẢI NGHIỆM, không
- * phải của dữ liệu: `beforeLoad` của route đó và `/staff/users*` ở server mới là
- * hàng rào thật. Bỏ điều kiện ở đây thì STAFF thấy một link dẫn tới trang trống
- * toàn lỗi 403, không phải thấy dữ liệu.
+ * `kind: "soon"` = tính năng chưa xây (Plan C+). Route CHƯA TỒN TẠI nên phần tử
+ * KHÔNG được là `<Link>` — một link tới route không tồn tại là một cú 404 trong
+ * chính app của mình. Render bằng `<button disabled>`: không bấm được, không
+ * nằm trong tab order, và trình đọc màn hình biết nó là nút bị vô hiệu hoá chứ
+ * không phải nút hỏng.
+ */
+type NavItem =
+  | { readonly kind: "link"; readonly label: string; readonly to: "/" | "/staff"; readonly ownerOnly?: true }
+  | { readonly kind: "soon"; readonly label: string };
+
+const NAV_ITEMS: readonly NavItem[] = [
+  { kind: "link", label: "Trang chủ", to: "/" },
+  { kind: "soon", label: "Lịch" },
+  { kind: "soon", label: "Đơn thuê" },
+  { kind: "soon", label: "Khách hàng" },
+  { kind: "soon", label: "Bàn giao" },
+  // Chỉ hiện với OWNER — đây là hàng rào của TRẢI NGHIỆM, không phải của dữ
+  // liệu: `beforeLoad` của route `/staff` và `/staff/users*` ở server mới là
+  // hàng rào thật (403 FORBIDDEN). Bỏ điều kiện ở đây thì STAFF thấy một link
+  // dẫn tới trang trống toàn lỗi 403, không phải thấy dữ liệu.
+  { kind: "link", label: "Nhân viên", to: "/staff", ownerOnly: true },
+];
+
+function visibleFor(item: NavItem, me: Me | null): boolean {
+  return !("ownerOnly" in item && item.ownerOnly) || me?.role === "OWNER";
+}
+
+/** Vùng chạm tối thiểu 44×44 ở MỌI biến thể — cùng ngưỡng đã áp cho `Button` (`ui/button.tsx`). */
+const TOUCH = "flex min-h-11 min-w-11 items-center";
+
+/**
+ * Thanh điều hướng, hai biến thể. `AppShell` (Task 5) gọi component này HAI
+ * LẦN — một lần trong `<aside>` với `variant="sidebar"`, một lần trong vùng
+ * cuộn với `variant="bottom"` — vì hai biến thể nằm ở hai vị trí khác nhau
+ * trong cây DOM (sidebar đứng ngoài vùng cuộn; bottom nav phải nằm TRONG vùng
+ * cuộn để `position: sticky` có tác dụng). CSS ẩn/hiện một phần tử không di
+ * chuyển nó sang cha khác được, nên hai lần gọi là cách duy nhất, không phải
+ * một Fragment chứa cả hai.
  */
 export function AppNav({
+  // Mặc định "bottom" TỒN TẠI CHỈ ĐỂ health-page.tsx (gọi `<AppNav me={..} onSignOut={..}/>`
+  // không kèm `variant`) còn biên dịch được giữa Task 6 và Task 7 — Task 7 mới là chỗ gỡ
+  // lần gọi cũ đó (§ "Bỏ nav tự chế khỏi hai trang", design doc). Task 6 bị cấm sửa file
+  // ngoài `components/layout/` nên không thể tự dọn health-page.tsx ở đây. Khi Task 7 xong,
+  // xoá giá trị mặc định này — hai lần gọi thật (trong `AppShell`) đã luôn truyền `variant`
+  // tường minh, không dựa vào mặc định.
+  variant = "bottom",
+  me,
+  onSignOut,
+}: {
+  readonly variant?: "sidebar" | "bottom";
+  readonly me: Me | null;
+  readonly onSignOut: () => void;
+}) {
+  if (variant === "sidebar") return <SidebarNav me={me} onSignOut={onSignOut} />;
+  return <BottomNav me={me} onSignOut={onSignOut} />;
+}
+
+function SidebarNav({
   me,
   onSignOut,
 }: {
@@ -20,20 +75,175 @@ export function AppNav({
   readonly onSignOut: () => void;
 }) {
   return (
-    <nav className="flex items-center gap-4 border-b pb-3 text-sm">
-      <strong>{me?.fullName}</strong>
-      <span className="text-gray-600">{me?.role}</span>
-      {me?.role === "OWNER" && (
-        <Link to="/staff" className="underline">
-          Nhân viên
+    <nav className="flex h-full w-full flex-col p-3 text-sm">
+      <ul className="flex flex-col gap-1">
+        {NAV_ITEMS.filter((item) => visibleFor(item, me)).map((item) => (
+          <li key={item.label}>
+            {item.kind === "link" ? (
+              <Link
+                to={item.to}
+                className={`${TOUCH} rounded-card px-3 text-ink hover:bg-canvas`}
+                activeProps={{ className: "bg-canvas font-semibold" }}
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className={`${TOUCH} w-full justify-between rounded-card px-3 text-muted`}
+              >
+                {item.label}
+                <span className="rounded-card bg-canvas px-2 py-0.5 text-xs text-muted">sắp có</span>
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {/* Chân sidebar: danh tính + hai hành động tài khoản, đẩy xuống đáy bằng `mt-auto`. */}
+      <div className="mt-auto flex flex-col gap-1 border-t border-border pt-3">
+        <p className="truncate px-3 text-xs text-muted">
+          {me?.fullName} · {me?.role}
+        </p>
+        <Link to="/change-password" className={`${TOUCH} rounded-card px-3 text-ink hover:bg-canvas`}>
+          Đổi mật khẩu
         </Link>
-      )}
-      <Link to="/change-password" className="underline">
-        Đổi mật khẩu
-      </Link>
-      <button onClick={onSignOut} className="ml-auto underline">
-        Đăng xuất
-      </button>
+        <button
+          type="button"
+          onClick={onSignOut}
+          className={`${TOUCH} rounded-card px-3 text-left text-ink hover:bg-canvas`}
+        >
+          Đăng xuất
+        </button>
+      </div>
     </nav>
+  );
+}
+
+/**
+ * Đúng 3 ô trực tiếp (Trang chủ · Lịch · Thêm), không phải 4. Bảng mục ở
+ * CLAUDE.md/design doc gán CHỈ Trang chủ và Lịch cho bottom nav trực tiếp —
+ * bốn mục còn lại (Đơn thuê, Khách hàng, Bàn giao, Nhân viên) và hai hành động
+ * tài khoản đều "trong Thêm". Làm đúng bảng đó cho ra 3 ô, không phải 4: phần
+ * mô tả ("bốn ô ~85px") không khớp với chính bảng nó đi kèm. Ưu tiên bảng —
+ * nó cụ thể tới từng route — và 3 ô rộng hơn 4 ô nên vẫn thoả mọi ngưỡng vùng
+ * chạm/chữ mà phần mô tả kia đang bảo vệ.
+ */
+function BottomNav({
+  me,
+  onSignOut,
+}: {
+  readonly me: Me | null;
+  readonly onSignOut: () => void;
+}) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const closeMore = () => setMoreOpen(false);
+
+  const [home, lich, ...rest] = NAV_ITEMS;
+  const moreItems = rest.filter((item) => visibleFor(item, me));
+
+  return (
+    <>
+      <nav
+        className="sticky bottom-0 z-10 flex min-h-14 shrink-0 items-stretch border-t border-border bg-surface pb-safe text-xs md:hidden"
+        aria-label="Điều hướng chính"
+      >
+        <Link
+          to={home?.kind === "link" ? home.to : "/"}
+          className={`${TOUCH} flex-1 flex-col justify-center gap-0.5 text-ink`}
+          activeProps={{ className: "font-semibold" }}
+        >
+          {home?.label}
+        </Link>
+
+        <button type="button" disabled className={`${TOUCH} flex-1 flex-col justify-center gap-0.5 text-muted`}>
+          {lich?.label}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMoreOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={moreOpen}
+          className={`${TOUCH} flex-1 flex-col justify-center gap-0.5 text-ink`}
+        >
+          Thêm
+        </button>
+      </nav>
+
+      {/*
+       * "Thêm" mở SHEET, không phải trang riêng — chọn sheet vì nó không đòi
+       * thêm route: mọi trang mới đều phải khai trong `router.tsx`, mà Task 6
+       * này bị cấm sửa file ngoài `components/layout/`. Sheet là state cục bộ
+       * trong component, dựng bằng `fixed` (không phải `sticky`) vì đây là lớp
+       * phủ TẠM THỜI đứng trên toàn trang, khác hẳn bài toán "nav luôn ở đáy"
+       * mà `BottomNav` giải bằng sticky.
+       */}
+      {moreOpen && (
+        <div className="fixed inset-0 z-20 md:hidden">
+          <button
+            type="button"
+            aria-label="Đóng"
+            onClick={closeMore}
+            className="absolute inset-0 bg-ink/40"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Thêm"
+            className="absolute inset-x-0 bottom-0 rounded-t-card border-t border-border bg-surface pb-safe"
+          >
+            <ul className="flex flex-col gap-1 p-3">
+              {moreItems.map((item) => (
+                <li key={item.label}>
+                  {item.kind === "link" ? (
+                    <Link
+                      to={item.to}
+                      onClick={closeMore}
+                      className={`${TOUCH} rounded-card px-3 text-ink hover:bg-canvas`}
+                    >
+                      {item.label}
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className={`${TOUCH} w-full justify-between rounded-card px-3 text-muted`}
+                    >
+                      {item.label}
+                      <span className="rounded-card bg-canvas px-2 py-0.5 text-xs text-muted">sắp có</span>
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+
+            <div className="flex flex-col gap-1 border-t border-border p-3">
+              <p className="truncate px-3 text-xs text-muted">
+                {me?.fullName} · {me?.role}
+              </p>
+              <Link
+                to="/change-password"
+                onClick={closeMore}
+                className={`${TOUCH} rounded-card px-3 text-ink hover:bg-canvas`}
+              >
+                Đổi mật khẩu
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  closeMore();
+                  onSignOut();
+                }}
+                className={`${TOUCH} rounded-card px-3 text-left text-ink hover:bg-canvas`}
+              >
+                Đăng xuất
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
