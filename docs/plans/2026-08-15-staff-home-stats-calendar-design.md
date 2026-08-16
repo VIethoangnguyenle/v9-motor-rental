@@ -349,6 +349,21 @@ cùng một thẻ không được đếm hai tập khác nhau.
 Mọi phép cắt kỳ đi qua `AT TIME ZONE 'Asia/Ho_Chi_Minh'`, và có **một test cố định đồng hồ vào 2h
 sáng giờ VN** để chứng minh. Test đó là hàng rào; câu SQL viết cẩn thận thì không.
 
+⚠️ **Test "bao gồm" KHÔNG bắt được lỗi này — phải là test "loại trừ".** Đo được khi bỏ
+`AT TIME ZONE` ra khỏi truy vấn:
+
+| Test | Dưới bản đúng | Dưới bản bỏ múi giờ |
+| --- | --- | --- |
+| đơn giao 01:00 VN **phải tính vào** hôm nay | xanh | **vẫn xanh** |
+| đơn giao 23:00 VN hôm trước **không được tính vào** hôm nay | xanh | **đỏ** ✅ |
+
+Lý do: với `now` = 02:00 VN (= 19:00Z hôm trước) và đơn lúc 01:00 VN (= 18:00Z hôm trước), cắt kỳ
+bằng UTC vẫn xếp cả hai vào **cùng một ngày UTC** — sai số triệt tiêu đúng ở phép so sánh đó. Chỉ
+đơn nằm ở 23:00 hôm trước mới vượt ranh giới ngày UTC theo chiều làm lỗi lộ ra.
+
+Nếu chỉ viết vế "phải tính vào", nó xanh dưới **cả hai** phiên bản và ta sẽ ghi nhận "múi giờ đã
+được kiểm" trong khi chưa kiểm gì. Bất kỳ ai sửa lại phần này về sau phải giữ **cả hai vế**.
+
 Quyền: `OWNER` và `STAFF` **đều** tạo đơn và đổi trạng thái được — shop nhỏ, và mọi đơn đã có
 `created_by` để truy. `pendingStaff` và trang `/staff` vẫn chỉ OWNER.
 
