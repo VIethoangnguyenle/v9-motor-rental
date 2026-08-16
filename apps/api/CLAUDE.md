@@ -324,13 +324,14 @@ cả trong một transaction" vẫn để lọt hai lời gọi song song.
 role đều thành công** — cả hai đọc được count = 2, cả hai đi qua điều kiện "còn hơn một OWNER", và
 shop mất OWNER cuối cùng dù xét riêng từng lời gọi đều hợp lệ.
 
-Ba chỗ trong `services/` dựa vào cùng lý lẽ này, và cả ba đều có chú thích tại chỗ:
+**Bốn** chỗ trong `services/` dựa vào cùng lý lẽ này, và cả bốn đều có chú thích tại chỗ:
 
 | Chỗ                       | Cách đóng cổng                                     | Hỏng thế nào nếu bỏ                                                                                                                                                          |
 | ------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `countActiveOwnersLocked` | các hàng OWNER đang `ACTIVE` (`ORDER BY id`)       | mất OWNER cuối cùng; `ORDER BY id` là để hai transaction khoá cùng thứ tự, tránh deadlock `40P01`                                                                            |
 | `createResetCode`         | hàng `staff_users` của chính người xin mã          | bất biến "tối đa một mã `used_at IS NULL`" vỡ — đo được: 8 lời gọi song song để lại 5 mã cùng sống, và các mã cũ hơn thành vô hiệu với chính người vừa nhận email chứa chúng |
 | `verifyCode`              | không khoá — **dồn `attempts < 5` vào câu UPDATE** | check-then-act với argon2 ~115 ms ở giữa: đo được **20/20** lần đoán song song đi qua cổng "tối đa 5 lần"                                                                    |
+| `changeRentalStatus`      | hàng `rentals` đang đổi trạng thái                 | đo 2026-08-16: bỏ `FOR UPDATE` thì **4/5 lần chạy cho 2/2 lời gọi song song cùng thành công** — cả hai đọc `BOOKED`, cả hai ghi `ONGOING`, `handed_over_at` bị đóng dấu hai lần và doanh thu ngày đó đếm đôi |
 
 Dòng cuối là chỗ tinh vi nhất và đáng đọc kỹ: bộ đếm vẫn **tăng đúng** (`attempts + 1` tính ở
 Postgres), nên nhìn vào DB sau đó thấy `attempts = 20` và tưởng hàng rào đang chạy. **Đếm đúng ≠
