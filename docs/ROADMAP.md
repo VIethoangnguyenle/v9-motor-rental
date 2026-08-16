@@ -3,7 +3,7 @@
 Tách khỏi `CLAUDE.md` để file đó không phình theo mỗi đợt — roadmap đổi thường xuyên, luật thì
 không. Nợ kỹ thuật ở [`DEBT.md`](DEBT.md); thiết kế của từng đợt ở [`plans/`](plans/).
 
-**Đang làm — đợt màn Thống kê + lịch thuê xe cho `apps/staff`.** Thiết kế ở
+**Đã xong — đợt màn Thống kê + lịch thuê xe cho `apps/staff`.** Thiết kế ở
 [`plans/2026-08-15-staff-home-stats-calendar-design.md`](plans/2026-08-15-staff-home-stats-calendar-design.md),
 chia làm ba plan nối tiếp:
 
@@ -11,7 +11,11 @@ chia làm ba plan nối tiếp:
 | ---- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | A    | `customers` + `rentals` + API (`/fleet`, `/rentals`, `/customers`, `/stats/summary`)      | ✅ **xong** — [`plans/2026-08-15-staff-data-foundation-plan.md`](plans/2026-08-15-staff-data-foundation-plan.md) |
 | B    | Hệ thiết kế `apps/staff`: `@theme`, thang cách, app shell responsive, retrofit 6 màn auth | ✅ **xong** — [`plans/2026-08-16-staff-design-system-plan.md`](plans/2026-08-16-staff-design-system-plan.md)     |
-| C    | Màn Thống kê (`/`) và trang Lịch (`/calendar`), form lên đơn                              | chưa viết plan                                                                                                   |
+| C    | Màn Thống kê (`/`) và trang Lịch (`/calendar`), form lên đơn                              | ✅ **xong** — [`plans/2026-08-16-staff-stats-calendar-plan.md`](plans/2026-08-16-staff-stats-calendar-plan.md)   |
+
+Bốn tính năng của `apps/staff` mà `CLAUDE.md` liệt kê: **lịch** và **thống kê** đã xong; **lên đơn**
+xong phần tạo đơn (chưa có bàn giao và ảnh tình trạng xe); **quản lý khách hàng** mới có tìm và tạo
+nhanh trong form, chưa có màn riêng.
 
 **Sau đó:** `booking_requests` + form gửi yêu cầu thuê trên `apps/web`. Đó là mảnh còn thiếu để đội
 xe đang hiển thị sinh ra được việc — hiện khách xem xong không có đường nào gửi yêu cầu. Ràng buộc
