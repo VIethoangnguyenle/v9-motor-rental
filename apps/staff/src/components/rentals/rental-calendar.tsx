@@ -377,15 +377,17 @@ export function RentalCalendar() {
       )}
 
       {/*
-       * `fleetQuery`/`rentalsQuery` chỉ giữ lại `code`, KHÔNG giữ `message` gốc
-       * từ backend (cùng khuôn `statsQuery` — xem comment ở `pages/stats-page.tsx`).
-       * `errorMessage()` cần chính `value` lỗi để đọc `{ message, code }`, mà giá
-       * trị đó đã bị bỏ trước khi tới đây — gọi nó với `null` chỉ luôn trả về
-       * fallback, tức là gọi cho có. Giữ nguyên khuôn đã có (câu chung chung) thay
-       * vì giả vờ dùng `errorMessage()` trên dữ liệu không còn message.
+       * `fleetQuery`/`rentalsQuery` nay giữ cả `value` lỗi gốc (xem `lib/rentals.ts`),
+       * nên `errorMessage()` đọc được đúng `message` tiếng Việt backend đã viết,
+       * thay vì luôn rơi về câu chung chung.
        */}
       {!isLoading && fleetFailed && (
-        <Alert tone="error">{errorMessage(null, "Không tải được đội xe. Thử tải lại trang.")}</Alert>
+        <Alert tone="error">
+          {errorMessage(
+            fleet.data?.ok === false ? fleet.data.value : null,
+            "Không tải được đội xe. Thử tải lại trang.",
+          )}
+        </Alert>
       )}
 
       {!isLoading && !fleetFailed && noFleet && (
@@ -393,7 +395,12 @@ export function RentalCalendar() {
       )}
 
       {!isLoading && !fleetFailed && !noFleet && rentalsFailed && (
-        <Alert tone="error">{errorMessage(null, "Không tải được lịch thuê. Thử tải lại trang.")}</Alert>
+        <Alert tone="error">
+          {errorMessage(
+            rentals.data?.ok === false ? rentals.data.value : null,
+            "Không tải được lịch thuê. Thử tải lại trang.",
+          )}
+        </Alert>
       )}
 
       {!isLoading &&

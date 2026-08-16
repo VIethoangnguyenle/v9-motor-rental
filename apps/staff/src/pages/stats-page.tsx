@@ -3,6 +3,7 @@ import { AttentionList } from "../components/stats/attention-list";
 import { RevenueCards } from "../components/stats/revenue-cards";
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
+import { errorMessage } from "../lib/errors";
 import { statsQuery } from "../lib/rentals";
 
 export function StatsPage() {
@@ -30,14 +31,14 @@ export function StatsPage() {
       {isPending && <p className="text-sm text-muted">Đang tải…</p>}
 
       {/*
-       * `statsQuery` trả discriminated union thay vì ném lỗi (xem `lib/rentals.ts`),
-       * cùng khuôn `meQuery`: KHÔNG giữ lại text lỗi gốc từ backend, chỉ giữ `code`
-       * — nên ở đây hiện một câu chung chung thay vì `errorMessage()`. Chấp nhận
-       * được vì lỗi tải thống kê không phải chỗ người dùng cần biết CHÍNH XÁC vì
-       * sao, chỉ cần biết "thử lại".
+       * `statsQuery` trả discriminated union thay vì ném lỗi (xem `lib/rentals.ts`).
+       * Nhánh lỗi giữ cả `value` gốc, nên `errorMessage()` hiện đúng câu tiếng
+       * Việt backend đã viết thay vì một câu chung chung đoán mò.
        */}
       {data && !data.ok && (
-        <Alert tone="error">Không tải được số liệu thống kê. Thử tải lại trang.</Alert>
+        <Alert tone="error">
+          {errorMessage(data.value, "Không tải được số liệu thống kê. Thử tải lại trang.")}
+        </Alert>
       )}
 
       {data?.ok && (
