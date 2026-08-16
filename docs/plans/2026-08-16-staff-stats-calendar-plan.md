@@ -29,26 +29,27 @@ Tài khoản dev có sẵn: `nav-probe-owner@v9rental.dev` / `NavProbe!123x` (OW
 
 ## Cấu trúc file
 
-| File | Trách nhiệm |
-| ---- | ----------- |
-| `lib/calendar-layout.ts` | **Hàm thuần**: đơn thuê + cửa sổ → vị trí trên lưới |
-| `lib/calendar-layout.test.ts` | Bảng ca biên — viết trước |
-| `lib/rentals.ts` | Kiểu suy từ Eden + query options cho fleet/rentals/stats |
-| `components/stats/revenue-cards.tsx` | Ba thẻ doanh thu |
-| `components/stats/attention-list.tsx` | Dòng "cần chú ý", bấm được |
-| `pages/stats-page.tsx` | Lắp lại, không tự dựng |
-| `components/rentals/calendar-timeline.tsx` | Hàng = xe, cột = ngày |
-| `components/rentals/calendar-month.tsx` | Ô ngày |
-| `components/rentals/rental-calendar.tsx` | Vỏ: đổi chế độ, đổi khoảng, loading/error |
-| `components/rentals/rental-form.tsx` | Lên đơn |
-| `pages/calendar-page.tsx` | Lắp lại |
-| `router.tsx` | Route `/calendar` + `validateSearch` |
+| File                                       | Trách nhiệm                                              |
+| ------------------------------------------ | -------------------------------------------------------- |
+| `lib/calendar-layout.ts`                   | **Hàm thuần**: đơn thuê + cửa sổ → vị trí trên lưới      |
+| `lib/calendar-layout.test.ts`              | Bảng ca biên — viết trước                                |
+| `lib/rentals.ts`                           | Kiểu suy từ Eden + query options cho fleet/rentals/stats |
+| `components/stats/revenue-cards.tsx`       | Ba thẻ doanh thu                                         |
+| `components/stats/attention-list.tsx`      | Dòng "cần chú ý", bấm được                               |
+| `pages/stats-page.tsx`                     | Lắp lại, không tự dựng                                   |
+| `components/rentals/calendar-timeline.tsx` | Hàng = xe, cột = ngày                                    |
+| `components/rentals/calendar-month.tsx`    | Ô ngày                                                   |
+| `components/rentals/rental-calendar.tsx`   | Vỏ: đổi chế độ, đổi khoảng, loading/error                |
+| `components/rentals/rental-form.tsx`       | Lên đơn                                                  |
+| `pages/calendar-page.tsx`                  | Lắp lại                                                  |
+| `router.tsx`                               | Route `/calendar` + `validateSearch`                     |
 
 ---
 
 ## Task 1: `lib/calendar-layout.ts` — hàm thuần, TDD
 
 **Files:**
+
 - Create: `apps/staff/src/lib/calendar-layout.test.ts`
 - Create: `apps/staff/src/lib/calendar-layout.ts`
 
@@ -193,6 +194,7 @@ export function placeBar(r: { startsAt: Date; endsAt: Date }, w: GridWindow): Ba
 ## Task 2: `lib/rentals.ts` — kiểu và query
 
 **Files:**
+
 - Create: `apps/staff/src/lib/rentals.ts`
 
 - [ ] **Step 1: Suy kiểu từ Eden, KHÔNG gõ tay**
@@ -201,7 +203,9 @@ Khuôn đã có ở `lib/me.ts` — đọc nó trước, kể cả comment. Gõ 
 
 ```ts
 export type FleetVehicle = NonNullable<Awaited<ReturnType<typeof api.fleet.get>>["data"]>[number];
-export type CalendarRental = NonNullable<Awaited<ReturnType<typeof api.rentals.get>>["data"]>[number];
+export type CalendarRental = NonNullable<
+  Awaited<ReturnType<typeof api.rentals.get>>["data"]
+>[number];
 export type StatsSummary = NonNullable<Awaited<ReturnType<typeof api.stats.summary.get>>["data"]>;
 ```
 
@@ -224,6 +228,7 @@ Ba query, khuôn theo `meQuery` ở `lib/me.ts` (trả union thay vì ném, đ�
 ## Task 3: Màn Thống kê
 
 **Files:**
+
 - Create: `components/stats/revenue-cards.tsx`, `components/stats/attention-list.tsx`
 - Create: `pages/stats-page.tsx`
 - Modify: `router.tsx` (thay `HealthPage` ở `/`), `components/layout/app-nav.tsx` (đổi nhãn)
@@ -268,11 +273,11 @@ Nav: đổi nhãn `/` từ "Trang chủ" thành **"Thống kê"**. `HealthPage` 
 
 Hàng = xe, cột = ngày. Dùng `placeBar`/`dayColumns` từ Task 1 — **không** tính lại vị trí trong JSX.
 
-| Breakpoint | Số ngày | Cột xe |
-| --- | --- | --- |
-| `<768` | 7 | dính trái, 88px |
-| `768–1279` | 10 | 112px |
-| `≥1280` | 14 | 130px |
+| Breakpoint | Số ngày | Cột xe          |
+| ---------- | ------- | --------------- |
+| `<768`     | 7       | dính trái, 88px |
+| `768–1279` | 10      | 112px           |
+| `≥1280`    | 14      | 130px           |
 
 - Cột xe **dính trái** khi vuốt ngang. Mất ngữ cảnh "dòng này là xe nào" là mất cả màn hình.
 - Màu thanh theo trạng thái, dùng token `status-*`. **Quá hạn tính bằng `isOverdue` từ `@v9/shared`**, không viết lại điều kiện trong JSX.
@@ -313,9 +318,9 @@ Hàng = xe, cột = ngày. Dùng `placeBar`/`dayColumns` từ Task 1 — **khôn
 
 Trạng thái rỗng phải phân biệt hai ca (design doc §10):
 
-| Ca | Câu |
-| --- | --- |
-| Có xe, chưa có đơn | lịch vẫn vẽ đủ lưới xe, mỗi hàng "trống cả kỳ" |
+| Ca                 | Câu                                             |
+| ------------------ | ----------------------------------------------- |
+| Có xe, chưa có đơn | lịch vẫn vẽ đủ lưới xe, mỗi hàng "trống cả kỳ"  |
 | **Chưa có xe nào** | "Chưa có xe trong đội. Thêm xe trong Directus." |
 
 Gộp hai ca vào một câu là làm người dùng đi sửa nhầm chỗ.

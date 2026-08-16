@@ -1,5 +1,12 @@
 import { describe, expect, it } from "bun:test";
-import { isOverdue, revenueAt, toInterval, transition, SHOP_TIMEZONE, type RentalStatus } from "./rental";
+import {
+  isOverdue,
+  revenueAt,
+  toInterval,
+  transition,
+  SHOP_TIMEZONE,
+  type RentalStatus,
+} from "./rental";
 import { overlaps } from "./interval";
 
 describe("transition", () => {
@@ -45,11 +52,21 @@ const T = (iso: string) => new Date(iso);
 
 describe("isOverdue", () => {
   it("ONGOING và đã qua hạn → quá hạn", () => {
-    expect(isOverdue({ status: "ONGOING", endsAt: T("2026-08-14T10:00:00Z") }, T("2026-08-15T03:00:00Z"))).toBe(true);
+    expect(
+      isOverdue(
+        { status: "ONGOING", endsAt: T("2026-08-14T10:00:00Z") },
+        T("2026-08-15T03:00:00Z"),
+      ),
+    ).toBe(true);
   });
 
   it("ONGOING nhưng chưa tới hạn → chưa quá hạn", () => {
-    expect(isOverdue({ status: "ONGOING", endsAt: T("2026-08-16T10:00:00Z") }, T("2026-08-15T03:00:00Z"))).toBe(false);
+    expect(
+      isOverdue(
+        { status: "ONGOING", endsAt: T("2026-08-16T10:00:00Z") },
+        T("2026-08-15T03:00:00Z"),
+      ),
+    ).toBe(false);
   });
 
   it("đúng thời điểm hết hạn thì CHƯA quá hạn", () => {
@@ -60,7 +77,9 @@ describe("isOverdue", () => {
   // Đơn chưa giao mà quá ngày hẹn là chuyện khác hẳn — khách không tới lấy xe,
   // không phải xe đang nằm ngoài đường. Không được gộp hai thứ vào một nhãn đỏ.
   it("BOOKED quá ngày hẹn KHÔNG phải quá hạn", () => {
-    expect(isOverdue({ status: "BOOKED", endsAt: T("2026-08-14T10:00:00Z") }, T("2026-08-15T03:00:00Z"))).toBe(false);
+    expect(
+      isOverdue({ status: "BOOKED", endsAt: T("2026-08-14T10:00:00Z") }, T("2026-08-15T03:00:00Z")),
+    ).toBe(false);
   });
 
   it("COMPLETED và CANCELLED không bao giờ quá hạn", () => {
@@ -73,16 +92,28 @@ describe("isOverdue", () => {
 
 describe("toInterval", () => {
   it("cắm thẳng được vào overlaps() đã có", () => {
-    const a = toInterval({ startsAt: T("2026-08-12T00:00:00Z"), endsAt: T("2026-08-17T00:00:00Z") });
-    const b = toInterval({ startsAt: T("2026-08-16T00:00:00Z"), endsAt: T("2026-08-20T00:00:00Z") });
+    const a = toInterval({
+      startsAt: T("2026-08-12T00:00:00Z"),
+      endsAt: T("2026-08-17T00:00:00Z"),
+    });
+    const b = toInterval({
+      startsAt: T("2026-08-16T00:00:00Z"),
+      endsAt: T("2026-08-20T00:00:00Z"),
+    });
     expect(overlaps(a, b)).toBe(true);
   });
 
   // Biên [start, end): đơn kết thúc đúng lúc đơn sau bắt đầu thì KHÔNG chồng nhau.
   // Đây chính là ngữ nghĩa mà tstzrange '[)' của DB dùng — hai bên phải khớp.
   it("chạm biên thì không chồng nhau", () => {
-    const a = toInterval({ startsAt: T("2026-08-12T00:00:00Z"), endsAt: T("2026-08-17T00:00:00Z") });
-    const b = toInterval({ startsAt: T("2026-08-17T00:00:00Z"), endsAt: T("2026-08-20T00:00:00Z") });
+    const a = toInterval({
+      startsAt: T("2026-08-12T00:00:00Z"),
+      endsAt: T("2026-08-17T00:00:00Z"),
+    });
+    const b = toInterval({
+      startsAt: T("2026-08-17T00:00:00Z"),
+      endsAt: T("2026-08-20T00:00:00Z"),
+    });
     expect(overlaps(a, b)).toBe(false);
   });
 });

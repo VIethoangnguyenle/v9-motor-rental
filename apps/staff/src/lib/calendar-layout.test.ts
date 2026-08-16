@@ -25,31 +25,46 @@ describe("dayColumns", () => {
 describe("placeBar", () => {
   it("đơn nằm trọn trong cửa sổ", () => {
     expect(placeBar({ startsAt: D("2026-08-17"), endsAt: D("2026-08-20") }, W)).toEqual({
-      startCol: 3, span: 3, clippedStart: false, clippedEnd: false,
+      startCol: 3,
+      span: 3,
+      clippedStart: false,
+      clippedEnd: false,
     });
   });
 
   it("đơn bắt đầu TRƯỚC cửa sổ thì bị cắt trái", () => {
     expect(placeBar({ startsAt: D("2026-08-12"), endsAt: D("2026-08-18") }, W)).toEqual({
-      startCol: 1, span: 3, clippedStart: true, clippedEnd: false,
+      startCol: 1,
+      span: 3,
+      clippedStart: true,
+      clippedEnd: false,
     });
   });
 
   it("đơn kết thúc SAU cửa sổ thì bị cắt phải", () => {
     expect(placeBar({ startsAt: D("2026-08-27"), endsAt: D("2026-09-05") }, W)).toEqual({
-      startCol: 13, span: 2, clippedStart: false, clippedEnd: true,
+      startCol: 13,
+      span: 2,
+      clippedStart: false,
+      clippedEnd: true,
     });
   });
 
   it("đơn phủ trọn cửa sổ thì cắt cả hai đầu", () => {
     expect(placeBar({ startsAt: D("2026-08-01"), endsAt: D("2026-09-30") }, W)).toEqual({
-      startCol: 1, span: 14, clippedStart: true, clippedEnd: true,
+      startCol: 1,
+      span: 14,
+      clippedStart: true,
+      clippedEnd: true,
     });
   });
 
   it("đơn dài đúng một ngày", () => {
     expect(placeBar({ startsAt: D("2026-08-20"), endsAt: D("2026-08-21") }, W)).toEqual({
-      startCol: 6, span: 1, clippedStart: false, clippedEnd: false,
+      startCol: 6,
+      span: 1,
+      clippedStart: false,
+      clippedEnd: false,
     });
   });
 

@@ -21,8 +21,7 @@ export interface Rental {
 }
 
 export type CreateRentalResult =
-  | { ok: true; rental: Rental }
-  | { ok: false; reason: "RENTAL_OVERLAP" };
+  { ok: true; rental: Rental } | { ok: false; reason: "RENTAL_OVERLAP" };
 
 const COLUMNS = {
   id: schema.rentals.id,
@@ -61,8 +60,11 @@ const COLUMNS = {
  */
 function isOverlapViolation(e: unknown): boolean {
   const cause = e instanceof Error ? e.cause : undefined;
-  const pgError = e instanceof SQL.PostgresError ? e : cause instanceof SQL.PostgresError ? cause : null;
-  return pgError !== null && pgError.errno === "23P01" && pgError.constraint === "rentals_no_overlap";
+  const pgError =
+    e instanceof SQL.PostgresError ? e : cause instanceof SQL.PostgresError ? cause : null;
+  return (
+    pgError !== null && pgError.errno === "23P01" && pgError.constraint === "rentals_no_overlap"
+  );
 }
 
 /**
@@ -116,8 +118,7 @@ export interface RentalWithCustomer extends Rental {
 }
 
 export type ListRentalsResult =
-  | { ok: true; rentals: RentalWithCustomer[] }
-  | { ok: false; reason: "INVALID_RANGE" };
+  { ok: true; rentals: RentalWithCustomer[] } | { ok: false; reason: "INVALID_RANGE" };
 
 /**
  * Mọi đơn GIAO với [from, to). Dùng toán tử `&&` trên cột sinh `period`, nên nó
@@ -151,8 +152,7 @@ export async function listRentalsInRange(from: Date, to: Date): Promise<ListRent
 }
 
 export type ChangeStatusResult =
-  | { ok: true; rental: Rental }
-  | { ok: false; reason: "NOT_FOUND" | "INVALID_TRANSITION" };
+  { ok: true; rental: Rental } | { ok: false; reason: "NOT_FOUND" | "INVALID_TRANSITION" };
 
 /**
  * Đổi trạng thái đơn. Đọc-rồi-ghi, nên PHẢI nằm trong transaction có

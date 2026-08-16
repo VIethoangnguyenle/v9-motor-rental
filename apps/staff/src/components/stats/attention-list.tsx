@@ -12,7 +12,8 @@ interface Row {
  * Vùng chạm tối thiểu 44px, cùng ngưỡng `Button`/`AppNav` — yêu cầu #6: mỗi dòng
  * PHẢI bấm được, không phải chỉ đọc.
  */
-const ROW = "flex min-h-11 items-center justify-between gap-3 rounded-card px-3 text-sm text-ink hover:bg-canvas";
+const ROW =
+  "flex min-h-11 items-center justify-between gap-3 rounded-card px-3 text-sm text-ink hover:bg-canvas";
 
 /**
  * Ba dòng, đúng thứ tự mockup (design doc §8): quá hạn → trả hôm nay → chờ duyệt.

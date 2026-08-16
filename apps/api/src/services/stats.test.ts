@@ -73,7 +73,12 @@ beforeEach(async () => {
 });
 
 /** Đơn ĐÃ GIAO XE ở đúng một thời điểm — dùng cho các test doanh thu. */
-async function handedOver(handedOverAtIso: string, amount: number, startDay: number, endDay: number) {
+async function handedOver(
+  handedOverAtIso: string,
+  amount: number,
+  startDay: number,
+  endDay: number,
+) {
   await db.insert(schema.rentals).values({
     vehicleId,
     customerId,

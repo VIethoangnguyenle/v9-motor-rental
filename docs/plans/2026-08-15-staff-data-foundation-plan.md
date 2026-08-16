@@ -27,23 +27,23 @@ Nếu `bun test` đã đỏ từ đầu thì dừng lại và báo — plan này
 
 ## Cấu trúc file
 
-| File                                            | Trách nhiệm                                                    |
-| ----------------------------------------------- | -------------------------------------------------------------- |
+| File                                            | Trách nhiệm                                                        |
+| ----------------------------------------------- | ------------------------------------------------------------------ |
 | `packages/shared/src/domain/rental.ts`          | Trạng thái đơn, chuyển trạng thái, quá hạn, mốc ghi nhận doanh thu |
-| `packages/shared/src/domain/rental.test.ts`     | Test cho trên — **viết trước**                                  |
-| `packages/shared/src/domain/phone.ts`           | Chuẩn hoá số điện thoại Việt Nam                                |
-| `packages/shared/src/domain/phone.test.ts`      | Test cho trên — **viết trước**                                  |
-| `packages/db/src/schema/rentals.ts`             | Bảng `customers` + `rentals`                                    |
-| `packages/db/src/schema/rentals-schema.test.ts` | Chứng minh `CHECK` và `EXCLUDE` thật sự chặn                    |
-| `packages/db/migrations/0009_*.sql`             | Bảng, do `drizzle-kit generate` sinh                            |
-| `packages/db/migrations/0010_*.sql`             | Cột sinh `period` + exclusion constraint — **viết tay**         |
-| `apps/api/src/services/customers.ts`            | Tìm / tạo khách                                                 |
-| `apps/api/src/services/rentals.ts`              | Tạo đơn, đọc đơn theo khoảng, đổi trạng thái                    |
-| `apps/api/src/services/fleet.ts`                | Danh sách xe nội bộ (kèm biển số)                               |
-| `apps/api/src/services/stats.ts`                | Sáu số doanh thu + ba số cần chú ý                              |
-| `apps/api/src/routes/rentals.ts`                | HTTP cho rentals + customers                                    |
-| `apps/api/src/routes/fleet.ts`                  | HTTP cho `/fleet`                                               |
-| `apps/api/src/routes/stats.ts`                  | HTTP cho `/stats/summary`                                       |
+| `packages/shared/src/domain/rental.test.ts`     | Test cho trên — **viết trước**                                     |
+| `packages/shared/src/domain/phone.ts`           | Chuẩn hoá số điện thoại Việt Nam                                   |
+| `packages/shared/src/domain/phone.test.ts`      | Test cho trên — **viết trước**                                     |
+| `packages/db/src/schema/rentals.ts`             | Bảng `customers` + `rentals`                                       |
+| `packages/db/src/schema/rentals-schema.test.ts` | Chứng minh `CHECK` và `EXCLUDE` thật sự chặn                       |
+| `packages/db/migrations/0009_*.sql`             | Bảng, do `drizzle-kit generate` sinh                               |
+| `packages/db/migrations/0010_*.sql`             | Cột sinh `period` + exclusion constraint — **viết tay**            |
+| `apps/api/src/services/customers.ts`            | Tìm / tạo khách                                                    |
+| `apps/api/src/services/rentals.ts`              | Tạo đơn, đọc đơn theo khoảng, đổi trạng thái                       |
+| `apps/api/src/services/fleet.ts`                | Danh sách xe nội bộ (kèm biển số)                                  |
+| `apps/api/src/services/stats.ts`                | Sáu số doanh thu + ba số cần chú ý                                 |
+| `apps/api/src/routes/rentals.ts`                | HTTP cho rentals + customers                                       |
+| `apps/api/src/routes/fleet.ts`                  | HTTP cho `/fleet`                                                  |
+| `apps/api/src/routes/stats.ts`                  | HTTP cho `/stats/summary`                                          |
 
 **Không cần khai gì trong `staff-guard`.** `PUBLIC_ROUTES` là danh sách trắng và mặc định là **chặn** — comment trong `apps/api/src/plugins/staff-guard.ts` nói thẳng điều này và gọi tên đúng hai route sắp có: "Route nghiệp vụ của đợt sau (`rentals`, `customers`) quên khai ở đây là bị chặn." Đó là hành vi mong muốn. Đừng thêm mục nào vào `PUBLIC_ROUTES`.
 
@@ -52,6 +52,7 @@ Nếu `bun test` đã đỏ từ đầu thì dừng lại và báo — plan này
 ## Task 1: `transition()` — chuyển trạng thái đơn thuê
 
 **Files:**
+
 - Create: `packages/shared/src/domain/rental.test.ts`
 - Create: `packages/shared/src/domain/rental.ts`
 
@@ -171,6 +172,7 @@ git commit -m "feat(shared): transition() cho vòng đời đơn thuê"
 ## Task 2: `isOverdue`, `toInterval`, `revenueAt`, `SHOP_TIMEZONE`
 
 **Files:**
+
 - Modify: `packages/shared/src/domain/rental.test.ts`
 - Modify: `packages/shared/src/domain/rental.ts`
 
@@ -186,11 +188,21 @@ const T = (iso: string) => new Date(iso);
 
 describe("isOverdue", () => {
   it("ONGOING và đã qua hạn → quá hạn", () => {
-    expect(isOverdue({ status: "ONGOING", endsAt: T("2026-08-14T10:00:00Z") }, T("2026-08-15T03:00:00Z"))).toBe(true);
+    expect(
+      isOverdue(
+        { status: "ONGOING", endsAt: T("2026-08-14T10:00:00Z") },
+        T("2026-08-15T03:00:00Z"),
+      ),
+    ).toBe(true);
   });
 
   it("ONGOING nhưng chưa tới hạn → chưa quá hạn", () => {
-    expect(isOverdue({ status: "ONGOING", endsAt: T("2026-08-16T10:00:00Z") }, T("2026-08-15T03:00:00Z"))).toBe(false);
+    expect(
+      isOverdue(
+        { status: "ONGOING", endsAt: T("2026-08-16T10:00:00Z") },
+        T("2026-08-15T03:00:00Z"),
+      ),
+    ).toBe(false);
   });
 
   it("đúng thời điểm hết hạn thì CHƯA quá hạn", () => {
@@ -201,7 +213,9 @@ describe("isOverdue", () => {
   // Đơn chưa giao mà quá ngày hẹn là chuyện khác hẳn — khách không tới lấy xe,
   // không phải xe đang nằm ngoài đường. Không được gộp hai thứ vào một nhãn đỏ.
   it("BOOKED quá ngày hẹn KHÔNG phải quá hạn", () => {
-    expect(isOverdue({ status: "BOOKED", endsAt: T("2026-08-14T10:00:00Z") }, T("2026-08-15T03:00:00Z"))).toBe(false);
+    expect(
+      isOverdue({ status: "BOOKED", endsAt: T("2026-08-14T10:00:00Z") }, T("2026-08-15T03:00:00Z")),
+    ).toBe(false);
   });
 
   it("COMPLETED và CANCELLED không bao giờ quá hạn", () => {
@@ -214,16 +228,28 @@ describe("isOverdue", () => {
 
 describe("toInterval", () => {
   it("cắm thẳng được vào overlaps() đã có", () => {
-    const a = toInterval({ startsAt: T("2026-08-12T00:00:00Z"), endsAt: T("2026-08-17T00:00:00Z") });
-    const b = toInterval({ startsAt: T("2026-08-16T00:00:00Z"), endsAt: T("2026-08-20T00:00:00Z") });
+    const a = toInterval({
+      startsAt: T("2026-08-12T00:00:00Z"),
+      endsAt: T("2026-08-17T00:00:00Z"),
+    });
+    const b = toInterval({
+      startsAt: T("2026-08-16T00:00:00Z"),
+      endsAt: T("2026-08-20T00:00:00Z"),
+    });
     expect(overlaps(a, b)).toBe(true);
   });
 
   // Biên [start, end): đơn kết thúc đúng lúc đơn sau bắt đầu thì KHÔNG chồng nhau.
   // Đây chính là ngữ nghĩa mà tstzrange '[)' của DB dùng — hai bên phải khớp.
   it("chạm biên thì không chồng nhau", () => {
-    const a = toInterval({ startsAt: T("2026-08-12T00:00:00Z"), endsAt: T("2026-08-17T00:00:00Z") });
-    const b = toInterval({ startsAt: T("2026-08-17T00:00:00Z"), endsAt: T("2026-08-20T00:00:00Z") });
+    const a = toInterval({
+      startsAt: T("2026-08-12T00:00:00Z"),
+      endsAt: T("2026-08-17T00:00:00Z"),
+    });
+    const b = toInterval({
+      startsAt: T("2026-08-17T00:00:00Z"),
+      endsAt: T("2026-08-20T00:00:00Z"),
+    });
     expect(overlaps(a, b)).toBe(false);
   });
 });
@@ -332,6 +358,7 @@ git commit -m "feat(shared): isOverdue, toInterval, revenueAt, SHOP_TIMEZONE"
 ## Task 3: `normalizePhone()` — chuẩn hoá số điện thoại
 
 **Files:**
+
 - Create: `packages/shared/src/domain/phone.test.ts`
 - Create: `packages/shared/src/domain/phone.ts`
 
@@ -367,9 +394,9 @@ describe("normalizePhone", () => {
   it("trả null cho thứ không phải số điện thoại dùng được", () => {
     expect(normalizePhone("")).toBeNull();
     expect(normalizePhone("abc")).toBeNull();
-    expect(normalizePhone("12345")).toBeNull();       // quá ngắn
+    expect(normalizePhone("12345")).toBeNull(); // quá ngắn
     expect(normalizePhone("091234567890123")).toBeNull(); // quá dài
-    expect(normalizePhone("1912345678")).toBeNull();   // không bắt đầu bằng 0
+    expect(normalizePhone("1912345678")).toBeNull(); // không bắt đầu bằng 0
   });
 
   // Hàm này ép đúng cái CHECK ở tầng DB. Lệch nhau thì service ghi được thứ
@@ -444,6 +471,7 @@ git commit -m "feat(shared): normalizePhone — chuẩn hoá số điện thoạ
 ## Task 4: Phơi hai module mới ra ngoài `@v9/shared`
 
 **Files:**
+
 - Modify: `packages/shared/package.json`
 - Modify: `packages/shared/src/index.ts`
 
@@ -522,6 +550,7 @@ git commit -m "chore(shared): phơi domain/rental và domain/phone qua exports"
 ## Task 5: Drizzle schema `customers` + `rentals`
 
 **Files:**
+
 - Create: `packages/db/src/schema/rentals.ts`
 - Modify: `packages/db/src/schema/index.ts`
 
@@ -692,6 +721,7 @@ git commit -m "feat(db): schema customers + rentals"
 ## Task 6: Migration `0009` (sinh) và `0010` (viết tay)
 
 **Files:**
+
 - Create: `packages/db/migrations/0009_*.sql` — do drizzle-kit đặt tên
 - Create: `packages/db/migrations/0010_*.sql` — do drizzle-kit đặt tên, nội dung viết tay
 
@@ -780,6 +810,7 @@ git commit -m "feat(db): migration 0009 + 0010 — bảng rentals và hàng rào
 ## Task 7: Chứng minh hàng rào chống đặt trùng thật sự chặn
 
 **Files:**
+
 - Create: `packages/db/src/schema/rentals-schema.test.ts`
 
 Đây là test quan trọng nhất của Plan A. Nó **phải** chạm Postgres thật: exclusion constraint không tồn tại ở tầng nào khác, nên không unit test nào thay thế được.
@@ -802,7 +833,7 @@ git commit -m "feat(db): migration 0009 + 0010 — bảng rentals và hàng rào
 > `lower > upper` với SQLSTATE `22000`. Test sẽ đỏ/xanh vì hàm dựng range chứ không phải vì
 > `rentals_period_valid`. Dùng `starts_at == ends_at`: range rỗng là hợp lệ, nên CHECK là thứ duy
 > nhất còn nổ. **Hệ quả thiết kế:** `CHECK (ends_at > starts_at)` trên thực tế chỉ còn canh đúng
-> ca *bằng nhau* — ca lớn hơn đã bị chặn sớm hơn ở tầng kiểu dữ liệu.
+> ca _bằng nhau_ — ca lớn hơn đã bị chặn sớm hơn ở tầng kiểu dữ liệu.
 >
 > **3. Khẳng định SQLSTATE là chưa đủ.** `23514` chỉ nói "một CHECK nào đó nổ". Phải khẳng định
 > thêm `.constraint` đúng tên, nếu không một CHECK khác có thể làm test xanh vì nhầm lý do. Và
@@ -846,7 +877,8 @@ async function seed(tx: Parameters<Parameters<typeof inRollback>[0]>[0]) {
   staffId = s.id as string;
 }
 
-const AUG = (d: number, h = 0) => `2026-08-${String(d).padStart(2, "0")}T${String(h).padStart(2, "0")}:00:00+07:00`;
+const AUG = (d: number, h = 0) =>
+  `2026-08-${String(d).padStart(2, "0")}T${String(h).padStart(2, "0")}:00:00+07:00`;
 
 describe("rentals — hàng rào chống đặt trùng", () => {
   it("chèn được đơn đầu tiên", async () => {
@@ -1043,7 +1075,6 @@ describe("customers — CHECK số điện thoại", () => {
       expect((caught as { errno?: string }).errno).toBe("23514");
     });
   });
-
 });
 ```
 
@@ -1076,6 +1107,7 @@ git commit -m "test(db): chứng minh exclusion constraint và CHECK của renta
 ## Task 8: `services/customers.ts` — tìm và tạo khách
 
 **Files:**
+
 - Create: `apps/api/src/services/customers.ts`
 - Create: `apps/api/src/services/customers.test.ts`
 
@@ -1134,7 +1166,11 @@ export async function searchCustomers(q: string): Promise<Customer[]> {
 export async function findCustomerByPhone(rawPhone: string): Promise<Customer | null> {
   const phone = normalizePhone(rawPhone);
   if (!phone) return null;
-  const [row] = await db.select(COLUMNS).from(schema.customers).where(eq(schema.customers.phone, phone)).limit(1);
+  const [row] = await db
+    .select(COLUMNS)
+    .from(schema.customers)
+    .where(eq(schema.customers.phone, phone))
+    .limit(1);
   return row ?? null;
 }
 
@@ -1315,6 +1351,7 @@ git commit -m "feat(api): services/customers — tìm và tạo khách, chuẩn 
 ## Task 9: `services/rentals.ts` — `createRental` và bẫy `.errno`
 
 **Files:**
+
 - Create: `apps/api/src/services/rentals.ts`
 - Create: `apps/api/src/services/rentals.test.ts`
 
@@ -1343,8 +1380,7 @@ export interface Rental {
 }
 
 export type CreateRentalResult =
-  | { ok: true; rental: Rental }
-  | { ok: false; reason: "RENTAL_OVERLAP" };
+  { ok: true; rental: Rental } | { ok: false; reason: "RENTAL_OVERLAP" };
 
 /**
  * ⚠️ SQLSTATE của Bun.SQL nằm ở `.errno`, KHÔNG phải `.code`.
@@ -1457,7 +1493,14 @@ beforeAll(async () => {
   await clean();
   const [v] = await db
     .insert(schema.vehicles)
-    .values({ slug: `${P}cb500x`, make: "Honda", model: "CB500X", engineCc: 471, pricePerDay: 500_000, deposit: 5_000_000 })
+    .values({
+      slug: `${P}cb500x`,
+      make: "Honda",
+      model: "CB500X",
+      engineCc: 471,
+      pricePerDay: 500_000,
+      deposit: 5_000_000,
+    })
     .returning();
   const [c] = await db
     .insert(schema.customers)
@@ -1465,7 +1508,13 @@ beforeAll(async () => {
     .returning();
   const [s] = await db
     .insert(schema.staffUsers)
-    .values({ id: `${P}owner`, email: `${P}owner@example.com`, fullName: "Chủ shop test", role: "OWNER", status: "ACTIVE" })
+    .values({
+      id: `${P}owner`,
+      email: `${P}owner@example.com`,
+      fullName: "Chủ shop test",
+      role: "OWNER",
+      status: "ACTIVE",
+    })
     .returning();
   if (!v || !c || !s) throw new Error("seed hỏng");
   vehicleId = v.id;
@@ -1478,8 +1527,13 @@ afterAll(clean);
 describe("createRental", () => {
   it("tạo được đơn đầu tiên, mặc định BOOKED", async () => {
     const r = await createRental({
-      vehicleId, customerId, startsAt: AUG(12), endsAt: AUG(17),
-      totalAmount: 2_500_000, depositAmount: 5_000_000, createdBy: staffId,
+      vehicleId,
+      customerId,
+      startsAt: AUG(12),
+      endsAt: AUG(17),
+      totalAmount: 2_500_000,
+      depositAmount: 5_000_000,
+      createdBy: staffId,
     });
     expect(r.ok).toBe(true);
     if (r.ok) {
@@ -1493,16 +1547,26 @@ describe("createRental", () => {
   // 500 trên production vào một ngày đông khách.
   it("trả RENTAL_OVERLAP (không throw) khi chồng lịch cùng xe", async () => {
     const r = await createRental({
-      vehicleId, customerId, startsAt: AUG(15), endsAt: AUG(20),
-      totalAmount: 2_500_000, depositAmount: 5_000_000, createdBy: staffId,
+      vehicleId,
+      customerId,
+      startsAt: AUG(15),
+      endsAt: AUG(20),
+      totalAmount: 2_500_000,
+      depositAmount: 5_000_000,
+      createdBy: staffId,
     });
     expect(r).toEqual({ ok: false, reason: "RENTAL_OVERLAP" });
   });
 
   it("cho phép đơn chạm biên", async () => {
     const r = await createRental({
-      vehicleId, customerId, startsAt: AUG(17), endsAt: AUG(20),
-      totalAmount: 1_500_000, depositAmount: 5_000_000, createdBy: staffId,
+      vehicleId,
+      customerId,
+      startsAt: AUG(17),
+      endsAt: AUG(20),
+      totalAmount: 1_500_000,
+      depositAmount: 5_000_000,
+      createdBy: staffId,
     });
     expect(r.ok).toBe(true);
   });
@@ -1529,6 +1593,7 @@ git commit -m "feat(api): createRental — dịch 23P01 thành RENTAL_OVERLAP"
 ## Task 10: `listRentalsInRange` — dữ liệu cho lịch
 
 **Files:**
+
 - Modify: `apps/api/src/services/rentals.ts`
 - Modify: `apps/api/src/services/rentals.test.ts`
 
@@ -1548,8 +1613,7 @@ export interface RentalWithCustomer extends Rental {
 }
 
 export type ListRentalsResult =
-  | { ok: true; rentals: RentalWithCustomer[] }
-  | { ok: false; reason: "INVALID_RANGE" };
+  { ok: true; rentals: RentalWithCustomer[] } | { ok: false; reason: "INVALID_RANGE" };
 
 /**
  * Mọi đơn GIAO với [from, to). Dùng toán tử `&&` trên cột sinh `period`, nên nó
@@ -1571,7 +1635,9 @@ export async function listRentalsInRange(from: Date, to: Date): Promise<ListRent
     })
     .from(schema.rentals)
     .innerJoin(schema.customers, sql`${schema.customers.id} = ${schema.rentals.customerId}`)
-    .where(sql`${schema.rentals.status} <> 'CANCELLED' AND period && tstzrange(${from}, ${to}, '[)')`)
+    .where(
+      sql`${schema.rentals.status} <> 'CANCELLED' AND period && tstzrange(${from}, ${to}, '[)')`,
+    )
     .orderBy(schema.rentals.vehicleId, schema.rentals.startsAt);
 
   return {
@@ -1619,8 +1685,14 @@ describe("listRentalsInRange", () => {
   });
 
   it("từ chối khoảng ngược và khoảng rỗng", async () => {
-    expect(await listRentalsInRange(AUG(20), AUG(10))).toEqual({ ok: false, reason: "INVALID_RANGE" });
-    expect(await listRentalsInRange(AUG(10), AUG(10))).toEqual({ ok: false, reason: "INVALID_RANGE" });
+    expect(await listRentalsInRange(AUG(20), AUG(10))).toEqual({
+      ok: false,
+      reason: "INVALID_RANGE",
+    });
+    expect(await listRentalsInRange(AUG(10), AUG(10))).toEqual({
+      ok: false,
+      reason: "INVALID_RANGE",
+    });
   });
 
   // Biên PHẢI của cửa sổ. Ca "chạm biên trái" ở trên KHÔNG canh được nó, và đó
@@ -1629,8 +1701,13 @@ describe("listRentalsInRange", () => {
     const [outside] = await db
       .insert(schema.rentals)
       .values({
-        vehicleId, customerId, createdBy: staffId,
-        startsAt: AUG(20), endsAt: AUG(22), totalAmount: 1, depositAmount: 0,
+        vehicleId,
+        customerId,
+        createdBy: staffId,
+        startsAt: AUG(20),
+        endsAt: AUG(22),
+        totalAmount: 1,
+        depositAmount: 0,
       })
       .returning();
     const r = await listRentalsInRange(AUG(17), AUG(20));
@@ -1645,10 +1722,10 @@ describe("listRentalsInRange", () => {
 > Ý định ban đầu: đổi `'[)'` thành `'[]'` trong truy vấn, rồi kỳ vọng ca **"chạm biên trái"** đỏ.
 > **Không đỏ**, và không bao giờ đỏ được. Bảng chân trị đo bằng psql:
 >
-> | | cửa sổ `[)` | cửa sổ `[]` |
-> | --- | --- | --- |
-> | đơn `[12,17)` vs cửa sổ `[17,20)` | `f` | `f` |
-> | đơn `[20,22)` vs cửa sổ `[17,20)` | `f` | **`t`** |
+> |                                   | cửa sổ `[)` | cửa sổ `[]` |
+> | --------------------------------- | ----------- | ----------- |
+> | đơn `[12,17)` vs cửa sổ `[17,20)` | `f`         | `f`         |
+> | đơn `[20,22)` vs cửa sổ `[17,20)` | `f`         | **`t`**     |
 >
 > Dấu ngoặc trong `tstzrange(from, to, ...)` điều khiển **biên phải** của cửa sổ. Ca "chạm biên
 > trái" soi biên **trái**, và `period` của đơn thì do cột sinh cố định ở `'[)'` — nên không hoán vị
@@ -1696,6 +1773,7 @@ git commit -m "feat(api): listRentalsInRange qua GiST index, trần MAX_RANGE_DA
 ## Task 11: `changeRentalStatus` — đọc-rồi-ghi trong transaction
 
 **Files:**
+
 - Modify: `apps/api/src/services/rentals.ts`
 - Modify: `apps/api/src/services/rentals.test.ts`
 
@@ -1708,8 +1786,7 @@ import { transition } from "@v9/shared/domain/rental";
 import { eq } from "drizzle-orm";
 
 export type ChangeStatusResult =
-  | { ok: true; rental: Rental }
-  | { ok: false; reason: "NOT_FOUND" | "INVALID_TRANSITION" };
+  { ok: true; rental: Rental } | { ok: false; reason: "NOT_FOUND" | "INVALID_TRANSITION" };
 
 /**
  * Đổi trạng thái đơn. Đọc-rồi-ghi, nên PHẢI nằm trong transaction có
@@ -1768,8 +1845,13 @@ describe("changeRentalStatus", () => {
 
   it("BOOKED → ONGOING đóng dấu handed_over_at", async () => {
     const created = await createRental({
-      vehicleId, customerId, startsAt: AUG(25), endsAt: AUG(27),
-      totalAmount: 1_000_000, depositAmount: 5_000_000, createdBy: staffId,
+      vehicleId,
+      customerId,
+      startsAt: AUG(25),
+      endsAt: AUG(27),
+      totalAmount: 1_000_000,
+      depositAmount: 5_000_000,
+      createdBy: staffId,
     });
     if (!created.ok) throw new Error("seed hỏng");
 
@@ -1801,8 +1883,13 @@ describe("changeRentalStatus", () => {
 
   it("từ chối đường chuyển không hợp lệ, không đụng vào DB", async () => {
     const created = await createRental({
-      vehicleId, customerId, startsAt: AUG(28), endsAt: AUG(30),
-      totalAmount: 1_000_000, depositAmount: 5_000_000, createdBy: staffId,
+      vehicleId,
+      customerId,
+      startsAt: AUG(28),
+      endsAt: AUG(30),
+      totalAmount: 1_000_000,
+      depositAmount: 5_000_000,
+      createdBy: staffId,
     });
     if (!created.ok) throw new Error("seed hỏng");
 
@@ -1846,6 +1933,7 @@ git commit -m "feat(api): changeRentalStatus với SELECT FOR UPDATE"
 ## Task 12: `services/fleet.ts` — danh sách xe nội bộ
 
 **Files:**
+
 - Create: `apps/api/src/services/fleet.ts`
 - Create: `apps/api/src/services/fleet.test.ts`
 
@@ -1915,9 +2003,36 @@ async function clean() {
 beforeAll(async () => {
   await clean();
   await db.insert(schema.vehicles).values([
-    { slug: `${P}pub`, make: "Honda", model: "CB500X", engineCc: 471, plate: "59H1-234.56", pricePerDay: 500_000, deposit: 5_000_000, status: "published" },
-    { slug: `${P}draft`, make: "Kawasaki", model: "Z900", engineCc: 948, plate: "59H1-887.21", pricePerDay: 900_000, deposit: 10_000_000, status: "draft" },
-    { slug: `${P}arch`, make: "Yamaha", model: "MT-07", engineCc: 689, plate: "59H1-402.90", pricePerDay: 700_000, deposit: 7_000_000, status: "archived" },
+    {
+      slug: `${P}pub`,
+      make: "Honda",
+      model: "CB500X",
+      engineCc: 471,
+      plate: "59H1-234.56",
+      pricePerDay: 500_000,
+      deposit: 5_000_000,
+      status: "published",
+    },
+    {
+      slug: `${P}draft`,
+      make: "Kawasaki",
+      model: "Z900",
+      engineCc: 948,
+      plate: "59H1-887.21",
+      pricePerDay: 900_000,
+      deposit: 10_000_000,
+      status: "draft",
+    },
+    {
+      slug: `${P}arch`,
+      make: "Yamaha",
+      model: "MT-07",
+      engineCc: 689,
+      plate: "59H1-402.90",
+      pricePerDay: 700_000,
+      deposit: 7_000_000,
+      status: "archived",
+    },
   ]);
 });
 
@@ -1962,6 +2077,7 @@ git commit -m "feat(api): services/fleet — danh sách xe nội bộ kèm biể
 ## Task 13: `services/stats.ts` — sáu số doanh thu, cắt kỳ theo giờ VN
 
 **Files:**
+
 - Create: `apps/api/src/services/stats.ts`
 - Create: `apps/api/src/services/stats.test.ts`
 
@@ -2036,9 +2152,21 @@ export async function getStatsSummary(now: Date): Promise<StatsSummary> {
 
   return {
     revenue: {
-      today: { amount: row.today_amount, orders: row.today_orders, prevAmount: row.prev_day_amount },
-      thisWeek: { amount: row.week_amount, orders: row.week_orders, prevAmount: row.prev_week_amount },
-      thisMonth: { amount: row.month_amount, orders: row.month_orders, prevAmount: row.prev_month_amount },
+      today: {
+        amount: row.today_amount,
+        orders: row.today_orders,
+        prevAmount: row.prev_day_amount,
+      },
+      thisWeek: {
+        amount: row.week_amount,
+        orders: row.week_orders,
+        prevAmount: row.prev_week_amount,
+      },
+      thisMonth: {
+        amount: row.month_amount,
+        orders: row.month_orders,
+        prevAmount: row.prev_month_amount,
+      },
     },
     attention: { overdue: row.overdue, dueToday: row.due_today },
   };
@@ -2082,11 +2210,35 @@ async function clean() {
 
 beforeAll(async () => {
   await clean();
-  const [v] = await db.insert(schema.vehicles).values({ slug: `${P}xe`, make: "Honda", model: "CB500X", engineCc: 471, pricePerDay: 500_000, deposit: 5_000_000 }).returning();
-  const [c] = await db.insert(schema.customers).values({ fullName: `${P}Khach`, phone: "0912000202" }).returning();
-  const [s] = await db.insert(schema.staffUsers).values({ id: `${P}owner`, email: `${P}o@example.com`, fullName: "Chủ", role: "OWNER", status: "ACTIVE" }).returning();
+  const [v] = await db
+    .insert(schema.vehicles)
+    .values({
+      slug: `${P}xe`,
+      make: "Honda",
+      model: "CB500X",
+      engineCc: 471,
+      pricePerDay: 500_000,
+      deposit: 5_000_000,
+    })
+    .returning();
+  const [c] = await db
+    .insert(schema.customers)
+    .values({ fullName: `${P}Khach`, phone: "0912000202" })
+    .returning();
+  const [s] = await db
+    .insert(schema.staffUsers)
+    .values({
+      id: `${P}owner`,
+      email: `${P}o@example.com`,
+      fullName: "Chủ",
+      role: "OWNER",
+      status: "ACTIVE",
+    })
+    .returning();
   if (!v || !c || !s) throw new Error("seed hỏng");
-  vehicleId = v.id; customerId = c.id; staffId = s.id;
+  vehicleId = v.id;
+  customerId = c.id;
+  staffId = s.id;
 });
 
 afterAll(clean);
@@ -2094,11 +2246,15 @@ afterAll(clean);
 /** Tạo một đơn ĐÃ GIAO tại đúng thời điểm chỉ định. */
 async function handedOver(handedOverAt: string, amount: number, startDay: number, endDay: number) {
   await db.insert(schema.rentals).values({
-    vehicleId, customerId, createdBy: staffId,
+    vehicleId,
+    customerId,
+    createdBy: staffId,
     startsAt: new Date(`2026-08-${String(startDay).padStart(2, "0")}T00:00:00+07:00`),
     endsAt: new Date(`2026-08-${String(endDay).padStart(2, "0")}T00:00:00+07:00`),
-    totalAmount: amount, depositAmount: 0,
-    status: "ONGOING", handedOverAt: new Date(handedOverAt),
+    totalAmount: amount,
+    depositAmount: 0,
+    status: "ONGOING",
+    handedOverAt: new Date(handedOverAt),
   });
 }
 
@@ -2141,10 +2297,13 @@ describe("getStatsSummary — cắt kỳ theo giờ Việt Nam", () => {
   it("đơn CHƯA giao không tính vào doanh thu", async () => {
     await db.delete(schema.rentals);
     await db.insert(schema.rentals).values({
-      vehicleId, customerId, createdBy: staffId,
+      vehicleId,
+      customerId,
+      createdBy: staffId,
       startsAt: new Date("2026-08-20T00:00:00+07:00"),
       endsAt: new Date("2026-08-22T00:00:00+07:00"),
-      totalAmount: 9_000_000, depositAmount: 0,
+      totalAmount: 9_000_000,
+      depositAmount: 0,
     });
 
     const s = await getStatsSummary(new Date("2026-08-20T10:00:00+07:00"));
@@ -2181,6 +2340,7 @@ git commit -m "feat(api): getStatsSummary — cắt kỳ theo Asia/Ho_Chi_Minh"
 ## Task 14: `routes/fleet.ts` và phần customers của `routes/rentals.ts`
 
 **Files:**
+
 - Create: `apps/api/src/routes/fleet.ts`
 - Create: `apps/api/src/routes/rentals.ts`
 
@@ -2248,14 +2408,10 @@ export type RentalErrorCode = keyof typeof MESSAGES;
 const toError = (code: RentalErrorCode) => ({ code, message: MESSAGES[code] });
 
 export const rentals = new Elysia({ name: "rentals" })
-  .get(
-    "/customers",
-    async ({ query }) => searchCustomers(query.q ?? ""),
-    {
-      query: t.Object({ q: t.Optional(t.String()) }),
-      response: { 200: t.Array(customerSchema) },
-    },
-  )
+  .get("/customers", async ({ query }) => searchCustomers(query.q ?? ""), {
+    query: t.Object({ q: t.Optional(t.String()) }),
+    response: { 200: t.Array(customerSchema) },
+  })
 
   .post(
     "/customers",
@@ -2313,6 +2469,7 @@ git commit -m "feat(api): routes /fleet và /customers"
 ## Task 15: Phần rentals và stats của route
 
 **Files:**
+
 - Modify: `apps/api/src/routes/rentals.ts`
 - Create: `apps/api/src/routes/stats.ts`
 
@@ -2503,6 +2660,7 @@ git commit -m "feat(api): routes /rentals và /stats/summary"
 ## Task 16: Nối vào `index.ts`, mở rộng `ApiErrorCode`, verify toàn bộ
 
 **Files:**
+
 - Modify: `apps/api/src/index.ts`
 - Modify: `apps/api/src/routes/staff.ts`
 

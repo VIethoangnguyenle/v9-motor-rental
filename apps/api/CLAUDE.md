@@ -37,12 +37,12 @@ buộc** bắt `exclusion_violation` và dịch thành 409. Không bắt thì va
 Bắt đúng khó hơn vẻ ngoài, vì lỗi bị bọc **hai lần** và mỗi tầng giấu SQLSTATE một kiểu khác nhau.
 Đo trên `drizzle-orm@0.45.2` + `bun@1.3.10`, không suy luận:
 
-| Bạn viết                          | Qua `tx\`...\`` (Bun.SQL trần) | Qua `db.insert(...)` (Drizzle) |
-| --------------------------------- | ------------------------------ | ------------------------------ |
-| `e.code`                          | `"ERR_POSTGRES_SERVER_ERROR"`  | `undefined`                    |
-| `e.errno`                         | `"23P01"` ✅                   | **`undefined`**                |
-| `e instanceof SQL.PostgresError`  | `true`                         | **`false`**                    |
-| `e.cause.errno`                   | —                              | `"23P01"` ✅                   |
+| Bạn viết                         | Qua `tx\`...\`` (Bun.SQL trần) | Qua `db.insert(...)` (Drizzle) |
+| -------------------------------- | ------------------------------ | ------------------------------ |
+| `e.code`                         | `"ERR_POSTGRES_SERVER_ERROR"`  | `undefined`                    |
+| `e.errno`                        | `"23P01"` ✅                   | **`undefined`**                |
+| `e instanceof SQL.PostgresError` | `true`                         | **`false`**                    |
+| `e.cause.errno`                  | —                              | `"23P01"` ✅                   |
 
 **Tầng 1 — Bun.SQL:** `.code` luôn là `"ERR_POSTGRES_SERVER_ERROR"`, SQLSTATE thật nằm ở `.errno`.
 
@@ -54,8 +54,7 @@ bao giờ đúng** — đúng cái bẫy tầng 1 sinh ra để cảnh báo, ch�
 ```ts
 function isOverlapViolation(e: unknown): boolean {
   const cause = e instanceof Error ? e.cause : undefined;
-  const pg =
-    e instanceof SQL.PostgresError ? e : cause instanceof SQL.PostgresError ? cause : null;
+  const pg = e instanceof SQL.PostgresError ? e : cause instanceof SQL.PostgresError ? cause : null;
   // `.constraint` chứ không chỉ SQLSTATE: một exclusion constraint thứ hai trên
   // cùng bảng cũng cho 23P01, và dịch nó thành "xe đã có đơn" là báo sai lý do.
   return pg !== null && pg.errno === "23P01" && pg.constraint === "rentals_no_overlap";
@@ -64,7 +63,7 @@ function isOverlapViolation(e: unknown): boolean {
 
 ⚠️ **Test schema ở `packages/db` KHÔNG chứng minh được điều này.**
 `rentals-schema.test.ts` insert bằng tagged template thẳng qua Bun.SQL, nên nó không bao giờ đi
-qua tầng bọc của Drizzle. Nó chứng minh *database* phát `23P01`; nó **không** chứng minh *service*
+qua tầng bọc của Drizzle. Nó chứng minh _database_ phát `23P01`; nó **không** chứng minh _service_
 nhìn thấy hình dạng nào. Bằng chứng cho vế thứ hai nằm ở `services/rentals.test.ts`.
 
 Cả hai tầng đều vô hình với `tsc` và với mọi test mock database — chỉ Postgres thật mới lộ.
@@ -326,11 +325,11 @@ shop mất OWNER cuối cùng dù xét riêng từng lời gọi đều hợp l�
 
 **Bốn** chỗ trong `services/` dựa vào cùng lý lẽ này, và cả bốn đều có chú thích tại chỗ:
 
-| Chỗ                       | Cách đóng cổng                                     | Hỏng thế nào nếu bỏ                                                                                                                                                          |
-| ------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `countActiveOwnersLocked` | các hàng OWNER đang `ACTIVE` (`ORDER BY id`)       | mất OWNER cuối cùng; `ORDER BY id` là để hai transaction khoá cùng thứ tự, tránh deadlock `40P01`                                                                            |
-| `createResetCode`         | hàng `staff_users` của chính người xin mã          | bất biến "tối đa một mã `used_at IS NULL`" vỡ — đo được: 8 lời gọi song song để lại 5 mã cùng sống, và các mã cũ hơn thành vô hiệu với chính người vừa nhận email chứa chúng |
-| `verifyCode`              | không khoá — **dồn `attempts < 5` vào câu UPDATE** | check-then-act với argon2 ~115 ms ở giữa: đo được **20/20** lần đoán song song đi qua cổng "tối đa 5 lần"                                                                    |
+| Chỗ                       | Cách đóng cổng                                     | Hỏng thế nào nếu bỏ                                                                                                                                                                                          |
+| ------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `countActiveOwnersLocked` | các hàng OWNER đang `ACTIVE` (`ORDER BY id`)       | mất OWNER cuối cùng; `ORDER BY id` là để hai transaction khoá cùng thứ tự, tránh deadlock `40P01`                                                                                                            |
+| `createResetCode`         | hàng `staff_users` của chính người xin mã          | bất biến "tối đa một mã `used_at IS NULL`" vỡ — đo được: 8 lời gọi song song để lại 5 mã cùng sống, và các mã cũ hơn thành vô hiệu với chính người vừa nhận email chứa chúng                                 |
+| `verifyCode`              | không khoá — **dồn `attempts < 5` vào câu UPDATE** | check-then-act với argon2 ~115 ms ở giữa: đo được **20/20** lần đoán song song đi qua cổng "tối đa 5 lần"                                                                                                    |
 | `changeRentalStatus`      | hàng `rentals` đang đổi trạng thái                 | đo 2026-08-16: bỏ `FOR UPDATE` thì **4/5 lần chạy cho 2/2 lời gọi song song cùng thành công** — cả hai đọc `BOOKED`, cả hai ghi `ONGOING`, `handed_over_at` bị đóng dấu hai lần và doanh thu ngày đó đếm đôi |
 
 Dòng cuối là chỗ tinh vi nhất và đáng đọc kỹ: bộ đếm vẫn **tăng đúng** (`attempts + 1` tính ở

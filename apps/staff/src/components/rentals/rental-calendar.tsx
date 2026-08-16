@@ -4,7 +4,12 @@ import { useSyncExternalStore } from "react";
 import { SHOP_TIMEZONE } from "@v9/shared/domain/rental";
 import { errorMessage } from "../../lib/errors";
 import type { GridWindow } from "../../lib/calendar-layout";
-import { fleetQuery, rentalsQuery, type CalendarRental, type FleetVehicle } from "../../lib/rentals";
+import {
+  fleetQuery,
+  rentalsQuery,
+  type CalendarRental,
+  type FleetVehicle,
+} from "../../lib/rentals";
 import { Alert } from "../ui/alert";
 import { Button } from "../ui/button";
 import { CalendarMonth } from "./calendar-month";
@@ -114,7 +119,14 @@ function tzOffsetMsAt(instant: Date): number {
     hourCycle: "h23",
   }).formatToParts(instant);
   const get = (type: string): number => Number(parts.find((p) => p.type === type)?.value);
-  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+  const asUtc = Date.UTC(
+    get("year"),
+    get("month") - 1,
+    get("day"),
+    get("hour"),
+    get("minute"),
+    get("second"),
+  );
   return asUtc - instant.getTime();
 }
 
@@ -186,7 +198,11 @@ function monthWindow(anchor: Ymd): GridWindow {
   const startDow = weekdayOf(monthStart);
   const gridStart = addDays(monthStart, -((startDow + 6) % 7)); // lùi về Thứ Hai
 
-  const monthEnd: Ymd = { year: anchor.year, month: anchor.month, day: daysInMonth(anchor.year, anchor.month) };
+  const monthEnd: Ymd = {
+    year: anchor.year,
+    month: anchor.month,
+    day: daysInMonth(anchor.year, anchor.month),
+  };
   const endDow = weekdayOf(monthEnd);
   const sunday = addDays(monthEnd, (7 - endDow) % 7); // tiến tới Chủ Nhật
   const gridEndExclusive = addDays(sunday, 1); // Thứ Hai kế tiếp — biên nửa mở
@@ -285,7 +301,8 @@ export function RentalCalendar() {
   const anchor = (search.from ? parseYmd(search.from) : null) ?? zonedTodayYmd();
 
   const dayCount = useCalendarDayCount();
-  const gridWindow: GridWindow = view === "month" ? monthWindow(anchor) : timelineWindow(anchor, dayCount);
+  const gridWindow: GridWindow =
+    view === "month" ? monthWindow(anchor) : timelineWindow(anchor, dayCount);
 
   // Chỉ fetch đúng khoảng chế độ ĐANG XEM cần — không union cả hai chế độ lại
   // để "sẵn sàng chuyển tức thì". Timeline tối đa 14 ngày, tháng tối đa 42 ngày
@@ -350,7 +367,11 @@ export function RentalCalendar() {
             </Button>
           </div>
 
-          <div role="group" aria-label="Chế độ xem" className="flex items-center gap-1 rounded-card border border-border p-1">
+          <div
+            role="group"
+            aria-label="Chế độ xem"
+            className="flex items-center gap-1 rounded-card border border-border p-1"
+          >
             {CALENDAR_VIEWS.map((v) => (
               <button
                 key={v}

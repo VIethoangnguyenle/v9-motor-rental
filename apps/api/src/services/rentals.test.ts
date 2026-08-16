@@ -238,9 +238,13 @@ describe("changeRentalStatus", () => {
   /** Tạo một đơn mới ở khoảng chưa ai dùng, trả về id. */
   async function freshRental(startDay: number, endDay: number): Promise<string> {
     const r = await createRental({
-      vehicleId, customerId,
-      startsAt: AUG(startDay), endsAt: AUG(endDay),
-      totalAmount: 1_000_000, depositAmount: 0, createdBy: staffId,
+      vehicleId,
+      customerId,
+      startsAt: AUG(startDay),
+      endsAt: AUG(endDay),
+      totalAmount: 1_000_000,
+      depositAmount: 0,
+      createdBy: staffId,
     });
     if (!r.ok) throw new Error(`seed hỏng: ${r.reason}`);
     return r.rental.id;

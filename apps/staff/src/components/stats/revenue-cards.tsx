@@ -21,7 +21,13 @@ function formatPercentChange(amount: number, prevAmount: number): string | null 
   return pct >= 0 ? `+${String(pct)}%` : `−${String(Math.abs(pct))}%`;
 }
 
-function RevenueCard({ period, stat }: { readonly period: PeriodKey; readonly stat: StatsSummary["revenue"][PeriodKey] }) {
+function RevenueCard({
+  period,
+  stat,
+}: {
+  readonly period: PeriodKey;
+  readonly stat: StatsSummary["revenue"][PeriodKey];
+}) {
   const pct = formatPercentChange(stat.amount, stat.prevAmount);
   return (
     <div className="rounded-card border border-border bg-surface card-pad">

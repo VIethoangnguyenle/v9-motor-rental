@@ -75,13 +75,7 @@ export function AppNav({
   return <BottomNav me={me} onSignOut={onSignOut} />;
 }
 
-function SidebarNav({
-  me,
-  onSignOut,
-}: {
-  readonly me: Me | null;
-  readonly onSignOut: () => void;
-}) {
+function SidebarNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignOut: () => void }) {
   return (
     <nav className="flex h-full w-full flex-col p-3 text-sm">
       <ul className="flex flex-col gap-1">
@@ -102,7 +96,9 @@ function SidebarNav({
                 className={`${TOUCH} w-full justify-between rounded-card px-3 text-muted`}
               >
                 {item.label}
-                <span className="rounded-card bg-canvas px-2 py-0.5 text-xs text-muted">sắp có</span>
+                <span className="rounded-card bg-canvas px-2 py-0.5 text-xs text-muted">
+                  sắp có
+                </span>
               </button>
             )}
           </li>
@@ -114,7 +110,10 @@ function SidebarNav({
         <p className="truncate px-3 text-xs text-muted">
           {me?.fullName} · {me?.role}
         </p>
-        <Link to="/change-password" className={`${TOUCH} rounded-card px-3 text-ink hover:bg-canvas`}>
+        <Link
+          to="/change-password"
+          className={`${TOUCH} rounded-card px-3 text-ink hover:bg-canvas`}
+        >
           Đổi mật khẩu
         </Link>
         <button
@@ -138,13 +137,7 @@ function SidebarNav({
  * nó cụ thể tới từng route — và 3 ô rộng hơn 4 ô nên vẫn thoả mọi ngưỡng vùng
  * chạm/chữ mà phần mô tả kia đang bảo vệ.
  */
-function BottomNav({
-  me,
-  onSignOut,
-}: {
-  readonly me: Me | null;
-  readonly onSignOut: () => void;
-}) {
+function BottomNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignOut: () => void }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const closeMore = () => setMoreOpen(false);
 
@@ -224,7 +217,9 @@ function BottomNav({
                       className={`${TOUCH} w-full justify-between rounded-card px-3 text-muted`}
                     >
                       {item.label}
-                      <span className="rounded-card bg-canvas px-2 py-0.5 text-xs text-muted">sắp có</span>
+                      <span className="rounded-card bg-canvas px-2 py-0.5 text-xs text-muted">
+                        sắp có
+                      </span>
                     </button>
                   )}
                 </li>

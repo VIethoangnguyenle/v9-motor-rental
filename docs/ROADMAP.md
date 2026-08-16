@@ -7,11 +7,11 @@ không. Nợ kỹ thuật ở [`DEBT.md`](DEBT.md); thiết kế của từng đ
 [`plans/2026-08-15-staff-home-stats-calendar-design.md`](plans/2026-08-15-staff-home-stats-calendar-design.md),
 chia làm ba plan nối tiếp:
 
-| Plan | Nội dung | Trạng thái |
-| ---- | -------- | ---------- |
-| A | `customers` + `rentals` + API (`/fleet`, `/rentals`, `/customers`, `/stats/summary`) | ✅ **xong** — [`plans/2026-08-15-staff-data-foundation-plan.md`](plans/2026-08-15-staff-data-foundation-plan.md) |
-| B | Hệ thiết kế `apps/staff`: `@theme`, thang cách, app shell responsive, retrofit 6 màn auth | ✅ **xong** — [`plans/2026-08-16-staff-design-system-plan.md`](plans/2026-08-16-staff-design-system-plan.md) |
-| C | Màn Thống kê (`/`) và trang Lịch (`/calendar`), form lên đơn | chưa viết plan |
+| Plan | Nội dung                                                                                  | Trạng thái                                                                                                       |
+| ---- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| A    | `customers` + `rentals` + API (`/fleet`, `/rentals`, `/customers`, `/stats/summary`)      | ✅ **xong** — [`plans/2026-08-15-staff-data-foundation-plan.md`](plans/2026-08-15-staff-data-foundation-plan.md) |
+| B    | Hệ thiết kế `apps/staff`: `@theme`, thang cách, app shell responsive, retrofit 6 màn auth | ✅ **xong** — [`plans/2026-08-16-staff-design-system-plan.md`](plans/2026-08-16-staff-design-system-plan.md)     |
+| C    | Màn Thống kê (`/`) và trang Lịch (`/calendar`), form lên đơn                              | chưa viết plan                                                                                                   |
 
 **Sau đó:** `booking_requests` + form gửi yêu cầu thuê trên `apps/web`. Đó là mảnh còn thiếu để đội
 xe đang hiển thị sinh ra được việc — hiện khách xem xong không có đường nào gửi yêu cầu. Ràng buộc

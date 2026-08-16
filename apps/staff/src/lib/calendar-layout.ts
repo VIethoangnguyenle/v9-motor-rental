@@ -133,10 +133,7 @@ export function dayColumns(w: GridWindow): DayColumn[] {
   return cols;
 }
 
-export function placeBar(
-  r: { startsAt: Date; endsAt: Date },
-  w: GridWindow,
-): BarPlacement | null {
+export function placeBar(r: { startsAt: Date; endsAt: Date }, w: GridWindow): BarPlacement | null {
   const effectiveStart = r.startsAt.getTime() > w.from.getTime() ? r.startsAt : w.from;
   const effectiveEndMs = Math.min(r.endsAt.getTime(), w.to.getTime());
 

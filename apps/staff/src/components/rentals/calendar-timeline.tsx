@@ -1,6 +1,11 @@
 import { Fragment } from "react";
 import { SHOP_TIMEZONE } from "@v9/shared/domain/rental";
-import { dayColumns, placeBar, type BarPlacement, type GridWindow } from "../../lib/calendar-layout";
+import {
+  dayColumns,
+  placeBar,
+  type BarPlacement,
+  type GridWindow,
+} from "../../lib/calendar-layout";
 import type { CalendarRental, FleetVehicle } from "../../lib/rentals";
 import { STATUS_LABEL, rentalChipClass } from "../../lib/rental-status";
 
@@ -53,7 +58,11 @@ export interface CalendarTimelineProps {
  * trước theo UTC, `getUTCDay()` đọc nhầm sang ngày trước).
  */
 const WEEKDAY_FMT = new Intl.DateTimeFormat("vi-VN", { timeZone: SHOP_TIMEZONE, weekday: "short" });
-const DATE_FMT = new Intl.DateTimeFormat("vi-VN", { timeZone: SHOP_TIMEZONE, day: "2-digit", month: "2-digit" });
+const DATE_FMT = new Intl.DateTimeFormat("vi-VN", {
+  timeZone: SHOP_TIMEZONE,
+  day: "2-digit",
+  month: "2-digit",
+});
 
 interface Placed {
   readonly rental: CalendarRental;
@@ -87,7 +96,9 @@ export function CalendarTimeline({ vehicles, rentals, gridWindow }: CalendarTime
         // hỏng im lặng. Giá trị 7/10/14 ngày (động, phụ thuộc `gridWindow`) vì
         // vậy phải đi qua `style` (raw CSS, không qua Tailwind) — xem bên dưới.
         className="grid min-w-max [--veh-col:5.5rem] md:[--veh-col:7rem] xl:[--veh-col:8.125rem]"
-        style={{ gridTemplateColumns: `var(--veh-col) repeat(${String(cols.length)}, minmax(2.75rem, 1fr))` }}
+        style={{
+          gridTemplateColumns: `var(--veh-col) repeat(${String(cols.length)}, minmax(2.75rem, 1fr))`,
+        }}
       >
         {/* Góc trên-trái — dính cả khi cuộn ngang, cùng hàng với header ngày. */}
         <div
@@ -138,7 +149,9 @@ export function CalendarTimeline({ vehicles, rentals, gridWindow }: CalendarTime
                   // Yêu cầu #… của Task 4: xe trống cả kỳ là THÔNG TIN, không
                   // phải khoảng trống câm — nói thẳng, không để người xem tự đoán
                   // "trống hay chưa tải xong".
-                  <span className="absolute inset-0 flex items-center px-2 text-xs text-muted">trống cả kỳ</span>
+                  <span className="absolute inset-0 flex items-center px-2 text-xs text-muted">
+                    trống cả kỳ
+                  </span>
                 )}
               </div>
 

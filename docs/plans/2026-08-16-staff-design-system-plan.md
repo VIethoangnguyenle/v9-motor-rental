@@ -27,24 +27,25 @@ Plan B **không chạm Postgres** — không task nào ở đây cần `docker c
 
 ## Cấu trúc file
 
-| File | Trách nhiệm |
-| ---- | ----------- |
-| `apps/staff/src/index.css` | `@theme` token + `@utility` thang cách |
-| `apps/staff/index.html` | `viewport-fit=cover` |
-| `apps/staff/src/lib/spacing-fence.test.ts` | Hàng rào cấm arbitrary value cho khoảng cách |
-| `apps/staff/src/components/ui/button.tsx` | Nút dùng chung (thay `submit-button` mở rộng) |
-| `apps/staff/src/components/ui/{alert,text-field,page-shell}.tsx` | Retrofit sang token |
-| `apps/staff/src/components/layout/app-shell.tsx` | Khung: sidebar ≥768 · bottom nav <768 |
-| `apps/staff/src/components/layout/app-nav.tsx` | Nav thật, có mục "sắp có" |
-| `apps/staff/src/router.tsx` | Gắn shell vào `protectedLayoutRoute` |
-| `apps/staff/src/pages/{health,staff-list}-page.tsx` | Bỏ nav tự chế, sống trong shell |
-| `eslint.config.js` | Sub-type `frontend-ui` (trả nợ `DEBT.md`) |
+| File                                                             | Trách nhiệm                                   |
+| ---------------------------------------------------------------- | --------------------------------------------- |
+| `apps/staff/src/index.css`                                       | `@theme` token + `@utility` thang cách        |
+| `apps/staff/index.html`                                          | `viewport-fit=cover`                          |
+| `apps/staff/src/lib/spacing-fence.test.ts`                       | Hàng rào cấm arbitrary value cho khoảng cách  |
+| `apps/staff/src/components/ui/button.tsx`                        | Nút dùng chung (thay `submit-button` mở rộng) |
+| `apps/staff/src/components/ui/{alert,text-field,page-shell}.tsx` | Retrofit sang token                           |
+| `apps/staff/src/components/layout/app-shell.tsx`                 | Khung: sidebar ≥768 · bottom nav <768         |
+| `apps/staff/src/components/layout/app-nav.tsx`                   | Nav thật, có mục "sắp có"                     |
+| `apps/staff/src/router.tsx`                                      | Gắn shell vào `protectedLayoutRoute`          |
+| `apps/staff/src/pages/{health,staff-list}-page.tsx`              | Bỏ nav tự chế, sống trong shell               |
+| `eslint.config.js`                                               | Sub-type `frontend-ui` (trả nợ `DEBT.md`)     |
 
 ---
 
 ## Task 1: `@theme` — token màu và thang cách
 
 **Files:**
+
 - Modify: `apps/staff/src/index.css`
 
 `src/index.css` hiện chỉ có `@import "tailwindcss"` cộng một khối comment giải thích **vì sao chưa
@@ -126,18 +127,19 @@ git commit -m "feat(staff): khai @theme — token màu, trạng thái, bán kín
 ## Task 2: Thang cách responsive và `viewport-fit=cover`
 
 **Files:**
+
 - Modify: `apps/staff/src/index.css`
 - Modify: `apps/staff/index.html`
 
 ### Thang chốt (design doc §6.2)
 
-| | Điện thoại `<768` | Tablet `768–1279` | Desktop `≥1280` |
-| --- | --- | --- | --- |
-| Gutter nội dung | 16px | 20px | 24px |
-| Padding trong thẻ | 12/14 | 12/14 | 14/16 |
-| Khoảng cách giữa thẻ | 8px | 10px | 12px |
-| Điều hướng | bottom nav cao 56px | sidebar 168px | sidebar 208px |
-| Vùng chạm tối thiểu | **44 × 44px** ở mọi breakpoint |||
+|                      | Điện thoại `<768`              | Tablet `768–1279` | Desktop `≥1280` |
+| -------------------- | ------------------------------ | ----------------- | --------------- |
+| Gutter nội dung      | 16px                           | 20px              | 24px            |
+| Padding trong thẻ    | 12/14                          | 12/14             | 14/16           |
+| Khoảng cách giữa thẻ | 8px                            | 10px              | 12px            |
+| Điều hướng           | bottom nav cao 56px            | sidebar 168px     | sidebar 208px   |
+| Vùng chạm tối thiểu  | **44 × 44px** ở mọi breakpoint |                   |                 |
 
 - [ ] **Step 1: Thêm `@utility` vào `index.css`**
 
@@ -214,6 +216,7 @@ git commit -m "feat(staff): thang cách ba breakpoint và viewport-fit=cover"
 ## Task 3: Hàng rào cấm arbitrary value cho khoảng cách
 
 **Files:**
+
 - Create: `apps/staff/src/lib/spacing-fence.test.ts`
 
 Thang cách chỉ có giá trị nếu không ai rải số lẻ bên cạnh nó. Luật đó **không tự sống bằng kỷ luật
@@ -238,7 +241,8 @@ import { Glob } from "bun";
  * `w-[88px]` cho cột dính) là hợp lệ và không bị đụng tới — chặn quá tay thì
  * người ta tắt hàng rào, và một hàng rào bị tắt tệ hơn không có.
  */
-const FORBIDDEN = /\b(?:p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|gap|gap-x|gap-y|space-x|space-y)-\[/;
+const FORBIDDEN =
+  /\b(?:p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|gap|gap-x|gap-y|space-x|space-y)-\[/;
 
 describe("thang cách", () => {
   it("không có arbitrary value cho khoảng cách trong .tsx", async () => {
@@ -284,6 +288,7 @@ git commit -m "test(staff): hàng rào cấm arbitrary value cho khoảng cách"
 ## Task 4: Retrofit `components/ui/`
 
 **Files:**
+
 - Create: `apps/staff/src/components/ui/button.tsx`
 - Modify: `apps/staff/src/components/ui/{alert,text-field,page-shell,submit-button}.tsx`
 
@@ -308,7 +313,8 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
  * `min-h-11` = 44px — ngưỡng vùng chạm, áp ở MỌI breakpoint. Mật độ thông tin cao
  * là đặc quyền của desktop; trên điện thoại nút phải bấm trúng được bằng ngón cái.
  */
-const BASE = "inline-flex min-h-11 items-center justify-center rounded-card px-4 text-sm font-semibold disabled:opacity-50";
+const BASE =
+  "inline-flex min-h-11 items-center justify-center rounded-card px-4 text-sm font-semibold disabled:opacity-50";
 
 const VARIANT: Record<Variant, string> = {
   primary: "bg-accent text-accent-ink",
@@ -353,6 +359,7 @@ git commit -m "feat(staff): ui/ dùng token, thêm Button với vùng chạm 44p
 ## Task 5: `app-shell.tsx`
 
 **Files:**
+
 - Create: `apps/staff/src/components/layout/app-shell.tsx`
 
 - [ ] **Step 1: Viết shell**
@@ -380,19 +387,20 @@ không tồn tại nên chiều cao viewport ổn định — nhưng ở tab tr�
 ## Task 6: `app-nav.tsx` — nav thật
 
 **Files:**
+
 - Modify: `apps/staff/src/components/layout/app-nav.tsx`
 
 Bản hiện tại là một thanh link ngang tối giản. Bản mới:
 
-| Mục | Route | Desktop/tablet | Bottom nav |
-| --- | ----- | -------------- | ---------- |
-| Trang chủ | `/` | ✅ | ✅ |
-| Lịch | — | ✅ vô hiệu hoá, nhãn "sắp có" | ✅ vô hiệu hoá |
-| Đơn thuê | — | ✅ vô hiệu hoá | trong **Thêm** |
-| Khách hàng | — | ✅ vô hiệu hoá | trong **Thêm** |
-| Bàn giao | — | ✅ vô hiệu hoá | trong **Thêm** |
-| Nhân viên | `/staff` | ✅ chỉ OWNER | trong **Thêm** |
-| Đổi mật khẩu · Đăng xuất | `/change-password` | chân sidebar | trong **Thêm** |
+| Mục                      | Route              | Desktop/tablet                | Bottom nav     |
+| ------------------------ | ------------------ | ----------------------------- | -------------- |
+| Trang chủ                | `/`                | ✅                            | ✅             |
+| Lịch                     | —                  | ✅ vô hiệu hoá, nhãn "sắp có" | ✅ vô hiệu hoá |
+| Đơn thuê                 | —                  | ✅ vô hiệu hoá                | trong **Thêm** |
+| Khách hàng               | —                  | ✅ vô hiệu hoá                | trong **Thêm** |
+| Bàn giao                 | —                  | ✅ vô hiệu hoá                | trong **Thêm** |
+| Nhân viên                | `/staff`           | ✅ chỉ OWNER                  | trong **Thêm** |
+| Đổi mật khẩu · Đăng xuất | `/change-password` | chân sidebar                  | trong **Thêm** |
 
 - [ ] **Step 1: Viết nav**
 
@@ -403,9 +411,10 @@ Ràng buộc:
   chọn cái đơn giản hơn và nói lý do).
 
   > ⚠️ Bản đầu của plan này ghi "đúng 4 ô" ngay dưới một bảng chỉ liệt kê **hai** mục làm ô trực
-  > tiếp — tự mâu thuẫn. Con số 4 mang từ mockup của design doc sang, nơi *Đơn thuê* còn là ô trực
+  > tiếp — tự mâu thuẫn. Con số 4 mang từ mockup của design doc sang, nơi _Đơn thuê_ còn là ô trực
   > tiếp; lúc viết plan tôi đẩy nó vào **Thêm** mà quên sửa con số. Giữ **3**: một ô vô hiệu hoá
   > chiếm 25% thanh nav trên màn nhỏ nhất là chỗ đắt nhất để quảng cáo lộ trình.
+
 - Mục "sắp có" **không được là `<Link>`**. Chúng phải không bấm được — một link tới route không tồn
   tại là một cú 404 trong app của chính mình.
 - Link `/staff` chỉ hiện với OWNER. Đây là hàng rào của **trải nghiệm**, không phải của dữ liệu:
@@ -419,6 +428,7 @@ Ràng buộc:
 ## Task 7: Gắn shell vào cây route
 
 **Files:**
+
 - Modify: `apps/staff/src/router.tsx`
 - Modify: `apps/staff/src/pages/health-page.tsx`
 - Modify: `apps/staff/src/pages/staff-list-page.tsx`
@@ -491,6 +501,7 @@ ngang không.
 ## Task 9: Trả nợ — sub-type `frontend-ui` trong `eslint.config.js`
 
 **Files:**
+
 - Modify: `eslint.config.js`
 
 [`../DEBT.md`](../DEBT.md) ghi: ranh giới "`components/ui/` không biết domain" **không được lint
@@ -553,7 +564,6 @@ một bước bắt **chứng minh** thay vì mô tả (Task 7 dựng route th�
 
 Task 1–4 và 9 vẫn có code đầy đủ: token, `@utility`, test, và cấu hình ESLint đều là thứ đúng-sai
 xác định được mà không cần nhìn.
-
 
 **Plan này KHÔNG thêm tính năng nào.** Sau khi xong, app làm được đúng những việc nó làm được hôm
 nay — chỉ khác diện mạo và khung. Đó là chủ ý: trộn "đổi khung" với "thêm màn hình" vào một đợt là

@@ -1,5 +1,10 @@
 import { SHOP_TIMEZONE } from "@v9/shared/domain/rental";
-import { dayColumns, placeBar, type BarPlacement, type GridWindow } from "../../lib/calendar-layout";
+import {
+  dayColumns,
+  placeBar,
+  type BarPlacement,
+  type GridWindow,
+} from "../../lib/calendar-layout";
 import type { CalendarRental, FleetVehicle } from "../../lib/rentals";
 import { STATUS_LABEL, rentalChipClass } from "../../lib/rental-status";
 
@@ -47,7 +52,11 @@ const WEEKDAY_HEADER = ["Th 2", "Th 3", "Th 4", "Th 5", "Th 6", "Th 7", "CN"];
  * các field UTC của instant (nửa đêm giờ VN lệch UTC 7 tiếng, đọc nhầm ngày).
  */
 const DAY_FMT = new Intl.DateTimeFormat("vi-VN", { timeZone: SHOP_TIMEZONE, day: "numeric" });
-const DAY_MONTH_FMT = new Intl.DateTimeFormat("vi-VN", { timeZone: SHOP_TIMEZONE, day: "numeric", month: "short" });
+const DAY_MONTH_FMT = new Intl.DateTimeFormat("vi-VN", {
+  timeZone: SHOP_TIMEZONE,
+  day: "numeric",
+  month: "short",
+});
 
 /** Ngày 1 của tháng hiện kèm tên tháng — nếu không, một ô "1" ở rìa lưới (đầu
  *  tháng sau/cuối tháng trước đệm vào) dễ đọc nhầm là ngày 1 của tháng đang xem. */
@@ -103,7 +112,8 @@ export function CalendarMonth({ vehicles, rentals, gridWindow }: CalendarMonthPr
             // `calendar-layout.ts`: chỉ đúng vì VN không DST, sai lặng nếu điều
             // đó đổi). Cột cuối cùng của cả lưới thì lấy `gridWindow.to`.
             const cellEnd = cols[globalIndex + 1]?.date ?? gridWindow.to;
-            const isToday = now.getTime() >= col.date.getTime() && now.getTime() < cellEnd.getTime();
+            const isToday =
+              now.getTime() >= col.date.getTime() && now.getTime() < cellEnd.getTime();
 
             // Tái dùng `placeBar` với cửa sổ MỘT NGÀY để hỏi "đơn này có chạm ô
             // này không" — cùng ngữ nghĩa `[from, to)` đã kiểm ở Task 1, thay vì
@@ -135,7 +145,9 @@ export function CalendarMonth({ vehicles, rentals, gridWindow }: CalendarMonthPr
                 <div className="mt-1 flex flex-col gap-0.5">
                   {shown.map(({ rental, placement }) => {
                     const vehicle = vehicleById.get(rental.vehicleId);
-                    const label = vehicle ? `${vehicle.make} ${vehicle.model}` : (rental.customerName ?? "—");
+                    const label = vehicle
+                      ? `${vehicle.make} ${vehicle.model}`
+                      : (rental.customerName ?? "—");
                     return (
                       <div
                         key={rental.id}
@@ -148,7 +160,9 @@ export function CalendarMonth({ vehicles, rentals, gridWindow }: CalendarMonthPr
                       </div>
                     );
                   })}
-                  {hiddenCount > 0 && <div className="px-1 text-xs text-muted">+{String(hiddenCount)} nữa</div>}
+                  {hiddenCount > 0 && (
+                    <div className="px-1 text-xs text-muted">+{String(hiddenCount)} nữa</div>
+                  )}
                 </div>
               </div>
             );

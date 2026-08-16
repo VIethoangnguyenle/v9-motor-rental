@@ -78,9 +78,21 @@ export async function getStatsSummary(now: Date): Promise<StatsSummary> {
 
   return {
     revenue: {
-      today: { amount: row.today_amount, orders: row.today_orders, prevAmount: row.prev_day_amount },
-      thisWeek: { amount: row.week_amount, orders: row.week_orders, prevAmount: row.prev_week_amount },
-      thisMonth: { amount: row.month_amount, orders: row.month_orders, prevAmount: row.prev_month_amount },
+      today: {
+        amount: row.today_amount,
+        orders: row.today_orders,
+        prevAmount: row.prev_day_amount,
+      },
+      thisWeek: {
+        amount: row.week_amount,
+        orders: row.week_orders,
+        prevAmount: row.prev_week_amount,
+      },
+      thisMonth: {
+        amount: row.month_amount,
+        orders: row.month_orders,
+        prevAmount: row.prev_month_amount,
+      },
     },
     attention: { overdue: row.overdue, dueToday: row.due_today },
   };

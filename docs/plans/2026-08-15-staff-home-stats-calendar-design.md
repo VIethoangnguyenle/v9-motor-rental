@@ -17,21 +17,21 @@ mới thêm"). Đây là lúc đó.
 Ba thứ trong repo được viết từ đợt scaffold cho đúng ngày hôm nay, và design này bám vào chúng
 chứ không dựng lại:
 
-| Đã có sẵn                                       | Vì sao nó ở đó                                                                    |
-| ----------------------------------------------- | --------------------------------------------------------------------------------- |
+| Đã có sẵn                                       | Vì sao nó ở đó                                                                     |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `migrations/0000_btree_gist.sql`                | extension bật sẵn **chỉ để** `EXCLUDE USING gist (vehicle_id WITH =, …)` chạy được |
 | Comment trong `packages/db/src/schema/index.ts` | ghi **nguyên văn** câu exclusion constraint mà `rentals` phải kèm                  |
 | `packages/shared/domain/interval.ts`            | `overlaps()` dùng biên `[start, end)`, cố ý khớp `tstzrange` mặc định của Postgres |
 
 ### Phạm vi
 
-| Workspace         | Việc                                                                                            |
-| ----------------- | ----------------------------------------------------------------------------------------------- |
-| `packages/db`     | migration `0009`: `customers`, `rentals` + ràng buộc chống đặt trùng                            |
-| `packages/shared` | `domain/rental.ts` — trạng thái đơn, chuyển trạng thái, quá hạn, ngày ghi nhận doanh thu        |
-| `apps/api`        | `routes/rentals.ts`, `routes/stats.ts`, `services/rentals.ts`, `services/customers.ts`, `/fleet` |
+| Workspace         | Việc                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------- |
+| `packages/db`     | migration `0009`: `customers`, `rentals` + ràng buộc chống đặt trùng                              |
+| `packages/shared` | `domain/rental.ts` — trạng thái đơn, chuyển trạng thái, quá hạn, ngày ghi nhận doanh thu          |
+| `apps/api`        | `routes/rentals.ts`, `routes/stats.ts`, `services/rentals.ts`, `services/customers.ts`, `/fleet`  |
 | `apps/staff`      | `@theme` token · app shell responsive · `/` thống kê · `/calendar` lịch · form lên đơn · retrofit |
-| gốc repo          | sub-type `frontend-ui` trong `eslint.config.js` (trả nợ đã ghi ở `DEBT.md`)                     |
+| gốc repo          | sub-type `frontend-ui` trong `eslint.config.js` (trả nợ đã ghi ở `DEBT.md`)                       |
 
 ### Ngoài phạm vi — nói rõ để sau này không ai tưởng là quên
 
@@ -53,16 +53,16 @@ bước bàn giao, không có ảnh, không tính giá.
 
 ## §2 · Quyết định đã chốt
 
-| Quyết định           | Nội dung                                                                             |
-| -------------------- | ------------------------------------------------------------------------------------ |
-| Home                 | **Thống kê** — doanh thu và số đơn theo ngày · tuần · tháng                          |
-| Lịch                 | Tính năng riêng ở `/calendar`, **hai chế độ có nút chuyển**: Timeline theo xe ↔ Tháng |
-| Ghi nhận doanh thu   | Theo **ngày giao xe**                                                                 |
-| Backend              | `customers` + `rentals` tối thiểu, giá **nhập tay**                                  |
-| Thiết bị             | Điện thoại · tablet · desktop **ngang nhau**, ba breakpoint thật                      |
-| Hệ thiết kế          | Phủ **toàn app**: `@theme`, shell mới, retrofit 6 màn auth + bảng nhân viên           |
-| Tính năng chưa làm   | Nav hiện đủ, đánh dấu rõ "sắp có"                                                     |
-| Hàng rào `ui/`       | Trả nợ `frontend-ui` trong `eslint.config.js` **trong đợt này**                       |
+| Quyết định         | Nội dung                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------- |
+| Home               | **Thống kê** — doanh thu và số đơn theo ngày · tuần · tháng                           |
+| Lịch               | Tính năng riêng ở `/calendar`, **hai chế độ có nút chuyển**: Timeline theo xe ↔ Tháng |
+| Ghi nhận doanh thu | Theo **ngày giao xe**                                                                 |
+| Backend            | `customers` + `rentals` tối thiểu, giá **nhập tay**                                   |
+| Thiết bị           | Điện thoại · tablet · desktop **ngang nhau**, ba breakpoint thật                      |
+| Hệ thiết kế        | Phủ **toàn app**: `@theme`, shell mới, retrofit 6 màn auth + bảng nhân viên           |
+| Tính năng chưa làm | Nav hiện đủ, đánh dấu rõ "sắp có"                                                     |
+| Hàng rào `ui/`     | Trả nợ `frontend-ui` trong `eslint.config.js` **trong đợt này**                       |
 
 ---
 
@@ -70,13 +70,13 @@ bước bàn giao, không có ảnh, không tính giá.
 
 ### 3.1 `customers`
 
-| Cột                       | Kiểu          | Ghi chú                                    |
-| ------------------------- | ------------- | ------------------------------------------ |
-| `id`                      | `uuid` PK     |                                            |
-| `full_name`               | `text` NOT NULL |                                          |
-| `phone`                   | `text` NOT NULL **UNIQUE** | lưu đã chuẩn hoá                |
-| `note`                    | `text`        |                                            |
-| `created_at`/`updated_at` | `timestamptz` |                                            |
+| Cột                       | Kiểu                       | Ghi chú          |
+| ------------------------- | -------------------------- | ---------------- |
+| `id`                      | `uuid` PK                  |                  |
+| `full_name`               | `text` NOT NULL            |                  |
+| `phone`                   | `text` NOT NULL **UNIQUE** | lưu đã chuẩn hoá |
+| `note`                    | `text`                     |                  |
+| `created_at`/`updated_at` | `timestamptz`              |                  |
 
 `phone` lưu **đã chuẩn hoá** — chỉ chữ số, dạng `0xxxxxxxxx` — và chuẩn hoá **cả đường ghi lẫn
 đường đọc**. `CHECK (phone ~ '^0[0-9]{8,10}$')` ép ở tầng DB, để một hàng chưa chuẩn hoá không
@@ -89,20 +89,20 @@ hàng bẩn dần theo tháng.
 
 ### 3.2 `rentals`
 
-| Cột                                | Kiểu                    | Ghi chú                                    |
-| ---------------------------------- | ----------------------- | ------------------------------------------ |
-| `id`                               | `uuid` PK               |                                            |
-| `vehicle_id`                       | `uuid` NOT NULL         | → `vehicles(id)` ON DELETE RESTRICT        |
-| `customer_id`                      | `uuid` NOT NULL         | → `customers(id)` ON DELETE RESTRICT       |
-| `starts_at` / `ends_at`            | `timestamptz` NOT NULL  | **kế hoạch**                               |
-| `period`                           | `tstzrange` **sinh**    | `tstzrange(starts_at, ends_at, '[)')`      |
-| `status`                           | `text` NOT NULL         | `BOOKED`·`ONGOING`·`COMPLETED`·`CANCELLED` |
-| `handed_over_at`                   | `timestamptz`           | **thực tế** — mốc ghi nhận doanh thu       |
-| `returned_at`                      | `timestamptz`           | thực tế                                    |
-| `total_amount` / `deposit_amount`  | `integer` NOT NULL      | Vnd nguyên, nhập tay                       |
-| `created_by`                       | `text` NOT NULL         | → `staff_users(id)`                        |
-| `note`                             | `text`                  |                                            |
-| `created_at` / `updated_at`        | `timestamptz` NOT NULL  |                                            |
+| Cột                               | Kiểu                   | Ghi chú                                    |
+| --------------------------------- | ---------------------- | ------------------------------------------ |
+| `id`                              | `uuid` PK              |                                            |
+| `vehicle_id`                      | `uuid` NOT NULL        | → `vehicles(id)` ON DELETE RESTRICT        |
+| `customer_id`                     | `uuid` NOT NULL        | → `customers(id)` ON DELETE RESTRICT       |
+| `starts_at` / `ends_at`           | `timestamptz` NOT NULL | **kế hoạch**                               |
+| `period`                          | `tstzrange` **sinh**   | `tstzrange(starts_at, ends_at, '[)')`      |
+| `status`                          | `text` NOT NULL        | `BOOKED`·`ONGOING`·`COMPLETED`·`CANCELLED` |
+| `handed_over_at`                  | `timestamptz`          | **thực tế** — mốc ghi nhận doanh thu       |
+| `returned_at`                     | `timestamptz`          | thực tế                                    |
+| `total_amount` / `deposit_amount` | `integer` NOT NULL     | Vnd nguyên, nhập tay                       |
+| `created_by`                      | `text` NOT NULL        | → `staff_users(id)`                        |
+| `note`                            | `text`                 |                                            |
+| `created_at` / `updated_at`       | `timestamptz` NOT NULL |                                            |
 
 **`period` là cột sinh (`GENERATED ALWAYS AS … STORED`), không ghi tay được.** Nếu ghi tay được
 thì nó lệch được với `starts_at`/`ends_at`, và lúc đó ràng buộc chống trùng đang bảo vệ **một
@@ -150,10 +150,10 @@ Bốn `CHECK` về dấu thời gian không phải phòng thủ thừa, và **ph
 tính bằng `SUM(total_amount) WHERE handed_over_at IS NOT NULL`, **không lọc trạng thái**. Vậy có
 hai kiểu hỏng, ngược nhau:
 
-| Hàng sai                                     | Hậu quả                                              |
-| -------------------------------------------- | ---------------------------------------------------- |
-| `ONGOING` mà `handed_over_at IS NULL`        | **biến mất** khỏi báo cáo                            |
-| `BOOKED`/`CANCELLED` mà có `handed_over_at`  | **được đếm vào tiền** — thổi phồng doanh thu, im lặng |
+| Hàng sai                                    | Hậu quả                                               |
+| ------------------------------------------- | ----------------------------------------------------- |
+| `ONGOING` mà `handed_over_at IS NULL`       | **biến mất** khỏi báo cáo                             |
+| `BOOKED`/`CANCELLED` mà có `handed_over_at` | **được đếm vào tiền** — thổi phồng doanh thu, im lặng |
 
 Bản đầu của thiết kế này chỉ chặn kiểu thứ nhất, và biện minh kiểu thứ hai bằng "`transition()`
 cấm `ONGOING → CANCELLED`". Đó là **luật của ứng dụng đi bảo vệ một truy vấn ở tầng database** —
@@ -194,9 +194,10 @@ chặn khoảng thời gian ngược.
 ```ts
 export type RentalStatus = "BOOKED" | "ONGOING" | "COMPLETED" | "CANCELLED";
 
-export function transition(from: RentalStatus, to: RentalStatus):
-  | { ok: true }
-  | { ok: false; reason: "INVALID_TRANSITION" };
+export function transition(
+  from: RentalStatus,
+  to: RentalStatus,
+): { ok: true } | { ok: false; reason: "INVALID_TRANSITION" };
 
 export function isOverdue(r: { status: RentalStatus; endsAt: Date }, now: Date): boolean;
 export function toInterval(r: { startsAt: Date; endsAt: Date }): Interval;
@@ -207,11 +208,11 @@ export function revenueAt(r: { status: RentalStatus; handedOverAt: Date | null }
 
 ### Chuyển trạng thái được phép — đúng ba đường
 
-| Từ        | Sang        | Nghĩa                       | Đóng dấu                |
-| --------- | ----------- | --------------------------- | ----------------------- |
-| `BOOKED`  | `ONGOING`   | giao xe                     | `handed_over_at = now()` |
-| `BOOKED`  | `CANCELLED` | huỷ **trước khi** giao      | —                       |
-| `ONGOING` | `COMPLETED` | trả xe                      | `returned_at = now()`   |
+| Từ        | Sang        | Nghĩa                  | Đóng dấu                 |
+| --------- | ----------- | ---------------------- | ------------------------ |
+| `BOOKED`  | `ONGOING`   | giao xe                | `handed_over_at = now()` |
+| `BOOKED`  | `CANCELLED` | huỷ **trước khi** giao | —                        |
+| `ONGOING` | `COMPLETED` | trả xe                 | `returned_at = now()`    |
 
 Mọi đường khác trả `{ ok: false, reason: "INVALID_TRANSITION" }`.
 
@@ -240,15 +241,15 @@ frontend không mỗi bên giữ một bản.
 
 Tất cả nằm sau `staff-guard`. Không có endpoint công khai nào trong đợt này.
 
-| Endpoint                    | Ghi chú                                        |
-| --------------------------- | ---------------------------------------------- |
-| `GET /fleet`                | Mọi xe **kèm biển số**, trừ `archived`         |
-| `GET /rentals?from=&to=`    | Đơn giao với khoảng, tối đa `MAX_RANGE_DAYS`   |
-| `POST /rentals`             | Tạo đơn                                        |
-| `POST /rentals/:id/status`  | Đổi trạng thái                                 |
-| `GET /customers?q=`         | Tìm theo tên hoặc số điện thoại                |
-| `POST /customers`           | Tạo nhanh                                      |
-| `GET /stats/summary`        | Sáu số doanh thu + ba dòng "cần chú ý"         |
+| Endpoint                   | Ghi chú                                      |
+| -------------------------- | -------------------------------------------- |
+| `GET /fleet`               | Mọi xe **kèm biển số**, trừ `archived`       |
+| `GET /rentals?from=&to=`   | Đơn giao với khoảng, tối đa `MAX_RANGE_DAYS` |
+| `POST /rentals`            | Tạo đơn                                      |
+| `POST /rentals/:id/status` | Đổi trạng thái                               |
+| `GET /customers?q=`        | Tìm theo tên hoặc số điện thoại              |
+| `POST /customers`          | Tạo nhanh                                    |
+| `GET /stats/summary`       | Sáu số doanh thu + ba dòng "cần chú ý"       |
 
 ### 5.1 `GET /fleet` là route mới, KHÔNG phải thêm field vào `/vehicles`
 
@@ -282,8 +283,8 @@ Kiểm `.constraint` chứ không chỉ SQLSTATE: một exclusion constraint th�
 `23P01`, và dịch nó thành "xe đã có đơn" là trả sai lý do cho người dùng.
 
 ⚠️ **Test schema ở `packages/db` không thay thế được test service.** Nó insert bằng tagged template
-thẳng qua Bun.SQL nên không bao giờ đi qua tầng bọc của Drizzle: nó chứng minh *database* phát
-`23P01`, không chứng minh *service* nhìn thấy hình dạng nào.
+thẳng qua Bun.SQL nên không bao giờ đi qua tầng bọc của Drizzle: nó chứng minh _database_ phát
+`23P01`, không chứng minh _service_ nhìn thấy hình dạng nào.
 
 Transaction boundary thuộc **service**, không thuộc route. Câu insert có thể lỗi được bọc trong
 `tx.savepoint(...)`, vì một lỗi trong transaction làm hỏng cả transaction.
@@ -325,11 +326,11 @@ không được thấy nó.
 
 **`prevAmount` so với kỳ liền trước cùng độ dài**, không phải "cùng kỳ năm ngoái":
 
-| Kỳ          | Cắt như thế nào                       | So với                        |
-| ----------- | ------------------------------------- | ----------------------------- |
-| `today`     | 00:00 → 24:00 hôm nay, giờ VN         | cùng khung của **hôm qua**    |
-| `thisWeek`  | **Thứ Hai** 00:00 → nay, giờ VN       | trọn tuần trước (T2 → CN)     |
-| `thisMonth` | ngày 1 lúc 00:00 → nay, giờ VN        | trọn tháng trước              |
+| Kỳ          | Cắt như thế nào                 | So với                     |
+| ----------- | ------------------------------- | -------------------------- |
+| `today`     | 00:00 → 24:00 hôm nay, giờ VN   | cùng khung của **hôm qua** |
+| `thisWeek`  | **Thứ Hai** 00:00 → nay, giờ VN | trọn tuần trước (T2 → CN)  |
+| `thisMonth` | ngày 1 lúc 00:00 → nay, giờ VN  | trọn tháng trước           |
 
 Tuần bắt đầu **Thứ Hai** (quy ước Việt Nam), không phải Chủ Nhật. `thisWeek` và `thisMonth` là kỳ
 **đang chạy dở**, còn kỳ so sánh là kỳ **đã trọn** — nên đầu tháng con số `−4%` là bình thường,
@@ -352,10 +353,10 @@ sáng giờ VN** để chứng minh. Test đó là hàng rào; câu SQL viết c
 ⚠️ **Test "bao gồm" KHÔNG bắt được lỗi này — phải là test "loại trừ".** Đo được khi bỏ
 `AT TIME ZONE` ra khỏi truy vấn:
 
-| Test | Dưới bản đúng | Dưới bản bỏ múi giờ |
-| --- | --- | --- |
-| đơn giao 01:00 VN **phải tính vào** hôm nay | xanh | **vẫn xanh** |
-| đơn giao 23:00 VN hôm trước **không được tính vào** hôm nay | xanh | **đỏ** ✅ |
+| Test                                                        | Dưới bản đúng | Dưới bản bỏ múi giờ |
+| ----------------------------------------------------------- | ------------- | ------------------- |
+| đơn giao 01:00 VN **phải tính vào** hôm nay                 | xanh          | **vẫn xanh**        |
+| đơn giao 23:00 VN hôm trước **không được tính vào** hôm nay | xanh          | **đỏ** ✅           |
 
 Lý do: với `now` = 02:00 VN (= 19:00Z hôm trước) và đơn lúc 01:00 VN (= 18:00Z hôm trước), cắt kỳ
 bằng UTC vẫn xếp cả hai vào **cùng một ngày UTC** — sai số triệt tiêu đúng ở phép so sánh đó. Chỉ
@@ -386,15 +387,15 @@ dùng một màu hệ thống trung tính, **có comment trong CSS ghi rõ nó k
 
 ### 6.2 Thang cách — ba breakpoint, không phải hai
 
-|                        | Điện thoại `<768`                | Tablet `768–1279`  | Desktop `≥1280`   |
-| ---------------------- | -------------------------------- | ------------------ | ----------------- |
-| Gutter nội dung        | **16px**                         | **20px**           | **24px**          |
-| Padding trong thẻ      | 12 / 14                          | 12 / 14            | 14 / 16           |
-| Khoảng cách giữa thẻ   | 8px                              | 10px               | 12px              |
-| Điều hướng             | bottom nav 4 ô, cao **56px**     | sidebar 168px      | sidebar 208px     |
-| Thẻ doanh thu          | 1 cột                            | 3 cột              | 3 cột             |
-| Cỡ chữ thân            | 13–14px                          | 13px               | 12–13px           |
-| Vùng chạm tối thiểu    | **44 × 44px** — mọi ô nav, nút, và dòng bấm được, ở mọi breakpoint       |||
+|                      | Điện thoại `<768`                                                  | Tablet `768–1279` | Desktop `≥1280` |
+| -------------------- | ------------------------------------------------------------------ | ----------------- | --------------- |
+| Gutter nội dung      | **16px**                                                           | **20px**          | **24px**        |
+| Padding trong thẻ    | 12 / 14                                                            | 12 / 14           | 14 / 16         |
+| Khoảng cách giữa thẻ | 8px                                                                | 10px              | 12px            |
+| Điều hướng           | bottom nav 4 ô, cao **56px**                                       | sidebar 168px     | sidebar 208px   |
+| Thẻ doanh thu        | 1 cột                                                              | 3 cột             | 3 cột           |
+| Cỡ chữ thân          | 13–14px                                                            | 13px              | 12–13px         |
+| Vùng chạm tối thiểu  | **44 × 44px** — mọi ô nav, nút, và dòng bấm được, ở mọi breakpoint |                   |                 |
 
 **Tablet có breakpoint riêng vì nó không phải điện thoại phóng to.** Ở 768px còn đủ chỗ cho
 sidebar, và dòng "cần chú ý" có chỗ ghi thêm tên xe — thông tin mà bản điện thoại phải cắt. Không
@@ -458,14 +459,14 @@ Sáu màn auth đứng **ngoài** shell (chúng ở nhánh `public`) và giữ `
 
 ### Điều hướng
 
-| Mục                     | Desktop / tablet | Bottom nav (điện thoại) |
-| ----------------------- | ---------------- | ----------------------- |
-| Thống kê (`/`)          | ✅               | ✅                      |
-| Lịch (`/calendar`)      | ✅               | ✅                      |
-| Đơn thuê — *sắp có*     | ✅ vô hiệu hoá   | ✅ vô hiệu hoá          |
-| Khách hàng — *sắp có*   | ✅ vô hiệu hoá   | trong **Thêm**          |
-| Bàn giao — *sắp có*     | ✅ vô hiệu hoá   | trong **Thêm**          |
-| Nhân viên (OWNER)       | ✅               | trong **Thêm**          |
+| Mục                      | Desktop / tablet | Bottom nav (điện thoại) |
+| ------------------------ | ---------------- | ----------------------- |
+| Thống kê (`/`)           | ✅               | ✅                      |
+| Lịch (`/calendar`)       | ✅               | ✅                      |
+| Đơn thuê — _sắp có_      | ✅ vô hiệu hoá   | ✅ vô hiệu hoá          |
+| Khách hàng — _sắp có_    | ✅ vô hiệu hoá   | trong **Thêm**          |
+| Bàn giao — _sắp có_      | ✅ vô hiệu hoá   | trong **Thêm**          |
+| Nhân viên (OWNER)        | ✅               | trong **Thêm**          |
 | Đổi mật khẩu · Đăng xuất | chân sidebar     | trong **Thêm**          |
 
 **Bottom nav đúng bốn ô, không phải sáu.** Sáu ô trên màn 375px cho ra chữ 8,5px và vùng chạm
@@ -515,17 +516,17 @@ chủ shop hỏi nhiều nhất: "xe nào đang bận tới ngày nào" và "kh�
 nào". **Khoảng trắng chính là xe còn trống**, nên không phải đọc, chỉ cần nhìn. Đây là mô hình
 chuẩn của phần mềm cho thuê tài sản.
 
-**Lịch tháng** — ô ngày quen mắt. Nó *không* cho thấy xe rảnh (thứ trống thì không xuất hiện trên
+**Lịch tháng** — ô ngày quen mắt. Nó _không_ cho thấy xe rảnh (thứ trống thì không xuất hiện trên
 lịch tháng) và cắt một đơn 5 ngày thành 5 dòng rời. Có mặt vì nó cho cảm giác thời gian mà timeline
 không cho, và vì có nút chuyển nên không phải chọn một cái rồi chịu thiệt.
 
 ### Cửa sổ thời gian
 
-| Breakpoint         | Số ngày hiển thị | Cột xe            |
-| ------------------ | ---------------- | ----------------- |
-| `<768`             | 7                | dính trái, 88px   |
-| `768–1279`         | 10               | 112px             |
-| `≥1280`            | 14               | 130px             |
+| Breakpoint | Số ngày hiển thị | Cột xe          |
+| ---------- | ---------------- | --------------- |
+| `<768`     | 7                | dính trái, 88px |
+| `768–1279` | 10               | 112px           |
+| `≥1280`    | 14               | 130px           |
 
 Cột xe **dính trái** khi vuốt ngang trên điện thoại — mất ngữ cảnh "dòng này là xe nào" là mất cả
 màn hình.
@@ -564,14 +565,14 @@ lib/calendar-layout.ts                     THUẦN
 
 ## §10 · Rỗng, tải, lỗi
 
-| Ca                    | Xử lý                                                                              |
-| --------------------- | ---------------------------------------------------------------------------------- |
-| Chưa có đơn nào       | Lịch vẫn vẽ đủ lưới xe, mỗi hàng ghi "trống cả kỳ". Không phải màn hình trắng      |
-| Chưa có xe nào        | Câu khác hẳn: "Chưa có xe trong đội. Thêm xe trong Directus."                       |
-| Doanh thu bằng 0      | Hiện `0 ₫` thật, kèm "chưa có đơn nào giao trong kỳ" — không hiện dấu gạch          |
-| 409 trùng lịch        | "Xe này đã có đơn trong khoảng đó", kèm link xem lịch của chính chiếc xe đó        |
-| Đang tải              | Khung xám giữ đúng chiều cao lưới, không để layout nhảy                             |
-| Lỗi tải               | `Alert` đã có, dùng `errorMessage()` của `lib/errors.ts`                            |
+| Ca               | Xử lý                                                                         |
+| ---------------- | ----------------------------------------------------------------------------- |
+| Chưa có đơn nào  | Lịch vẫn vẽ đủ lưới xe, mỗi hàng ghi "trống cả kỳ". Không phải màn hình trắng |
+| Chưa có xe nào   | Câu khác hẳn: "Chưa có xe trong đội. Thêm xe trong Directus."                 |
+| Doanh thu bằng 0 | Hiện `0 ₫` thật, kèm "chưa có đơn nào giao trong kỳ" — không hiện dấu gạch    |
+| 409 trùng lịch   | "Xe này đã có đơn trong khoảng đó", kèm link xem lịch của chính chiếc xe đó   |
+| Đang tải         | Khung xám giữ đúng chiều cao lưới, không để layout nhảy                       |
+| Lỗi tải          | `Alert` đã có, dùng `errorMessage()` của `lib/errors.ts`                      |
 
 Gộp "chưa có đơn" và "chưa có xe" vào một câu là làm người dùng đi sửa nhầm chỗ.
 
@@ -594,14 +595,14 @@ luật trong thông báo lỗi**. Probe exit 1 chưa chứng minh gì nếu khô
 
 ## §12 · Test và verify
 
-| Tầng                              | Cách                                                              |
-| --------------------------------- | ----------------------------------------------------------------- |
-| `packages/shared/domain/rental.ts` | **TDD nghiêm** — test trước, luôn luôn                           |
-| `lib/calendar-layout.ts`          | Bảng ca thuần: trước cửa sổ · sau cửa sổ · trọn ngoài · dài 1 ngày |
-| `lib/spacing-fence.test.ts`       | Quét `.tsx`, fail khi thấy arbitrary value cho khoảng cách        |
-| `apps/api` services               | Unit test cho luồng thường                                        |
-| **Chống đặt trùng**               | **Test tích hợp chạm Postgres thật** — bắt buộc                   |
-| **Cắt kỳ theo giờ VN**            | Test cố định đồng hồ vào **2h sáng giờ VN**                       |
+| Tầng                               | Cách                                                               |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| `packages/shared/domain/rental.ts` | **TDD nghiêm** — test trước, luôn luôn                             |
+| `lib/calendar-layout.ts`           | Bảng ca thuần: trước cửa sổ · sau cửa sổ · trọn ngoài · dài 1 ngày |
+| `lib/spacing-fence.test.ts`        | Quét `.tsx`, fail khi thấy arbitrary value cho khoảng cách         |
+| `apps/api` services                | Unit test cho luồng thường                                         |
+| **Chống đặt trùng**                | **Test tích hợp chạm Postgres thật** — bắt buộc                    |
+| **Cắt kỳ theo giờ VN**             | Test cố định đồng hồ vào **2h sáng giờ VN**                        |
 
 Hai dòng in đậm không thương lượng được, và vì cùng một lý do: cả hai lỗi đều **xanh trong unit
 test**.
@@ -625,11 +626,11 @@ bun run --filter @v9/staff build && bun run --filter @v9/staff preview   # CHỖ
 id < 25 ms · availability < 50 ms (p95). Hai endpoint mới không rơi sẵn vào mốc nào, nên xếp
 tường minh ở đây thay vì để người sau đoán:
 
-| Endpoint             | Mốc         | Vì sao                                                                     |
-| -------------------- | ----------- | -------------------------------------------------------------------------- |
-| `GET /rentals`       | **< 50 ms** | truy vấn khoảng thời gian trên GiST — cùng lớp với availability            |
-| `GET /stats/summary` | **< 50 ms** | ba cặp tổng hợp trên partial index, chạy một lần cho cả màn hình            |
-| `GET /fleet`         | **< 25 ms** | quét một bảng nhỏ, không join                                              |
+| Endpoint             | Mốc         | Vì sao                                                           |
+| -------------------- | ----------- | ---------------------------------------------------------------- |
+| `GET /rentals`       | **< 50 ms** | truy vấn khoảng thời gian trên GiST — cùng lớp với availability  |
+| `GET /stats/summary` | **< 50 ms** | ba cặp tổng hợp trên partial index, chạy một lần cho cả màn hình |
+| `GET /fleet`         | **< 25 ms** | quét một bảng nhỏ, không join                                    |
 
 Đây là **đề xuất phân loại, không phải số đo**. Đo thật lúc implement; nếu `/stats/summary` không
 vào được 50 ms thì đó là tín hiệu thiết kế truy vấn sai, không phải tín hiệu nới ngân sách.
@@ -645,13 +646,13 @@ Kiểm safe-area (§6.3) phải làm trên **bản build đã cài như PWA**, k
 
 ## §13 · Rủi ro đã biết
 
-| Rủi ro                                                                     | Giảm thiểu                                                                     |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Giá nhập tay → gõ nhầm một số 0 là doanh thu sai một bậc                    | `CHECK >= 0` không bắt được. Form cảnh báo khi lệch > 3× `price_per_day × số ngày` |
-| Timeline chật khi đội xe lên 40 chiếc                                       | Ngoài phạm vi. Ghi vào `DEBT.md` khi land: cần lọc/phân trang theo xe           |
-| `GET /rentals` tối đa 92 ngày là hằng số chọn tay                           | Đặt thành hằng có tên, không rải số trong route                                 |
-| Chủ shop đọc "doanh thu" thành tiền đã thu thật, trong khi đó là tiền đã chốt | Nhãn ghi rõ "theo ngày giao xe" ngay dưới tiêu đề khu doanh thu                 |
-| Icon PWA vẫn là ô màu đặc (`ROADMAP.md`)                                    | Chặn ở người, không chặn ở code. Không thuộc đợt này                            |
+| Rủi ro                                                                        | Giảm thiểu                                                                         |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Giá nhập tay → gõ nhầm một số 0 là doanh thu sai một bậc                      | `CHECK >= 0` không bắt được. Form cảnh báo khi lệch > 3× `price_per_day × số ngày` |
+| Timeline chật khi đội xe lên 40 chiếc                                         | Ngoài phạm vi. Ghi vào `DEBT.md` khi land: cần lọc/phân trang theo xe              |
+| `GET /rentals` tối đa 92 ngày là hằng số chọn tay                             | Đặt thành hằng có tên, không rải số trong route                                    |
+| Chủ shop đọc "doanh thu" thành tiền đã thu thật, trong khi đó là tiền đã chốt | Nhãn ghi rõ "theo ngày giao xe" ngay dưới tiêu đề khu doanh thu                    |
+| Icon PWA vẫn là ô màu đặc (`ROADMAP.md`)                                      | Chặn ở người, không chặn ở code. Không thuộc đợt này                               |
 
 ---
 

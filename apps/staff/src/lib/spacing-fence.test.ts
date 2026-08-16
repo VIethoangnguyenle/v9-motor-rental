@@ -14,7 +14,8 @@ import { Glob } from "bun";
  * plugin nghĩa là đụng `eslint.config.js`, mà mỗi lần đụng file đó phải chạy lại
  * bốn probe của skill `v9-fences`.
  */
-const FORBIDDEN = /\b(?:p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|gap|gap-x|gap-y|space-x|space-y)-\[/;
+const FORBIDDEN =
+  /\b(?:p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|gap|gap-x|gap-y|space-x|space-y)-\[/;
 
 describe("thang cách", () => {
   it("không có arbitrary value cho khoảng cách trong .tsx", async () => {
