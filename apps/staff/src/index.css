@@ -3,8 +3,38 @@
 /*
  * apps/staff KHÔNG dùng DESIGN.md — file đó là hệ thị giác của apps/web (site
  * công khai, SEO quan trọng, ảnh dẫn dắt). App này là công cụ vận hành nội bộ,
- * ưu tiên chức năng và mật độ thông tin. Xem CLAUDE.md và apps/staff/CLAUDE.md.
+ * ưu tiên chức năng và mật độ thông tin.
  *
- * Tailwind ở đây dùng theme mặc định, không khai @theme riêng: chưa có màn hình
- * nghiệp vụ nào để rút token ra. Khi làm lịch/thống kê/bàn giao thì mới thêm.
+ * Token khai ở đây từ đợt màn Thống kê + lịch (Plan B). Trước đợt đó file này cố
+ * ý để trống vì chưa có màn hình nghiệp vụ nào để rút token ra.
  */
+@theme {
+  /* Bề mặt và chữ. Sáng, không phải nền đen của apps/web: đây là công cụ đọc
+     nhiều giờ dưới ánh sáng gara, không phải trang bán hàng. */
+  --color-canvas: oklch(98.4% 0 0);
+  --color-surface: oklch(100% 0 0);
+  --color-border: oklch(90% 0 0);
+  --color-ink: oklch(20% 0 0);
+  --color-muted: oklch(52% 0 0);
+
+  /*
+   * ⛔ KHÔNG PHẢI MÀU THƯƠNG HIỆU. docs/ROADMAP.md chặn cứng việc bịa màu accent
+   * cho tới khi có file logo thật của shop — nhưng luật đó viết cho DESIGN.md,
+   * tức cho apps/web. Ở đây accent là màu CHỨC NĂNG của một công cụ nội bộ, và
+   * bốn màu trạng thái bên dưới là ngữ nghĩa (đỏ = quá hạn), không phải nhận diện.
+   *
+   * Khi có logo: đổi đúng --color-accent, đừng đụng bốn màu trạng thái.
+   */
+  --color-accent: oklch(52% 0.19 255);
+  --color-accent-ink: oklch(100% 0 0);
+
+  /* Bốn trạng thái đơn thuê. Khớp `RentalStatus` ở @v9/shared/domain/rental —
+     đổi tên một trạng thái ở đó thì phải đổi ở đây, không có gì ép. */
+  --color-status-booked: oklch(62% 0.14 255);
+  --color-status-ongoing: oklch(52% 0.19 255);
+  --color-status-overdue: oklch(55% 0.21 27);
+  --color-status-completed: oklch(60% 0 0);
+
+  /* Bán kính nhỏ và thống nhất: app mật độ cao, bo nhiều làm hàng bảng rối mắt. */
+  --radius-card: 0.375rem;
+}
