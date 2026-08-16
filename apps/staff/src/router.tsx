@@ -22,12 +22,14 @@ import { AppShell } from "./components/layout/app-shell";
 import { hasSession, signOut } from "./lib/auth";
 import { LOGIN_REASONS, decideEntry, type LoginReason } from "./lib/guard-decision";
 import { ensureMe } from "./lib/me";
+import { CalendarPage } from "./pages/calendar-page";
 import { ChangePasswordPage } from "./pages/change-password-page";
 import { PendingApprovalPage } from "./pages/pending-approval-page";
 import { SignupPage } from "./pages/signup-page";
 import { LoginPage } from "./pages/login-page";
 import { HealthPage } from "./pages/health-page";
 import { StaffListPage } from "./pages/staff-list-page";
+import { StatsPage } from "./pages/stats-page";
 import { ForgotPasswordPage } from "./pages/forgot-password-page";
 
 /**
@@ -80,8 +82,9 @@ function ProtectedShell() {
 }
 
 /**
- * Guard. Trang `/` (health) nằm dưới nhánh này CÓ CHỦ Ý: nó là bằng chứng
- * end-to-end rằng guard chạy, thay vì một trang test rỗng không ai mở.
+ * Guard. Mọi route treo dưới nhánh này (kể cả `/health`, xem comment ở
+ * `healthRoute`) đều chạy qua `beforeLoad` này trước khi render — đó là bằng
+ * chứng end-to-end rằng guard chạy, không phải một trang test rỗng không ai mở.
  *
  * `ensureMe` đi qua `ensureQueryData`, nên lần điều hướng sau đọc cache chứ không
  * bắn thêm request — guard không được biến mỗi cú click thành một vòng mạng.
@@ -170,7 +173,31 @@ const pendingApprovalRoute = createRoute({
 const homeRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: "/",
+  component: StatsPage,
+});
+
+/**
+ * `HealthPage` chuyển từ `/` sang đây, KHÔNG bị xoá — Task 3 (Plan C) quyết định
+ * và ghi lý do ở commit message. Nó vẫn là bằng chứng end-to-end rẻ nhất rằng
+ * guard chạy VÀ `/health` phía API tới được: một route treo dưới
+ * `protectedLayoutRoute`, gọi một request thật, hiện được `status`. Xoá thẳng thì
+ * mất phép thử đó; để nguyên ở `/` thì chủ shop mở app thấy chữ "scaffold" thay vì
+ * số liệu — cả hai đều tệ hơn có một route chẩn đoán riêng, không lên `AppNav`.
+ */
+const healthRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/health",
   component: HealthPage,
+});
+
+/**
+ * Placeholder — xem comment đầu `pages/calendar-page.tsx`. Đăng ký SỚM (Task 3)
+ * chỉ để `AttentionList` có đích bấm được thật; nội dung lịch thật là Task 4–6.
+ */
+const calendarRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/calendar",
+  component: CalendarPage,
 });
 
 /**
@@ -213,7 +240,13 @@ const routeTree = rootRoute.addChildren([
     forgotPasswordRoute,
     pendingApprovalRoute,
   ]),
-  protectedLayoutRoute.addChildren([homeRoute, staffListRoute, changePasswordRoute]),
+  protectedLayoutRoute.addChildren([
+    homeRoute,
+    staffListRoute,
+    changePasswordRoute,
+    healthRoute,
+    calendarRoute,
+  ]),
 ]);
 
 /**

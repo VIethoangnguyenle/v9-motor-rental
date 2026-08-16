@@ -5,22 +5,25 @@ import type { Me } from "../../lib/me";
 /**
  * Sáu điểm đến, hai hình dạng. `NAV_ITEMS` là danh sách duy nhất — sidebar
  * (≥768) hiện cả sáu; bottom nav (<768) chỉ có chỗ cho hai cái đầu trực tiếp
- * (Trang chủ, Lịch), phần còn lại nằm sau nút **Thêm**. Một nguồn dữ liệu duy
+ * (Thống kê, Lịch), phần còn lại nằm sau nút **Thêm**. Một nguồn dữ liệu duy
  * nhất nghĩa là thêm một mục mới chỉ sửa MỘT chỗ, không phải nhớ sửa cả hai
  * hình dạng.
  *
- * `kind: "soon"` = tính năng chưa xây (Plan C+). Route CHƯA TỒN TẠI nên phần tử
- * KHÔNG được là `<Link>` — một link tới route không tồn tại là một cú 404 trong
- * chính app của mình. Render bằng `<button disabled>`: không bấm được, không
- * nằm trong tab order, và trình đọc màn hình biết nó là nút bị vô hiệu hoá chứ
- * không phải nút hỏng.
+ * `kind: "soon"` = tính năng chưa xây (Plan C+). Với hầu hết mục, route CHƯA TỒN
+ * TẠI nên phần tử KHÔNG được là `<Link>` — một link tới route không tồn tại là
+ * một cú 404 trong chính app của mình. `Lịch` là ngoại lệ ĐÃ có route (`/calendar`,
+ * đăng ký ở Task 3 chỉ để `AttentionList` bấm được — xem `pages/calendar-page.tsx`)
+ * nhưng CHƯA có nội dung nghiệp vụ thật, nên vẫn giữ `"soon"` ở đây: mở khoá nav
+ * là việc của Task 6 (Plan C), không phải lúc route được đăng ký. Render bằng
+ * `<button disabled>`: không bấm được, không nằm trong tab order, và trình đọc
+ * màn hình biết nó là nút bị vô hiệu hoá chứ không phải nút hỏng.
  */
 type NavItem =
   | { readonly kind: "link"; readonly label: string; readonly to: "/" | "/staff"; readonly ownerOnly?: true }
   | { readonly kind: "soon"; readonly label: string };
 
 const NAV_ITEMS: readonly NavItem[] = [
-  { kind: "link", label: "Trang chủ", to: "/" },
+  { kind: "link", label: "Thống kê", to: "/" },
   { kind: "soon", label: "Lịch" },
   { kind: "soon", label: "Đơn thuê" },
   { kind: "soon", label: "Khách hàng" },
@@ -121,8 +124,8 @@ function SidebarNav({
 }
 
 /**
- * Đúng 3 ô trực tiếp (Trang chủ · Lịch · Thêm), không phải 4. Bảng mục ở
- * CLAUDE.md/design doc gán CHỈ Trang chủ và Lịch cho bottom nav trực tiếp —
+ * Đúng 3 ô trực tiếp (Thống kê · Lịch · Thêm), không phải 4. Bảng mục ở
+ * CLAUDE.md/design doc gán CHỈ Thống kê và Lịch cho bottom nav trực tiếp —
  * bốn mục còn lại (Đơn thuê, Khách hàng, Bàn giao, Nhân viên) và hai hành động
  * tài khoản đều "trong Thêm". Làm đúng bảng đó cho ra 3 ô, không phải 4: phần
  * mô tả ("bốn ô ~85px") không khớp với chính bảng nó đi kèm. Ưu tiên bảng —
