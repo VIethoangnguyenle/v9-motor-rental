@@ -52,3 +52,19 @@ mục "ranh giới repo ép vs cấu hình local" trong `../CLAUDE.md`: một d�
 Trước khi stack chạm VPS thật: tạo **access key MinIO riêng cho Directus**, policy giới hạn đúng
 bucket `vehicles`, rồi trỏ `STORAGE_S3_KEY`/`STORAGE_S3_SECRET` vào cặp key đó. Ở dev thì dùng
 root vẫn chấp nhận được — dev không phơi ra internet và volume vứt đi được.
+
+## Nợ sinh ra từ Plan A (đợt `customers` + `rentals`)
+
+Cả ba đều **đã biết lúc land**, không phải phát hiện sau.
+
+| Nợ | Hậu quả nếu bỏ qua |
+| -- | ------------------ |
+| **`stats.test.ts` xoá TOÀN BỘ bảng `rentals`** ở `beforeEach` | `getStatsSummary` tổng hợp trên cả bảng và không nhận bộ lọc nào, nên một hàng lạ làm mọi assertion số học sai — đó là lý do phải xoá sạch. Chấp nhận được **chỉ vì** `rentals` là bảng mới và DB dev chưa giữ đơn thật. Ngày đầu tiên ai đó nhập một đơn thật vào DB dev để xem thử, `bun test` sẽ **xoá mất nó** và không hỏi gì. Sửa đúng: cho `getStatsSummary` nhận bộ lọc, hoặc chuyển test sang database riêng. |
+| **Bốn literal trạng thái đơn thuê có BA bản sao** | `CHECK rentals_status_valid` (Postgres) · `RentalStatus` (`@v9/shared`) · `statusSchema` (TypeBox ở `routes/rentals.ts`). Hai bản sau nay đã có liên kết ở tầng kiểu (`StatusSetsMatch` trong `routes/rentals.ts`) nên lệch nhau là lỗi biên dịch. **Bản trong DB thì không được ép gì** — thêm một trạng thái vào domain mà quên sửa migration thì `INSERT` chết lúc chạy, không phải lúc build. |
+| **Giá và cọc nhập tay, không có chính sách tính** | `total_amount` là số nhân viên gõ. Gõ nhầm một số 0 là doanh thu sai một bậc, và `CHECK >= 0` không bắt được. Form ở Plan C phải cảnh báo khi lệch quá xa `price_per_day × số ngày`; chính sách tính giá thật là một đợt riêng. |
+
+### Đã đóng trong Plan A
+
+- ~~"Chưa test Eden Treaty thật sự bọc lỗi API thành `res.error.value`"~~ — **vẫn còn**, Plan A không
+  chạm frontend. Giữ nguyên ở mục trên.
+- Ranh giới `components/ui/` chưa được lint ép: **vẫn còn**, đã hẹn trả trong Plan B.
