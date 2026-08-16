@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { schema } from "@v9/db";
-import { like } from "drizzle-orm";
+import { eq, like } from "drizzle-orm";
 import { db } from "../db";
-import { createRental, listRentalsInRange, MAX_RANGE_DAYS } from "./rentals";
+import { changeRentalStatus, createRental, listRentalsInRange, MAX_RANGE_DAYS } from "./rentals";
 
 const P = "ztest-thue-";
 const AUG = (d: number) => new Date(`2026-08-${String(d).padStart(2, "0")}T00:00:00+07:00`);
@@ -229,5 +229,65 @@ describe("listRentalsInRange", () => {
     const r = await listRentalsInRange(AUG(13), AUG(14));
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.rentals.some((x) => x.id === cancelled?.id)).toBe(false);
+  });
+});
+
+describe("changeRentalStatus", () => {
+  const NOW = new Date("2026-08-15T03:00:00Z");
+
+  /** Tạo một đơn mới ở khoảng chưa ai dùng, trả về id. */
+  async function freshRental(startDay: number, endDay: number): Promise<string> {
+    const r = await createRental({
+      vehicleId, customerId,
+      startsAt: AUG(startDay), endsAt: AUG(endDay),
+      totalAmount: 1_000_000, depositAmount: 0, createdBy: staffId,
+    });
+    if (!r.ok) throw new Error(`seed hỏng: ${r.reason}`);
+    return r.rental.id;
+  }
+
+  it("BOOKED → ONGOING đóng dấu handed_over_at", async () => {
+    const id = await freshRental(25, 27);
+    const r = await changeRentalStatus(id, "ONGOING", NOW);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.rental.status).toBe("ONGOING");
+      expect(r.rental.handedOverAt?.toISOString()).toBe(NOW.toISOString());
+      expect(r.rental.returnedAt).toBeNull();
+    }
+  });
+
+  it("ONGOING → COMPLETED đóng dấu returned_at, giữ nguyên handed_over_at", async () => {
+    const id = await freshRental(28, 30);
+    const started = await changeRentalStatus(id, "ONGOING", NOW);
+    expect(started.ok).toBe(true);
+
+    const later = new Date(NOW.getTime() + 3_600_000);
+    const r = await changeRentalStatus(id, "COMPLETED", later);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.rental.status).toBe("COMPLETED");
+      expect(r.rental.handedOverAt?.toISOString()).toBe(NOW.toISOString());
+      expect(r.rental.returnedAt?.toISOString()).toBe(later.toISOString());
+    }
+  });
+
+  it("từ chối đường chuyển không hợp lệ, KHÔNG đụng vào DB", async () => {
+    const id = await freshRental(1, 3);
+    const r = await changeRentalStatus(id, "COMPLETED", NOW);
+    expect(r).toEqual({ ok: false, reason: "INVALID_TRANSITION" });
+
+    const [after] = await db
+      .select({ status: schema.rentals.status, handedOverAt: schema.rentals.handedOverAt })
+      .from(schema.rentals)
+      .where(eq(schema.rentals.id, id))
+      .limit(1);
+    expect(after?.status).toBe("BOOKED");
+    expect(after?.handedOverAt).toBeNull();
+  });
+
+  it("trả NOT_FOUND cho id không tồn tại", async () => {
+    const r = await changeRentalStatus(crypto.randomUUID(), "ONGOING", NOW);
+    expect(r).toEqual({ ok: false, reason: "NOT_FOUND" });
   });
 });

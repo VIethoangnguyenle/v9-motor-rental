@@ -1,6 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { schema } from "@v9/db";
 import type { Vnd } from "@v9/shared/domain/money";
+import { transition } from "@v9/shared/domain/rental";
 import type { RentalStatus } from "@v9/shared/domain/rental";
 import { SQL } from "bun";
 import { db } from "../db";
@@ -147,4 +148,52 @@ export async function listRentalsInRange(from: Date, to: Date): Promise<ListRent
     .orderBy(schema.rentals.vehicleId, schema.rentals.startsAt);
 
   return { ok: true, rentals: rows.map((r) => ({ ...r, status: r.status as RentalStatus })) };
+}
+
+export type ChangeStatusResult =
+  | { ok: true; rental: Rental }
+  | { ok: false; reason: "NOT_FOUND" | "INVALID_TRANSITION" };
+
+/**
+ * Đổi trạng thái đơn. Đọc-rồi-ghi, nên PHẢI nằm trong transaction có
+ * `SELECT ... FOR UPDATE`: không có nó, hai nhân viên bấm "giao xe" cùng lúc đều
+ * đọc thấy BOOKED và cả hai đều ghi được.
+ *
+ * Transaction boundary thuộc SERVICE, không thuộc route — pattern 4 của repo.
+ *
+ * Dấu thời gian đóng ở đây chứ không để route truyền vào: `handed_over_at` là mốc
+ * ghi nhận doanh thu, và một route truyền sai giờ là một tháng doanh thu sai.
+ */
+export async function changeRentalStatus(
+  id: string,
+  to: RentalStatus,
+  now: Date,
+): Promise<ChangeStatusResult> {
+  return db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({ id: schema.rentals.id, status: schema.rentals.status })
+      .from(schema.rentals)
+      .where(eq(schema.rentals.id, id))
+      .for("update")
+      .limit(1);
+
+    if (!current) return { ok: false as const, reason: "NOT_FOUND" as const };
+
+    const check = transition(current.status as RentalStatus, to);
+    if (!check.ok) return { ok: false as const, reason: check.reason };
+
+    const [row] = await tx
+      .update(schema.rentals)
+      .set({
+        status: to,
+        updatedAt: now,
+        ...(to === "ONGOING" ? { handedOverAt: now } : {}),
+        ...(to === "COMPLETED" ? { returnedAt: now } : {}),
+      })
+      .where(eq(schema.rentals.id, id))
+      .returning(COLUMNS);
+
+    if (!row) throw new Error("UPDATE rentals không trả về hàng nào");
+    return { ok: true as const, rental: { ...row, status: row.status as RentalStatus } };
+  });
 }
