@@ -22,6 +22,7 @@ import {
   type StaffMutationResult,
   type StaffUser,
 } from "../services/staff";
+import type { RentalErrorCode } from "./rentals";
 
 /**
  * Route là tầng DUY NHẤT được phép chạm cả `services/` lẫn `supertokens-node`.
@@ -98,18 +99,21 @@ type Reason = PermissionReason | PasswordReason | ChangePasswordReason;
  * MỌI mã lỗi `apps/api` có thể trả — nguồn sự thật cho so sánh `code` ở
  * `apps/staff` (`errorCode()` ở `lib/errors.ts`), thay vì so chuỗi trần.
  *
- * Suy từ hai nguồn đã có, không liệt kê tay lần thứ hai:
+ * Suy từ ba nguồn đã có, không liệt kê tay lần thứ hai:
  *   • `Reason` — suy thẳng từ kiểu trả về của `services/staff.ts` và
  *     `services/password-reset.ts` (đã có ở trên, dùng cho `MESSAGES` bên dưới).
  *   • `GuardErrorCode` — suy từ `plugins/staff-guard.ts`, nơi guard chạy TRƯỚC
  *     mọi route nên các mã đó không đi qua bất cứ discriminated union nào của
  *     service để mà suy ra.
+ *   • `RentalErrorCode` — suy từ `routes/rentals.ts` (chính nó đã suy từ bốn
+ *     service của `fleet`/`rentals`/`customers`, xem comment ở đó). Import
+ *     TYPE THUẦN nên không kéo runtime của `routes/rentals.ts` vào file này.
  * `"EMAIL_NOT_CONFIGURED"` là literal tay DUY NHẤT ở đây: route
  * `/staff/password-reset/request` phát nó thẳng lúc thiếu SMTP, không có union
  * nào đứng sau để suy ra — hai chỗ liệt kê tay (đây và `GuardErrorCode`) là
  * TOÀN BỘ phần không suy ra được của `ApiErrorCode`.
  */
-export type ApiErrorCode = Reason | GuardErrorCode | "EMAIL_NOT_CONFIGURED";
+export type ApiErrorCode = Reason | GuardErrorCode | RentalErrorCode | "EMAIL_NOT_CONFIGURED";
 
 /**
  * Domain trả `reason` (pattern 3 của repo — discriminated union, không throw);

@@ -5,8 +5,11 @@ import { env } from "./env";
 import { auth } from "./plugins/auth";
 import { staffGuard } from "./plugins/staff-guard";
 import { timing } from "./plugins/timing";
+import { fleet } from "./routes/fleet";
 import { health } from "./routes/health";
+import { rentals } from "./routes/rentals";
 import { staff } from "./routes/staff";
+import { stats } from "./routes/stats";
 import { vehicles } from "./routes/vehicles";
 
 const app = new Elysia()
@@ -58,6 +61,9 @@ const app = new Elysia()
   // CÓ THẬT. Chừng nào `/staff/*` chưa đăng ký ở đây thì `GET /staff/me` không
   // cookie ra 404 chứ không phải 401 — và 404 đó trông y hệt "đã được bảo vệ".
   .use(staff)
+  .use(fleet)
+  .use(rentals)
+  .use(stats)
   .listen({ port: env.port, hostname: env.host });
 
 console.warn(`api đang chạy tại http://${env.host}:${String(env.port)}`);
