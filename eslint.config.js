@@ -94,10 +94,25 @@ export default tseslint.config(
       // Declared first for readability (roots conceptually sit above the layers they wire together);
       // verified empirically that declaration order does not change classification here since none
       // of these single-file `mode: "full"` patterns overlap with any folder pattern below (see the
-      // full plan-layout test — every planned path classifies to exactly one type). General finding
-      // for future edits: two overlapping FOLDER-mode patterns both accumulate into `element.types`
-      // (order only affects array order, not which one applies); a `mode: "full"` match on a file
-      // takes exclusive precedence over any overlapping folder-mode pattern regardless of order.
+      // full plan-layout test — every planned path classifies to exactly one type).
+      //
+      // ⚠️ CORRECTED 2026-08-16 (đợt frontend-ui, xem comment ở element đó): câu "General finding"
+      // từng ở đây — "hai pattern FOLDER-mode chồng nhau đều dồn vào element.types, thứ tự chỉ ảnh
+      // hưởng thứ tự mảng chứ không ảnh hưởng cái nào áp dụng" — SAI, và đã tự tin sai đúng kiểu mà
+      // ../CLAUDE.md cảnh báo ("đọc tên luật, đừng tin exit code/comment cũ"). Sự thật, đọc trực
+      // tiếp từ node_modules/@boundaries/elements dist/index.js (constructor nhận `singleMatch`,
+      // default `ELEMENTS_SINGLE_TYPE_DEFAULT = true` ở eslint-plugin-boundaries, KHÔNG bị override
+      // ở settings file này): với `elements-single-match` mặc định `true`, vòng lặp khớp descriptor
+      // `break` ngay khi tìm được descriptor ĐẦU TIÊN khớp ở một path-segment level
+      // (`if (this._singleType || ...) break;`) — hai pattern FOLDER-mode chồng nhau (vd
+      // `frontend-ui` và `frontend` cùng khớp một file trong ui/) KHÔNG dồn vào cùng một
+      // `element.types`; chỉ descriptor khai báo TRƯỚC trong mảng `boundaries/elements` thắng, file
+      // đó nhận ĐÚNG MỘT type. Xác nhận thực nghiệm: `alert.tsx` (dưới `components/ui/`) nhận type
+      // `["frontend-ui"]` — không có `"frontend"` trong mảng — nên policy `frontend → frontend`
+      // (which reads `to: types anyOf [...]`) phải khai rõ `"frontend-ui"` trong `anyOf` mới cho
+      // pages import được từ ui/ (xem policy `frontend-ui` bên dưới, sửa đúng ca này sau khi probe
+      // lộ ra bug). Phần còn lại của comment cũ (`mode: "full"` thắng pattern folder chồng nó) vẫn
+      // đúng — không đụng.
       "boundaries/elements": [
         { type: "shared-root", pattern: "packages/shared/src/index.ts", mode: "full" },
         { type: "api-root", pattern: "apps/api/src/index.ts", mode: "full" },
@@ -125,6 +140,31 @@ export default tseslint.config(
         // src/nowhere/ — confirmed again end-to-end via probes ①–③ below after this edit.
         { type: "api-infra", pattern: "apps/api/src/{db,env}{,.test}.ts", mode: "full" },
         { type: "api-plugins", pattern: "apps/api/src/plugins/**" },
+        // Nợ đóng ở docs/DEBT.md ("eslint-plugin-boundaries không phân lớp bên trong frontend"):
+        // `ui/` không được biết domain (không import lib/api, không biết Me/StaffRole) từng chỉ là
+        // quy ước đọc code, giờ máy ép. `frontend-ui` và `frontend` là hai pattern FOLDER-mode
+        // CHỒNG NHAU trên mọi file dưới ui/ — nhưng KHÔNG dồn cả hai type vào `element.types` của
+        // file đó (xem comment "CORRECTED" ở block `boundaries/elements` phía trên — bản đầu của
+        // chính comment này đã đoán sai chỗ này rồi bị probe bắt): với `elements-single-match` mặc
+        // định `true` (không override ở settings file này), descriptor khai báo TRƯỚC trong mảng mà
+        // khớp trước THẮNG TUYỆT ĐỐI — file trong ui/ nhận đúng một type, `["frontend-ui"]`, không
+        // có `"frontend"` trong đó. Do vậy khai `frontend-ui` TRƯỚC `frontend` ở đây là bắt buộc để
+        // ui/ nhận type riêng thay vì rơi vào `frontend` chung; khai ngược thứ tự thì `frontend`
+        // (khớp trước) thắng, `frontend-ui` không bao giờ được gán cho file nào, và policy
+        // `frontend-ui → frontend-ui` bên dưới thành no-op — suy thoái thứ năm của hàng rào này,
+        // đúng dạng bốn lần trước: exit 0, trông như đang bảo vệ, không kiểm gì.
+        //
+        // Hệ quả thứ hai, dễ bỏ sót hơn: vì file trong ui/ CHỈ có type `"frontend-ui"` (không còn
+        // `"frontend"`), policy `frontend → frontend` cũ (allow `to: types anyOf [frontend, ...]`)
+        // không còn khớp khi ĐÍCH là một file trong ui/ — chiều `pages/auth/staff import từ ui/`
+        // (vốn hoạt động trước đợt này) sẽ GÃY nếu không thêm `"frontend-ui"` vào `anyOf` đó. Xem
+        // policy `frontend` bên dưới — đã sửa. Xác nhận thực nghiệm bằng probe: inject
+        // `import lib/api` có dùng vào alert.tsx nổ với `boundaries/dependencies`
+        // ("...type "frontend-ui" to elements of type "frontend""); trước khi vá `anyOf`,
+        // `pages/staff-list-page.tsx` (import từ ui/) cũng nổ cùng rule
+        // ("...type "frontend" to elements of type "frontend-ui"") — đúng false negative mà probe
+        // này tồn tại để bắt. Sau khi vá, cả hai chiều đúng như thiết kế — xem docs/DEBT.md.
+        { type: "frontend-ui", pattern: "apps/staff/src/components/ui/**" },
         { type: "frontend", pattern: "apps/{web,staff}/**" },
       ],
       // apps/api/scripts/bench.ts is operational tooling, not a layer in the enforced app/service/db
@@ -239,13 +279,31 @@ export default tseslint.config(
                 },
               },
             },
+            // `ui/` chỉ được import lẫn nhau (vd submit-button.tsx → button.tsx) — KHÔNG được
+            // "shared-domain"/"shared-client" như "frontend" bên dưới được. Đây chính là hàng rào
+            // cho nợ "components/ui/ không biết domain" (xem comment ở element `frontend-ui` phía
+            // trên): file trong ui/ CHỈ có type `"frontend-ui"` (elements-single-match mặc định
+            // `true` — descriptor khớp trước thắng tuyệt đối, không dồn type), nên chỉ policy này
+            // áp dụng cho nó làm "from".
+            {
+              from: { element: { type: "frontend-ui" } },
+              allow: { to: { element: { type: "frontend-ui" } } },
+            },
             {
               from: { element: { type: "frontend" } },
               allow: [
                 {
                   to: {
                     element: {
-                      types: { anyOf: ["frontend", "shared-domain", "shared-client"] },
+                      // "frontend-ui" PHẢI có mặt ở đây — chính vì file trong ui/ chỉ mang MỘT
+                      // type ("frontend-ui", không kèm "frontend", xem comment ở element phía
+                      // trên) nên thiếu nó thì chiều pages/auth/staff import TỪ ui/ (vốn hoạt động
+                      // trước đợt này) gãy ngay: probe từng bắt đúng lỗi này —
+                      // "no policy allowing dependencies from elements of type "frontend" to
+                      // elements of type "frontend-ui"" khi lint pages/staff-list-page.tsx.
+                      types: {
+                        anyOf: ["frontend", "frontend-ui", "shared-domain", "shared-client"],
+                      },
                     },
                   },
                 },
