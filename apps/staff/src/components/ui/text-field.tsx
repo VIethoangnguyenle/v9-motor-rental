@@ -8,12 +8,15 @@ interface TextFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 export function TextField({ label, className, ...input }: TextFieldProps) {
   return (
-    <label className="flex flex-col gap-1 text-sm">
+    <label className="flex flex-col gap-1 text-sm text-ink">
       {label}
       {/* Class của caller nối THÊM vào, không ghi đè: `className` đứng sau
           `{...input}` là nuốt im lặng mọi class truyền vào — ô nhập mã OTP cần
           `tracking-widest` và sẽ mất nó mà không có lỗi ở đâu cả. */}
-      <input {...input} className={`rounded border px-3 py-2 ${className ?? ""}`} />
+      <input
+        {...input}
+        className={`rounded-card border border-border bg-surface px-3 py-2 text-ink ${className ?? ""}`}
+      />
     </label>
   );
 }
