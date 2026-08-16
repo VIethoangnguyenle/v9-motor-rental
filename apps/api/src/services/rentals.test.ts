@@ -158,6 +158,40 @@ describe("listRentalsInRange", () => {
     if (r.ok) expect(r.rentals).toHaveLength(1);
   });
 
+  /**
+   * Biên PHẢI của cửa sổ, ca mà bộ test cũ bỏ sót.
+   *
+   * Ca "chạm biên trái" ở trên KHÔNG canh được điều này: `period` của đơn do cột
+   * sinh cố định ở `'[)'`, nên không hoán vị ngoặc nào của cửa sổ làm nó đổi kết
+   * quả. Chỗ dấu ngoặc thật sự có tác dụng là đây — đơn bắt đầu ĐÚNG LÚC cửa sổ
+   * kết thúc:
+   *
+   *   tstzrange(20,22,'[)') && tstzrange(17,20,'[)')  ->  f   (đúng)
+   *   tstzrange(20,22,'[)') && tstzrange(17,20,'[]')  ->  t   (sai)
+   *
+   * Đổi `'[)'` thành `'[]'` trong truy vấn làm test này đỏ, và nó là test DUY
+   * NHẤT làm được thế.
+   */
+  it("đơn bắt đầu đúng lúc cửa sổ kết thúc thì KHÔNG lọt vào", async () => {
+    const [outside] = await db
+      .insert(schema.rentals)
+      .values({
+        vehicleId,
+        customerId,
+        createdBy: staffId,
+        startsAt: AUG(20),
+        endsAt: AUG(22),
+        totalAmount: 1,
+        depositAmount: 0,
+      })
+      .returning();
+    expect(outside).toBeDefined();
+
+    const r = await listRentalsInRange(AUG(17), AUG(20));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.rentals.some((x) => x.id === outside?.id)).toBe(false);
+  });
+
   it("từ chối khoảng vượt trần thay vì cắt bớt trong im lặng", async () => {
     const from = AUG(1);
     const to = new Date(from.getTime() + (MAX_RANGE_DAYS + 1) * 86_400_000);
