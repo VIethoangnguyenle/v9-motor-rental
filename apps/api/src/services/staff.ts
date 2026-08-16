@@ -335,3 +335,12 @@ export async function disableStaff(
   }
   return result;
 }
+
+/** Số nhân viên đang chờ duyệt. Dùng cho dòng "cần chú ý" của màn Thống kê. */
+export async function countPendingStaff(): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(schema.staffUsers)
+    .where(eq(schema.staffUsers.status, "PENDING"));
+  return row?.n ?? 0;
+}
