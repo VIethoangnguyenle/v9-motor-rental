@@ -1,3 +1,4 @@
+import { eq, sql } from "drizzle-orm";
 import { schema } from "@v9/db";
 import type { Vnd } from "@v9/shared/domain/money";
 import type { RentalStatus } from "@v9/shared/domain/rental";
@@ -103,4 +104,47 @@ export async function createRental(input: {
     if (isOverlapViolation(e)) return { ok: false, reason: "RENTAL_OVERLAP" };
     throw e;
   }
+}
+
+/** Trần khoảng thời gian, hằng CÓ TÊN — không rải số 92 trong route. */
+export const MAX_RANGE_DAYS = 92;
+
+export interface RentalWithCustomer extends Rental {
+  readonly customerName: string;
+  readonly customerPhone: string;
+}
+
+export type ListRentalsResult =
+  | { ok: true; rentals: RentalWithCustomer[] }
+  | { ok: false; reason: "INVALID_RANGE" };
+
+/**
+ * Mọi đơn GIAO với [from, to). Dùng toán tử `&&` trên cột sinh `period`, nên nó
+ * đi qua đúng GiST index mà exclusion constraint đã tạo ra — không index nào
+ * được thêm cho truy vấn này.
+ *
+ * `period` KHÔNG có trong schema Drizzle (nó sống ở migration 0010 viết tay), nên
+ * mệnh đề dưới đây phải viết bằng `sql` thô. Đó là chủ ý, không phải thiếu sót.
+ *
+ * Vượt trần hoặc khoảng không hợp lệ thì trả về lỗi, KHÔNG tự cắt bớt: cắt là trả
+ * dữ liệu thiếu dưới vỏ một response thành công, và client không có cách nào biết.
+ */
+export async function listRentalsInRange(from: Date, to: Date): Promise<ListRentalsResult> {
+  const days = (to.getTime() - from.getTime()) / 86_400_000;
+  if (!(days > 0) || days > MAX_RANGE_DAYS) return { ok: false, reason: "INVALID_RANGE" };
+
+  const rows = await db
+    .select({
+      ...COLUMNS,
+      customerName: schema.customers.fullName,
+      customerPhone: schema.customers.phone,
+    })
+    .from(schema.rentals)
+    .innerJoin(schema.customers, eq(schema.customers.id, schema.rentals.customerId))
+    .where(
+      sql`${schema.rentals.status} <> 'CANCELLED' AND period && tstzrange(${from}, ${to}, '[)')`,
+    )
+    .orderBy(schema.rentals.vehicleId, schema.rentals.startsAt);
+
+  return { ok: true, rentals: rows.map((r) => ({ ...r, status: r.status as RentalStatus })) };
 }

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { schema } from "@v9/db";
 import { like } from "drizzle-orm";
 import { db } from "../db";
-import { createRental } from "./rentals";
+import { createRental, listRentalsInRange, MAX_RANGE_DAYS } from "./rentals";
 
 const P = "ztest-thue-";
 const AUG = (d: number) => new Date(`2026-08-${String(d).padStart(2, "0")}T00:00:00+07:00`);
@@ -131,5 +131,69 @@ describe("createRental", () => {
       threw = true;
     }
     expect(threw).toBe(true);
+  });
+});
+
+describe("listRentalsInRange", () => {
+  it("trả đơn giao với khoảng, kèm tên khách", async () => {
+    const r = await listRentalsInRange(AUG(14), AUG(16));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.rentals.length).toBeGreaterThan(0);
+      expect(r.rentals[0]?.customerName).toBe(`${P}Minh Anh`);
+    }
+  });
+
+  it("KHÔNG trả đơn nằm ngoài khoảng", async () => {
+    const r = await listRentalsInRange(AUG(1), AUG(5));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.rentals).toEqual([]);
+  });
+
+  // Đơn 12→17 và cửa sổ [17, 20) chạm nhau tại 17 — biên [) nên KHÔNG giao.
+  // Đơn 17→20 (tạo ở test trên) thì có. Vậy cửa sổ này phải trả đúng một đơn.
+  it("đơn chạm biên trái của cửa sổ thì không tính là giao nhau", async () => {
+    const r = await listRentalsInRange(AUG(17), AUG(20));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.rentals).toHaveLength(1);
+  });
+
+  it("từ chối khoảng vượt trần thay vì cắt bớt trong im lặng", async () => {
+    const from = AUG(1);
+    const to = new Date(from.getTime() + (MAX_RANGE_DAYS + 1) * 86_400_000);
+    expect(await listRentalsInRange(from, to)).toEqual({ ok: false, reason: "INVALID_RANGE" });
+  });
+
+  it("từ chối khoảng ngược và khoảng rỗng", async () => {
+    expect(await listRentalsInRange(AUG(20), AUG(10))).toEqual({
+      ok: false,
+      reason: "INVALID_RANGE",
+    });
+    expect(await listRentalsInRange(AUG(10), AUG(10))).toEqual({
+      ok: false,
+      reason: "INVALID_RANGE",
+    });
+  });
+
+  // Đơn đã huỷ không chặn chỗ ở tầng DB, nên nó cũng không được hiện trên lịch.
+  it("KHÔNG trả đơn đã huỷ", async () => {
+    const [cancelled] = await db
+      .insert(schema.rentals)
+      .values({
+        vehicleId,
+        customerId,
+        createdBy: staffId,
+        startsAt: AUG(12),
+        endsAt: AUG(17),
+        totalAmount: 1,
+        depositAmount: 0,
+        status: "CANCELLED",
+      })
+      .returning();
+    expect(cancelled).toBeDefined();
+
+    const r = await listRentalsInRange(AUG(13), AUG(14));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.rentals.some((x) => x.id === cancelled?.id)).toBe(false);
   });
 });
