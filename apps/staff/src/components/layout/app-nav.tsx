@@ -49,17 +49,16 @@ const TOUCH = "flex min-h-11 min-w-11 items-center";
  * một Fragment chứa cả hai.
  */
 export function AppNav({
-  // Mặc định "bottom" TỒN TẠI CHỈ ĐỂ health-page.tsx (gọi `<AppNav me={..} onSignOut={..}/>`
-  // không kèm `variant`) còn biên dịch được giữa Task 6 và Task 7 — Task 7 mới là chỗ gỡ
-  // lần gọi cũ đó (§ "Bỏ nav tự chế khỏi hai trang", design doc). Task 6 bị cấm sửa file
-  // ngoài `components/layout/` nên không thể tự dọn health-page.tsx ở đây. Khi Task 7 xong,
-  // xoá giá trị mặc định này — hai lần gọi thật (trong `AppShell`) đã luôn truyền `variant`
-  // tường minh, không dựa vào mặc định.
-  variant = "bottom",
+  // `variant` BẮT BUỘC, không có giá trị mặc định. Từng có mặc định `"bottom"` trong
+  // đúng một khoảng: giữa lúc file này được viết lại và lúc `health-page.tsx` thôi tự
+  // render nav — nó chỉ tồn tại để chỗ gọi cũ còn biên dịch được. Chỗ gọi đó đã biến mất,
+  // nên mặc định thành nợ: nó biến "quên truyền variant" từ lỗi biên dịch thành một thanh
+  // nav lặng lẽ render sai biến thể.
+  variant,
   me,
   onSignOut,
 }: {
-  readonly variant?: "sidebar" | "bottom";
+  readonly variant: "sidebar" | "bottom";
   readonly me: Me | null;
   readonly onSignOut: () => void;
 }) {
