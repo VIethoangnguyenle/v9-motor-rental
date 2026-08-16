@@ -398,9 +398,14 @@ Bản hiện tại là một thanh link ngang tối giản. Bản mới:
 
 Ràng buộc:
 
-- **Bottom nav đúng 4 ô.** Sáu ô trên màn 375px cho ra chữ ~8,5px và không ai bấm trúng. Bốn ô cho
-  mỗi ô ~85px, chữ 11px, cao 56px. Phần còn lại nằm sau **Thêm** (mở sheet hoặc trang, tuỳ bạn —
+- **Bottom nav đúng 3 ô: Trang chủ · Lịch · Thêm.** Sáu ô trên màn 375px cho ra chữ ~8,5px và không
+  ai bấm trúng; ba ô cho mỗi ô ~125px. Phần còn lại nằm sau **Thêm** (mở sheet hoặc trang, tuỳ bạn —
   chọn cái đơn giản hơn và nói lý do).
+
+  > ⚠️ Bản đầu của plan này ghi "đúng 4 ô" ngay dưới một bảng chỉ liệt kê **hai** mục làm ô trực
+  > tiếp — tự mâu thuẫn. Con số 4 mang từ mockup của design doc sang, nơi *Đơn thuê* còn là ô trực
+  > tiếp; lúc viết plan tôi đẩy nó vào **Thêm** mà quên sửa con số. Giữ **3**: một ô vô hiệu hoá
+  > chiếm 25% thanh nav trên màn nhỏ nhất là chỗ đắt nhất để quảng cáo lộ trình.
 - Mục "sắp có" **không được là `<Link>`**. Chúng phải không bấm được — một link tới route không tồn
   tại là một cú 404 trong app của chính mình.
 - Link `/staff` chỉ hiện với OWNER. Đây là hàng rào của **trải nghiệm**, không phải của dữ liệu:
