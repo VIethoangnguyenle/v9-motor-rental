@@ -1622,8 +1622,59 @@ describe("listRentalsInRange", () => {
     expect(await listRentalsInRange(AUG(20), AUG(10))).toEqual({ ok: false, reason: "INVALID_RANGE" });
     expect(await listRentalsInRange(AUG(10), AUG(10))).toEqual({ ok: false, reason: "INVALID_RANGE" });
   });
+
+  // Biên PHẢI của cửa sổ. Ca "chạm biên trái" ở trên KHÔNG canh được nó, và đó
+  // là lý do ca này tồn tại — xem ghi chú ngay dưới khối code.
+  it("đơn bắt đầu đúng lúc cửa sổ kết thúc thì KHÔNG lọt vào", async () => {
+    const [outside] = await db
+      .insert(schema.rentals)
+      .values({
+        vehicleId, customerId, createdBy: staffId,
+        startsAt: AUG(20), endsAt: AUG(22), totalAmount: 1, depositAmount: 0,
+      })
+      .returning();
+    const r = await listRentalsInRange(AUG(17), AUG(20));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.rentals.some((x) => x.id === outside?.id)).toBe(false);
+  });
 });
 ```
+
+> ### ⚠️ Cách chứng minh ngữ nghĩa biên — và cách làm SAI
+>
+> Ý định ban đầu: đổi `'[)'` thành `'[]'` trong truy vấn, rồi kỳ vọng ca **"chạm biên trái"** đỏ.
+> **Không đỏ**, và không bao giờ đỏ được. Bảng chân trị đo bằng psql:
+>
+> | | cửa sổ `[)` | cửa sổ `[]` |
+> | --- | --- | --- |
+> | đơn `[12,17)` vs cửa sổ `[17,20)` | `f` | `f` |
+> | đơn `[20,22)` vs cửa sổ `[17,20)` | `f` | **`t`** |
+>
+> Dấu ngoặc trong `tstzrange(from, to, ...)` điều khiển **biên phải** của cửa sổ. Ca "chạm biên
+> trái" soi biên **trái**, và `period` của đơn thì do cột sinh cố định ở `'[)'` — nên không hoán vị
+> ngoặc nào của cửa sổ đụng tới nó được.
+>
+> Bước kiểm sai đó không chỉ vô dụng, nó **che một lỗ hổng thật**: không test nào đang canh ca "đơn
+> bắt đầu đúng lúc cửa sổ kết thúc". Đó là ca duy nhất dấu ngoặc chi phối, và giờ nó có test riêng.
+>
+> **Bài học dùng lại được:** khi mutation không làm test nào đỏ, đừng kết luận "code đúng nên
+> không sao". Nó có nghĩa là mutation đó chạm vào một hành vi **không ai đang canh**.
+
+> ### `EXPLAIN`: truy vấn lịch có thật sự dùng index của exclusion constraint
+>
+> Plan này khẳng định `period && tstzrange(...)` đi qua GiST index mà `rentals_no_overlap` tạo ra,
+> nên không cần thêm index. Khẳng định đó nay đã được **đo**, không còn là suy luận:
+>
+> - Trên bảng rỗng, planner chọn `Seq Scan` — đúng, vì với vài hàng thì quét tuần tự rẻ hơn. Đây
+>   là lý do đo trên bảng rỗng không kết luận được gì.
+> - Seed ~20.000 đơn trên 50 xe trong một transaction, `ANALYZE`, rồi `SET enable_seqscan = off`:
+>
+>   ```
+>   Bitmap Index Scan on rentals_no_overlap
+>     Index Cond: (period && '[...]'::tstzrange)
+>   ```
+>
+>   rồi `ROLLBACK` — không hàng nào còn lại.
 
 - [ ] **Step 3: Chạy test**
 
