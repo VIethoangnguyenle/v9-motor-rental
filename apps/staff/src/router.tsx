@@ -22,6 +22,7 @@ import { AppShell } from "./components/layout/app-shell";
 import { hasSession, signOut } from "./lib/auth";
 import { LOGIN_REASONS, decideEntry, type LoginReason } from "./lib/guard-decision";
 import { ensureMe } from "./lib/me";
+import { validateCalendarSearch } from "./components/rentals/rental-calendar";
 import { CalendarPage } from "./pages/calendar-page";
 import { ChangePasswordPage } from "./pages/change-password-page";
 import { PendingApprovalPage } from "./pages/pending-approval-page";
@@ -191,12 +192,19 @@ const healthRoute = createRoute({
 });
 
 /**
- * Placeholder — xem comment đầu `pages/calendar-page.tsx`. Đăng ký SỚM (Task 3)
- * chỉ để `AttentionList` có đích bấm được thật; nội dung lịch thật là Task 4–6.
+ * `?view=timeline|month` và `?from=YYYY-MM-DD` — state của trang Lịch sống ở
+ * URL, không trong component (Task 6). ĐÚNG khuôn `loginRoute` ở trên:
+ * `validateCalendarSearch` chỉ nhận giá trị nằm trong danh sách trắng
+ * (`CALENDAR_VIEWS`, khai ở `components/rentals/rental-calendar.tsx` — nơi
+ * component cũng cần đọc cùng danh sách đó, xem comment ở file đó vì sao không
+ * đặt ở `lib/guard-decision.ts` dù đó là khuôn gốc). Giá trị lạ/hỏng bị lọc,
+ * không throw — F5 giữ đúng chỗ đang xem, nút back hoạt động, không có
+ * `Invalid Date` nào lọt ra tới lưới.
  */
 const calendarRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: "/calendar",
+  validateSearch: validateCalendarSearch,
   component: CalendarPage,
 });
 

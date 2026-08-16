@@ -9,22 +9,28 @@ import type { Me } from "../../lib/me";
  * nhất nghĩa là thêm một mục mới chỉ sửa MỘT chỗ, không phải nhớ sửa cả hai
  * hình dạng.
  *
- * `kind: "soon"` = tính năng chưa xây (Plan C+). Với hầu hết mục, route CHƯA TỒN
- * TẠI nên phần tử KHÔNG được là `<Link>` — một link tới route không tồn tại là
- * một cú 404 trong chính app của mình. `Lịch` là ngoại lệ ĐÃ có route (`/calendar`,
- * đăng ký ở Task 3 chỉ để `AttentionList` bấm được — xem `pages/calendar-page.tsx`)
- * nhưng CHƯA có nội dung nghiệp vụ thật, nên vẫn giữ `"soon"` ở đây: mở khoá nav
- * là việc của Task 6 (Plan C), không phải lúc route được đăng ký. Render bằng
- * `<button disabled>`: không bấm được, không nằm trong tab order, và trình đọc
- * màn hình biết nó là nút bị vô hiệu hoá chứ không phải nút hỏng.
+ * `kind: "soon"` = tính năng chưa xây (Plan C+). Với các mục còn lại, route
+ * CHƯA TỒN TẠI nên phần tử KHÔNG được là `<Link>` — một link tới route không
+ * tồn tại là một cú 404 trong chính app của mình. `Lịch` đã MỞ KHOÁ ở Task 6:
+ * route `/calendar` (đăng ký ở Task 3) nay có nội dung nghiệp vụ thật
+ * (`RentalCalendar`, xem `pages/calendar-page.tsx`), nên chuyển hẳn sang
+ * `kind: "link"` — không còn là ngoại lệ "có route nhưng chưa render được".
+ * Render bằng `<button disabled>` cho các mục còn `"soon"`: không bấm được,
+ * không nằm trong tab order, và trình đọc màn hình biết nó là nút bị vô hiệu
+ * hoá chứ không phải nút hỏng.
  */
 type NavItem =
-  | { readonly kind: "link"; readonly label: string; readonly to: "/" | "/staff"; readonly ownerOnly?: true }
+  | {
+      readonly kind: "link";
+      readonly label: string;
+      readonly to: "/" | "/staff" | "/calendar";
+      readonly ownerOnly?: true;
+    }
   | { readonly kind: "soon"; readonly label: string };
 
 const NAV_ITEMS: readonly NavItem[] = [
   { kind: "link", label: "Thống kê", to: "/" },
-  { kind: "soon", label: "Lịch" },
+  { kind: "link", label: "Lịch", to: "/calendar" },
   { kind: "soon", label: "Đơn thuê" },
   { kind: "soon", label: "Khách hàng" },
   { kind: "soon", label: "Bàn giao" },
@@ -159,9 +165,13 @@ function BottomNav({
           {home?.label}
         </Link>
 
-        <button type="button" disabled className={`${TOUCH} flex-1 flex-col justify-center gap-0.5 text-muted`}>
+        <Link
+          to={lich?.kind === "link" ? lich.to : "/calendar"}
+          className={`${TOUCH} flex-1 flex-col justify-center gap-0.5 text-ink`}
+          activeProps={{ className: "font-semibold" }}
+        >
           {lich?.label}
-        </button>
+        </Link>
 
         <button
           type="button"
