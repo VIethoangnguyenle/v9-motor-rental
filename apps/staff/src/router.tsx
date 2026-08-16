@@ -9,14 +9,16 @@
  * ở `eslint.config.js` — nới ở đó là nới cho cả repo, và file đó có bộ probe
  * riêng phải chạy lại mỗi lần đụng vào (xem CLAUDE.md gốc).
  */
-import type { QueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import {
   Outlet,
   createRootRouteWithContext,
   createRoute,
   createRouter,
   redirect,
+  useNavigate,
 } from "@tanstack/react-router";
+import { AppShell } from "./components/layout/app-shell";
 import { hasSession, signOut } from "./lib/auth";
 import { LOGIN_REASONS, decideEntry, type LoginReason } from "./lib/guard-decision";
 import { ensureMe } from "./lib/me";
@@ -48,6 +50,36 @@ const publicLayoutRoute = createRoute({
 });
 
 /**
+ * Component của `protectedLayoutRoute`: khoác `AppShell` quanh `Outlet` nên MỌI
+ * route con — hiện tại và sau này — tự có nav mà không ai phải nhớ gọi `AppNav`
+ * ở từng trang (xem Task 7, design doc).
+ *
+ * `me` đọc bằng `protectedLayoutRoute.useRouteContext()`, KHÔNG bằng `useMe()`.
+ * `beforeLoad` bên dưới đã gán `{ me }` vào context ở nhánh "allow" (case
+ * DUY NHẤT còn sống tới component này — mọi nhánh khác `throw redirect`), nên dữ
+ * liệu đã CÓ SẴN, đã đúng kiểu `Me` (không phải `Me | null`), và đọc nó không đụng
+ * TanStack Query — không có rủi ro background refetch mà `useMe()` có thể gây ra
+ * (mặc định `staleTime: 0` của `meQuery`). Route context là cache RẺ hơn: nó chỉ
+ * là object JS gắn theo route match, không phải một subscription.
+ */
+function ProtectedShell() {
+  const { me } = protectedLayoutRoute.useRouteContext();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  async function handleSignOut() {
+    await signOut(queryClient);
+    await navigate({ to: "/login" });
+  }
+
+  return (
+    <AppShell me={me} onSignOut={() => void handleSignOut()}>
+      <Outlet />
+    </AppShell>
+  );
+}
+
+/**
  * Guard. Trang `/` (health) nằm dưới nhánh này CÓ CHỦ Ý: nó là bằng chứng
  * end-to-end rằng guard chạy, thay vì một trang test rỗng không ai mở.
  *
@@ -57,7 +89,7 @@ const publicLayoutRoute = createRoute({
 const protectedLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "protected",
-  component: Outlet,
+  component: ProtectedShell,
   beforeLoad: async ({ context }) => {
     // KHÔNG gọi `ensureMe` khi chưa có session: nó sẽ bắn một request `/staff/me`
     // chắc chắn 401 trên mọi lần mở app lúc chưa đăng nhập.

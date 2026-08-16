@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { ResetCodeNotice } from "../components/staff/reset-code-notice";
 import { StaffTable } from "../components/staff/staff-table";
@@ -69,10 +68,7 @@ export function StaffListPage() {
 
   return (
     <main className="p-6">
-      <Link to="/" className="text-sm underline">
-        ← Trang chủ
-      </Link>
-      <h1 className="mt-2 text-xl font-bold">Nhân viên</h1>
+      <h1 className="text-xl font-bold">Nhân viên</h1>
 
       <ResetCodeNotice issuedCode={issuedCode} />
 
