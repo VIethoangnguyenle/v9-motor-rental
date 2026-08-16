@@ -359,11 +359,21 @@ thật. Hook "xong" ngay trong khi `DELETE` còn đang bay, tiến trình thoát
 Postgres, và hàng `ztest-%` sống sót qua một lần chạy trông rất sạch.
 
 ```ts
+const clean = () => db.delete(...);   // trả THẲNG query builder
 afterAll(clean); // ❌ im lặng không dọn gì
 afterAll(async () => {
   await clean();
 }); // ✅
 ```
+
+⚠️ **Cái quyết định là `clean` trả về gì, KHÔNG phải cách bạn truyền nó vào hook.** Nếu `clean`
+khai bằng `async function` thì nó luôn trả một `Promise` thật, và `afterAll(clean)` **an toàn** —
+`customers.test.ts` và `rentals.test.ts` đang dùng đúng dạng đó, đã đo: 0 hàng `ztest-%` sót lại
+sau khi chạy.
+
+Ghi rõ điều này vì bản trước của mục này đọc như "`afterAll(clean)` luôn sai", và một lần suýt
+khiến hai file đang chạy đúng bị đi sửa. Đọc luật này là: **`async function` → truyền thẳng được;
+hàm mũi tên trả builder → phải bọc.**
 
 Hai quy ước đi kèm, cùng lý do: dọn ở **cả** `beforeAll` lẫn `afterAll` (`afterAll` không chạy khi
 lần trước bị Ctrl-C), và fixture của `routes/staff.test.ts` được viết để **chạy lại được** thay vì
