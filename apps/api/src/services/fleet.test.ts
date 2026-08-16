@@ -63,6 +63,16 @@ describe("listFleet", () => {
     expect(slugs).toContain(`${P}draft`);
   });
 
+  it("trả pricePerDay và deposit — kể cả cho xe draft, ca mà /vehicles công khai không phục vụ được", async () => {
+    const rows = await listFleet();
+    const pub = rows.find((r) => r.slug === `${P}pub`);
+    const draft = rows.find((r) => r.slug === `${P}draft`);
+    expect(pub?.pricePerDay).toBe(500_000);
+    expect(pub?.deposit).toBe(5_000_000);
+    expect(draft?.pricePerDay).toBe(900_000);
+    expect(draft?.deposit).toBe(10_000_000);
+  });
+
   it("loại xe archived", async () => {
     const slugs = (await listFleet()).map((r) => r.slug);
     expect(slugs).not.toContain(`${P}arch`);

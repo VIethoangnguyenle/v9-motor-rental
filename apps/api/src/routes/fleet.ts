@@ -17,6 +17,8 @@ export const fleet = new Elysia({ name: "fleet" }).get("/fleet", () => listFleet
       model: t.String(),
       plate: t.Nullable(t.String()),
       status: t.String(),
+      pricePerDay: t.Integer(),
+      deposit: t.Integer(),
     }),
   ),
 });

@@ -1,4 +1,5 @@
 import { schema } from "@v9/db";
+import type { Vnd } from "@v9/shared/domain/money";
 import { asc, ne } from "drizzle-orm";
 import { db } from "../db";
 
@@ -8,6 +9,14 @@ import { db } from "../db";
  * `plate` VẮNG MẶT trong schema công khai chính là cơ chế chặn, vì Elysia cắt mọi
  * field không được khai. Nới schema đó để staff dùng ké là tháo hàng rào của một
  * route công khai.
+ *
+ * `pricePerDay`/`deposit` CÓ mặt ở đây — khác `plate`, giá không phải dữ liệu
+ * nhạy cảm, và staff (form lên đơn) là bên tiêu thụ TỰ NHIÊN của giá đội xe nội
+ * bộ. Trước đây `rental-form.tsx` phải mượn `GET /vehicles` (route CÔNG KHAI của
+ * `apps/web`) để tra giá, nên xe `draft` — có mặt ở `/fleet`, vắng mặt ở
+ * `/vehicles` — không bao giờ tra được giá và cảnh báo "giá gõ nhầm" lặng lẽ tắt
+ * cho đúng nhóm xe chưa lên web, tức nhóm rủi ro nhất. Thêm hai cột này vào ĐÚNG
+ * route nội bộ này xoá luôn đường vòng đó.
  */
 export interface FleetVehicle {
   readonly id: string;
@@ -16,6 +25,8 @@ export interface FleetVehicle {
   readonly model: string;
   readonly plate: string | null;
   readonly status: string;
+  readonly pricePerDay: Vnd;
+  readonly deposit: Vnd;
 }
 
 /**
@@ -32,6 +43,8 @@ export async function listFleet(): Promise<FleetVehicle[]> {
       model: schema.vehicles.model,
       plate: schema.vehicles.plate,
       status: schema.vehicles.status,
+      pricePerDay: schema.vehicles.pricePerDay,
+      deposit: schema.vehicles.deposit,
     })
     .from(schema.vehicles)
     .where(ne(schema.vehicles.status, "archived"))

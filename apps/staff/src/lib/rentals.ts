@@ -101,32 +101,3 @@ export const customersQuery = (q: string) => ({
     return { ok: true, customers: res.data };
   },
 });
-
-// ── Giá niêm yết — CHỈ để cảnh báo giá gõ nhầm ở form lên đơn ───────────────
-
-export type VehiclePrice = NonNullable<
-  Awaited<ReturnType<typeof api.vehicles.get>>["data"]
->[number];
-
-/**
- * `GET /vehicles` là route CÔNG KHAI của `apps/web` (danh mục xe đã publish),
- * không phải một endpoint riêng cho staff — mượn tạm vì đây là nơi DUY NHẤT
- * `pricePerDay` lộ ra qua API hôm nay (`/fleet` cố tình không có, xem comment ở
- * `apps/api/src/services/fleet.ts`). Hệ quả: xe `draft` (có ở `/fleet`, KHÔNG
- * có ở `/vehicles`) sẽ không tra được giá — chấp nhận được vì đây chỉ là dữ
- * liệu cho một CẢNH BÁO best-effort (DEBT.md, "giá gõ nhầm"), không phải luật
- * chặn: thiếu giá tham chiếu thì rental-form.tsx đơn giản không cảnh báo, form
- * vẫn tạo đơn được bình thường.
- *
- * Vì vậy lỗi ở đây bị NUỐT thành `[]` thay vì đi qua discriminated union như
- * các query khác trong file này — không có gì để "thử lại", chỉ có cảnh báo bị
- * tắt.
- */
-export const vehiclePricesQuery = {
-  queryKey: ["vehicle-prices"] as const,
-  queryFn: async (): Promise<VehiclePrice[]> => {
-    const res = await api.vehicles.get();
-    if (res.error) return [];
-    return res.data;
-  },
-};

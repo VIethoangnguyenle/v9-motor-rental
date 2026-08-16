@@ -6,13 +6,7 @@ import { formatVnd, roundVnd } from "@v9/shared/domain/money";
 import { SHOP_TIMEZONE } from "@v9/shared/domain/rental";
 import { api } from "../../lib/api";
 import { errorCode, errorMessage } from "../../lib/errors";
-import {
-  customersQuery,
-  fleetQuery,
-  vehiclePricesQuery,
-  type Customer,
-  type FleetVehicle,
-} from "../../lib/rentals";
+import { customersQuery, fleetQuery, type Customer, type FleetVehicle } from "../../lib/rentals";
 import { Alert } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Select } from "../ui/select";
@@ -137,7 +131,6 @@ export function RentalForm({ onClose }: { readonly onClose: () => void }) {
   }, [onClose]);
 
   const fleet = useQuery(fleetQuery);
-  const vehiclePrices = useQuery(vehiclePricesQuery);
 
   const [vehicleId, setVehicleId] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -204,16 +197,18 @@ export function RentalForm({ onClose }: { readonly onClose: () => void }) {
   });
 
   // ── Cảnh báo giá gõ nhầm (DEBT.md) — CẢNH BÁO, KHÔNG CHẶN ──────────────────
+  //
+  // Giá tham chiếu đọc THẲNG từ `/fleet` (nó đã mang `pricePerDay`) — không còn
+  // mượn `GET /vehicles` công khai như trước. Hệ quả: xe `draft` giờ cũng có
+  // cảnh báo, đúng nhóm xe mà đường vòng cũ bỏ sót vì `/vehicles` chỉ trả xe
+  // `published`.
   const selectedVehicle = fleet.data?.ok
     ? fleet.data.vehicles.find((v) => v.id === vehicleId)
-    : undefined;
-  const priceRef = selectedVehicle
-    ? (vehiclePrices.data ?? []).find((v) => v.slug === selectedVehicle.slug)
     : undefined;
   const days =
     startDate !== "" && endDate !== "" && endDate >= startDate ? dayCount(startDate, endDate) : 0;
   const totalNum = Number(totalAmount);
-  const expectedTotal = priceRef && days > 0 ? priceRef.pricePerDay * days : null;
+  const expectedTotal = selectedVehicle && days > 0 ? selectedVehicle.pricePerDay * days : null;
   // Lệch quá 3× ở MỘT trong hai chiều — số gõ nhầm thường lệch cả CHỤC lần
   // (thiếu/thừa một số 0), 3× đã đủ rộng để không làm phiền giá đặc biệt hợp lệ
   // (giảm giá thuê dài ngày, phụ thu dịp lễ) mà vẫn bắt được lỗi gõ nhầm thật.
@@ -486,11 +481,12 @@ export function RentalForm({ onClose }: { readonly onClose: () => void }) {
           </div>
 
           {/* Yêu cầu #3: CẢNH BÁO, không chặn — shop có quyền tính giá đặc biệt. */}
-          {priceLooksOff && priceRef && expectedTotal !== null && (
+          {priceLooksOff && selectedVehicle && expectedTotal !== null && (
             <Alert tone="warning">
               Tổng tiền {formatVnd(roundVnd(totalNum))} lệch nhiều so với giá niêm yết (
-              {formatVnd(priceRef.pricePerDay)}/ngày × {days} ngày ≈ {formatVnd(expectedTotal)}).
-              Kiểm tra lại có gõ nhầm số 0 không — vẫn lên đơn được nếu đây là giá đặc biệt.
+              {formatVnd(selectedVehicle.pricePerDay)}/ngày × {days} ngày ≈{" "}
+              {formatVnd(expectedTotal)}). Kiểm tra lại có gõ nhầm số 0 không — vẫn lên đơn được nếu
+              đây là giá đặc biệt.
             </Alert>
           )}
 
