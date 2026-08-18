@@ -60,6 +60,36 @@ làm hàng rào **im lặng** ngừng hoạt động. Nếu một bản major xo
 tắt và mọi thứ vẫn exit 0 — đúng kiểu suy thoái đã xảy ra bốn lần trong dự án này. Chuyển xong phải
 chạy lại cả ba probe và **đọc tên luật**, không nhìn exit code.
 
+**Đo lại 2026-08-18 (không đổi gì trong `eslint.config.js`):** version cài vẫn y hệt lần trước —
+`eslint-plugin-boundaries@7.1.0` + `@boundaries/elements@3.1.0` (khớp `package.json`, `bun.lock`,
+và `node_modules/.../package.json` thật). Dựng lại probe độc lập, không đụng repo: thư mục ngoài
+git, symlink `node_modules` từ repo (để dùng đúng bản plugin đang cài), một `eslint.config.mjs`
+tối giản chỉ khai một element `pattern: "packages/shared/src/index.ts"` — cùng hình dạng single-file
+element đang dùng thật ở đây.
+
+- Với `partialMatch: false`: lint đúng file `packages/shared/src/index.ts` vẫn nổ
+  `boundaries/no-unknown-files` ("File does not match any file pattern and does not belong to any
+  known element"). Plugin còn tự in cảnh báo xác nhận đúng cơ chế bị nghi ngay trước lỗi:
+  `"Element patterns match folders, not individual files... Affected patterns:
+  [\"packages/shared/src/index.ts\"]"`.
+- Đổi target sang `packages/shared/src/index.ts/nested.ts` (coi `index.ts` như một **thư mục**) thì
+  lint sạch — đúng cơ chế comment cũ mô tả: `partialMatch: false` chỉ khớp phần tử **bên trong**
+  đường dẫn coi như thư mục, không bao giờ khớp chính file đó.
+- Đối chứng phương pháp đo: cùng probe, đổi lại `mode: "full"` trên đúng pattern đó → lint sạch
+  hoàn toàn (chỉ còn cảnh báo deprecated), xác nhận setup probe đúng và tương phản là thật, không
+  phải lỗi cấu hình probe.
+
+**Kết luận: vẫn chưa chuyển được — giữ `mode: "full"` nguyên trạng, không đổi `eslint.config.js`.**
+Một manh mối mới, chưa từng ghi trước đây: cảnh báo runtime của plugin trỏ tới `boundaries/files`
+— một **rule/setting khác**, phân loại theo file thay vì theo element (`FilesDescriptor` trong
+`@boundaries/elements`, không dùng chung cơ chế `boundaries/elements` + `boundaries/dependencies`
+đang ép ở đây). README của plugin không còn nhắc `partialMatch`/`mode` một dòng nào — tài liệu duy
+nhất còn lại là thông điệp cảnh báo runtime. `boundaries/files` **có thể** là hướng thật để gỡ nợ
+này, nhưng đổi sang nó là đổi cả cơ chế phân loại (file descriptor thay vì element descriptor),
+kéo theo việc phải viết lại các policy `boundaries/dependencies` đang trỏ vào các type
+`shared-root`/`api-root`/`shared-client`/`api-infra` — không phải một đổi 1-dòng như debt này giả
+định ban đầu. Để lại làm một đợt riêng, không thử trong lần đo này.
+
 ## ⚠️ Chặn deploy: Directus đang cầm credential ROOT của MinIO ở prod
 
 `compose.prod.yaml` truyền `STORAGE_S3_KEY: ${MINIO_ROOT_USER}` và
