@@ -7,9 +7,9 @@ Không cái nào dưới đây tự báo. Roadmap ở [`ROADMAP.md`](ROADMAP.md)
 
 ## Nợ của đợt auth
 
-Hai chỗ dưới đây **đã biết là thiếu** khi đợt auth land, không phải phát hiện sau. (Từng là năm —
-dòng thứ năm, "tên hàm tiếng Việt/Anh lẫn lộn", đã **đóng**: đợt sửa 2026-08-13 đổi toàn bộ định
-danh `apps/api/src/services/` sang tiếng Anh. Luật đặt tên giờ sống ở root
+Năm chỗ dưới đây **đã biết là thiếu** khi đợt auth land, không phải phát hiện sau — **cả năm đã
+đóng**. Dòng thứ năm, "tên hàm tiếng Việt/Anh lẫn lộn", đã **đóng**: đợt sửa 2026-08-13 đổi toàn bộ
+định danh `apps/api/src/services/` sang tiếng Anh. Luật đặt tên giờ sống ở root
 [`CLAUDE.md`](../CLAUDE.md), mục "Định danh tiếng Anh, nội dung tiếng Việt". Đợt trả nợ 2026-08-18
 đóng thêm hai dòng:
 
@@ -29,12 +29,70 @@ staff_users (lower(email))`; `findStaffByEmail` giờ so `lower(...)` ở **cả
   lại sẽ không bao giờ được dọn). Không có scheduler trong repo (root `CLAUDE.md`) nên dọn ăn theo
   đường ghi đã có sẵn thay vì cron riêng. Chứng minh bằng test mới: mã hết hạn **chưa dùng** của
   người B biến mất khỏi bảng (không chỉ bị đánh dấu đã dùng) khi người A xin mã; và trên DB dev
-  thật — hai hàng rác có sẵn từ đợt auth trước tự biến mất khi bộ test chạy qua `createResetCode`.)
+  thật — hai hàng rác có sẵn từ đợt auth trước tự biến mất khi bộ test chạy qua `createResetCode`.
 
-| Nợ                                                                                     | Hậu quả nếu bỏ qua                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Không có rate limit theo IP** trên `/staff/password-reset/request` và `/auth/signup` | `Bun.password.hash` là argon2id **64 MB, ~115 ms mỗi lời gọi** (đo trên máy dev: `m=65536,t=2`, hash 115,3 ms) — và nó nằm trên một endpoint công khai. Vài chục request/giây ghim CPU và ăn sạch RAM của một VPS đơn. Bản sửa TOCTOU của `verifyCode` đã cắt phần lớn (mã cạn lượt **không còn** chạy argon2), nhưng mỗi lần xin mã mới vẫn mua được 5 lượt verify. `/auth/signup` thì đẩy việc băm sang SuperTokens core và để lại một hàng `PENDING` cho mỗi request. |
-| **Timing oracle ~190×** ở `/staff/password-reset/request`                              | Email không tồn tại trả về sau đúng một `SELECT` (đo: p95 0,61 ms); email có thật tốn thêm ~115 ms vì `createResetCode` băm mã. Thân response giống hệt nhau, đồng hồ thì không — đúng cái mà "luôn trả 200" sinh ra để giấu.                                                                                                                                                                                                                                            |
+Hai dòng còn lại của bảng cũ — phạm vi khác hẳn hai dòng trên (rate limit + timing oracle, không
+đụng gì tới email/dọn mã) — đóng trong đợt trả nợ **bảo mật** 2026-08-18, nhánh
+`feat/auth-hardening`:
+
+- ~~**Timing oracle ~190×** ở `/staff/password-reset/request`~~ — **đóng**.
+  `requestPasswordReset` (`apps/api/src/services/password-reset.ts`) gộp hai nhánh "có email"/
+  "không có email" của route thành MỘT hàm và băm argon2id ở **CẢ HAI** — nhánh không tìm thấy băm
+  một hằng số cố định (`DUMMY_HASH_INPUT`), **KHÔNG** băm email người gọi gửi lên, vì chi phí
+  argon2id không được phụ thuộc bất cứ gì kẻ gọi kiểm soát được. `routes/staff.ts` gọi hàm này
+  thay vì tự rẽ nhánh `findStaffByEmail` rồi CÓ ĐIỀU KIỆN mới `createResetCode` — chính hình dạng
+  cũ đã sinh ra oracle.
+
+  **Không verify được qua HTTP ở dev**: SMTP chưa cấu hình nên route trả `EMAIL_NOT_CONFIGURED`
+  (503) TRƯỚC khi chạm tầng service — đo qua route cho ra hai số gần bằng nhau vì lý do SAI (cả
+  hai đều rẻ như nhau, không phải vì đã băm đều). Verify ở TẦNG SERVICE thay vào đó
+  (`services/password-reset.test.ts`, describe `requestPasswordReset — xoá timing oracle`): 7 mẫu
+  xen kẽ mỗi nhánh, so bằng MEDIAN (không phải mean, để một mẫu ngoại lệ không kéo lệch kết luận).
+  Đo **TRƯỚC** khi sửa (script riêng, tái hiện đúng hình dạng cũ ở tầng service — `findStaffByEmail`
+  rồi CÓ ĐIỀU KIỆN mới băm — 8 mẫu mỗi nhánh, cùng máy dev): found median 117,4 ms · notFound
+  median 2,4 ms · tỉ lệ **≈49×** — cùng bậc độ lớn với ~190× ghi ở trên (số đo khác do điểm đo và
+  tải máy khác nhau — route thật trước khi có nhánh 503 sớm, so với gọi thẳng service — không đổi
+  bản chất). Đo **SAU** khi sửa, nhiều lần chạy: tỉ lệ dao động 1,00×–1,11×; test khoá ngưỡng
+  **< 3×**, biên độ rộng vì argon2id (~115 ms) giờ chiếm áp đảo cả hai nhánh.
+
+- ~~**Không có rate limit theo IP** trên `/staff/password-reset/request` và `/auth/signup`~~ —
+  **đóng**. Một fixed-window limiter TRONG TIẾN TRÌNH (`apps/api/src/plugins/rate-limit.ts`,
+  không Redis — root `CLAUDE.md`: "không có Redis trong dự án này") áp hai ngưỡng khác nhau: **5
+  lần/15 phút/IP** cho route xin mã, **5 lần/giờ/IP** cho `/auth/signup`; request vượt ngưỡng nhận
+  `429 RATE_LIMITED` TRƯỚC khi chạm argon2/SuperTokens — không băm, không ghi hàng `PENDING` nào.
+
+  IP đọc khác nhau tuỳ **môi trường** (`getClientIp`, cùng file), không tuỳ việc header có mặt hay
+  không: **production** tin `X-Forwarded-For`, lấy phần tử **CUỐI** — `compose.prod.yaml` không
+  publish port nào cho `api` (chỉ `caddy` nghe 80/443), và `reverse_proxy` của Caddy (mặc định,
+  không `header_up` nào ghi đè trong `Caddyfile`) NỐI THÊM địa chỉ nó thấy vào **cuối** header thay
+  vì ghi đè, nên client tự chèn một IP giả ở **đầu** không thắng được hop cuối cùng — hop đó luôn
+  là Caddy. **Dev** đọc socket address thật qua `Server.requestIP()` (Bun), bỏ qua
+  `X-Forwarded-For` hoàn toàn — `compose.yaml` (dev) không chạy service `api` (`apps/api` chạy
+  thẳng trên host qua `bun run dev`), không proxy nào đứng trước để tin.
+
+  Hai giới hạn thật của một limiter trong tiến trình được viết thẳng trong comment của file, không
+  giấu: **mất trạng thái khi restart** container, và **đếm theo TỪNG tiến trình** — chấp nhận được
+  vì `compose.prod.yaml` hôm nay chỉ chạy đúng **một** container `api` (không `deploy.replicas`);
+  thêm container thứ hai mà không đổi gì ở đây thì ngưỡng hiệu lực nhân đôi, và đó là lúc phải
+  chuyển sang một kho đếm dùng chung (Redis) — không sớm hơn.
+
+  Chứng minh bằng test: `plugins/rate-limit.test.ts` khoá bộ đếm thuần (cho qua đúng `max` lần,
+  chặn lần kế, IP khác không bị ăn theo, mở lại sau khi cửa sổ hết hạn) VÀ hành vi đọc IP ở cả hai
+  môi trường — nhánh production chạy trong **tiến trình con thật** (`NODE_ENV=production`, cùng kỹ
+  thuật `auth.test.ts` dùng cho `cookieDomain`) để canh đúng việc lấy phần tử cuối của
+  `X-Forwarded-For` khi client tự chèn một IP giả ở đầu. Khớp nối tới route thật được khoá thêm ở
+  `routes/staff.test.ts` (`POST /staff/password-reset/request` → 429 ở lần thứ 6 trong 15 phút) và
+  `plugins/auth.test.ts` (`POST /auth/signup` → 429 ở lần thứ 6 trong một giờ).
+
+  ⚠️ Phát hiện giữa chừng, đáng ghi lại vì nó là chính lớp lỗi "bun test chạy mọi file trong MỘT
+  tiến trình" mà `apps/api/CLAUDE.md` (bẫy ①) đã cảnh báo cho DB, giờ lộ thêm ở state trong bộ
+  nhớ: `passwordResetLimiter`/`signupLimiter` là singleton cấp MODULE, và bucket `"unknown"` (mọi
+  request trong `bun test` — không `.listen()` thật, không `NODE_ENV=production`) bị **chia sẻ**
+  giữa `auth.test.ts` và `staff-guard-revocation.test.ts` (file kia cũng gọi `/auth/signup` thật
+  qua `createActiveStaff`). Bài test rate limit đầu tiên bào cạn bucket rồi để nguyên như vậy làm
+  ba bài của `staff-guard-revocation.test.ts` nhận nhầm `429` — đã đo thật lúc viết (không suy
+  luận): `expect(...).toMatchObject({status:"OK"})` nhận `{code:"RATE_LIMITED"}`. Sửa bằng
+  `.reset()` cả **trước lẫn sau** bài test rate limit trong cả hai file gọi route thật.
 
 ## Nợ phát hiện sau khi land — review Phase 2
 
