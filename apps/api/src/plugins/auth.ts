@@ -17,6 +17,7 @@ import type { HTTPMethod } from "supertokens-node/types";
 import { serializeCookieValue } from "supertokens-node/lib/build/framework/utils";
 import { createPendingStaff } from "../services/staff";
 import { env } from "../env";
+import { getClientIp, signupLimiter } from "./rate-limit";
 
 // ─────────────────────────────────────────────────────────────────────────
 // SEAM: JWT auth — nay đã ghép SuperTokens thật (Round 2 Task 5, §4 design doc
@@ -253,7 +254,36 @@ export function toPreParsedRequest(request: Request): PreParsedRequest {
  * serialize/validate) vì thân response tới từ SuperTokens — hình dạng khác nhau
  * theo từng recipe/route của nó, cố tình không model lại ở đây.
  */
-export const auth = new Elysia({ name: "auth" }).all("/auth/*", async ({ request }) => {
+export const auth = new Elysia({ name: "auth" }).all("/auth/*", async ({ request, server }) => {
+  // Rate limit CHỈ `POST /auth/signup` — nợ đã đóng (docs/DEBT.md, "Không có
+  // rate limit theo IP"): đăng ký đẩy việc băm sang SuperTokens core VÀ ghi
+  // một hàng `staff_users` PENDING mỗi request thành công (`signUpPOST` override
+  // bên dưới). `/auth/*` là catch-all dùng chung cho MỌI route của SuperTokens
+  // (signin, session refresh, signout, …) — kiểm path ở đây TRƯỚC khi gọi
+  // `stMiddleware` để chỉ chặn đúng signup, không đụng các luồng còn lại.
+  //
+  // Trả thẳng một `Response` thay vì đi qua `stMiddleware`/`signUpPOST`: chặn
+  // ở đây nghĩa là request KHÔNG BAO GIỜ chạm SuperTokens core khi đã vượt
+  // ngưỡng — không băm, không ghi PENDING nào cả, đúng mục tiêu của debt.
+  if (request.method === "POST" && new URL(request.url).pathname === "/auth/signup") {
+    const rateLimit = signupLimiter.check(getClientIp(request, server));
+    if (!rateLimit.allowed) {
+      return new Response(
+        JSON.stringify({
+          message: "Đăng ký quá nhanh — thử lại sau",
+          code: "RATE_LIMITED",
+        }),
+        {
+          status: 429,
+          headers: {
+            "content-type": "application/json",
+            "retry-after": String(rateLimit.retryAfterSeconds),
+          },
+        },
+      );
+    }
+  }
+
   const preParsedRequest = toPreParsedRequest(request);
   const collectingResponse = new CollectingResponse();
 

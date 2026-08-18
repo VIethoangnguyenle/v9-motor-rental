@@ -3,6 +3,7 @@ import { Elysia } from "elysia";
 import supertokens from "supertokens-node";
 import { client } from "../db";
 import { auth } from "./auth";
+import { SIGNUP_MAX, signupLimiter } from "./rate-limit";
 
 /**
  * Giữ đúng MỘT thứ: route `/auth/*` phải chuyển cookie của SuperTokens ra ngoài.
@@ -357,5 +358,52 @@ describe("cookieDomain chỉ được đặt ở production", () => {
     // (không chấm) thì trình duyệt hiện đại cũng coi như vậy, nhưng ta khai
     // tường minh nên phải giữ tường minh.
     expect(accessToken).toContain("Domain=.example.com");
+  });
+});
+
+/**
+ * Nợ đã đóng (docs/DEBT.md, "Không có rate limit theo IP"). Rate limit CHẠY
+ * TRƯỚC `stMiddleware` (xem `auth.ts`) nên request bị chặn KHÔNG BAO GIỜ chạm
+ * SuperTokens — không băm, không ghi hàng `staff_users` PENDING nào. Vì vậy
+ * bài dưới đây cố ý gửi thân request THIẾU `formFields` (400 quen thuộc —
+ * "Missing input param: formFields", xem probe ở apps/api/CLAUDE.md) cho N-1
+ * lần đầu thay vì đăng ký thật: mục tiêu là canh LỚP RATE LIMIT, không phải
+ * luồng đăng ký (đã có `describe("signUpPOST ghi staff_users")` ở trên lo
+ * phần đó), và tránh tạo N user SuperTokens thật chỉ để đo một bộ đếm.
+ *
+ * `getClientIp` rơi về `"unknown"` cho MỌI request ở file này (không
+ * `.listen()`, không production — xem lý do đầy đủ ở `routes/staff.test.ts`),
+ * nên MỌI lời gọi `/auth/signup` trong CẢ FILE chia sẻ một bucket. `.reset()`
+ * đầu bài, và describe này đứng SAU mọi describe khác gọi `/auth/signup` ở
+ * trên (kể cả cookieDomain — nhưng describe đó chạy trong TIẾN TRÌNH CON,
+ * không chia sẻ state với `signupLimiter` ở tiến trình chính dù đứng trước
+ * hay sau).
+ */
+describe("POST /auth/signup — rate limit theo IP", () => {
+  it(`đường bình thường không bị chặn; lần thứ ${String(SIGNUP_MAX + 1)} trong một giờ → 429`, async () => {
+    signupLimiter.reset();
+
+    for (let i = 0; i < SIGNUP_MAX; i++) {
+      const res = await post("/auth/signup", {});
+      // Đường bình thường (kể cả request lỗi 400 do thiếu formFields — vẫn là
+      // MỘT request bình thường về mặt rate limit) KHÔNG được là 429 trong
+      // ngưỡng.
+      expect(res.status).not.toBe(429);
+    }
+
+    const blocked = await post("/auth/signup", {});
+    expect(blocked.status).toBe(429);
+    expect(await blocked.json()).toMatchObject({ code: "RATE_LIMITED" });
+    // Client thật cần biết đợi bao lâu, không chỉ "bị chặn".
+    expect(blocked.headers.get("retry-after")).not.toBeNull();
+
+    // ⚠️ RESET LẠI SAU KHI XONG — không chỉ trước. `signupLimiter` là MỘT
+    // singleton cấp module, và `bun test` chạy MỌI file trong CÙNG một tiến
+    // trình (apps/api/CLAUDE.md, bẫy ①): `staff-guard-revocation.test.ts`
+    // cũng gọi `/auth/signup` thật (qua `createActiveStaff`), và nếu bucket
+    // "unknown" bị bào cạn ở đây rồi bỏ nguyên như vậy, file đó (chạy SAU file
+    // này theo thứ tự bảng chữ cái) sẽ nhận 429 cho một lần đăng ký hợp lệ —
+    // đã đo thật: đúng triệu chứng này lộ ra trước khi thêm dòng reset này.
+    signupLimiter.reset();
   });
 });

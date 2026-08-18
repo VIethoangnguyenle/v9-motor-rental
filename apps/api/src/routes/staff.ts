@@ -1,6 +1,11 @@
 import { Elysia, t } from "elysia";
 import EmailPassword from "supertokens-node/recipe/emailpassword";
 import Session from "supertokens-node/recipe/session";
+import {
+  getClientIp,
+  passwordResetLimiter,
+  type RateLimitResult,
+} from "../plugins/rate-limit";
 import { requireRole, staffGuard, type GuardErrorCode } from "../plugins/staff-guard";
 import { isEmailConfigured, sendResetCodeEmail } from "../services/email";
 import {
@@ -108,12 +113,18 @@ type Reason = PermissionReason | PasswordReason | ChangePasswordReason;
  *   • `RentalErrorCode` — suy từ `routes/rentals.ts` (chính nó đã suy từ bốn
  *     service của `fleet`/`rentals`/`customers`, xem comment ở đó). Import
  *     TYPE THUẦN nên không kéo runtime của `routes/rentals.ts` vào file này.
- * `"EMAIL_NOT_CONFIGURED"` là literal tay DUY NHẤT ở đây: route
- * `/staff/password-reset/request` phát nó thẳng lúc thiếu SMTP, không có union
- * nào đứng sau để suy ra — hai chỗ liệt kê tay (đây và `GuardErrorCode`) là
- * TOÀN BỘ phần không suy ra được của `ApiErrorCode`.
+ * `"EMAIL_NOT_CONFIGURED"` và `"RATE_LIMITED"` là hai literal tay DUY NHẤT ở
+ * đây: route `/staff/password-reset/request` phát chúng thẳng (thiếu SMTP;
+ * vượt ngưỡng `plugins/rate-limit.ts`), không có union nào đứng sau để suy
+ * ra — hai chỗ liệt kê tay (đây và `GuardErrorCode`) là TOÀN BỘ phần không
+ * suy ra được của `ApiErrorCode`.
  */
-export type ApiErrorCode = Reason | GuardErrorCode | RentalErrorCode | "EMAIL_NOT_CONFIGURED";
+export type ApiErrorCode =
+  | Reason
+  | GuardErrorCode
+  | RentalErrorCode
+  | "EMAIL_NOT_CONFIGURED"
+  | "RATE_LIMITED";
 
 /**
  * Domain trả `reason` (pattern 3 của repo — discriminated union, không throw);
@@ -286,7 +297,23 @@ export const staff = new Elysia({ name: "staff" })
 
   .post(
     "/staff/password-reset/request",
-    async ({ body, status }) => {
+    async ({ body, request, server, set, status }) => {
+      // Rate limit CHẠY TRƯỚC MỌI THỨ KHÁC, kể cả kiểm tra SMTP — nợ đã đóng
+      // (docs/DEBT.md, "Không có rate limit theo IP"): endpoint này băm
+      // argon2id (~115ms, xem `requestPasswordReset`) cho mọi email có thật
+      // MỘT KHI SMTP đã cấu hình, và đứng SAU check SMTP thì rate limit
+      // không có tác dụng gì ở môi trường chưa bật email (đúng môi trường
+      // dev hôm nay) — trong khi limiter phải bảo vệ được ngay cả khi test,
+      // không phụ thuộc trạng thái SMTP.
+      const rateLimit: RateLimitResult = passwordResetLimiter.check(getClientIp(request, server));
+      if (!rateLimit.allowed) {
+        set.headers["retry-after"] = String(rateLimit.retryAfterSeconds);
+        return status(429, {
+          message: "Bạn thao tác quá nhanh — thử lại sau ít phút",
+          code: "RATE_LIMITED" satisfies ApiErrorCode,
+        });
+      }
+
       // Thiếu SMTP là trạng thái mặc định của một prod mới dựng, nên câu trả lời
       // phải chỉ ra lối đi tiếp — không phải một lỗi cụt.
       if (!isEmailConfigured) {
@@ -311,7 +338,7 @@ export const staff = new Elysia({ name: "staff" })
     },
     {
       body: t.Object({ email: t.String({ format: "email" }) }),
-      response: { 200: okSchema, 503: errorSchema },
+      response: { 200: okSchema, 429: errorSchema, 503: errorSchema },
     },
   )
 

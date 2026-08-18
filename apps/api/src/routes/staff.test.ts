@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "bun:test";
 import { Elysia } from "elysia";
+import { PASSWORD_RESET_MAX, passwordResetLimiter } from "../plugins/rate-limit";
 import { staffGuard } from "../plugins/staff-guard";
 import { isEmailConfigured } from "../services/email";
 import { createResetCode, findStaffByEmail } from "../services/password-reset";
@@ -139,5 +140,51 @@ describe("POST /staff/password-reset/confirm", () => {
       matKhauMoi: "ngan",
     });
     expect(res.status).toBe(422);
+  });
+});
+
+/**
+ * Nợ đã đóng (docs/DEBT.md, "Không có rate limit theo IP"). File này chạy ở
+ * dev — không `.listen()` nên `context.server` là `null`, và `env.isProduction`
+ * là `false` trong CHÍNH tiến trình chạy `bun test` này — nên `getClientIp`
+ * (plugins/rate-limit.ts) rơi về `"unknown"` cho MỌI request ở đây. Nghĩa là
+ * MỌI lời gọi tới route này trong CẢ FILE (kể cả hai bài ở describe phía
+ * trên) chia sẻ đúng MỘT bucket. `.reset()` ngay đầu bài để không phụ thuộc
+ * số lần đã gọi trước đó, và describe này đứng SAU MỌI describe khác gọi
+ * route này — không lời gọi nào chạy SAU khi bucket bị bào cạn ở đây.
+ *
+ * Đa dạng IP thật (khác nhau theo `X-Forwarded-For` ở production, và cách
+ * dev đọc socket address thay vì tin header) đã khoá kỹ ở
+ * `plugins/rate-limit.test.ts` — bài dưới đây chỉ chứng minh khớp nối cuối:
+ * ROUTE THẬT SỰ trả 429 khi limiter báo hết lượt, và đường bình thường (chưa
+ * chạm ngưỡng) không bị ảnh hưởng gì — không chỉ limiter tự nó đúng.
+ */
+describe("POST /staff/password-reset/request — rate limit theo IP", () => {
+  it(`đường bình thường không bị chặn; lần thứ ${String(PASSWORD_RESET_MAX + 1)} trong 15 phút → 429`, async () => {
+    passwordResetLimiter.reset();
+
+    for (let i = 0; i < PASSWORD_RESET_MAX; i++) {
+      const res = await postJson("/staff/password-reset/request", {
+        email: `ztest-ratelimit-${String(i)}@v9.vn`,
+      });
+      // Đường bình thường: dù SMTP có cấu hình hay không (200/503), KHÔNG
+      // được là 429 trong ngưỡng.
+      expect(res.status).not.toBe(429);
+    }
+
+    const blocked = await postJson("/staff/password-reset/request", {
+      email: "ztest-ratelimit-blocked@v9.vn",
+    });
+    expect(blocked.status).toBe(429);
+    expect(await blocked.json()).toMatchObject({ code: "RATE_LIMITED" });
+    // Client thật cần biết đợi bao lâu, không chỉ "bị chặn".
+    expect(blocked.headers.get("retry-after")).not.toBeNull();
+
+    // Reset lại sau khi xong, không chỉ trước — `passwordResetLimiter` là một
+    // singleton cấp module và `bun test` chạy mọi file trong CÙNG một tiến
+    // trình (apps/api/CLAUDE.md, bẫy ①). Không có file nào khác gọi route này
+    // hôm nay, nhưng để bucket cạn sẵn ở cuối file là một quả bom hẹn giờ cho
+    // file kế tiếp lỡ thêm một lời gọi thật tới route này.
+    passwordResetLimiter.reset();
   });
 });
