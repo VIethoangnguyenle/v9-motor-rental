@@ -78,8 +78,14 @@ services:
       # mọi file upload biến mất sau `docker compose down`.
       STORAGE_LOCATIONS: s3
       STORAGE_S3_DRIVER: s3
-      STORAGE_S3_KEY: ${MINIO_ROOT_USER}
-      STORAGE_S3_SECRET: ${MINIO_ROOT_PASSWORD}
+      # ⚠️ CỐ Ý không phải MINIO_ROOT_USER/PASSWORD. Directus là service phơi ra internet
+      # nhiều nhất; cầm credential root thì một lỗ hổng trong Directus thành quyền toàn bộ
+      # object storage, kể cả bucket checkins (bằng chứng tranh chấp bàn giao xe). Hai biến
+      # dưới đây trỏ vào một access key MinIO riêng, policy chỉ cho đọc/ghi bucket vehicles —
+      # tạo bằng docs/runbooks/minio-directus-scoped-key.md, policy JSON ở
+      # scripts/directus-minio-policy.json. Xem docs/DEBT.md.
+      STORAGE_S3_KEY: ${DIRECTUS_S3_KEY}
+      STORAGE_S3_SECRET: ${DIRECTUS_S3_SECRET}
       STORAGE_S3_BUCKET: ${MINIO_BUCKET_VEHICLES}
       STORAGE_S3_REGION: us-east-1
       STORAGE_S3_ENDPOINT: http://minio:9000

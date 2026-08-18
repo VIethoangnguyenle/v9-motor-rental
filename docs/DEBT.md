@@ -165,19 +165,58 @@ kéo theo việc phải viết lại các policy `boundaries/dependencies` đang
 `shared-root`/`api-root`/`shared-client`/`api-infra` — không phải một đổi 1-dòng như debt này giả
 định ban đầu. Để lại làm một đợt riêng, không thử trong lần đo này.
 
-## ⚠️ Chặn deploy: Directus đang cầm credential ROOT của MinIO ở prod
+## ~~Chặn deploy: Directus đang cầm credential ROOT của MinIO ở prod~~ — đóng ở tầng mã, còn một bước người trên VPS
 
-`compose.prod.yaml` truyền `STORAGE_S3_KEY: ${MINIO_ROOT_USER}` và
+`compose.prod.yaml` từng truyền `STORAGE_S3_KEY: ${MINIO_ROOT_USER}` và
 `STORAGE_S3_SECRET: ${MINIO_ROOT_PASSWORD}` — tức là service phơi ra internet nhiều nhất lại giữ
 đúng cái khoá mở được **mọi** bucket, kể cả `checkins` (ảnh tình trạng xe lúc bàn giao, thứ dùng
 làm bằng chứng khi tranh chấp). Một lỗ hổng trong Directus thành quyền toàn bộ object storage.
 
-`.env.example` đã có câu cảnh báo đúng chỗ đó, và nó **không ép được gì** — đây chính là ví dụ của
-mục "ranh giới repo ép vs cấu hình local" trong `../CLAUDE.md`: một dòng comment không phải hàng rào.
+`.env.example` từng chỉ có câu cảnh báo đúng chỗ đó mà **không ép được gì** — đúng ví dụ của mục
+"ranh giới repo ép vs cấu hình local" trong `../CLAUDE.md`: một dòng comment không phải hàng rào.
+Đợt trả nợ 2026-08-18 (nhánh `feat/auth-hardening`) thay comment bằng một cơ chế thật.
 
-Trước khi stack chạm VPS thật: tạo **access key MinIO riêng cho Directus**, policy giới hạn đúng
-bucket `vehicles`, rồi trỏ `STORAGE_S3_KEY`/`STORAGE_S3_SECRET` vào cặp key đó. Ở dev thì dùng
-root vẫn chấp nhận được — dev không phơi ra internet và volume vứt đi được.
+**Đã chứng minh trong dev** (đo thật, không suy đoán):
+
+- Policy JSON scoped đúng bucket `vehicles`, không có `s3:*`, sống ở
+  [`scripts/directus-minio-policy.json`](../scripts/directus-minio-policy.json) — hai statement:
+  `s3:ListBucket` trên `arn:aws:s3:::vehicles`, `s3:GetObject`/`s3:PutObject`/`s3:DeleteObject`
+  trên `arn:aws:s3:::vehicles/*`.
+- Tạo policy + user `directus-app` gắn policy đó trên MinIO **dev** bằng `mc` (mượn image
+  `minio/mc` qua `docker compose run`, không cần cài gì trên máy):
+
+  ```bash
+  docker compose run --rm -v "$(pwd)/scripts:/policies:ro" --entrypoint sh minio-init -c "
+    mc alias set local http://minio:9000 \$MINIO_ROOT_USER \$MINIO_ROOT_PASSWORD &&
+    mc admin policy create local directus-vehicles-only /policies/directus-minio-policy.json &&
+    mc admin user add local directus-app '<secret>' &&
+    mc admin policy attach local directus-vehicles-only --user directus-app
+  "
+  ```
+
+- **Chiều dương** — key ghi/đọc/list được `vehicles`: `mc cp`, `mc cat`, `mc ls` bằng alias trỏ
+  key `directus-app` đều thành công trên `scoped/vehicles/...`.
+- **Chiều âm** — đúng trọng tâm của việc chứng minh policy, vì một policy cấp thừa quyền trông
+  giống hệt policy đúng cho tới khi ai đó kiểm chiều này: `mc ls scoped/checkins/` →
+  `mc: <ERROR> Unable to list folder. Access Denied.`; `mc cp ... scoped/checkins/...` →
+  `mc: <ERROR> Failed to copy ... Insufficient permissions to access this path
+http://minio:9000/checkins/...`. Cả hai lỗi đều đúng dạng từ chối quyền, không phải lỗi kết nối.
+- Dọn sạch user/policy/object thử khỏi MinIO dev sau khi đo — không để lại trạng thái test.
+
+`compose.prod.yaml` giờ đọc `DIRECTUS_S3_KEY`/`DIRECTUS_S3_SECRET` thay vì `MINIO_ROOT_*` —
+**không có mặc định rơi về root**: để trống thì Directus không xác thực được với MinIO, thất bại
+rõ ràng lúc chạy thay vì âm thầm cấp thừa quyền. `.env.example` có hai biến mới (comment ra, giải
+thích tại sao) thay cho câu cảnh báo cũ. Dev **cố ý giữ nguyên** dùng `MINIO_ROOT_*` trong
+`compose.yaml` — dev không phơi ra internet và volume vứt đi được, đúng như debt gốc đã chấp nhận.
+
+**Chưa chứng minh được, vì VPS chưa tồn tại** (KHÔNG lạc quan hoá thành "đã xong"): áp đúng quy
+trình trên lên MinIO **thật** trên VPS — tạo policy, tạo access key thật, kiểm cả hai chiều trên
+đó, rồi điền `DIRECTUS_S3_KEY`/`SECRET` vào `.env` thật của VPS. Thủ tục copy-paste đầy đủ, đã thử
+nguyên văn trên dev (không phải suy đoán) ở
+[`docs/runbooks/minio-directus-scoped-key.md`](runbooks/minio-directus-scoped-key.md); trạng thái
+và pointer cũng có ở `.claude/skills/v9-deploy/SKILL.md`. **Không còn chặn ở tầng mã**, nhưng
+Directus trên VPS sẽ không upload/đọc được ảnh cho tới khi bước người này chạy — liệt là một mục
+trong "Còn thiếu trước lần deploy đầu" của skill đó, không còn là "⛔ chặn cứng".
 
 ## Nợ sinh ra từ Plan A (đợt `customers` + `rentals`)
 
