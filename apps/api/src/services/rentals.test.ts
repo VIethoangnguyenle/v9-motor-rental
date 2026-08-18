@@ -343,9 +343,7 @@ describe("parity: CHECK rentals_status_valid khớp RENTAL_STATUSES", () => {
 
     const row = rows[0];
     if (!row) {
-      throw new Error(
-        "không tìm thấy CHECK rentals_status_valid — constraint bị đổi tên hay xoá?",
-      );
+      throw new Error("không tìm thấy CHECK rentals_status_valid — constraint bị đổi tên hay xoá?");
     }
 
     // `pg_get_constraintdef` trả về dạng Postgres CHUẨN HOÁ lại, KHÔNG PHẢI

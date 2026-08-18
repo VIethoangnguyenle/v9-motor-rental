@@ -15,7 +15,7 @@ danh `apps/api/src/services/` sang tiếng Anh. Luật đặt tên giờ sống 
 
 - ~~"Email so sánh phân biệt hoa thường"~~ — **đóng**, migration `0011` (`db:custom`, viết tay):
   `DROP CONSTRAINT staff_users_email_unique` + `CREATE UNIQUE INDEX staff_users_email_lower_idx ON
-  staff_users (lower(email))`; `findStaffByEmail` giờ so `lower(...)` ở **cả hai vế**, khớp đúng
+staff_users (lower(email))`; `findStaffByEmail` giờ so `lower(...)` ở **cả hai vế**, khớp đúng
   biểu thức của index nên vẫn đi qua index chứ không full scan. Cố ý **không** dọn trùng lặp trước
   khi tạo index — DB dev đã kiểm 0 hàng ở `GROUP BY lower(email) HAVING count(*) > 1`; nếu môi
   trường khác có trùng, migration **nổ lúc chạy** là hành vi muốn có (gộp ngầm hai hồ sơ trùng
@@ -31,8 +31,8 @@ danh `apps/api/src/services/` sang tiếng Anh. Luật đặt tên giờ sống 
   người B biến mất khỏi bảng (không chỉ bị đánh dấu đã dùng) khi người A xin mã; và trên DB dev
   thật — hai hàng rác có sẵn từ đợt auth trước tự biến mất khi bộ test chạy qua `createResetCode`.)
 
-| Nợ                                                                                      | Hậu quả nếu bỏ qua                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Nợ                                                                                     | Hậu quả nếu bỏ qua                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Không có rate limit theo IP** trên `/staff/password-reset/request` và `/auth/signup` | `Bun.password.hash` là argon2id **64 MB, ~115 ms mỗi lời gọi** (đo trên máy dev: `m=65536,t=2`, hash 115,3 ms) — và nó nằm trên một endpoint công khai. Vài chục request/giây ghim CPU và ăn sạch RAM của một VPS đơn. Bản sửa TOCTOU của `verifyCode` đã cắt phần lớn (mã cạn lượt **không còn** chạy argon2), nhưng mỗi lần xin mã mới vẫn mua được 5 lượt verify. `/auth/signup` thì đẩy việc băm sang SuperTokens core và để lại một hàng `PENDING` cho mỗi request. |
 | **Timing oracle ~190×** ở `/staff/password-reset/request`                              | Email không tồn tại trả về sau đúng một `SELECT` (đo: p95 0,61 ms); email có thật tốn thêm ~115 ms vì `createResetCode` băm mã. Thân response giống hệt nhau, đồng hồ thì không — đúng cái mà "luôn trả 200" sinh ra để giấu.                                                                                                                                                                                                                                            |
 
@@ -88,7 +88,7 @@ element đang dùng thật ở đây.
   `boundaries/no-unknown-files` ("File does not match any file pattern and does not belong to any
   known element"). Plugin còn tự in cảnh báo xác nhận đúng cơ chế bị nghi ngay trước lỗi:
   `"Element patterns match folders, not individual files... Affected patterns:
-  ["packages/shared/src/index.ts"]"`.
+["packages/shared/src/index.ts"]"`.
 - Đổi target sang `packages/shared/src/index.ts/nested.ts` (coi `index.ts` như một **thư mục**) thì
   lint sạch — đúng cơ chế comment cũ mô tả: `partialMatch: false` chỉ khớp phần tử **bên trong**
   đường dẫn coi như thư mục, không bao giờ khớp chính file đó.
@@ -126,8 +126,8 @@ root vẫn chấp nhận được — dev không phơi ra internet và volume v�
 Cả ba đều **đã biết lúc land**, không phải phát hiện sau. Một còn lại — hai đã đóng trong đợt trả
 nợ 2026-08-18, xem "Đã đóng trong Plan A" bên dưới cho cách chứng minh.
 
-| Nợ                                                 | Hậu quả nếu bỏ qua                                                                                                                                                                                                                |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Nợ                                                | Hậu quả nếu bỏ qua                                                                                                                                                                                                              |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Giá và cọc nhập tay, không có chính sách tính** | `total_amount` là số nhân viên gõ. Gõ nhầm một số 0 là doanh thu sai một bậc, và `CHECK >= 0` không bắt được. Form ở Plan C phải cảnh báo khi lệch quá xa `price_per_day × số ngày`; chính sách tính giá thật là một đợt riêng. |
 
 ### Đã đóng trong Plan A
