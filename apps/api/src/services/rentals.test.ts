@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { schema } from "@v9/db";
+import { RENTAL_STATUSES } from "@v9/shared/domain/rental";
 import { eq, like } from "drizzle-orm";
-import { db } from "../db";
+import { client, db } from "../db";
 import { changeRentalStatus, createRental, listRentalsInRange, MAX_RANGE_DAYS } from "./rentals";
 
 const P = "ztest-thue-";
@@ -293,5 +294,52 @@ describe("changeRentalStatus", () => {
   it("trả NOT_FOUND cho id không tồn tại", async () => {
     const r = await changeRentalStatus(crypto.randomUUID(), "ONGOING", NOW);
     expect(r).toEqual({ ok: false, reason: "NOT_FOUND" });
+  });
+});
+
+/**
+ * HÀNG RÀO THẬT cho hợp đồng ngầm giữa `RENTAL_STATUSES` (@v9/shared) và
+ * `CHECK rentals_status_valid` (@v9/db, migration 0009). Bốn literal này sống ở
+ * BA nơi — DB, domain, TypeBox schema ở `routes/rentals.ts` — và chỉ hai bản
+ * sau được ép ở tầng kiểu (`StatusSetsMatch` trong file đó, so trực tiếp
+ * `RentalStatus` với `Static<typeof statusSchema>`). Bản trong DB thì không có
+ * gì ép: thêm một trạng thái vào domain mà quên migration làm `INSERT` chết lúc
+ * CHẠY, không phải lúc biên dịch.
+ *
+ * Chỗ này là chỗ HỢP LỆ duy nhất để viết bài test này, cùng lý do
+ * `customers.test.ts` đang giữ parity test cho regex số điện thoại: bảng
+ * `packages/db` (`element type "db"`) chỉ được import `db` theo
+ * `eslint.config.js` — không import được `@v9/shared`. `apps/api/src/services`
+ * (`element type "api-services"`) là element type DUY NHẤT được phép chạm cả
+ * `db` lẫn `shared-domain`.
+ *
+ * Đọc CHECK constraint TRỰC TIẾP từ Postgres đang chạy, không đọc lại file
+ * migration: đọc file chỉ chứng minh migration NÓI gì, không chứng minh DB thật
+ * sự ĐANG ép gì — hai thứ có thể lệch nếu migration `0009` từng bị sửa tay sau
+ * khi đã áp, hoặc constraint bị `ALTER`/`DROP` ngoài luồng migration.
+ */
+describe("parity: CHECK rentals_status_valid khớp RENTAL_STATUSES", () => {
+  it("tập giá trị Postgres cho phép đúng bằng RENTAL_STATUSES", async () => {
+    const rows: { def: string }[] = await client`
+      SELECT pg_get_constraintdef(oid) AS def
+      FROM pg_constraint
+      WHERE conname = 'rentals_status_valid'`;
+
+    const row = rows[0];
+    if (!row) {
+      throw new Error(
+        "không tìm thấy CHECK rentals_status_valid — constraint bị đổi tên hay xoá?",
+      );
+    }
+
+    // `pg_get_constraintdef` trả về dạng Postgres CHUẨN HOÁ lại, KHÔNG PHẢI
+    // nguyên văn SQL trong migration: `status IN ('BOOKED', ...)` viết tay trở
+    // thành `status = ANY (ARRAY['BOOKED'::text, ...])` khi đọc lại từ
+    // `pg_constraint`. Đã xác nhận bằng psql trước khi viết test này — xem báo
+    // cáo task. Regex bên dưới bắt đúng dạng `'X'::text` bất kể thứ tự.
+    const allowedInDb = [...row.def.matchAll(/'([^']*)'::text/g)].map((m) => m[1]).sort();
+    const allowedInDomain = [...RENTAL_STATUSES].sort();
+
+    expect(allowedInDb).toEqual(allowedInDomain);
   });
 });

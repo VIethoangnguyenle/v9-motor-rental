@@ -11,6 +11,7 @@ export {
   type StaffStatus,
 } from "./domain/staff";
 export {
+  RENTAL_STATUSES,
   SHOP_TIMEZONE,
   isOverdue,
   revenueAt,

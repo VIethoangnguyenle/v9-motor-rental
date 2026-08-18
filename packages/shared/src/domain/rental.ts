@@ -6,8 +6,21 @@ import type { Interval } from "./interval";
  *
  * File này KHÔNG import gì ngoài `packages/shared/src/domain/` — đó là điều kiện
  * để nó test được không cần DB, và là lý do TDD nghiêm khả thi ở đây.
+ *
+ * `RENTAL_STATUSES` là TUPLE runtime, không chỉ type — `RentalStatus` DẪN XUẤT
+ * từ nó bên dưới. Một union type TypeScript thuần bị xoá lúc biên dịch, không
+ * để lại giá trị nào ở runtime; và bốn literal này còn phải khớp CHECK
+ * `rentals_status_valid` ở Postgres (`packages/db`, migration `0009`) — thứ
+ * KHÔNG có gì ép ở tầng kiểu vì nó nằm ngoài TypeScript hoàn toàn. Mảng này là
+ * điều kiện để viết được một test đọc `pg_get_constraintdef(...)` và so trực
+ * tiếp với nó lúc chạy — xem hàng rào ở
+ * `apps/api/src/services/rentals.test.ts`. Trước đợt này, ba bản sao (DB,
+ * domain, TypeBox schema ở `routes/rentals.ts`) chỉ có hai bản sau được ép ở
+ * tầng kiểu (`StatusSetsMatch` trong file đó); giờ bản DB được ép ở tầng test.
  */
-export type RentalStatus = "BOOKED" | "ONGOING" | "COMPLETED" | "CANCELLED";
+export const RENTAL_STATUSES = ["BOOKED", "ONGOING", "COMPLETED", "CANCELLED"] as const;
+
+export type RentalStatus = (typeof RENTAL_STATUSES)[number];
 
 export type TransitionResult = { ok: true } | { ok: false; reason: "INVALID_TRANSITION" };
 
