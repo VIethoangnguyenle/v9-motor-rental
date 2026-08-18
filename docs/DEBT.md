@@ -7,17 +7,34 @@ Không cái nào dưới đây tự báo. Roadmap ở [`ROADMAP.md`](ROADMAP.md)
 
 ## Nợ của đợt auth
 
-Bốn chỗ dưới đây **đã biết là thiếu** khi đợt auth land, không phải phát hiện sau. (Từng là năm —
+Hai chỗ dưới đây **đã biết là thiếu** khi đợt auth land, không phải phát hiện sau. (Từng là năm —
 dòng thứ năm, "tên hàm tiếng Việt/Anh lẫn lộn", đã **đóng**: đợt sửa 2026-08-13 đổi toàn bộ định
 danh `apps/api/src/services/` sang tiếng Anh. Luật đặt tên giờ sống ở root
-[`CLAUDE.md`](../CLAUDE.md), mục "Định danh tiếng Anh, nội dung tiếng Việt".)
+[`CLAUDE.md`](../CLAUDE.md), mục "Định danh tiếng Anh, nội dung tiếng Việt". Đợt trả nợ 2026-08-18
+đóng thêm hai dòng:
 
-| Nợ                                                                                     | Hậu quả nếu bỏ qua                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+- ~~"Email so sánh phân biệt hoa thường"~~ — **đóng**, migration `0011` (`db:custom`, viết tay):
+  `DROP CONSTRAINT staff_users_email_unique` + `CREATE UNIQUE INDEX staff_users_email_lower_idx ON
+  staff_users (lower(email))`; `findStaffByEmail` giờ so `lower(...)` ở **cả hai vế**, khớp đúng
+  biểu thức của index nên vẫn đi qua index chứ không full scan. Cố ý **không** dọn trùng lặp trước
+  khi tạo index — DB dev đã kiểm 0 hàng ở `GROUP BY lower(email) HAVING count(*) > 1`; nếu môi
+  trường khác có trùng, migration **nổ lúc chạy** là hành vi muốn có (gộp ngầm hai hồ sơ trùng
+  lower-email là quyết định nghiệp vụ, không phải việc một migration tự động nên tự làm). Chứng
+  minh bằng test mới: tìm ra hồ sơ khi gõ khác hoa/thường, và DB từ chối insert một hồ sơ trùng
+  chỉ khác hoa/thường.
+- ~~"Không ai dọn mã hết hạn"~~ — **đóng**, `createResetCode` giờ thêm một `DELETE` toàn cục
+  (`used_at IS NULL AND expires_at < now()`) ngay trong transaction đang mở, chạy mỗi khi bất kỳ ai
+  xin mã mới — cố ý **không** khoanh theo user xin mã (bước UPDATE liền trước đã tự dọn mã cũ chưa
+  dùng của chính người đó; khoanh theo user thì hàng của người chỉ xin đúng một lần rồi không quay
+  lại sẽ không bao giờ được dọn). Không có scheduler trong repo (root `CLAUDE.md`) nên dọn ăn theo
+  đường ghi đã có sẵn thay vì cron riêng. Chứng minh bằng test mới: mã hết hạn **chưa dùng** của
+  người B biến mất khỏi bảng (không chỉ bị đánh dấu đã dùng) khi người A xin mã; và trên DB dev
+  thật — hai hàng rác có sẵn từ đợt auth trước tự biến mất khi bộ test chạy qua `createResetCode`.)
+
+| Nợ                                                                                      | Hậu quả nếu bỏ qua                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Không có rate limit theo IP** trên `/staff/password-reset/request` và `/auth/signup` | `Bun.password.hash` là argon2id **64 MB, ~115 ms mỗi lời gọi** (đo trên máy dev: `m=65536,t=2`, hash 115,3 ms) — và nó nằm trên một endpoint công khai. Vài chục request/giây ghim CPU và ăn sạch RAM của một VPS đơn. Bản sửa TOCTOU của `verifyCode` đã cắt phần lớn (mã cạn lượt **không còn** chạy argon2), nhưng mỗi lần xin mã mới vẫn mua được 5 lượt verify. `/auth/signup` thì đẩy việc băm sang SuperTokens core và để lại một hàng `PENDING` cho mỗi request. |
-| **Email so sánh phân biệt hoa thường**                                                 | `staff_users` khai `UNIQUE(email)` trên text thô, và `findStaffByEmail` so bằng `=`. `supertokens-node` chỉ `.trim()` form field (`emailpassword/api/utils.js`), không hạ hoa thường. Nhân viên gõ khác hoa thường → không tìm thấy → route trả 200 chung chung (cố ý, để không lộ email) → **không bao giờ nhận được mã, và không có gì để chẩn đoán**. Sửa đúng: `UNIQUE INDEX ON staff_users (lower(email))` + chuẩn hoá **cả** đường ghi lẫn đường đọc.              |
 | **Timing oracle ~190×** ở `/staff/password-reset/request`                              | Email không tồn tại trả về sau đúng một `SELECT` (đo: p95 0,61 ms); email có thật tốn thêm ~115 ms vì `createResetCode` băm mã. Thân response giống hệt nhau, đồng hồ thì không — đúng cái mà "luôn trả 200" sinh ra để giấu.                                                                                                                                                                                                                                            |
-| **Không ai dọn mã hết hạn**                                                            | Hàng `used_at IS NULL` đã quá `expires_at` nằm lại vĩnh viễn. Chúng làm phình đúng `password_reset_codes_active_idx` — partial index đó tồn tại **nhờ giả định** tập này gần như luôn rỗng (xem comment trong `packages/db/src/schema/staff.ts`).                                                                                                                                                                                                                        |
 
 ## Nợ phát hiện sau khi land — review Phase 2
 
@@ -71,7 +88,7 @@ element đang dùng thật ở đây.
   `boundaries/no-unknown-files` ("File does not match any file pattern and does not belong to any
   known element"). Plugin còn tự in cảnh báo xác nhận đúng cơ chế bị nghi ngay trước lỗi:
   `"Element patterns match folders, not individual files... Affected patterns:
-  [\"packages/shared/src/index.ts\"]"`.
+  ["packages/shared/src/index.ts"]"`.
 - Đổi target sang `packages/shared/src/index.ts/nested.ts` (coi `index.ts` như một **thư mục**) thì
   lint sạch — đúng cơ chế comment cũ mô tả: `partialMatch: false` chỉ khớp phần tử **bên trong**
   đường dẫn coi như thư mục, không bao giờ khớp chính file đó.
@@ -106,13 +123,12 @@ root vẫn chấp nhận được — dev không phơi ra internet và volume v�
 
 ## Nợ sinh ra từ Plan A (đợt `customers` + `rentals`)
 
-Cả ba đều **đã biết lúc land**, không phải phát hiện sau.
+Cả ba đều **đã biết lúc land**, không phải phát hiện sau. Một còn lại — hai đã đóng trong đợt trả
+nợ 2026-08-18, xem "Đã đóng trong Plan A" bên dưới cho cách chứng minh.
 
-| Nợ                                                            | Hậu quả nếu bỏ qua                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`stats.test.ts` xoá TOÀN BỘ bảng `rentals`** ở `beforeEach` | `getStatsSummary` tổng hợp trên cả bảng và không nhận bộ lọc nào, nên một hàng lạ làm mọi assertion số học sai — đó là lý do phải xoá sạch. Chấp nhận được **chỉ vì** `rentals` là bảng mới và DB dev chưa giữ đơn thật. Ngày đầu tiên ai đó nhập một đơn thật vào DB dev để xem thử, `bun test` sẽ **xoá mất nó** và không hỏi gì. Sửa đúng: cho `getStatsSummary` nhận bộ lọc, hoặc chuyển test sang database riêng. |
-| **Bốn literal trạng thái đơn thuê có BA bản sao**             | `CHECK rentals_status_valid` (Postgres) · `RentalStatus` (`@v9/shared`) · `statusSchema` (TypeBox ở `routes/rentals.ts`). Hai bản sau nay đã có liên kết ở tầng kiểu (`StatusSetsMatch` trong `routes/rentals.ts`) nên lệch nhau là lỗi biên dịch. **Bản trong DB thì không được ép gì** — thêm một trạng thái vào domain mà quên sửa migration thì `INSERT` chết lúc chạy, không phải lúc build.                      |
-| **Giá và cọc nhập tay, không có chính sách tính**             | `total_amount` là số nhân viên gõ. Gõ nhầm một số 0 là doanh thu sai một bậc, và `CHECK >= 0` không bắt được. Form ở Plan C phải cảnh báo khi lệch quá xa `price_per_day × số ngày`; chính sách tính giá thật là một đợt riêng.                                                                                                                                                                                        |
+| Nợ                                                 | Hậu quả nếu bỏ qua                                                                                                                                                                                                                |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Giá và cọc nhập tay, không có chính sách tính** | `total_amount` là số nhân viên gõ. Gõ nhầm một số 0 là doanh thu sai một bậc, và `CHECK >= 0` không bắt được. Form ở Plan C phải cảnh báo khi lệch quá xa `price_per_day × số ngày`; chính sách tính giá thật là một đợt riêng. |
 
 ### Đã đóng trong Plan A
 
@@ -121,3 +137,18 @@ Cả ba đều **đã biết lúc land**, không phải phát hiện sau.
 - ~~Ranh giới `components/ui/` chưa được lint ép~~ — **đã đóng trong Plan B** (Task 9,
   2026-08-16): xem mục "Nợ phát hiện sau khi land — review Phase 2" ở trên, đoạn ghi cách chứng
   minh bằng probe thật (rule `boundaries/dependencies`) thay vì chỉ đọc code.
+- ~~"`stats.test.ts` xoá TOÀN BỘ bảng `rentals`" ở `beforeEach`~~ — **đóng trong đợt trả nợ
+  2026-08-18**: `getStatsSummary` giờ nhận `filter.createdBy` tuỳ chọn (mặc định `undefined` = toàn
+  shop, đúng đường gọi thật ở `routes/stats.ts`); `stats.test.ts` lọc mọi lời gọi theo
+  `createdBy = staffId` (seed riêng, tiền tố `ztest-tk-`), và `beforeEach` chỉ còn xoá đúng hàng của
+  file này thay vì cả bảng. Chứng minh bằng psql: chèn tay một đơn thuê thật (không mang tiền tố
+  test), chạy `bun test` đầy đủ (219 pass / 0 fail), hàng vẫn còn nguyên sau đó.
+- ~~"Bốn literal trạng thái đơn thuê có BA bản sao"~~ — **đóng trong đợt trả nợ 2026-08-18**: bản
+  trong DB giờ có hàng rào, không còn là bản duy nhất không được ép. `RENTAL_STATUSES` là tuple
+  runtime mới ở `@v9/shared/domain/rental`; `RentalStatus` giờ dẫn xuất từ nó
+  (`(typeof RENTAL_STATUSES)[number]`) thay vì khai union rời, để có một giá trị runtime đem so với
+  `CHECK` constraint của DB. Test hàng rào ở `apps/api/src/services/rentals.test.ts` (chỗ duy nhất
+  được chạm cả `db` lẫn `shared-domain` theo eslint boundaries) đọc trực tiếp
+  `pg_get_constraintdef('rentals_status_valid')` từ Postgres đang chạy, parse các literal
+  `'X'::text`, so với `RENTAL_STATUSES`. Chứng minh hàng rào có hiệu lực: thêm tạm `"EXTENDED"` vào
+  `RENTAL_STATUSES` (không đụng migration) làm test đỏ đúng chỗ, in rõ literal thừa; đã revert.

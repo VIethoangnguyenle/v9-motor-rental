@@ -17,6 +17,14 @@ Bốn tính năng của `apps/staff` mà `CLAUDE.md` liệt kê: **lịch** và 
 xong phần tạo đơn (chưa có bàn giao và ảnh tình trạng xe); **quản lý khách hàng** mới có tìm và tạo
 nhanh trong form, chưa có màn riêng.
 
+**Đã xong — đợt trả nợ kỹ thuật 2026-08-18.** Bốn món nợ đóng, cách chứng minh từng món ghi ở
+[`DEBT.md`](DEBT.md): `getStatsSummary` nhận bộ lọc nên `stats.test.ts` hết cần xoá trắng bảng
+`rentals` · hàng rào (test) buộc `RENTAL_STATUSES` khớp `CHECK` của Postgres, đóng nốt bản sao thứ
+ba của bốn literal trạng thái · email so sánh không phân biệt hoa/thường (migration `0011`, unique
+index trên `lower(email)`) · mã đặt lại mật khẩu hết hạn giờ tự dọn khi có ai xin mã mới. Nợ
+`mode: "full"` trong `eslint.config.js` được **đo lại**, không đổi được — vẫn giữ nguyên, xem mục
+"Nợ có hạn" trong `DEBT.md` cho số đo mới nhất.
+
 **Sau đó:** `booking_requests` + form gửi yêu cầu thuê trên `apps/web`. Đó là mảnh còn thiếu để đội
 xe đang hiển thị sinh ra được việc — hiện khách xem xong không có đường nào gửi yêu cầu. Ràng buộc
 copy của form nằm ở [`../apps/web/AGENTS.md`](../apps/web/AGENTS.md) (không hứa xe còn trống).
