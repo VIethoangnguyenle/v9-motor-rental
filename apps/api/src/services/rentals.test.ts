@@ -136,27 +136,43 @@ describe("createRental", () => {
 });
 
 describe("listRentalsInRange", () => {
+  /**
+   * `listRentalsInRange` CỐ Ý không lọc — nó là truy vấn lịch, phải thấy MỌI đơn.
+   * Đây là ảnh gương của nợ vừa sửa ở `stats.test.ts`: ở đó test xoá sạch dữ liệu
+   * thật; ở đây dữ liệu thật (một đơn ai đó tạo qua UI trong đúng tháng 8/2026 mà
+   * các test này chạy) làm assertion đếm-tuyệt-đối của TEST sai, không phải code sai.
+   *
+   * Khoanh kết quả về đúng xe `ztest-thue-` của file này trước khi đếm: "đúng một
+   * đơn CỦA TÔI rơi vào cửa sổ này" vẫn là assertion có ý nghĩa; "đúng một đơn tồn
+   * tại trên đời" thì chưa từng đúng — vehicleId là con dao khoanh vùng rẻ nhất vì
+   * fixture của file này luôn dùng chung một xe, còn đơn thật của người khác gần
+   * như chắc chắn nằm trên xe khác.
+   */
+  const mine = <T extends { vehicleId: string }>(rentals: T[]): T[] =>
+    rentals.filter((r) => r.vehicleId === vehicleId);
+
   it("trả đơn giao với khoảng, kèm tên khách", async () => {
     const r = await listRentalsInRange(AUG(14), AUG(16));
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.rentals.length).toBeGreaterThan(0);
-      expect(r.rentals[0]?.customerName).toBe(`${P}Minh Anh`);
+      const mineRentals = mine(r.rentals);
+      expect(mineRentals.length).toBeGreaterThan(0);
+      expect(mineRentals[0]?.customerName).toBe(`${P}Minh Anh`);
     }
   });
 
-  it("KHÔNG trả đơn nằm ngoài khoảng", async () => {
+  it("KHÔNG trả đơn của TÔI nằm ngoài khoảng", async () => {
     const r = await listRentalsInRange(AUG(1), AUG(5));
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.rentals).toEqual([]);
+    if (r.ok) expect(mine(r.rentals)).toEqual([]);
   });
 
   // Đơn 12→17 và cửa sổ [17, 20) chạm nhau tại 17 — biên [) nên KHÔNG giao.
-  // Đơn 17→20 (tạo ở test trên) thì có. Vậy cửa sổ này phải trả đúng một đơn.
+  // Đơn 17→20 (tạo ở test trên) thì có. Vậy cửa sổ này phải trả đúng một đơn CỦA TÔI.
   it("đơn chạm biên trái của cửa sổ thì không tính là giao nhau", async () => {
     const r = await listRentalsInRange(AUG(17), AUG(20));
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.rentals).toHaveLength(1);
+    if (r.ok) expect(mine(r.rentals)).toHaveLength(1);
   });
 
   /**
