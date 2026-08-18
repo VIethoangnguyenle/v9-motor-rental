@@ -11,15 +11,16 @@ let customerId: string;
 let staffId: string;
 
 /**
- * ⚠️ File test DUY NHẤT được phép xoá TOÀN BỘ bảng `rentals`, và nó buộc phải:
- * `getStatsSummary` tổng hợp trên cả bảng và không nhận bộ lọc nào, nên một hàng
- * lạ còn sót làm mọi assertion số học ở dưới sai.
- *
- * Chấp nhận được vì `rentals` là bảng mới và DB dev chưa có dữ liệu vận hành thật.
- * Ngày nào dev bắt đầu giữ đơn thật, đổi cách này.
+ * `getStatsSummary` giờ nhận `filter.createdBy` (xem `stats.ts`), nên file này
+ * KHÔNG còn cần xoá toàn bộ bảng `rentals` để cô lập assertion số học — mọi lời
+ * gọi trong file này truyền `{ createdBy: staffId }`, và `staffId` là hàng
+ * `staff_users` seed riêng của file này (id bắt đầu bằng `P`). Xoá theo
+ * `like(created_by, 'ztest-tk-%')` chỉ đụng đúng hàng của FILE NÀY — một đơn
+ * thuê ai đó nhập tay qua UI (mang `created_by` thật, không mang tiền tố test)
+ * sống sót qua mọi lần `bun test`.
  */
 async function clean() {
-  await db.delete(schema.rentals);
+  await db.delete(schema.rentals).where(like(schema.rentals.createdBy, `${P}%`));
   await db.delete(schema.vehicles).where(like(schema.vehicles.slug, `${P}%`));
   await db.delete(schema.customers).where(like(schema.customers.fullName, `${P}%`));
   await db.delete(schema.staffUsers).where(like(schema.staffUsers.id, `${P}%`));
@@ -61,15 +62,18 @@ beforeAll(async () => {
 afterAll(clean);
 
 /**
- * `getStatsSummary` tổng hợp trên TOÀN BỘ bảng `rentals`, không nhận `from/to`
- * — nên xoá sạch bảng trước MỖI test (không chỉ ở đầu/cuối file) là cách duy
- * nhất giữ mỗi assertion số học độc lập với các test khác. Đây là cách "clear
- * rentals between tests" mà task mô tả, thay vì cố chọn khoảng ngày không giao
- * nhau xuyên suốt cả file — với nhiều `it()` cùng dùng một `vehicleId`, giữ
- * khoảng ngày không giao nhau xuyên file sẽ ngày càng khó theo dõi.
+ * `getStatsSummary` không nhận `from/to`, chỉ nhận `createdBy` — nên các `it()`
+ * trong file này vẫn cần dọn ĐƠN CỦA CHÍNH FILE NÀY giữa các lần chạy để giữ mỗi
+ * assertion số học độc lập (nhiều `it()` cùng dùng một `vehicleId`/`staffId`,
+ * giữ khoảng ngày không giao nhau xuyên suốt file sẽ ngày càng khó theo dõi).
+ *
+ * Khác bản cũ ở đúng một chỗ: lọc theo `like(created_by, 'ztest-tk-%')` thay vì
+ * xoá trần cả bảng — phạm vi xoá không bao giờ vượt ra ngoài dữ liệu do FILE NÀY
+ * tạo, dù chạy song song với file test khác hay với người đang thao tác tay
+ * trên UI.
  */
 beforeEach(async () => {
-  await db.delete(schema.rentals);
+  await db.delete(schema.rentals).where(like(schema.rentals.createdBy, `${P}%`));
 });
 
 /** Đơn ĐÃ GIAO XE ở đúng một thời điểm — dùng cho các test doanh thu. */
@@ -127,7 +131,7 @@ describe("getStatsSummary", () => {
     await handedOver("2026-08-15T01:00:00+07:00", 1_000_000, 1, 2);
 
     const now = new Date("2026-08-15T02:00:00+07:00");
-    const stats = await getStatsSummary(now);
+    const stats = await getStatsSummary(now, { createdBy: staffId });
 
     expect(stats.revenue.today.amount).toBe(1_000_000);
     expect(stats.revenue.today.orders).toBe(1);
@@ -137,7 +141,7 @@ describe("getStatsSummary", () => {
     await handedOver("2026-08-14T23:00:00+07:00", 2_000_000, 3, 4);
 
     const now = new Date("2026-08-15T02:00:00+07:00");
-    const stats = await getStatsSummary(now);
+    const stats = await getStatsSummary(now, { createdBy: staffId });
 
     expect(stats.revenue.today.amount).toBe(0);
     expect(stats.revenue.today.orders).toBe(0);
@@ -155,7 +159,7 @@ describe("getStatsSummary", () => {
     await handedOver("2026-08-16T12:00:00+07:00", 3_000_000, 5, 6);
 
     const now = new Date("2026-08-17T10:00:00+07:00");
-    const stats = await getStatsSummary(now);
+    const stats = await getStatsSummary(now, { createdBy: staffId });
 
     expect(stats.revenue.thisWeek.amount).toBe(0);
     expect(stats.revenue.thisWeek.orders).toBe(0);
@@ -171,7 +175,7 @@ describe("getStatsSummary", () => {
     });
 
     const now = new Date("2026-08-15T12:00:00+07:00");
-    const stats = await getStatsSummary(now);
+    const stats = await getStatsSummary(now, { createdBy: staffId });
 
     expect(stats.revenue.today).toEqual({ amount: 0, orders: 0, prevAmount: 0 });
     expect(stats.revenue.thisWeek).toEqual({ amount: 0, orders: 0, prevAmount: 0 });
@@ -214,7 +218,7 @@ describe("getStatsSummary", () => {
       status: "BOOKED",
     });
 
-    const stats = await getStatsSummary(now);
+    const stats = await getStatsSummary(now, { createdBy: staffId });
 
     expect(stats.attention.overdue).toBe(1);
     expect(stats.attention.dueToday).toBe(1);

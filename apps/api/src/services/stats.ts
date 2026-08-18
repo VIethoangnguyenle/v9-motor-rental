@@ -20,6 +20,21 @@ export interface StatsSummary {
   };
 }
 
+/**
+ * `undefined` (mặc định) = TOÀN SHOP — đường gọi thật ở `routes/stats.ts` không
+ * bao giờ truyền field này, vì số của chủ shop phải cộng dồn mọi nhân viên.
+ *
+ * `createdBy` không phải một tham số bịa ra để phục vụ test: "doanh thu theo
+ * nhân viên" là thứ một chủ shop có lý do thật để hỏi một ngày nào đó ("Minh bán
+ * được bao nhiêu tuần này"), và nó đúng là trục mà `rentals.created_by` đã ghi
+ * sẵn cho mọi đơn — không cần thêm cột hay suy luận gì mới. Test dùng lại đúng
+ * field nghiệp vụ này để lọc theo nhân viên seed của chính nó, thay vì xoá cả
+ * bảng `rentals` trước mỗi lần chạy — xem `stats.test.ts`.
+ */
+export interface StatsFilter {
+  readonly createdBy?: string;
+}
+
 /** Hình dạng đúng một hàng mà câu truy vấn dưới trả về — dùng để type Bun.SQL, không `as`. */
 interface StatsRow {
   today_amount: number;
@@ -48,9 +63,20 @@ interface StatsRow {
  * Doanh thu lọc đúng một điều kiện `handed_over_at IS NOT NULL`, KHÔNG kiểm trạng
  * thái: ràng buộc ở DB đã ép `handed_over_at IS NOT NULL ⟺ status IN
  * ('ONGOING','COMPLETED')`, nên đơn huỷ hay chưa giao không thể lọt vào.
+ *
+ * `filter?.createdBy` mặc định `undefined` → cả hai vế `WHERE` bên dưới rơi vào
+ * nhánh `IS NULL`, tức KHÔNG lọc gì — số ra đúng bằng bản trước khi có tham số
+ * này. Viết bằng MỘT hình dạng câu SQL duy nhất
+ * (`${createdBy}::text IS NULL OR created_by = ${createdBy}`) thay vì dựng hai
+ * câu SQL khác nhau tuỳ có/không filter: Bun.SQL không có `sql.fragment` kiểu
+ * postgres.js để ghép điều kiện động vào template, và literal `undefined` non-null
+ * cho ra `col IS NULL` — không phải kiểu chuỗi ta cần so `= created_by`. Ép kiểu
+ * `::text` là bắt buộc: không có nó, tham số `null` không có kiểu để Postgres suy
+ * ra, và câu lệnh lỗi `could not determine data type of parameter`.
  */
-export async function getStatsSummary(now: Date): Promise<StatsSummary> {
+export async function getStatsSummary(now: Date, filter?: StatsFilter): Promise<StatsSummary> {
   const tz = SHOP_TIMEZONE;
+  const createdBy = filter?.createdBy ?? null;
 
   const rows: StatsRow[] = await client`
     WITH b AS (
@@ -59,7 +85,12 @@ export async function getStatsSummary(now: Date): Promise<StatsSummary> {
         date_trunc('week',  ${now}::timestamptz AT TIME ZONE ${tz}) AT TIME ZONE ${tz} AS week_start,
         date_trunc('month', ${now}::timestamptz AT TIME ZONE ${tz}) AT TIME ZONE ${tz} AS month_start
     ),
-    r AS (SELECT total_amount, handed_over_at FROM rentals WHERE handed_over_at IS NOT NULL)
+    r AS (
+      SELECT total_amount, handed_over_at
+      FROM rentals
+      WHERE handed_over_at IS NOT NULL
+        AND (${createdBy}::text IS NULL OR created_by = ${createdBy})
+    )
     SELECT
       (SELECT COALESCE(SUM(total_amount),0)::int FROM r, b WHERE handed_over_at >= b.day_start)                                                            AS today_amount,
       (SELECT COUNT(*)::int                      FROM r, b WHERE handed_over_at >= b.day_start)                                                            AS today_orders,
@@ -70,8 +101,10 @@ export async function getStatsSummary(now: Date): Promise<StatsSummary> {
       (SELECT COALESCE(SUM(total_amount),0)::int FROM r, b WHERE handed_over_at >= b.month_start)                                                          AS month_amount,
       (SELECT COUNT(*)::int                      FROM r, b WHERE handed_over_at >= b.month_start)                                                          AS month_orders,
       (SELECT COALESCE(SUM(total_amount),0)::int FROM r, b WHERE handed_over_at >= b.month_start - interval '1 month' AND handed_over_at < b.month_start)  AS prev_month_amount,
-      (SELECT COUNT(*)::int FROM rentals, b WHERE status = 'ONGOING' AND ends_at < ${now})                                                                 AS overdue,
-      (SELECT COUNT(*)::int FROM rentals, b WHERE status = 'ONGOING' AND ends_at >= b.day_start AND ends_at < b.day_start + interval '1 day')              AS due_today`;
+      (SELECT COUNT(*)::int FROM rentals, b WHERE status = 'ONGOING' AND ends_at < ${now}
+        AND (${createdBy}::text IS NULL OR created_by = ${createdBy}))                                                                                      AS overdue,
+      (SELECT COUNT(*)::int FROM rentals, b WHERE status = 'ONGOING' AND ends_at >= b.day_start AND ends_at < b.day_start + interval '1 day'
+        AND (${createdBy}::text IS NULL OR created_by = ${createdBy}))                                                                                      AS due_today`;
 
   const row = rows[0];
   if (!row) throw new Error("truy vấn thống kê không trả về hàng nào");
