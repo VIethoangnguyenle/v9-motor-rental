@@ -141,6 +141,48 @@ export async function createResetCode(staffUserId: string): Promise<string> {
       codeHash,
       expiresAt: new Date(Date.now() + CODE_TTL_MS),
     });
+
+    /**
+     * Dọn mã HẾT HẠN chưa dùng — nợ đã biết (docs/DEBT.md, "Không ai dọn mã hết
+     * hạn"). Hàng `used_at IS NULL` quá `expires_at` nằm mãi trong bảng, và đó
+     * đúng là tập mà `password_reset_codes_active_idx` (comment ở
+     * `packages/db/src/schema/staff.ts`) GIẢ ĐỊNH gần như luôn rỗng.
+     *
+     * Repo này không có scheduler nào (root CLAUDE.md), nên dọn ăn theo một
+     * đường ghi ĐÃ CÓ SẴN thay vì dựng cron riêng cho một bảng nhỏ.
+     *
+     * ⚠️ CỐ Ý dọn TOÀN CỤC, không khoanh theo `staffUserId` của lời gọi này.
+     * Câu UPDATE ngay trên đã tự dọn hết mã CŨ CHƯA DÙNG của CHÍNH người đang
+     * xin, kể cả đã hết hạn — nên nếu chỉ xoá "của riêng người này" thì câu
+     * DELETE dưới đây không bao giờ có việc để làm cho HỌ. Hàng còn sót lại
+     * mãi trong tập `used_at IS NULL` là của những người xin ĐÚNG MỘT LẦN rồi
+     * không bao giờ xin lại — một DELETE khoanh theo user không chạm tới
+     * được những hàng đó, chỉ một lượt quét TOÀN CỤC do MỘT người bất kỳ
+     * trong shop kích hoạt mới dọn được.
+     *
+     * An toàn để chạy không cần khoá gì thêm: `expires_at < now()` là điều
+     * kiện MỘT CHIỀU theo thời gian — không hàng nào rơi ra rồi rơi lại vào
+     * tập đó. `verifyCode` đòi `expires_at > now()` mới chấp nhận mã, nên một
+     * hàng đã hết hạn không còn mở được gì cho ai; xoá nó lúc nào cũng an
+     * toàn, kể cả khi hai lời gọi `createResetCode` của hai người khác nhau
+     * chạy DELETE này chồng lên nhau — mỗi câu chỉ xoá đúng những gì nó thấy
+     * tại thời điểm nó chạy, Postgres lo phần còn lại, không cần `FOR UPDATE`.
+     *
+     * Đủ dùng KHÔNG CẦN scheduler vì quy mô ở đây là NHÂN VIÊN shop (vài chục
+     * người, không phải khách hàng): luồng quên mật khẩu được gọi đủ thường
+     * xuyên để một hàng hết hạn không nằm lâu trước khi người kế tiếp (bất kỳ
+     * ai) xin mã và dọn hộ nó. Đổi lấy một scheduler mà repo chưa có hạ tầng
+     * cho một bảng nhỏ thế này là một hạ tầng mới để giải quyết cái mà một
+     * DELETE ăn theo đường ghi sẵn có đã đóng đủ.
+     */
+    await tx
+      .delete(schema.passwordResetCodes)
+      .where(
+        and(
+          isNull(schema.passwordResetCodes.usedAt),
+          lt(schema.passwordResetCodes.expiresAt, sql`now()`),
+        ),
+      );
   });
 
   return code;

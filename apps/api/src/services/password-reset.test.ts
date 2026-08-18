@@ -191,6 +191,42 @@ describe("createResetCode", () => {
     expect(row?.codeHash).not.toBe(code);
     expect(await Bun.password.verify(code, row?.codeHash ?? "")).toBe(true);
   });
+
+  // Nợ đã trả (docs/DEBT.md, "Không ai dọn mã hết hạn"): hàng `used_at IS NULL`
+  // quá `expires_at` phải biến mất KHỎI BẢNG, không chỉ khỏi
+  // `password_reset_codes_active_idx`. Điểm mấu chốt của test này là AI xin mã
+  // mới: người xin là ID, hàng hết hạn là của MỘT NGƯỜI KHÁC (`abandonedId`) —
+  // nếu bản sửa chỉ dọn "của riêng người đang xin" (khoanh theo staffUserId),
+  // test này đỏ. Dọn phải là một lượt quét TOÀN CỤC do BẤT KỲ lời gọi
+  // createResetCode nào kích hoạt, vì người xin mã đúng MỘT LẦN rồi không bao
+  // giờ quay lại sẽ không bao giờ tự kích hoạt được lượt dọn cho chính họ.
+  it("ai đó xin mã mới thì dọn luôn mã HẾT HẠN chưa dùng của NGƯỜI KHÁC", async () => {
+    const abandonedId = `${P}abandoned`;
+    await db.insert(schema.staffUsers).values({
+      id: abandonedId,
+      email: `${P}abandoned@v9.vn`,
+      fullName: "Xin mã một lần rồi không quay lại",
+      status: "ACTIVE",
+    });
+    // Chèn thẳng một hàng đã hết hạn, chưa dùng — đúng hình dạng debt mô tả,
+    // không đi qua createResetCode() vì hàm đó luôn sinh hạn dùng ở tương lai.
+    await db.insert(schema.passwordResetCodes).values({
+      staffUserId: abandonedId,
+      codeHash: "khong-quan-trong-vi-khong-verify",
+      expiresAt: new Date(Date.now() - 1000),
+    });
+    expect(await activeCodes(abandonedId)).toHaveLength(1);
+
+    await createResetCode(ID); // ID, KHÔNG PHẢI abandonedId, xin mã mới.
+
+    // Biến mất khỏi BẢNG, không chỉ khỏi tập used_at IS NULL — select trần,
+    // không lọc usedAt, để phân biệt "đã XOÁ" với "chỉ bị đánh dấu đã dùng".
+    const rowsLeft = await db
+      .select()
+      .from(schema.passwordResetCodes)
+      .where(eq(schema.passwordResetCodes.staffUserId, abandonedId));
+    expect(rowsLeft).toHaveLength(0);
+  });
 });
 
 describe("verifyCode", () => {
