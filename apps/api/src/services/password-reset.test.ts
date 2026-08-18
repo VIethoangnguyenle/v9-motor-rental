@@ -271,6 +271,33 @@ describe("findStaffByEmail", () => {
   it("người DISABLED coi như không tồn tại", async () => {
     expect(await findStaffByEmail(EMAIL_DISABLED)).toBeNull();
   });
+
+  // Nợ đã trả (docs/DEBT.md, "Email so sánh phân biệt hoa thường"):
+  // `supertokens-node` chỉ `.trim()` form field, không hạ hoa thường, nên nhân
+  // viên gõ khác hoa/thường lúc quên mật khẩu phải vẫn tìm ra được hồ sơ của
+  // chính họ — không thì họ nhận một 200 chung chung và không bao giờ có mã.
+  it("tìm ra được dù gõ khác hoa/thường so với lúc lưu", async () => {
+    expect(await findStaffByEmail(EMAIL.toUpperCase())).toEqual({ id: ID });
+  });
+
+  // Vế còn lại của cùng nợ: tầng DB phải là hàng rào THẬT, không chỉ service so
+  // `lower(...)` cho đẹp. `staff_users_email_lower_idx` (migration 0011) là
+  // UNIQUE INDEX trên `lower(email)` — hai hồ sơ chỉ khác hoa/thường phải bị
+  // Postgres từ chối ngay lúc INSERT, không phải thứ ứng dụng tự giác tránh.
+  it("DB từ chối email trùng chỉ khác hoa/thường", async () => {
+    let threw = false;
+    try {
+      await db.insert(schema.staffUsers).values({
+        id: `${P}dup`,
+        email: EMAIL.toUpperCase(),
+        fullName: "Hồ sơ trùng email khác hoa thường",
+        status: "ACTIVE",
+      });
+    } catch {
+      threw = true;
+    }
+    expect(threw).toBe(true);
+  });
 });
 
 describe("resetPasswordWithCode", () => {

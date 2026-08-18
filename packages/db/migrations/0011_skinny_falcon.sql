@@ -1,0 +1,25 @@
+-- Unique email PHÂN BIỆT HOA THƯỜNG là nợ đã biết (docs/DEBT.md, "Email so sánh
+-- phân biệt hoa thường"). `supertokens-node` chỉ `.trim()` form field lúc đăng
+-- ký/đăng nhập, KHÔNG hạ hoa thường (emailpassword/api/utils.js) — nên
+-- `UNIQUE("email")` trên text thô cho phép "A@V9.VN" và "a@v9.vn" cùng tồn tại,
+-- trong khi `findStaffByEmail` (sau migration này) so bằng `lower(...)` và chỉ
+-- thấy được MỘT trong hai. Hệ quả trước khi sửa: nhân viên gõ khác hoa/thường
+-- lúc quên mật khẩu → tìm không ra → route vẫn trả 200 chung chung (cố ý, để
+-- không lộ email nào tồn tại) → không bao giờ nhận được mã, và không có gì để
+-- chẩn đoán.
+--
+-- Đổi unique THẬT sang biểu thức `lower(email)`: so sánh và ghi giờ cùng đi qua
+-- một quy tắc chuẩn hoá duy nhất.
+ALTER TABLE "staff_users" DROP CONSTRAINT "staff_users_email_unique";
+--> statement-breakpoint
+-- CỐ Ý không dọn trùng lặp trước khi tạo index — nếu DB đang có hai người khác
+-- nhau chung một email chỉ khác hoa/thường (đã kiểm: DB dev hiện tại KHÔNG có
+-- ca nào — `SELECT lower(email), count(*) ... HAVING count(*) > 1` ra 0 hàng),
+-- câu CREATE UNIQUE INDEX dưới đây sẽ NỔ và migration dừng lại. Đó là hành vi
+-- muốn có: hai hàng trùng nhau theo lower(email) gần như chắc là MỘT người đăng
+-- ký hai lần với hoa/thường khác nhau (lỗi của luồng đăng ký cũ, đúng thứ
+-- migration này vá), và gộp ngầm hai hồ sơ đó — có thể là hai vai trò, hai
+-- lịch sử duyệt khác nhau — là quyết định nghiệp vụ, không phải thứ một
+-- migration tự động nên tự ý làm. Thà chặn đứng lúc migrate (ồn, có log, dễ
+-- truy) còn hơn âm thầm hợp nhất hai tài khoản của hai người thật.
+CREATE UNIQUE INDEX "staff_users_email_lower_idx" ON "staff_users" (lower("email"));

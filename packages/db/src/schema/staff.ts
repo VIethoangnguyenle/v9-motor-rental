@@ -7,6 +7,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -27,8 +28,18 @@ export const staffUsers = pgTable(
   "staff_users",
   {
     id: text("id").primaryKey(),
-    /** Bản sao từ SuperTokens. Nguồn sự thật vẫn ở đó — đổi email phải đồng bộ hai nơi. */
-    email: text("email").notNull().unique(),
+    /**
+     * Bản sao từ SuperTokens. Nguồn sự thật vẫn ở đó — đổi email phải đồng bộ hai nơi.
+     *
+     * KHÔNG `.unique()` trên cột: unique thật nằm ở `staff_users_email_lower_idx`
+     * bên dưới, trên `lower(email)`. `supertokens-node` chỉ `.trim()` form field lúc
+     * đăng ký/đăng nhập, không hạ hoa thường — một unique constraint trên text thô
+     * cho phép `A@V9.VN` và `a@v9.vn` cùng tồn tại, mà `findStaffByEmail` so bằng
+     * `lower(...)` thì chỉ thấy được MỘT trong hai. Giá trị lưu xuống vẫn giữ NGUYÊN
+     * hoa/thường người dùng gõ — không lowercase ở đây, vì cột này là bản SAO, và
+     * lowercase nó sẽ làm nó lệch khỏi nguồn thật bên SuperTokens.
+     */
+    email: text("email").notNull(),
     fullName: text("full_name").notNull(),
     phone: text("phone"),
     role: text("role").notNull().default("STAFF"),
@@ -76,6 +87,12 @@ export const staffUsers = pgTable(
   (t) => [
     check("staff_users_role_valid", sql`${t.role} IN ('OWNER', 'STAFF', 'SALES')`),
     check("staff_users_status_valid", sql`${t.status} IN ('PENDING', 'ACTIVE', 'DISABLED')`),
+    // Unique THẬT của email — trên `lower(email)`, không phải trên cột thô. So sánh
+    // và ghi phải đi qua cùng một quy tắc chuẩn hoá, nếu không unique index chặn một
+    // đằng còn `findStaffByEmail` tìm một nẻo. Migration viết tay (`db:custom`) vì
+    // đây là DDL không đại diện được bằng cách gọi `.unique()` trên cột — xem
+    // `0011_*.sql`.
+    uniqueIndex("staff_users_email_lower_idx").on(sql`lower(${t.email})`),
     // Partial index: màn duyệt LUÔN lọc đúng tập này, và tập này gần như luôn rỗng.
     // Cùng lý lẽ với partial index của `vehicles`.
     index("staff_users_pending_idx")

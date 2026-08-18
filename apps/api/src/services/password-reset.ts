@@ -228,12 +228,18 @@ export async function verifyCode(staffUserId: string, code: string): Promise<Ver
  * người bị khoá không được tự mở lại tài khoản bằng luồng quên mật khẩu, và người
  * gọi không cần phân biệt hai ca — route trả cùng một 200 chung chung để không ai
  * dò được shop có những email nào (§5.1 design doc).
+ *
+ * So bằng `lower(...)` ở CẢ HAI vế, không phải `eq`: `supertokens-node` chỉ
+ * `.trim()` form field lúc đăng ký/đăng nhập, không hạ hoa thường, nên nhân viên
+ * gõ `Nguyen@V9.VN` mà hồ sơ lưu `nguyen@v9.vn` phải vẫn tìm ra được. Khớp đúng
+ * biểu thức của `staff_users_email_lower_idx` (migration `0011`) nên vẫn đi qua
+ * index, không phải full scan.
  */
 export async function findStaffByEmail(email: string): Promise<{ id: string } | null> {
   const [row] = await db
     .select({ id: schema.staffUsers.id, status: schema.staffUsers.status })
     .from(schema.staffUsers)
-    .where(eq(schema.staffUsers.email, email));
+    .where(sql`lower(${schema.staffUsers.email}) = lower(${email})`);
   if (!row) return null;
   if (row.status === "DISABLED") return null;
   return { id: row.id };
