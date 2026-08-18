@@ -287,6 +287,56 @@ export async function findStaffByEmail(email: string): Promise<{ id: string } | 
   return { id: row.id };
 }
 
+/**
+ * KHÔNG PHẢI mật khẩu thật, không bao giờ được lưu hay so với gì — chuỗi này
+ * chỉ tồn tại để mua đúng CHI PHÍ CPU của `Bun.password.hash` khi email không
+ * tồn tại. Xem `requestPasswordReset`.
+ */
+const DUMMY_HASH_INPUT = "v9-rental-timing-oracle-dummy-hash-input";
+
+/**
+ * Nợ đã đóng (docs/DEBT.md, "Timing oracle ~190×"): gộp hai nhánh của route
+ * xin mã đặt lại — "có email" và "không có email" — vào MỘT hàm để không ai
+ * gọi được nhánh tìm-thấy mà quên gọi nhánh không-tìm-thấy, hay ngược lại.
+ *
+ * Trước bản này, `routes/staff.ts` gọi `findStaffByEmail` rồi CHỈ băm khi tìm
+ * thấy: `findStaffByEmail` trả lời sau đúng một `SELECT` (đo tại đây, tầng
+ * service, KHÔNG qua HTTP: median ~2,4ms), còn `createResetCode` băm argon2id
+ * (~115ms, m=65536 t=2). Thân response ở tầng route giống hệt nhau — luôn
+ * 200, §5.1 design doc — nhưng đồng hồ thì không: 8 mẫu mỗi nhánh đo được
+ * trước khi sửa cho tỉ lệ median **~49×** (117,4ms / 2,4ms). Đó CHÍNH là thứ
+ * "luôn trả 200" sinh ra để giấu, và nó vẫn lộ qua cổng sau — thời gian phản
+ * hồi. `docs/DEBT.md` ghi ~190× từ một lần đo khác (route thật, máy khác lúc
+ * đó) — chênh lệch là do tải máy và điểm đo, không đổi bản chất: cả hai đều
+ * lớn hơn ngưỡng chấp nhận được nhiều bậc.
+ *
+ * Sửa bằng cách LUÔN băm argon2id ở CẢ HAI nhánh — nhánh "không tìm thấy" băm
+ * một hằng số thay vì bỏ qua bước đó. Đây là cách chuẩn để xoá timing oracle
+ * dạng "một nhánh có việc tốn CPU, nhánh kia không": làm nhánh rẻ tốn NGANG
+ * nhánh đắt, không phải làm nhánh đắt rẻ đi — ⚠️ không "sửa" theo hướng bỏ
+ * bớt cost của `createResetCode`, chi phí đó CHÍNH LÀ điểm của argon2.
+ *
+ * ⚠️ Băm HẰNG SỐ (`DUMMY_HASH_INPUT`), KHÔNG băm `email` người gọi gửi lên.
+ * Chi phí argon2id chủ yếu do tham số bộ nhớ/thời gian quyết định, gần như
+ * không đổi theo độ dài input trong khoảng bình thường — nhưng "chắc không
+ * sao vì email thường không dài" là đúng loại giả định mà một oracle khác có
+ * thể lợi dụng sau này (email cực dài do schema `t.String({format:"email"})`
+ * không giới hạn độ dài). Băm hằng số loại bỏ khả năng đó hoàn toàn thay vì
+ * tin nó không xảy ra — tuyệt đối không để chi phí phụ thuộc bất cứ gì kẻ gọi
+ * kiểm soát được.
+ *
+ * Trả **mã thô** khi tìm thấy, `null` khi không — người gọi (route) tự quyết
+ * định gửi mã đi đâu, cùng lý do `createResetCode` không biết đường gửi (xem
+ * comment ở đó).
+ */
+export async function requestPasswordReset(email: string): Promise<string | null> {
+  const staff = await findStaffByEmail(email);
+  if (staff) return createResetCode(staff.id);
+
+  await Bun.password.hash(DUMMY_HASH_INPUT);
+  return null;
+}
+
 export type ResetPasswordResult =
   | { ok: true }
   | { ok: false; reason: "WRONG_CODE" | "CODE_EXPIRED" | "NOT_FOUND" | "WEAK_PASSWORD" };

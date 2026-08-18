@@ -7,6 +7,7 @@ import {
   createResetCode,
   findStaffByEmail,
   generateRandomCode,
+  requestPasswordReset,
   resetPasswordWithCode,
   verifyCode,
   type PasswordResetDeps,
@@ -334,6 +335,76 @@ describe("findStaffByEmail", () => {
     }
     expect(threw).toBe(true);
   });
+});
+
+/**
+ * Nợ đã đóng (docs/DEBT.md, "Timing oracle ~190×"). Test này chạm tầng SERVICE
+ * trực tiếp — KHÔNG qua HTTP — vì SMTP không cấu hình ở môi trường dev/CI:
+ * `POST /staff/password-reset/request` trả `EMAIL_NOT_CONFIGURED` (503)
+ * TRƯỚC khi làm bất cứ việc gì ở tầng service, nên đo qua route ở đây đo được
+ * đúng hai số gần bằng nhau vì lý do sai — cả hai nhánh đều rẻ như nhau, chứ
+ * không phải vì đã sửa đúng chỗ tốn kém. `requestPasswordReset` là hàm DUY
+ * NHẤT chứa cả hai nhánh của oracle (xem comment đầy đủ ở `password-reset.ts`),
+ * nên đo trực tiếp ở đây mới chứng minh được cái cần chứng minh.
+ *
+ * Số đo TRƯỚC khi sửa (script riêng, gọi service layer y hệt hình dạng cũ của
+ * `routes/staff.ts` — `findStaffByEmail` rồi CÓ ĐIỀU KIỆN mới `createResetCode`
+ * — 8 mẫu mỗi nhánh, cùng máy dev):
+ *
+ *   found (ms):    120.76 116.98 118.74 113.29 118.69 116.79 117.80 109.91
+ *   notFound (ms):   2.38   2.44   2.41   2.44   2.32   2.42   2.26   2.39
+ *   median found=117.4ms  notFound=2.4ms  tỉ lệ ≈ 48,9×
+ *
+ * (docs/DEBT.md ghi ~190× từ một lần đo khác, qua route thật trước khi route
+ * đó có nhánh 503 sớm — chênh lệch tuyệt đối là do điểm đo/tải máy khác nhau,
+ * không đổi bản chất: cả hai đo được đều lớn hơn ngưỡng chấp nhận được nhiều
+ * bậc, và cả hai đều bắt nguồn từ đúng MỘT nguyên nhân — băm có điều kiện.)
+ */
+describe("requestPasswordReset — xoá timing oracle", () => {
+  it("email có thật và email không tồn tại tốn thời gian XẤP XỈ NHAU", async () => {
+    // 7 mẫu mỗi nhánh, XEN KẼ (found, notFound, found, notFound, ...) để một
+    // đợt tải máy tăng/giảm giữa chừng ảnh hưởng ĐỀU lên cả hai nhánh thay vì
+    // thiên vị nhánh chạy sau. Dùng MEDIAN, không phải mean — một mẫu ngoại lệ
+    // (GC pause, context switch) không được kéo lệch cả kết luận.
+    const N = 7;
+    const foundMs: number[] = [];
+    const notFoundMs: number[] = [];
+
+    for (let i = 0; i < N; i++) {
+      const t0 = performance.now();
+      await requestPasswordReset(EMAIL);
+      foundMs.push(performance.now() - t0);
+
+      const t1 = performance.now();
+      await requestPasswordReset(`${P}khong-ton-tai-timing-${String(i)}@v9.vn`);
+      notFoundMs.push(performance.now() - t1);
+    }
+
+    const median = (xs: number[]): number => {
+      const sorted = [...xs].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      const a = sorted[mid - 1];
+      const b = sorted[mid];
+      return sorted.length % 2 === 1 || a === undefined ? (b ?? 0) : (a + (b ?? a)) / 2;
+    };
+
+    const foundMedian = median(foundMs);
+    const notFoundMedian = median(notFoundMs);
+    const ratio = Math.max(foundMedian, notFoundMedian) / Math.min(foundMedian, notFoundMedian);
+
+    // In ra để đọc được CON SỐ THẬT trong log CI, không chỉ pass/fail — cùng
+    // tinh thần với các test đo lường khác trong file này.
+    console.warn(
+      `[timing] found median=${foundMedian.toFixed(2)}ms ` +
+        `notFound median=${notFoundMedian.toFixed(2)}ms ratio=${ratio.toFixed(2)}x`,
+    );
+
+    // Ngưỡng 3× có biên độ rộng: sau khi sửa, argon2id (~115ms) chiếm áp đảo
+    // CẢ HAI nhánh, dao động do tải máy chỉ còn vài phần trăm — không phải một
+    // biên mong manh. 48,9× (đo trước khi sửa, xem comment ở describe) đứng
+    // cách ngưỡng này hơn một bậc độ lớn.
+    expect(ratio).toBeLessThan(3);
+  }, 20_000);
 });
 
 describe("resetPasswordWithCode", () => {

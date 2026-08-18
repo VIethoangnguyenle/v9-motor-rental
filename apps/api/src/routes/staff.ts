@@ -6,7 +6,7 @@ import { isEmailConfigured, sendResetCodeEmail } from "../services/email";
 import {
   changePassword,
   createResetCode,
-  findStaffByEmail,
+  requestPasswordReset,
   resetPasswordWithCode,
   type ChangePasswordResult,
   type PasswordResetDeps,
@@ -296,11 +296,13 @@ export const staff = new Elysia({ name: "staff" })
         });
       }
 
-      const found = await findStaffByEmail(body.email);
-      if (found) {
-        const code = await createResetCode(found.id);
-        await sendResetCodeEmail(body.email, code);
-      }
+      // `requestPasswordReset` gộp hai nhánh "có email"/"không có email" và
+      // băm argon2id ở CẢ HAI — đúng chỗ xoá timing oracle ~190× (docs/DEBT.md,
+      // xem comment đầy đủ ở `services/password-reset.ts`). Đừng tách lại
+      // thành `findStaffByEmail` rồi CÓ ĐIỀU KIỆN mới băm — đó chính là hình
+      // dạng cũ đã sinh ra oracle.
+      const code = await requestPasswordReset(body.email);
+      if (code) await sendResetCodeEmail(body.email, code);
 
       // LUÔN 200, kể cả khi email không tồn tại hoặc chủ nó đang bị khoá. Trả 404
       // cho email lạ là biến endpoint này thành máy dò danh sách nhân viên của
