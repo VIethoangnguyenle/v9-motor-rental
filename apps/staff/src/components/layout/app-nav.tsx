@@ -23,7 +23,7 @@ type NavItem =
   | {
       readonly kind: "link";
       readonly label: string;
-      readonly to: "/" | "/staff" | "/calendar";
+      readonly to: "/" | "/staff" | "/calendar" | "/customers";
       readonly ownerOnly?: true;
     }
   | { readonly kind: "soon"; readonly label: string };
@@ -32,7 +32,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   { kind: "link", label: "Thống kê", to: "/" },
   { kind: "link", label: "Lịch", to: "/calendar" },
   { kind: "soon", label: "Đơn thuê" },
-  { kind: "soon", label: "Khách hàng" },
+  { kind: "link", label: "Khách hàng", to: "/customers" },
   { kind: "soon", label: "Bàn giao" },
   // Chỉ hiện với OWNER — đây là hàng rào của TRẢI NGHIỆM, không phải của dữ
   // liệu: `beforeLoad` của route `/staff` và `/staff/users*` ở server mới là

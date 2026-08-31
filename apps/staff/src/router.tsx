@@ -22,9 +22,12 @@ import { AppShell } from "./components/layout/app-shell";
 import { hasSession, signOut } from "./lib/auth";
 import { LOGIN_REASONS, decideEntry, type LoginReason } from "./lib/guard-decision";
 import { ensureMe } from "./lib/me";
+import { validateCustomersSearch } from "./lib/customers-search";
 import { validateCalendarSearch } from "./components/rentals/rental-calendar";
 import { CalendarPage } from "./pages/calendar-page";
 import { ChangePasswordPage } from "./pages/change-password-page";
+import { CustomerDetailPage } from "./pages/customer-detail-page";
+import { CustomersListPage } from "./pages/customers-list-page";
 import { PendingApprovalPage } from "./pages/pending-approval-page";
 import { SignupPage } from "./pages/signup-page";
 import { LoginPage } from "./pages/login-page";
@@ -241,6 +244,28 @@ const changePasswordRoute = createRoute({
   component: ChangePasswordPage,
 });
 
+/**
+ * `?q=` và `?page=` sống ở URL chứ không trong `useState` của component —
+ * cùng lý lẽ với `calendarRoute` ngay trên: Back từ trang chi tiết phải trả về
+ * ĐÚNG trang và ĐÚNG từ khoá đang xem, F5 không mất chỗ, và link gửi cho đồng
+ * nghiệp mở ra đúng thứ mình đang nhìn.
+ *
+ * `validateCustomersSearch` lọc giá trị lạ thay vì throw (khuôn
+ * `validateCalendarSearch`): `?page=abc` cho ra trang 1, không cho ra màn lỗi.
+ */
+const customersListRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/customers",
+  validateSearch: validateCustomersSearch,
+  component: CustomersListPage,
+});
+
+const customerDetailRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/customers/$id",
+  component: CustomerDetailPage,
+});
+
 const routeTree = rootRoute.addChildren([
   publicLayoutRoute.addChildren([
     loginRoute,
@@ -254,6 +279,8 @@ const routeTree = rootRoute.addChildren([
     changePasswordRoute,
     healthRoute,
     calendarRoute,
+    customersListRoute,
+    customerDetailRoute,
   ]),
 ]);
 
