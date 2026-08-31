@@ -1034,7 +1034,27 @@ const customerListRowSchema = t.Composite([
 ]);
 ```
 
-- [ ] **Step 6: Viết test**
+- [ ] **Step 6: Siết test parity — hiện nó không canh được thứ nó tuyên bố canh**
+
+Review Task 5 chỉ ra: test `"searchCustomers và listCustomers không được lệch nhau"` tự nhận là
+"hàng rào duy nhất ép hai hàm đi chung một đường", nhưng chỉ assert `length > 0` cho **cả hai**.
+Nó sẽ vẫn xanh nếu hai hàm lệch thành hai tập kết quả **khác nhau mà đều không rỗng** — đúng cái
+nó sinh ra để chặn. Hôm nay may mắn chỉ có một hàng khớp nên nó còn phân biệt được.
+
+Nâng lên so **tập `id`**, gần như miễn phí:
+
+```ts
+    const idsFromSearch = fromSearch.map((c) => c.id).sort();
+    const idsFromList = fromList.customers.map((c) => c.id).sort();
+    expect(idsFromSearch.length).toBeGreaterThan(0);
+    expect(idsFromSearch).toEqual(idsFromList);
+```
+
+Lưu ý khi seed thêm khách cho Task 6: `searchCustomers` có `.limit(20)` còn `listCustomers` phân
+trang — nếu bộ test có hơn 20 khách khớp cùng từ khoá thì hai tập lệch nhau **hợp lệ**. Giữ từ
+khoá của test parity đủ hẹp để dưới ngưỡng đó, và ghi lý do vào comment.
+
+- [ ] **Step 7: Viết test**
 
 ```ts
 describe("listCustomers — tín hiệu vận hành", () => {
@@ -1051,7 +1071,7 @@ describe("listCustomers — tín hiệu vận hành", () => {
 > Nếu file test đã seed đơn thuê cho hồ sơ mẫu, đổi kỳ vọng cho khớp dữ liệu seed thật thay vì sửa
 > seed — đọc phần đầu file trước khi viết.
 
-- [ ] **Step 7: Chạy toàn bộ test API + typecheck**
+- [ ] **Step 8: Chạy toàn bộ test API + typecheck**
 
 ```bash
 bun test apps/api && bun run typecheck
@@ -1060,7 +1080,7 @@ bun test apps/api && bun run typecheck
 Expected: cả hai PASS. `typecheck` là **hai lệnh nối bằng `&&`** — nửa sau kiểm `scripts/`; đừng
 chỉ chạy nửa đầu.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add apps/api/src/services/customers.ts apps/api/src/routes/rentals.ts apps/api/src/services/customers.test.ts
@@ -1607,7 +1627,26 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
   **Điều kiện đóng:** màn bàn giao land.
 ```
 
-- [ ] **Step 2: Thêm vào `docs/ROADMAP.md`, mục nghiệp vụ chưa chốt**
+- [ ] **Step 2: Hai mục nợ nữa, do review Task 5 tìm ra**
+
+```markdown
+- **Ô tìm khách không escape `%` và `_`** — gõ `%` khớp toàn bộ khách hàng. Có sẵn từ trước
+  migration `0012`, **không** phải hồi quy. Đã đo và kết luận là **nhiễu, không phải lỗ hổng**:
+  chuỗi đi qua bind parameter nên không phải injection; `OWNER`/`STAFF` vốn đã xem được toàn bộ
+  khách nên không rò gì; `searchCustomers` có `.limit(20)` và `listCustomers` chặn `pageSize ≤ 50`
+  nên không kéo sập được gì; pattern luôn kết thúc bằng `%` nên `\` không gây 500.
+  Đường rủi ro thật duy nhất: nhân viên lỡ gõ `%` ở ô tìm của form lên đơn, thấy danh sách trông
+  hợp lý nhưng sai người, rồi gắn nhầm khách vào đơn.
+  **Nếu sửa:** `term.replace(/[\\%_]/g, "\\$&")` + `ESCAPE '\'`, và nhớ nó đổi nhẹ cách trích trigram.
+
+- **`updateCustomer` xoá trắng `note` khi caller bỏ qua field** — `note: input.note ?? null`
+  (`services/customers.ts`) là semantic PUT, trong khi route khai `note: t.Optional(...)`
+  (`routes/rentals.ts`). Client nào gửi thiếu `note` sẽ xoá ghi chú cũ mà không định làm vậy.
+  Hôm nay `customer-edit-form.tsx` luôn gửi đủ ba field nên chưa phát tác.
+  **Điều kiện phải sửa:** ngay khi có caller thứ hai của `POST /customers/:id`.
+```
+
+- [ ] **Step 3: Thêm vào `docs/ROADMAP.md`, mục nghiệp vụ chưa chốt**
 
 ```markdown
 **Màn Khách hàng — đã land 2026-08-31**, xem
@@ -1618,7 +1657,7 @@ gần nhất* (đổi nó là đổi hình dạng sản phẩm: danh sách duy�
 tờ lên MinIO cùng đợt bàn giao.
 ```
 
-- [ ] **Step 3: Đóng số hiệu migration thật**
+- [ ] **Step 4: Đóng số hiệu migration thật**
 
 ```bash
 ls packages/db/migrations/*.sql | tail -1
@@ -1626,7 +1665,7 @@ ls packages/db/migrations/*.sql | tail -1
 
 Thay `00XX` trong `DEBT.md` bằng số thật.
 
-- [ ] **Step 4: Verify toàn repo**
+- [ ] **Step 5: Verify toàn repo**
 
 ```bash
 bun test && bun run typecheck && bun run lint && bun run format
@@ -1634,7 +1673,7 @@ bun test && bun run typecheck && bun run lint && bun run format
 
 Expected: tất cả PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add docs/DEBT.md docs/ROADMAP.md
