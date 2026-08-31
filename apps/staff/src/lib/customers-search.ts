@@ -18,3 +18,19 @@ export function validateCustomersSearch(search: Record<string, unknown>): Custom
     typeof rawPage === "number" && Number.isSafeInteger(rawPage) && rawPage >= 1 ? rawPage : 1;
   return { q: typeof rawQ === "string" ? rawQ : "", page };
 }
+
+/**
+ * Quyết định "`searchText` trong `customers-list-page.tsx` có cần đồng bộ lại
+ * theo `q` mới từ URL không" — hàm THUẦN, tách ra để test được không cần dựng
+ * component: `apps/staff` không có React Testing Library/jsdom, cùng lý do
+ * `decideEntry` ở `guard-decision.ts` được rút khỏi router.
+ *
+ * `q` đổi TỪ BÊN NGOÀI (Back/Forward của trình duyệt, hay nút "← Khách hàng"
+ * của trang chi tiết) trong khi `CustomersListPage` KHÔNG unmount — `useState(q)`
+ * chỉ chạy lúc mount nên `searchText` sẽ cũ nếu không đồng bộ lại, và effect
+ * debounce sẽ thấy `searchText` cũ khác `q` mới rồi ghi giá trị CŨ ngược lại
+ * URL, đá hỏng chính nút Back mà việc thêm `q`/`page` vào URL sinh ra để sửa.
+ */
+export function shouldResyncSearchText(q: string, lastQ: string): boolean {
+  return q !== lastQ;
+}

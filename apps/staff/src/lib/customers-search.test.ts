@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { validateCustomersSearch } from "./customers-search";
+import { shouldResyncSearchText, validateCustomersSearch } from "./customers-search";
 
 describe("validateCustomersSearch", () => {
   it("giữ nguyên giá trị hợp lệ", () => {
@@ -26,5 +26,24 @@ describe("validateCustomersSearch", () => {
 
   it("q không phải chuỗi thì về rỗng", () => {
     expect(validateCustomersSearch({ q: ["a", "b"] })).toEqual({ q: "", page: 1 });
+  });
+});
+
+describe("shouldResyncSearchText", () => {
+  /**
+   * Bug thật: Back/Forward của trình duyệt trong khi `CustomersListPage`
+   * KHÔNG unmount chỉ đổi `q` từ URL, không chạm `searchText` state. Thiếu
+   * đồng bộ này, effect debounce thấy `searchText` cũ khác `q` mới rồi ghi
+   * giá trị CŨ ngược lại URL — đá hỏng chính nút Back. Ca này mô phỏng đúng
+   * repro: gõ "nguyen" (lastQ đuổi theo thành "nguyen"), rồi Back về `q=""`.
+   */
+  it("q đổi từ bên ngoài (Back/Forward) → phải đồng bộ", () => {
+    expect(shouldResyncSearchText("", "nguyen")).toBe(true);
+    expect(shouldResyncSearchText("nguyen", "")).toBe(true);
+  });
+
+  it("q không đổi (vd. chỉ đổi page khi phân trang) → không đồng bộ", () => {
+    expect(shouldResyncSearchText("nguyen", "nguyen")).toBe(false);
+    expect(shouldResyncSearchText("", "")).toBe(false);
   });
 });

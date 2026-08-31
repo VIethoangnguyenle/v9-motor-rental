@@ -6,6 +6,7 @@ import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { TextField } from "../components/ui/text-field";
 import { CUSTOMERS_PAGE_SIZE, customersListQuery } from "../lib/customers";
+import { shouldResyncSearchText } from "../lib/customers-search";
 import { errorMessage } from "../lib/errors";
 
 /**
@@ -30,6 +31,19 @@ export function CustomersListPage() {
   const page = search.page ?? 1;
 
   const [searchText, setSearchText] = useState(q);
+
+  // `q` đổi TỪ BÊN NGOÀI (Back/Forward của trình duyệt, hay nút "← Khách hàng"
+  // của trang chi tiết) trong khi component KHÔNG unmount: `useState(q)` chỉ
+  // chạy lúc mount nên `searchText` sẽ cũ, và effect debounce bên dưới sẽ thấy
+  // `next !== q` rồi ghi giá trị CŨ ngược lại URL — đá hỏng chính nút Back mà
+  // task này sinh ra để sửa. Đồng bộ ngay trong lúc render (khuôn "adjusting
+  // state when props change" của React) chứ không bằng một useEffect thứ hai:
+  // effect chạy SAU khi paint nên ô nhập sẽ nháy một khung hình giá trị cũ.
+  const [lastQ, setLastQ] = useState(q);
+  if (shouldResyncSearchText(q, lastQ)) {
+    setLastQ(q);
+    setSearchText(q);
+  }
 
   // Debounce 300ms — cùng ngưỡng với ô tìm khách hàng ở `rental-form.tsx`.
   // Ghi vào URL thay vì vào state: Back trả về đúng từ khoá trước đó.
