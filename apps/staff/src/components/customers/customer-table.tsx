@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import type { CustomerListRow } from "../../lib/customers";
+import type { CustomersSearch } from "../../lib/customers-search";
 
 interface CustomerTableProps {
   readonly rows: readonly CustomerListRow[];
   /** `q`/`page` đang xem, đi cùng sang trang chi tiết để nút back quay lại đúng đây. */
-  readonly listSearch: { readonly q: string; readonly page: number };
+  readonly listSearch: CustomersSearch;
 }
 
 /**

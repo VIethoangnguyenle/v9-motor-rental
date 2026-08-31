@@ -39,6 +39,13 @@ export function CustomersListPage() {
   // task này sinh ra để sửa. Đồng bộ ngay trong lúc render (khuôn "adjusting
   // state when props change" của React) chứ không bằng một useEffect thứ hai:
   // effect chạy SAU khi paint nên ô nhập sẽ nháy một khung hình giá trị cũ.
+  // Giới hạn đã biết, KHÔNG sửa: `shouldResyncSearchText` không phân biệt được
+  // "`q` đổi vì Back/Forward" với "`q` đổi vì chính debounce ở dưới vừa
+  // navigate". Router commit location trong `startTransition`, nên nếu người
+  // dùng gõ tiếp đúng trong khoảng ~1 frame giữa lúc `navigate()` gọi và lúc
+  // React commit `search.q` mới, resync này sẽ đè chữ vừa gõ bằng giá trị VỪA
+  // commit (cũ hơn). Rất khó gặp khi gõ tay thật, và tự lành ở nhịp debounce
+  // kế tiếp — không đáng để đổi thiết kế.
   const [lastQ, setLastQ] = useState(q);
   if (shouldResyncSearchText(q, lastQ)) {
     setLastQ(q);
@@ -49,10 +56,18 @@ export function CustomersListPage() {
   // Ghi vào URL thay vì vào state: Back trả về đúng từ khoá trước đó.
   // Đổi từ khoá thì QUAY VỀ trang 1 — giữ `page` cũ dễ ra một trang trống nếu
   // kết quả mới có ít hơn `page * pageSize` dòng.
+  //
+  // `replace: true` CHỈ ở đây, không ở hai nút phân trang bên dưới: mỗi lần
+  // debounce chốt là một lần đồng bộ Ô GÕ, không phải một hành động điều
+  // hướng có chủ ý — gõ rời rạc ("ng", nghỉ, "uyen", nghỉ) mà push thì mỗi
+  // nhịp nghỉ đẻ ra một history entry, Back phải bấm nhiều lần mới thoát khỏi
+  // một phiên gõ. Bấm "Trước"/"Sau →" thì khác: đó LÀ hành động rời rạc, có
+  // chủ ý, xứng đáng một điểm dừng riêng trong lịch sử — cùng khuôn nút
+  // prev/next của lịch (`rental-calendar.tsx`).
   useEffect(() => {
     const timer = setTimeout(() => {
       const next = searchText.trim();
-      if (next !== q) void navigate({ search: { q: next, page: 1 } });
+      if (next !== q) void navigate({ search: { q: next, page: 1 }, replace: true });
     }, 300);
     return () => clearTimeout(timer);
   }, [searchText, q, navigate]);
