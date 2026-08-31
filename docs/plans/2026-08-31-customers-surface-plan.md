@@ -1205,7 +1205,18 @@ và tương tự cho `rentals` (dùng `rentals.isError` / `rentals.refetch()`), 
 import { Button } from "../components/ui/button";
 ```
 
-- [ ] **Step 5: Verify bằng cách LÀM HỎNG thật**
+- [ ] **Step 5: Bỏ ba wrapper `<div>` rỗng quanh `Alert`**
+
+Review Task 3 chỉ ra: `Alert` **không nhận `className`** (`ui/alert.tsx`), nên
+`<div className="mt-3"><Alert/></div>` tồn tại **chỉ để** giữ chỗ cho `mt-3`. Task 3 đã bỏ `mt-3`,
+để lại `<div>` trần vô nghĩa. Bỏ hẳn, cho `<Alert>` làm flex item trực tiếp — nó render một `<p>`,
+hợp lệ làm flex item.
+
+Ba chỗ: `customers-list-page.tsx` (quanh Alert lỗi danh sách) · `customer-detail-page.tsx` (quanh
+Alert lỗi chi tiết) · `customer-detail-page.tsx` (quanh Alert lỗi lịch sử). Số dòng đã dịch qua
+nhiều commit — tìm theo nội dung, đừng theo số dòng.
+
+- [ ] **Step 6: Verify bằng cách LÀM HỎNG thật**
 
 ```bash
 bun run dev
@@ -1217,7 +1228,7 @@ trống. Bật API lại, bấm "Thử lại": dữ liệu hiện ra.
 
 Đổi trang khi API sống: bảng **không** trắng nữa, chỉ có dòng "Đang tải…".
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add apps/staff/src/lib/customers.ts apps/staff/src/pages/customers-list-page.tsx apps/staff/src/pages/customer-detail-page.tsx
@@ -1392,7 +1403,17 @@ import { rentalChipClass, STATUS_LABEL } from "../../lib/rental-status";
 
 Thêm `scope="col"` cho bốn `<th>` (dòng 36-39) và `text-right` cho `<th>Tổng tiền`.
 
-- [ ] **Step 5: Verify**
+- [ ] **Step 5: Bỏ `mt-3` sót trong `customer-rental-history.tsx`**
+
+Review Task 3 **đo được trên app chạy thật**: khoảng cách giữa `<h2>Lịch sử thuê xe</h2>` và nội
+dung bên dưới là **28px** thay vì 16px, do component này tự mang `mt-3` trên **cả hai** nhánh
+render trong khi đã là flex item của một `flex flex-col gap-4` — 16px (`gap-4`) + 12px (`mt-3`)
+cộng dồn.
+
+Bỏ `mt-3` ở cả hai chỗ: nhánh rỗng (`<p className="mt-3 text-sm text-muted">Khách hàng này chưa
+có đơn thuê nào.</p>`) và nhánh bảng (`<div className="mt-3 overflow-x-auto">`).
+
+- [ ] **Step 6: Verify**
 
 ```bash
 bun run --filter @v9/staff typecheck && bun test apps/staff
@@ -1404,7 +1425,7 @@ call site — quay lại Step 2.
 `bun run dev`, mở `/calendar`: màu thanh đơn thuê phải **y hệt trước**. Mở `/customers`: cột "Tình
 trạng" có chip màu, số điện thoại bấm được.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add apps/staff/src/lib/rental-status.ts apps/staff/src/components/customers/customer-table.tsx apps/staff/src/components/customers/customer-rental-history.tsx
