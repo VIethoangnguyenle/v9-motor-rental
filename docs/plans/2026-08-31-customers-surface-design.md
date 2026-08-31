@@ -67,6 +67,14 @@ Phương án bị loại: endpoint `signals` riêng (tạo lại đúng vấn đ
 bảng" mà đợt này đang sửa); cột denormalized + trigger (trigger là state ẩn không nằm trong diff,
 và sẽ lệch).
 
+> **Sửa 2026-09-01, lúc lập plan:** implementation **không dùng LATERAL**. `listCustomers` đã có
+> sẵn một truy vấn phụ khoanh theo đúng trang đang xem (`services/customers.ts:204-216`), kèm
+> comment giải thích vì sao. Ba phương án trên phân biệt nhau ở **hình dạng API** — truy vấn phụ
+> sẵn có vẫn là một round trip HTTP, không state trùng lặp, nên nó nằm TRONG phương án đã chọn,
+> chỉ khác cách viết SQL. Mở rộng khuôn đã có (thêm một aggregate `FILTER` cho `lateReturnCount`,
+> thêm một `DISTINCT ON` cho `activeRental`) thắng việc dựng LATERAL mới: giữ nguyên tối ưu
+> khoanh-theo-trang, không viết lại một hàm đang chạy đúng. Kết quả ra ngoài y hệt.
+
 ## 4. Data model — một migration `db:custom`
 
 `drizzle-kit` không sinh được `CREATE FUNCTION`, `CREATE EXTENSION` lẫn GIN index có biểu thức,
