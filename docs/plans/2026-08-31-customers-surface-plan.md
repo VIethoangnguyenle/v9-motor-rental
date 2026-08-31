@@ -202,7 +202,10 @@ kind: soon — surface không tồn tại trong app đang chạy, và vì build 
 tsc --noEmit && vite build, cả nhánh không build được.
 
 useParams nhận route ID chứ không nhận path: protectedLayoutRoute khai
-id: protected nên ID đầy đủ là /protected/customers/\$id."
+id: protected nên ID đầy đủ là /protected/customers/\$id.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ```
 
 ---
@@ -445,7 +448,10 @@ git add apps/staff/src/lib/customers-search.ts apps/staff/src/lib/customers-sear
 git commit -m "feat(staff): q và page của màn Khách hàng lên URL
 
 Back từ trang chi tiết trả về đúng trang và đúng từ khoá, F5 không mất chỗ,
-link share được. Cùng khuôn calendarRoute."
+link share được. Cùng khuôn calendarRoute.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ```
 
 ---
@@ -520,7 +526,10 @@ git commit -m "fix(staff): bỏ <main> lồng trong <main> ở hai trang Khách 
 
 AppShell đã bọc children trong chính một <main>. Lặp nó gây hai landmark cho
 cùng nội dung, cộng dồn padding 40px mỗi bên, và vứt bỏ hệ ba breakpoint của
-page-gutter. stats-page.tsx đã ghi luật này thành văn."
+page-gutter. stats-page.tsx đã ghi luật này thành văn.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ```
 
 ---
@@ -726,7 +735,10 @@ unaccent() là STABLE nên không index thẳng được — bọc f_unaccent IM
 GIN + gin_trgm_ops chứ không btree: btree không phục vụ LIKE '%term%', chép
 nguyên mẫu 0011 sang đây sẽ tạo một index chết.
 
-Ba cột mới chưa có writer cho tới đợt bàn giao — cố ý, đã ghi trong migration."
+Ba cột mới chưa có writer cho tới đợt bàn giao — cố ý, đã ghi trong migration.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ```
 
 ---
@@ -775,7 +787,21 @@ bun test apps/api/src/services/customers.test.ts
 Expected: FAIL — `expect(rows.length).toBeGreaterThan(0)` nhận 0, vì `LIKE` phân biệt hoa thường và
 dấu.
 
-- [ ] **Step 3: Thêm helper dùng chung**
+- [ ] **Step 3: Hai tính chất của `f_unaccent` + `gin_trgm_ops` phải biết trước khi viết query**
+
+Task 4 đo được trên DB thật, không suy đoán:
+
+1. **`f_unaccent` là `STRICT`** — đầu vào `NULL` cho ra `NULL`, không phải khớp. Không thành vấn đề
+   với đường đi hiện tại (`term` luôn là chuỗi), nhưng đừng đưa giá trị có thể `NULL` vào nó.
+2. **`gin_trgm_ops` cần ít nhất một trigram đầy đủ** — từ khoá **1–2 ký tự** không dùng được index
+   và rơi về seq scan. Đây là hành vi của `pg_trgm`, không phải lỗi cấu hình.
+
+Điểm 2 là một **quyết định**, không phải một ghi chú: gõ 1–2 ký tự vẫn cho kết quả đúng, chỉ là
+quét bảng. Ở quy mô một shop thì chấp nhận được, và **cố ý không** chặn tìm kiếm ngắn — chặn sẽ
+làm ô tìm im lặng không trả gì khi nhân viên mới gõ chữ đầu, tệ hơn hẳn một lần quét rẻ. Ghi nhận
+để lần sau ai đó thấy seq scan trong log thì biết đây là đã cân nhắc, không phải bỏ sót.
+
+- [ ] **Step 4: Thêm helper dùng chung**
 
 Trong `apps/api/src/services/customers.ts`, thêm ngay sau khối `COLUMNS` (sau dòng 30):
 
@@ -796,7 +822,7 @@ function fullNameMatches(term: string) {
 }
 ```
 
-- [ ] **Step 4: Dùng helper ở CẢ HAI chỗ**
+- [ ] **Step 5: Dùng helper ở CẢ HAI chỗ**
 
 Trong `searchCustomers` (khoảng dòng 45-49), thay:
 
@@ -822,7 +848,7 @@ Bỏ `like` khỏi import dòng 3 nếu không còn chỗ nào dùng:
 import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 ```
 
-- [ ] **Step 5: Chạy test, phải XANH**
+- [ ] **Step 6: Chạy test, phải XANH**
 
 ```bash
 bun test apps/api/src/services/customers.test.ts
@@ -830,7 +856,7 @@ bun test apps/api/src/services/customers.test.ts
 
 Expected: PASS, gồm hai test mới.
 
-- [ ] **Step 6: Chứng minh index THẬT SỰ dùng được cho biểu thức này**
+- [ ] **Step 7: Chứng minh index THẬT SỰ dùng được cho biểu thức này**
 
 Thêm test:
 
@@ -857,7 +883,7 @@ bun test apps/api/src/services/customers.test.ts
 Expected: PASS. **Nếu FAIL**, biểu thức trong `fullNameMatches` không khớp index — so từng ký tự
 với `CREATE INDEX` ở migration, đó chính là cái bẫy migration `0011` đã ghi.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add apps/api/src/services/customers.ts apps/api/src/services/customers.test.ts
@@ -869,7 +895,10 @@ thông báo lỗi. Một helper dùng cho cả searchCustomers lẫn listCustome
 đường không lệch.
 
 Test EXPLAIN chứng minh biểu thức WHERE khớp biểu thức index — index không
-được dùng còn tệ hơn không có index."
+được dùng còn tệ hơn không có index.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ```
 
 ---
@@ -1041,7 +1070,10 @@ Hai câu hỏi duy nhất khiến nhân viên mở màn Khách hàng giữa ca l
 đang giữ xe nào, và có hay trả trễ không. Cả hai SUY RA từ rentals — không
 thêm cột, không trigger, không lệch với thực tế.
 
-Đi ké truy vấn đếm khoanh-theo-trang đã có thay vì dựng LATERAL mới."
+Đi ké truy vấn đếm khoanh-theo-trang đã có thay vì dựng LATERAL mới.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ```
 
 ---
@@ -1115,7 +1147,10 @@ git commit -m "fix(staff): Alert thành live region, TextField đạt vùng ch�
 
 Alert là <p> trần nên mọi thông báo lỗi/thành công của app im lặng với screen
 reader. TextField cao thực 38px, dưới chuẩn 44px mà chính button.tsx tuyên bố.
-Hai sửa đổi ở tầng dùng chung — vá sáu màn hình cùng lúc."
+Hai sửa đổi ở tầng dùng chung — vá sáu màn hình cùng lúc.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ```
 
 ---
@@ -1239,7 +1274,10 @@ isPending false và data undefined, nên không nhánh nào render gì — nhân
 thấy header bảng rỗng và không một thông báo. isError không xuất hiện một lần
 nào trong cả apps/staff trước commit này.
 
-keepPreviousData + isFetching để bảng hết trắng mỗi lần đổi trang."
+keepPreviousData + isFetching để bảng hết trắng mỗi lần đổi trang.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ```
 
 ---
@@ -1438,7 +1476,10 @@ zalo.me. Lịch sử thuê hết in trạng thái bằng chữ trần — nó l�
 trong app hiển thị trạng thái đơn thuê mà không dùng màu.
 
 rentalChipClass nới tham số thành structural { status; endsAt }, khớp chữ ký
-isOverdue nên không sinh định nghĩa 'quá hạn' thứ hai."
+isOverdue nên không sinh định nghĩa 'quá hạn' thứ hai.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ```
 
 ---
@@ -1537,7 +1578,10 @@ git commit -m "fix(staff): số tổng khách luôn hiện, form hết nói dố
 
 Dòng '47 khách hàng' bị ẩn hoàn toàn khi total <= 20, nên shop 18 khách không
 bao giờ thấy mình có bao nhiêu khách. update.isSuccess không tự tắt nên 'Đã lưu
-thay đổi.' nằm cạnh những trường đang bẩn. Ghi chú thành textarea có maxlength."
+thay đổi.' nằm cạnh những trường đang bẩn. Ghi chú thành textarea có maxlength.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ```
 
 ---
@@ -1598,7 +1642,10 @@ git commit -m "docs: ghi hai quyết định 'không làm' của đợt màn Kh�
 
 Gộp hồ sơ trùng (phone đã UNIQUE + tiền lệ 0011) và ba cột rentals chưa có
 writer. Cả hai có điều kiện mở lại/đóng viết rõ, để lần sau không ai tưởng là
-bỏ sót."
+bỏ sót.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ```
 
 ---
