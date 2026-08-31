@@ -1,0 +1,104 @@
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { CustomerTable } from "../components/customers/customer-table";
+import { Alert } from "../components/ui/alert";
+import { Button } from "../components/ui/button";
+import { TextField } from "../components/ui/text-field";
+import { CUSTOMERS_PAGE_SIZE, customersListQuery } from "../lib/customers";
+import { errorMessage } from "../lib/errors";
+
+/**
+ * Màn danh sách khách hàng. `q` rỗng CỐ Ý trả về trang đầu tiên của TOÀN BỘ
+ * khách hàng — đảo ngược với ô tìm tự động của form lên đơn
+ * (`components/rentals/rental-form.tsx`, dùng `customersQuery` ở
+ * `lib/rentals.ts`, `q` rỗng → không gọi gì cả). Hai nhu cầu khác nhau: form
+ * cần "chưa gõ gì thì đừng đổ cả bảng vào dropdown"; màn này cần "duyệt được
+ * toàn bộ khách hàng". Xem lý lẽ đầy đủ ở route `GET /customers/list`
+ * (`apps/api/src/routes/rentals.ts`).
+ */
+export function CustomersListPage() {
+  // `strict: false` chứ không `customersListRoute.useSearch()` — cùng lý do
+  // `login-page.tsx` và `rental-calendar.tsx:299` làm vậy: import route vào
+  // page dựng ra chu trình module.
+  const search = useSearch({ strict: false });
+  const navigate = useNavigate({ from: "/customers" });
+
+  // Dot access, không type-guard: `validateCustomersSearch` ở route đã lọc rồi.
+  // Cùng idiom `rental-calendar.tsx:300` (`search.view ?? DEFAULT_VIEW`).
+  const q = search.q ?? "";
+  const page = search.page ?? 1;
+
+  const [searchText, setSearchText] = useState(q);
+
+  // Debounce 300ms — cùng ngưỡng với ô tìm khách hàng ở `rental-form.tsx`.
+  // Ghi vào URL thay vì vào state: Back trả về đúng từ khoá trước đó.
+  // Đổi từ khoá thì QUAY VỀ trang 1 — giữ `page` cũ dễ ra một trang trống nếu
+  // kết quả mới có ít hơn `page * pageSize` dòng.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const next = searchText.trim();
+      if (next !== q) void navigate({ search: { q: next, page: 1 } });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchText, q, navigate]);
+
+  const query = useQuery(customersListQuery(q, page));
+
+  const total = query.data?.ok ? query.data.total : 0;
+  const totalPages = Math.max(1, Math.ceil(total / CUSTOMERS_PAGE_SIZE));
+
+  return (
+    <main className="p-6">
+      <h1 className="text-xl font-bold">Khách hàng</h1>
+
+      <div className="mt-4 max-w-sm">
+        <TextField
+          label="Tìm khách hàng (tên hoặc số điện thoại)"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          placeholder="Để trống để xem tất cả"
+        />
+      </div>
+
+      {query.data?.ok === false && (
+        <div className="mt-3">
+          <Alert tone="error">{errorMessage(query.data.value, "Không tải được danh sách")}</Alert>
+        </div>
+      )}
+
+      <CustomerTable rows={query.data?.ok ? query.data.customers : []} listSearch={{ q, page }} />
+
+      {query.isPending && <p className="mt-3 text-sm text-muted">Đang tải…</p>}
+      {query.data?.ok && query.data.customers.length === 0 && (
+        <p className="mt-3 text-sm text-muted">
+          {q === "" ? "Chưa có khách hàng nào." : "Không tìm thấy khách hàng nào khớp."}
+        </p>
+      )}
+
+      {query.data?.ok && total > CUSTOMERS_PAGE_SIZE && (
+        <div className="mt-4 flex items-center gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={page <= 1}
+            onClick={() => void navigate({ search: { q, page: Math.max(1, page - 1) } })}
+          >
+            ← Trước
+          </Button>
+          <span className="text-sm text-muted">
+            Trang {page}/{totalPages} · {total} khách hàng
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={page >= totalPages}
+            onClick={() => void navigate({ search: { q, page: Math.min(totalPages, page + 1) } })}
+          >
+            Sau →
+          </Button>
+        </div>
+      )}
+    </main>
+  );
+}

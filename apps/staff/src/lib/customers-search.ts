@@ -14,6 +14,7 @@ export interface CustomersSearch {
 export function validateCustomersSearch(search: Record<string, unknown>): CustomersSearch {
   const rawQ = search["q"];
   const rawPage = search["page"];
-  const page = typeof rawPage === "number" && Number.isInteger(rawPage) && rawPage >= 1 ? rawPage : 1;
+  const page =
+    typeof rawPage === "number" && Number.isSafeInteger(rawPage) && rawPage >= 1 ? rawPage : 1;
   return { q: typeof rawQ === "string" ? rawQ : "", page };
 }

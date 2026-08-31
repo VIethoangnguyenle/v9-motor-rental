@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { CustomerEditForm } from "../components/customers/customer-edit-form";
 import { CustomerRentalHistory } from "../components/customers/customer-rental-history";
 import { Alert } from "../components/ui/alert";
@@ -14,6 +14,7 @@ import { errorMessage } from "../lib/errors";
  */
 export function CustomerDetailPage() {
   const { id } = useParams({ from: "/protected/customers/$id" });
+  const backSearch = useSearch({ strict: false });
   const qc = useQueryClient();
 
   const detail = useQuery(customerDetailQuery(id));
@@ -37,7 +38,7 @@ export function CustomerDetailPage() {
     <main className="p-6">
       <Link
         to="/customers"
-        search={{ q: "", page: 1 }}
+        search={{ q: backSearch.q ?? "", page: backSearch.page ?? 1 }}
         className="text-sm text-muted underline-offset-2 hover:underline"
       >
         ← Khách hàng

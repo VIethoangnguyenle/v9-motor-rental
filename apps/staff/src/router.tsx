@@ -263,6 +263,11 @@ const customersListRoute = createRoute({
 const customerDetailRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: "/customers/$id",
+  // Trang chi tiết mang theo `q`/`page` của DANH SÁCH nó tới từ, chỉ để nút
+  // "← Khách hàng" trả về đúng chỗ vừa rời. Nó không tự dùng hai giá trị này
+  // vào việc gì khác. Cùng khuôn `rental-form.tsx:511` mang `view`/`from` sang
+  // `/calendar`.
+  validateSearch: validateCustomersSearch,
   component: CustomerDetailPage,
 });
 
