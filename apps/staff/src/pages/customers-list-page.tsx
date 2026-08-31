@@ -77,11 +77,13 @@ export function CustomersListPage() {
   const total = query.data?.ok ? query.data.total : 0;
   const totalPages = Math.max(1, Math.ceil(total / CUSTOMERS_PAGE_SIZE));
 
+  // `<div>`, không `<main>` — `AppShell` đã có một `<main>` bọc ngoài rồi (xem
+  // comment cùng lý do ở `pages/stats-page.tsx`).
   return (
-    <main className="p-6">
-      <h1 className="text-xl font-bold">Khách hàng</h1>
+    <div className="flex flex-col gap-4">
+      <h1 className="text-xl font-bold text-ink">Khách hàng</h1>
 
-      <div className="mt-4 max-w-sm">
+      <div className="max-w-sm">
         <TextField
           label="Tìm khách hàng (tên hoặc số điện thoại)"
           value={searchText}
@@ -91,22 +93,22 @@ export function CustomersListPage() {
       </div>
 
       {query.data?.ok === false && (
-        <div className="mt-3">
+        <div>
           <Alert tone="error">{errorMessage(query.data.value, "Không tải được danh sách")}</Alert>
         </div>
       )}
 
       <CustomerTable rows={query.data?.ok ? query.data.customers : []} listSearch={{ q, page }} />
 
-      {query.isPending && <p className="mt-3 text-sm text-muted">Đang tải…</p>}
+      {query.isPending && <p className="text-sm text-muted">Đang tải…</p>}
       {query.data?.ok && query.data.customers.length === 0 && (
-        <p className="mt-3 text-sm text-muted">
+        <p className="text-sm text-muted">
           {q === "" ? "Chưa có khách hàng nào." : "Không tìm thấy khách hàng nào khớp."}
         </p>
       )}
 
       {query.data?.ok && total > CUSTOMERS_PAGE_SIZE && (
-        <div className="mt-4 flex items-center gap-3">
+        <div className="flex items-center gap-3">
           <Button
             type="button"
             variant="ghost"
@@ -128,6 +130,6 @@ export function CustomersListPage() {
           </Button>
         </div>
       )}
-    </main>
+    </div>
   );
 }

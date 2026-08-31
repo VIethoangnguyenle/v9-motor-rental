@@ -34,8 +34,10 @@ export function CustomerDetailPage() {
     void qc.invalidateQueries({ queryKey: ["customers"] });
   }
 
+  // `<div>`, không `<main>` — `AppShell` đã có một `<main>` bọc ngoài rồi (xem
+  // comment cùng lý do ở `pages/stats-page.tsx`).
   return (
-    <main className="p-6">
+    <div className="flex flex-col gap-4">
       <Link
         to="/customers"
         search={{ q: backSearch.q ?? "", page: backSearch.page ?? 1 }}
@@ -44,35 +46,38 @@ export function CustomerDetailPage() {
         ← Khách hàng
       </Link>
 
-      {detail.isPending && <p className="mt-3 text-sm text-muted">Đang tải…</p>}
+      {detail.isPending && <p className="text-sm text-muted">Đang tải…</p>}
 
       {detail.data?.ok === false && (
-        <div className="mt-3">
+        <div>
           <Alert tone="error">{errorMessage(detail.data.value, "Không tải được khách hàng")}</Alert>
         </div>
       )}
 
       {detail.data?.ok && (
-        <>
-          <h1 className="mt-1 text-xl font-bold">{detail.data.customer.fullName}</h1>
+        // `gap-4` của container ngoài không xuyên qua fragment `<>...</>` này —
+        // children của fragment không phải children trực tiếp của flex cha, nên
+        // bọc thêm một `flex flex-col gap-4` ở đây để nhịp cách đều giữ nguyên.
+        <div className="flex flex-col gap-4">
+          <h1 className="text-xl font-bold text-ink">{detail.data.customer.fullName}</h1>
 
-          <div className="mt-4 max-w-md rounded-card border border-border card-pad">
+          <div className="max-w-md rounded-card border border-border card-pad">
             <CustomerEditForm customer={detail.data.customer} onSaved={handleSaved} />
           </div>
 
-          <h2 className="mt-6 text-lg font-semibold">Lịch sử thuê xe</h2>
+          <h2 className="text-lg font-semibold">Lịch sử thuê xe</h2>
 
-          {rentals.isPending && <p className="mt-3 text-sm text-muted">Đang tải…</p>}
+          {rentals.isPending && <p className="text-sm text-muted">Đang tải…</p>}
           {rentals.data?.ok === false && (
-            <div className="mt-3">
+            <div>
               <Alert tone="error">
                 {errorMessage(rentals.data.value, "Không tải được lịch sử")}
               </Alert>
             </div>
           )}
           {rentals.data?.ok && <CustomerRentalHistory rentals={rentals.data.rentals} />}
-        </>
+        </div>
       )}
-    </main>
+    </div>
   );
 }

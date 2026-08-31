@@ -16,7 +16,7 @@ interface CustomerTableProps {
  */
 export function CustomerTable({ rows, listSearch }: CustomerTableProps) {
   return (
-    <div className="mt-4 overflow-x-auto">
+    <div className="overflow-x-auto">
       <table className="w-full min-w-[560px] text-left text-sm">
         <thead>
           <tr className="border-b border-border text-muted">
