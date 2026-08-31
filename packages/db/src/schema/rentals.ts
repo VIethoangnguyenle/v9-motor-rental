@@ -80,6 +80,16 @@ export const rentals = pgTable(
       .notNull()
       .references(() => staffUsers.id, { onDelete: "restrict" }),
     note: text("note"),
+    /**
+     * Giấy tờ tùy thân shop đang giữ cho ĐƠN NÀY. Cố ý không lưu số giấy tờ —
+     * xem comment trong migration. `document_returned_at` null = còn đang giữ.
+     *
+     * ⚠️ Chưa có writer cho tới khi luồng bàn giao xe được dựng.
+     */
+    documentType: text("document_type"),
+    documentReturnedAt: timestamp("document_returned_at", { withTimezone: true }),
+    /** Địa chỉ giao xe của đơn này. "Lần gần nhất" của một khách là TRUY VẤN, không phải cột. */
+    deliveryAddress: text("delivery_address"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -133,6 +143,14 @@ export const rentals = pgTable(
     check(
       "rentals_return_after_handover",
       sql`${t.returnedAt} IS NULL OR ${t.handedOverAt} IS NULL OR ${t.returnedAt} >= ${t.handedOverAt}`,
+    ),
+    check(
+      "rentals_document_type_valid",
+      sql`${t.documentType} IS NULL OR ${t.documentType} IN ('CCCD', 'PASSPORT')`,
+    ),
+    check(
+      "rentals_document_return_needs_type",
+      sql`${t.documentReturnedAt} IS NULL OR ${t.documentType} IS NOT NULL`,
     ),
     // Partial index cho truy vấn doanh thu: đơn chưa giao không bao giờ được đếm,
     // nên chúng không cần nằm trong index.

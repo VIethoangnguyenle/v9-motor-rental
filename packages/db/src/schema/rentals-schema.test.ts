@@ -269,3 +269,41 @@ describe("customers — CHECK số điện thoại", () => {
     });
   });
 });
+
+describe("rentals — CHECK giấy tờ", () => {
+  it("từ chối document_type lạ", async () => {
+    await inRollback(async (tx) => {
+      await seed(tx);
+      let caught: InstanceType<typeof SQL.PostgresError> | null = null;
+      try {
+        await tx.savepoint(async (sp) => {
+          await sp`
+            INSERT INTO rentals (vehicle_id, customer_id, starts_at, ends_at, total_amount, created_by, document_type)
+            VALUES (${vehicleId}, ${customerId}, now(), now() + interval '1 day', 500000, ${staffId}, 'GIAY_PHEP_LAI_XE')`;
+        });
+      } catch (e) {
+        caught = asPgError(e);
+      }
+      expect(caught?.errno).toBe("23514");
+      expect(caught?.constraint).toBe("rentals_document_type_valid");
+    });
+  });
+
+  it("từ chối 'đã trả' một thứ chưa từng giữ", async () => {
+    await inRollback(async (tx) => {
+      await seed(tx);
+      let caught: InstanceType<typeof SQL.PostgresError> | null = null;
+      try {
+        await tx.savepoint(async (sp) => {
+          await sp`
+            INSERT INTO rentals (vehicle_id, customer_id, starts_at, ends_at, total_amount, created_by, document_returned_at)
+            VALUES (${vehicleId}, ${customerId}, now(), now() + interval '1 day', 500000, ${staffId}, now())`;
+        });
+      } catch (e) {
+        caught = asPgError(e);
+      }
+      expect(caught?.errno).toBe("23514");
+      expect(caught?.constraint).toBe("rentals_document_return_needs_type");
+    });
+  });
+});
