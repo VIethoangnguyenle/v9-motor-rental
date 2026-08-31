@@ -405,7 +405,7 @@ bấm Back → về `page=1` giữ nguyên từ khoá; F5 → vẫn đúng chỗ
 - [ ] **Step 7: Commit**
 
 ```bash
-git add apps/staff/src/lib/customers-search.test.ts apps/staff/src/pages/customers-list-page.tsx apps/staff/src/pages/customer-detail-page.tsx apps/staff/src/components/customers/customer-table.tsx apps/staff/src/router.tsx
+git add apps/staff/src/lib/customers-search.ts apps/staff/src/lib/customers-search.test.ts apps/staff/src/pages/customers-list-page.tsx apps/staff/src/pages/customer-detail-page.tsx apps/staff/src/components/customers/customer-table.tsx apps/staff/src/router.tsx
 git commit -m "feat(staff): q và page của màn Khách hàng lên URL
 
 Back từ trang chi tiết trả về đúng trang và đúng từ khoá, F5 không mất chỗ,
