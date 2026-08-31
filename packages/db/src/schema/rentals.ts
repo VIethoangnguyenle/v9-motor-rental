@@ -15,6 +15,21 @@ import { vehicles } from "./vehicles";
  * Không có CHECK này thì `UNIQUE(phone)` không chặn được gì: "+84912345678" và
  * "0912 345 678" là hai chuỗi khác nhau với cùng một người. Đúng lớp lỗi mà
  * docs/DEBT.md đã ghi cho email phân biệt hoa thường.
+ *
+ * ⚠️ Hàm `f_unaccent(text)` và index `customers_full_name_search_idx`
+ * (`gin (f_unaccent(lower(full_name)) gin_trgm_ops)`) KHÔNG khai ở đây — chúng
+ * sống trong migration viết tay `0012`, cùng lý do và cùng cái bẫy như `period`
+ * / `rentals_no_overlap` của `0010` ngay dưới. Vì không khai ở đây nên chúng
+ * cũng KHÔNG có trong `meta/*_snapshot.json` (`public.customers.indexes` là
+ * `{}`): drizzle-kit không biết chúng tồn tại, và đó là điều kiện để
+ * `db:generate` im lặng. Thêm chúng vào file này thì lần `db:generate` sau sinh
+ * ra một migration cố tạo lại thứ đã có — và `CREATE INDEX` đó còn phụ thuộc
+ * `f_unaccent`, thứ drizzle-kit không sinh được và không biết phải đặt trước.
+ *
+ * Hệ quả cho người sửa file này: `full_name` được tìm bằng
+ * `f_unaccent(lower(...))`, không phải `LIKE` trần. Biểu thức trong
+ * `fullNameMatches()` (apps/api/src/services/customers.ts) phải khớp CHÍNH XÁC
+ * biểu thức của index, nếu không planner lặng lẽ bỏ qua index.
  */
 export const customers = pgTable(
   "customers",

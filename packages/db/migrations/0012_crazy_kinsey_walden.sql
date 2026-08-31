@@ -3,24 +3,50 @@
 -- Trước migration này `listCustomers`/`searchCustomers` dùng `LIKE '%term%'` trên
 -- text thô: Postgres LIKE phân biệt hoa thường và không biết gì về dấu, nên nhân
 -- viên gõ "nguyen" hoặc "trần" không ra "Nguyễn" — và màn hình trả về câu RẤT tự
--- tin "Không tìm thấy khách hàng nào khớp." Cùng lớp lỗi với email phân biệt
--- hoa thường đã đóng ở migration 0011; ở đó bài học đã được áp cho `phone`
--- (chuẩn hoá cả đường đọc lẫn đường ghi) nhưng `full_name` thì lọt.
+-- tin "Không tìm thấy khách hàng nào khớp."
 --
--- ⚠️ Ba câu SQL dưới đây VIẾT TAY: drizzle-kit không sinh được `CREATE EXTENSION`,
--- `CREATE FUNCTION`, lẫn index trên biểu thức có opclass. Phần `ALTER TABLE
--- rentals` ở cuối file thì do `db:generate` sinh — giữ nguyên văn nó, vì
--- `meta/0012_snapshot.json` được sinh cùng lúc và là thứ lần `db:generate` sau
--- so sánh với. Sửa tay câu ALTER mà không sửa snapshot là cách tạo ra một
+-- Cùng LỚP lỗi với hai chỗ đã chuẩn hoá trước đó, nhưng đừng nhầm nguồn: `phone`
+-- được ép chuẩn từ migration `0009` (`customers_phone_normalized`) cộng
+-- `normalizePhone` ở @v9/shared, còn `email` so không phân biệt hoa thường là
+-- `0011` (`staff_users_email_lower_idx`). `full_name` không được cái nào — đây
+-- là chỗ trám nốt.
+--
+-- ⚠️ File này là output của `db:generate` (phần `ALTER TABLE "rentals"` ở cuối)
+-- được MỞ RỘNG TAY bằng ba câu đầu. Giữ nguyên văn phần generate:
+-- `meta/0012_snapshot.json` sinh cùng lúc với nó và là thứ lần `db:generate` sau
+-- đem đi so — sửa tay câu ALTER mà không sửa snapshot là cách tạo ra một
 -- migration "ma" ở lần generate kế tiếp.
+--
+-- `CREATE EXTENSION` và `CREATE FUNCTION` thì drizzle-kit không sinh được, hết
+-- cách. `CREATE INDEX` bên dưới thì KHÔNG cùng loại đó: drizzle nhiều khả năng
+-- diễn đạt được nó — `index().using(method, ...)` nhận `SQL`, và snapshot `0011`
+-- cho thấy index trên biểu thức serialise được (`isExpression: true`). Chưa thử
+-- nên không kết luận là không thể. Nó nằm ngoài file schema vì lý do khác: nó
+-- phụ thuộc `f_unaccent` phải tồn tại TRƯỚC, mà thứ tự câu lệnh trong file
+-- generate là do drizzle-kit quyết, không phải do mình.
 CREATE EXTENSION IF NOT EXISTS unaccent;--> statement-breakpoint
 CREATE EXTENSION IF NOT EXISTS pg_trgm;--> statement-breakpoint
 
--- unaccent() do extension cung cấp là STABLE, KHÔNG phải IMMUTABLE — nó tra một
--- dictionary mà người ta đổi được lúc chạy. Postgres vì vậy TỪ CHỐI nó trong
--- biểu thức index. Wrapper dưới đây ghim regdictionary thành hằng nên nó
--- immutable THẬT, không phải khai bừa cho qua planner rồi để index sai lặng lẽ.
-CREATE FUNCTION f_unaccent(text) RETURNS text
+-- `unaccent()` KHÔNG immutable — đo trên PG 17, CẢ HAI overload đều STABLE
+-- (`unaccent(regdictionary,text)` và `unaccent(text)`, `provolatile = 's'`), nên
+-- Postgres từ chối nó thẳng trong biểu thức index. Wrapper dưới đây khai
+-- IMMUTABLE, nghĩa là nó là một LỜI KHẲNG ĐỊNH chồng lên một hàm STABLE, không
+-- phải một sự thật được chứng minh. Lời khẳng định đó là chuẩn mực (chính tài
+-- liệu Postgres chỉ cách này) nhưng vẫn là lời khẳng định.
+--
+-- Ghim `'public.unaccent'::regdictionary` mua được ĐÚNG một thứ: kết quả không
+-- còn phụ thuộc `search_path` hay cấu hình text-search của phiên. Nó KHÔNG mua
+-- được bất biến thật. `ALTER TEXT SEARCH DICTIONARY public.unaccent (RULES=...)`
+-- — hoặc thay file `unaccent.rules` rồi reload — vẫn đổi kết quả, và khi đó
+-- index GIN bên dưới thành RÁC cho tới khi `REINDEX`.
+--
+-- Đã ĐO, không suy đoán (toàn bộ trong một transaction rồi ROLLBACK): đổi rules
+-- cho `ễ` → `zz`, rồi CÙNG MỘT câu truy vấn cho HAI đáp án — đi qua index ra 0
+-- hàng, ép seqscan ra 1 hàng. Sai theo hướng THIẾU hàng (false negative), không
+-- phải thừa: bitmap heap scan có bước Recheck tính lại biểu thức từ heap nên
+-- ứng viên sai bị lọc, nhưng hàng ĐÚNG thì không bao giờ được đưa vào danh sách
+-- ứng viên. Ghi ở docs/DEBT.md vì không có gì trong repo ép luật này.
+CREATE FUNCTION public.f_unaccent(text) RETURNS text
   LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT AS
 $$ SELECT public.unaccent('public.unaccent'::regdictionary, $1) $$;--> statement-breakpoint
 

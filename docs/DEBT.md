@@ -249,3 +249,25 @@ nợ 2026-08-18, xem "Đã đóng trong Plan A" bên dưới cho cách chứng m
   `pg_get_constraintdef('rentals_status_valid')` từ Postgres đang chạy, parse các literal
   `'X'::text`, so với `RENTAL_STATUSES`. Chứng minh hàng rào có hiệu lực: thêm tạm `"EXTENDED"` vào
   `RENTAL_STATUSES` (không đụng migration) làm test đỏ đúng chỗ, in rõ literal thừa; đã revert.
+
+## Nợ sinh ra từ đợt màn hình Khách hàng
+
+- **Đổi rules của `unaccent` là đổi ngầm kết quả tìm khách — phải `REINDEX`.** `f_unaccent` (migration
+  `0012`) khai `IMMUTABLE` chồng lên `unaccent()` vốn **STABLE** — đo trên PG 17: cả hai overload
+  (`unaccent(regdictionary,text)` và `unaccent(text)`) đều `provolatile = 's'`. Ghim
+  `'public.unaccent'::regdictionary` chỉ gỡ được phụ thuộc vào `search_path` và cấu hình
+  text-search của phiên; nó **không** làm hàm bất biến thật. Lời khai `IMMUTABLE` đúng **chừng nào
+  rules của dictionary `public.unaccent` không đổi**. Ai chạy
+  `ALTER TEXT SEARCH DICTIONARY public.unaccent (RULES = ...)`, hoặc thay file `unaccent.rules` rồi
+  reload, **bắt buộc** phải `REINDEX INDEX customers_full_name_search_idx` ngay sau đó.
+
+  Không làm thì index giữ trigram tính theo rules CŨ và tìm kiếm **thiếu hàng một cách im lặng**.
+  Đã đo, không phải suy đoán (trong một transaction rồi ROLLBACK): đổi rules cho `ễ` → `zz` xong,
+  **cùng một câu truy vấn cho hai đáp án** — đi qua index ra 0 hàng, ép seqscan ra 1 hàng. Sai theo
+  hướng THIẾU (false negative) chứ không thừa: bitmap heap scan có bước Recheck tính lại biểu thức
+  từ heap nên ứng viên sai bị lọc, nhưng hàng đúng không bao giờ được đưa vào danh sách ứng viên —
+  tức triệu chứng là "khách có thật mà tìm không ra", đúng cái lỗi migration `0012` sinh ra để vá.
+
+  **Không có gì trong repo ép luật này**: không migration nào chạy lại, không test nào bắt được, và
+  màn hình vẫn trả về câu tự tin "Không tìm thấy khách hàng nào khớp." Cùng hạng với luật CodeGraph
+  ở root [`CLAUDE.md`](../CLAUDE.md) — quy ước trong tài liệu, không phải hàng rào.
