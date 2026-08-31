@@ -215,7 +215,21 @@ id: protected nên ID đầy đủ là /protected/customers/\$id."
 - Modify: `apps/staff/src/components/customers/customer-table.tsx` (mang `q`/`page` sang trang chi tiết)
 - Modify: `apps/staff/src/pages/customer-detail-page.tsx` (nút back trả về ĐÚNG chỗ vừa rời)
 
-- [ ] **Step 1: Viết test cho `validateCustomersSearch`** (hàm đã tạo ở Task 1 Step 2)
+- [ ] **Step 1: Siết `page` — `Number.isInteger` không có trần trên**
+
+Code quality review Task 1 bắt được: `Number.isInteger(1e20)` và `Number.isInteger(Number.MAX_VALUE)`
+đều là `true`, nên `?page=1e20` lọt qua nguyên vẹn. Hôm qua vô hại vì trang còn dùng `useState`
+riêng; **Step 4 dưới đây nối `search.page` thẳng vào `customersListQuery`**, và từ đó nó bay ra
+`GET /customers/list?page=1e20`. Sửa một chữ, cùng chi phí:
+
+Trong `apps/staff/src/lib/customers-search.ts`, đổi `Number.isInteger` thành `Number.isSafeInteger`:
+
+```ts
+  const page =
+    typeof rawPage === "number" && Number.isSafeInteger(rawPage) && rawPage >= 1 ? rawPage : 1;
+```
+
+- [ ] **Step 2: Viết test cho `validateCustomersSearch`** (hàm đã tạo ở Task 1 Step 2)
 
 Tạo `apps/staff/src/lib/customers-search.test.ts`:
 
@@ -235,12 +249,24 @@ describe("validateCustomersSearch", () => {
   it("page hỏng thì về 1 chứ không throw", () => {
     expect(validateCustomersSearch({ page: "abc" })).toEqual({ q: "", page: 1 });
     expect(validateCustomersSearch({ page: 0 })).toEqual({ q: "", page: 1 });
+    expect(validateCustomersSearch({ page: -1 })).toEqual({ q: "", page: 1 });
     expect(validateCustomersSearch({ page: 2.5 })).toEqual({ q: "", page: 1 });
+    expect(validateCustomersSearch({ page: Number.NaN })).toEqual({ q: "", page: 1 });
+  });
+
+  it("page vượt số nguyên an toàn cũng về 1 — 1e20 KHÔNG được lọt ra API", () => {
+    expect(validateCustomersSearch({ page: 1e20 })).toEqual({ q: "", page: 1 });
+    expect(validateCustomersSearch({ page: Number.MAX_VALUE })).toEqual({ q: "", page: 1 });
+    expect(validateCustomersSearch({ page: Number.POSITIVE_INFINITY })).toEqual({ q: "", page: 1 });
+  });
+
+  it("q không phải chuỗi thì về rỗng", () => {
+    expect(validateCustomersSearch({ q: ["a", "b"] })).toEqual({ q: "", page: 1 });
   });
 });
 ```
 
-- [ ] **Step 2: Chạy test, phải PASS ngay**
+- [ ] **Step 3: Chạy test, phải PASS ngay**
 
 ```bash
 bun test apps/staff/src/lib/customers-search.test.ts
@@ -248,7 +274,7 @@ bun test apps/staff/src/lib/customers-search.test.ts
 
 Expected: PASS, 3 tests. (Đây là hàm thuần, không cần vòng đỏ trước — implementation đã có ở Step 1.)
 
-- [ ] **Step 3: Đọc/ghi state qua URL trong page**
+- [ ] **Step 4: Đọc/ghi state qua URL trong page**
 
 Trong `apps/staff/src/pages/customers-list-page.tsx`, thay ba dòng `useState` (20-22) và hai
 `useEffect` (25-34) bằng:
@@ -302,7 +328,7 @@ Thay hai `onClick` phân trang (dòng 77 và 88):
 
 Và đổi `debouncedSearch` ở dòng 65 thành `q`.
 
-- [ ] **Step 4: Nút "← Khách hàng" phải trả về ĐÚNG chỗ vừa rời**
+- [ ] **Step 5: Nút "← Khách hàng" phải trả về ĐÚNG chỗ vừa rời**
 
 Task 1 buộc phải thêm `search={{ q: "", page: 1 }}` vào `<Link to="/customers">`
 (`customer-detail-page.tsx`) vì `CustomersSearch` có `q`/`page` không optional — TanStack Router
@@ -365,7 +391,7 @@ Trong `customer-detail-page.tsx`, đọc lại và trả về đúng chỗ:
       </Link>
 ```
 
-- [ ] **Step 5: Verify**
+- [ ] **Step 6: Verify**
 
 ```bash
 bun run --filter @v9/staff typecheck && bun test apps/staff/src/lib/customers-search.test.ts
@@ -376,7 +402,7 @@ Expected: cả hai PASS.
 Kiểm tay với `bun run dev`: gõ vào ô tìm → URL đổi thành `?q=...&page=1`; bấm "Sau →" → `page=2`;
 bấm Back → về `page=1` giữ nguyên từ khoá; F5 → vẫn đúng chỗ.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add apps/staff/src/lib/customers-search.test.ts apps/staff/src/pages/customers-list-page.tsx apps/staff/src/pages/customer-detail-page.tsx apps/staff/src/components/customers/customer-table.tsx apps/staff/src/router.tsx
