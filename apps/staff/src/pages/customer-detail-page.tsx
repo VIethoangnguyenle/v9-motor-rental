@@ -55,9 +55,15 @@ export function CustomerDetailPage() {
       )}
 
       {detail.data?.ok && (
-        // `gap-4` của container ngoài không xuyên qua fragment `<>...</>` này —
-        // children của fragment không phải children trực tiếp của flex cha, nên
-        // bọc thêm một `flex flex-col gap-4` ở đây để nhịp cách đều giữ nguyên.
+        // `<div>` chứ không phải fragment `<>...</>` — nhưng KHÔNG phải vì
+        // fragment làm hỏng `gap`: fragment trong suốt với DOM, con của nó vẫn
+        // là con trực tiếp của flex cha nên `gap-4` vốn đã áp đúng. (Bản nháp
+        // của đợt này ghi ngược điều đó; giữ lại đính chính ở đây để người sau
+        // không "sửa lại cho đúng" theo hướng sai.)
+        //
+        // Lý do thật: khối này là một NHÓM có nhịp riêng — hồ sơ khách rồi tới
+        // lịch sử thuê. Cho nó container riêng thì sau này đổi nhịp bên trong
+        // không phải đụng nhịp của cả trang, và không phải quay lại `mt-*`.
         <div className="flex flex-col gap-4">
           <h1 className="text-xl font-bold text-ink">{detail.data.customer.fullName}</h1>
 
