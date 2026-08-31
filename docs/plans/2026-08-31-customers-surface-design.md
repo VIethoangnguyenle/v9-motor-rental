@@ -254,9 +254,15 @@ duyệt → danh sách cần chú ý), xứng đáng một brainstorm riêng.
 ## 10. Rủi ro đã biết
 
 - **Ba cột mới không có writer** cho tới đợt bàn giao. Chấp nhận có ý thức; đã ghi ở §4.
-- **`CREATE EXTENSION` cần quyền superuser.** Migration chạy bằng role owner nên được, nhưng
-  `0001_service_roles.sql` đã chặn DDL của Directus/SuperTokens trên `public` — cần xác nhận
-  migrator vẫn đủ quyền trước khi land. Kiểm bằng `bun run db:migrate` trên DB dev sạch.
+- ~~**`CREATE EXTENSION` cần quyền superuser.**~~ **Đã đo 2026-09-01, rủi ro này KHÔNG tồn tại.**
+  Trên PG 17 cả `unaccent` lẫn `pg_trgm` đều `trusted = t` (`pg_available_extension_versions`),
+  nên **role thường có `CREATE` trên database là cài được** — không cần superuser. Role `v9` của
+  migrator dù sao cũng `rolsuper = t`. Đã chứng minh mạnh hơn một mức: chạy toàn bộ chuỗi
+  `0000 → 0012` trên một database **trắng** (`v9_migration_probe`, tạo rồi xoá) — 13 migration
+  apply sạch, đủ extension/function/index/cột, và planner thật sự ăn index
+  (`Bitmap Index Scan on customers_full_name_search_idx` trên 2000 hàng).
+
+  Điều này quan trọng cho prod: không phải xin superuser cho role deploy.
 - **GIN index làm chậm đường ghi.** Không đáng kể ở quy mô một shop, nhưng nếu `bun run bench`
   báo vượt budget thì đây là nghi phạm đầu tiên.
 - **Đợt này chạm `ui/text-field.tsx`, `ui/alert.tsx` và `lib/rental-status.ts`** — ba module dùng
