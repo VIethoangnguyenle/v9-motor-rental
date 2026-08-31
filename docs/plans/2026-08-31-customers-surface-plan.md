@@ -210,8 +210,10 @@ id: protected nên ID đầy đủ là /protected/customers/\$id."
 ## Task 2: State lên URL (đóng P1 "User Control and Freedom")
 
 **Files:**
-- Create: `apps/staff/src/lib/customers-search.ts`
 - Modify: `apps/staff/src/pages/customers-list-page.tsx:19-39`
+- Modify: `apps/staff/src/router.tsx` (thêm `validateSearch` cho `customerDetailRoute`)
+- Modify: `apps/staff/src/components/customers/customer-table.tsx` (mang `q`/`page` sang trang chi tiết)
+- Modify: `apps/staff/src/pages/customer-detail-page.tsx` (nút back trả về ĐÚNG chỗ vừa rời)
 
 - [ ] **Step 1: Viết test cho `validateCustomersSearch`** (hàm đã tạo ở Task 1 Step 2)
 
@@ -300,7 +302,70 @@ Thay hai `onClick` phân trang (dòng 77 và 88):
 
 Và đổi `debouncedSearch` ở dòng 65 thành `q`.
 
-- [ ] **Step 4: Verify**
+- [ ] **Step 4: Nút "← Khách hàng" phải trả về ĐÚNG chỗ vừa rời**
+
+Task 1 buộc phải thêm `search={{ q: "", page: 1 }}` vào `<Link to="/customers">`
+(`customer-detail-page.tsx`) vì `CustomersSearch` có `q`/`page` không optional — TanStack Router
+đòi prop `search` trên `<Link>` có `to` là literal. Hôm đó nó vô hại vì trang danh sách còn đọc
+`useState`. **Từ Step 3 nó thành bug**: gõ "nguyen", sang trang 3, mở một khách, bấm back → về
+`?q=&page=1`, mất sạch. Đó đúng là thứ task này sinh ra để sửa.
+
+Đây là điều hướng `<Link>` tường minh (push state mới), **không** phải nút Back trình duyệt, nên
+nó reset bất kể lịch sử. Cách sửa: cho trang chi tiết **biết mình tới từ đâu**.
+
+Trong `router.tsx`, thêm `validateSearch` cho `customerDetailRoute`:
+
+```tsx
+const customerDetailRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/customers/$id",
+  // Trang chi tiết mang theo `q`/`page` của DANH SÁCH nó tới từ, chỉ để nút
+  // "← Khách hàng" trả về đúng chỗ vừa rời. Nó không tự dùng hai giá trị này
+  // vào việc gì khác. Cùng khuôn `rental-form.tsx:511` mang `view`/`from` sang
+  // `/calendar`.
+  validateSearch: validateCustomersSearch,
+  component: CustomerDetailPage,
+});
+```
+
+Trong `customer-table.tsx`, nhận thêm prop và truyền đi:
+
+```tsx
+interface CustomerTableProps {
+  readonly rows: readonly CustomerListRow[];
+  /** `q`/`page` đang xem, đi cùng sang trang chi tiết để nút back quay lại đúng đây. */
+  readonly listSearch: { readonly q: string; readonly page: number };
+}
+```
+
+```tsx
+                <Link
+                  to="/customers/$id"
+                  params={{ id: row.id }}
+                  search={listSearch}
+                  className="font-semibold text-ink underline-offset-2 hover:underline"
+                >
+```
+
+Ở `customers-list-page.tsx`, truyền xuống: `<CustomerTable rows={...} listSearch={{ q, page }} />`.
+
+Trong `customer-detail-page.tsx`, đọc lại và trả về đúng chỗ:
+
+```tsx
+  const backSearch = useSearch({ strict: false });
+```
+
+```tsx
+      <Link
+        to="/customers"
+        search={{ q: backSearch.q ?? "", page: backSearch.page ?? 1 }}
+        className="text-sm text-muted underline-offset-2 hover:underline"
+      >
+        ← Khách hàng
+      </Link>
+```
+
+- [ ] **Step 5: Verify**
 
 ```bash
 bun run --filter @v9/staff typecheck && bun test apps/staff/src/lib/customers-search.test.ts
@@ -311,10 +376,10 @@ Expected: cả hai PASS.
 Kiểm tay với `bun run dev`: gõ vào ô tìm → URL đổi thành `?q=...&page=1`; bấm "Sau →" → `page=2`;
 bấm Back → về `page=1` giữ nguyên từ khoá; F5 → vẫn đúng chỗ.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add apps/staff/src/lib/customers-search.ts apps/staff/src/lib/customers-search.test.ts apps/staff/src/pages/customers-list-page.tsx
+git add apps/staff/src/lib/customers-search.test.ts apps/staff/src/pages/customers-list-page.tsx apps/staff/src/pages/customer-detail-page.tsx apps/staff/src/components/customers/customer-table.tsx apps/staff/src/router.tsx
 git commit -m "feat(staff): q và page của màn Khách hàng lên URL
 
 Back từ trang chi tiết trả về đúng trang và đúng từ khoá, F5 không mất chỗ,
