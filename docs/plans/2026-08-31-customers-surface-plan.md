@@ -391,7 +391,43 @@ Trong `customer-detail-page.tsx`, đọc lại và trả về đúng chỗ:
       </Link>
 ```
 
-- [ ] **Step 6: Verify**
+- [ ] **Step 6: Đồng bộ `searchText` khi `q` đổi từ Back/Forward**
+
+⚠️ Bước này được thêm sau khi spec review Task 2 bắt được bug trong chính code mẫu của plan.
+
+`useState(q)` chỉ chạy lúc mount. Bấm Back/Forward **trong khi vẫn ở `/customers`** chỉ đổi search
+param — route không đổi nên component **không unmount** — nên `searchText` cũ. Effect debounce
+re-run (`q` nằm trong deps), thấy `next !== q`, rồi `navigate()` ghi giá trị **cũ** ngược lại URL
+sau ~300ms. Back bị đá ngược, tức đúng cái P1 task này sinh ra để sửa.
+
+Thêm vào `apps/staff/src/lib/customers-search.ts` một hàm thuần để test được — `apps/staff`
+**không có** React Testing Library/jsdom, và tiền lệ là `decideEntry` ở `guard-decision.ts`:
+
+```ts
+export function shouldResyncSearchText(q: string, lastQ: string): boolean {
+  return q !== lastQ;
+}
+```
+
+Trong `customers-list-page.tsx`, đồng bộ **ngay trong lúc render** (khuôn "adjusting state when
+props change" của React), không dùng `useEffect` thứ hai — effect chạy sau paint nên ô nhập sẽ
+nháy một khung hình giá trị cũ:
+
+```tsx
+  const [lastQ, setLastQ] = useState(q);
+  if (shouldResyncSearchText(q, lastQ)) {
+    setLastQ(q);
+    setSearchText(q);
+  }
+```
+
+Test: `shouldResyncSearchText("", "nguyen")` → `true` (gõ "nguyen" rồi Back về rỗng);
+`shouldResyncSearchText("nguyen", "nguyen")` → `false` (chỉ đổi trang, `q` không đổi).
+
+**Kiểm tay bắt buộc — checklist cũ KHÔNG bắt được bug này:** gõ "nguyen" → đổi trang → bấm Back
+vài lần về `q=""` → đợi hơn 300ms. URL phải **đứng yên**, không bị đẩy về `?q=nguyen`.
+
+- [ ] **Step 7: Verify**
 
 ```bash
 bun run --filter @v9/staff typecheck && bun test apps/staff/src/lib/customers-search.test.ts
@@ -402,7 +438,7 @@ Expected: cả hai PASS.
 Kiểm tay với `bun run dev`: gõ vào ô tìm → URL đổi thành `?q=...&page=1`; bấm "Sau →" → `page=2`;
 bấm Back → về `page=1` giữ nguyên từ khoá; F5 → vẫn đúng chỗ.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add apps/staff/src/lib/customers-search.ts apps/staff/src/lib/customers-search.test.ts apps/staff/src/pages/customers-list-page.tsx apps/staff/src/pages/customer-detail-page.tsx apps/staff/src/components/customers/customer-table.tsx apps/staff/src/router.tsx
