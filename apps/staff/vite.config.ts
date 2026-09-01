@@ -82,8 +82,10 @@ export default defineConfig({
          * mọi chỗ khác.
          *
          * `#f8fafc` = sRGB của `--color-canvas` bản SÁNG. Khai lại bằng tay vì
-         * manifest không đọc được biến CSS; ba thẻ `<meta name="theme-color">`
-         * trong `index.html` là chỗ thứ hai phải khớp.
+         * manifest không đọc được biến CSS. Cùng con số đó còn nằm ở ba thẻ
+         * `<meta name="theme-color">` trong `index.html` và ở `CANVAS_HEX`
+         * (src/lib/theme.ts) — NĂM chỗ chép tay, kể cả hai dòng ngay dưới đây;
+         * `theme.test.ts` đối chiếu cả năm với chính `index.css`.
          *
          * Chỉ có MỘT giá trị dù app có hai theme: manifest không nhận media
          * query, nên splash screen luôn là bản sáng. Thẻ meta trong `index.html`

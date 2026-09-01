@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Icon, type IconName } from "../ui/icon";
 import { applyChoice, nextChoice, readChoice, type ThemeChoice } from "../../lib/theme";
 
@@ -26,24 +26,39 @@ const ICON: Record<ThemeChoice, IconName> = {
   dark: "moon",
 };
 
-export function ThemeToggle({ className = "" }: { readonly className?: string }) {
-  const [choice, setChoice] = useState<ThemeChoice>("system");
+/**
+ * `data-theme` trên `<html>` là nguồn sự thật, và `applyChoice` là thứ duy nhất
+ * ghi nó — nên nghe đúng thuộc tính đó là biết mọi lần lựa chọn đổi, kể cả khi
+ * người đổi là một `ThemeToggle` KHÁC.
+ *
+ * Cần thiết vì `AppShell` dựng CẢ HAI biến thể nav cùng lúc, tức có hai nút gạt
+ * sống song song và chỉ một cái đang hiện. Với state cục bộ thì bản sidebar
+ * (đang `display:none` dưới 768px) không thấy cú bấm trong sheet "Thêm": kéo
+ * rộng cửa sổ qua 768px là thấy "Giao diện: Theo máy" trên một app đang tối, và
+ * bấm vào đó nhảy sang "Sáng" thay vì về "Theo máy".
+ */
+function subscribeToTheme(onChange: () => void): () => void {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributeFilter: ["data-theme"] });
+  return () => observer.disconnect();
+}
 
-  // Đọc trong effect chứ không trong `useState(readChoice)`: `readChoice` chạm
-  // `localStorage`, và giữ khởi tạo state thuần thì component render được ở bất
-  // kỳ đâu không có DOM. Script trong `index.html` đã đặt `data-theme` đúng từ
-  // trước khung hình đầu, nên không có nháy dù state ở đây bắt đầu là "system".
-  useEffect(() => {
-    setChoice(readChoice());
-  }, []);
+export function ThemeToggle({ className = "" }: { readonly className?: string }) {
+  // `readChoice` chạy ngay ở khung hình ĐẦU, không đợi một `useEffect`: đặt tạm
+  // "system" rồi sửa sau nghĩa là khung đầu ghi sai nhãn ("Giao diện: Theo máy"
+  // trên một app đang tối). App dựng bằng `createRoot`, không `hydrateRoot`,
+  // nên không có ràng buộc "server và client phải render y hệt"; và `readChoice`
+  // tự bắt lỗi nên nơi không có `localStorage` vẫn ra "system" chứ không nổ.
+  const choice = useSyncExternalStore(subscribeToTheme, readChoice);
 
   return (
     <button
       type="button"
       onClick={() => {
-        const next = nextChoice(choice);
-        setChoice(next);
-        applyChoice(next);
+        // Đi tiếp từ thứ ĐANG LƯU, không từ `choice` của lần render này: hai
+        // thứ đó lệch nhau trong đúng một khoảnh khắc — giữa lúc nút kia ghi
+        // `localStorage` và lúc `MutationObserver` báo về.
+        applyChoice(nextChoice(readChoice()));
       }}
       className={className}
     >
