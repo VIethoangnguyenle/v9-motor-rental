@@ -9,7 +9,8 @@ export type { Customer };
  * Kiểu SUY RA từ `GET /customers/list` — KHÁC `Customer`/`customersQuery` ở
  * `lib/rentals.ts` (ô tìm tự động của form lên đơn). Route đó cố ý trả `[]`
  * khi `q` rỗng; route này cố ý làm NGƯỢC LẠI — `q` rỗng nghĩa là "xem hết",
- * có phân trang, và mỗi dòng thêm `rentalCount` — một hình dạng response
+ * có phân trang, và mỗi dòng thêm ba trường suy ra từ `rentals` (`rentalCount`,
+ * `lateReturnCount`, `activeRental`) — một hình dạng response
  * khác hẳn (`{ customers, total, page, pageSize }` thay vì mảng trần), nên
  * đây là type + query RIÊNG, không phải mở rộng cái đã có. Lý lẽ đầy đủ ở
  * comment trên route `GET /customers/list` (`apps/api/src/routes/rentals.ts`).

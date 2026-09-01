@@ -275,6 +275,8 @@ describe("listCustomers — tín hiệu vận hành", () => {
   let holding: { id: string; ongoingSoonId: string; bookedId: string };
   let bookedOnly: { id: string; nearestId: string };
   let lateReturner: { id: string };
+  let noRental: { id: string };
+  let tied: { id: string; smallestId: string };
 
   async function seedVehicle(slug: string) {
     const [v] = await db
@@ -298,6 +300,10 @@ describe("listCustomers — tín hiệu vận hành", () => {
       seedVehicle(`${P}xe-tin-hieu-2`),
       seedVehicle(`${P}xe-tin-hieu-3`),
     ]);
+    // Hồ sơ KHÔNG có đơn nào — giữ id để `.find()` thay vì bám vị trí `[0]`.
+    const none = await createCustomer({ fullName: `${P}Chưa thuê bao giờ`, phone: "0913000033" });
+    if (!none.ok) throw new Error("seed hỏng");
+    noRental = { id: none.customer.id };
     const [staffRow] = await db
       .insert(schema.staffUsers)
       .values({
@@ -430,21 +436,57 @@ describe("listCustomers — tín hiệu vận hành", () => {
       },
     ]);
 
+    // Khách W: HAI đơn ONGOING trùng Y HỆT `ends_at` — một khách thuê hai xe
+    // cùng khoảng ngày, đúng ca mà luật ưu tiên sinh ra để xử lý. Ba khoá xếp
+    // thứ tự đầu tiên đều HOÀ, nên nếu `ORDER BY` không có chốt hạ thì
+    // `DISTINCT ON` được tự do nhặt bên nào cũng được.
+    const w = await createCustomer({ fullName: `${P}Hoà điểm`, phone: "0913000034" });
+    if (!w.ok) throw new Error("seed hỏng");
+    const wRows = await db
+      .insert(schema.rentals)
+      .values([
+        {
+          ...base,
+          vehicleId: a,
+          customerId: w.customer.id,
+          status: "ONGOING",
+          startsAt: new Date("2026-11-01T00:00:00Z"),
+          endsAt: new Date("2026-11-05T00:00:00Z"),
+          handedOverAt: new Date("2026-11-01T00:00:00Z"),
+        },
+        {
+          ...base,
+          vehicleId: b,
+          customerId: w.customer.id,
+          status: "ONGOING",
+          startsAt: new Date("2026-11-02T00:00:00Z"),
+          endsAt: new Date("2026-11-05T00:00:00Z"), // TRÙNG mốc trên — thế hoà
+          handedOverAt: new Date("2026-11-02T00:00:00Z"),
+        },
+      ])
+      .returning({ id: schema.rentals.id });
+
     const ongoingSoon = xRows.find((r) => r.endsAt.toISOString().startsWith("2026-09-10"));
     const booked = xRows.find((r) => r.endsAt.toISOString().startsWith("2026-09-03"));
     const nearest = yRows.find((r) => r.startsAt.toISOString().startsWith("2026-10-01"));
-    if (!ongoingSoon || !booked || !nearest) throw new Error("seed hỏng");
+    const smallest = wRows.map((r) => r.id).sort()[0];
+    if (!ongoingSoon || !booked || !nearest || !smallest) throw new Error("seed hỏng");
     holding = { id: x.customer.id, ongoingSoonId: ongoingSoon.id, bookedId: booked.id };
     bookedOnly = { id: y.customer.id, nearestId: nearest.id };
     lateReturner = { id: z.customer.id };
+    tied = { id: w.customer.id, smallestId: smallest };
   });
 
   it("khách chưa có đơn thì activeRental null và lateReturnCount 0", async () => {
-    const res = await listCustomers({ q: `${P}Minh` });
-    const row = res.customers[0];
+    // Tìm theo `id` như ba test dưới, KHÔNG lấy `customers[0]`: bám vị trí thì
+    // test vỡ ngay khi có hồ sơ thứ hai khớp cùng từ khoá, và vỡ theo kiểu khó
+    // đọc (một khách khác lọt vào, assertion nói sai chỗ).
+    const res = await listCustomers({ q: `${P}Chưa thuê bao giờ` });
+    const row = res.customers.find((c) => c.id === noRental.id);
     expect(row).toBeDefined();
     expect(row?.activeRental).toBeNull();
     expect(row?.lateReturnCount).toBe(0);
+    expect(row?.rentalCount).toBe(0);
   });
 
   it("có ONGOING thì chọn đơn ONGOING có ends_at SỚM NHẤT, không phải đơn BOOKED sắp bắt đầu", async () => {
@@ -453,17 +495,38 @@ describe("listCustomers — tín hiệu vận hành", () => {
     expect(row?.activeRental?.id).toBe(holding.ongoingSoonId);
     expect(row?.activeRental?.id).not.toBe(holding.bookedId);
     expect(row?.activeRental?.status).toBe("ONGOING");
+    expect(row?.activeRental?.startsAt).toEqual(new Date("2026-09-05T00:00:00Z"));
     expect(row?.activeRental?.endsAt).toEqual(new Date("2026-09-10T00:00:00Z"));
     expect(row?.rentalCount).toBe(3);
   });
 
-  it("không có ONGOING thì chọn đơn BOOKED có starts_at GẦN NHẤT", async () => {
+  it("không có ONGOING thì chọn đơn BOOKED có starts_at GẦN NHẤT, và TRẢ LẠI starts_at đó", async () => {
     const res = await listCustomers({ q: `${P}Chỉ đặt trước` });
     const row = res.customers.find((c) => c.id === bookedOnly.id);
     expect(row?.activeRental?.id).toBe(bookedOnly.nearestId);
     expect(row?.activeRental?.status).toBe("BOOKED");
-    // `endsAt` của CHÍNH đơn được chọn — không phải `startsAt` đã dùng để xếp thứ tự.
+    // Cột đã dùng để XẾP THỨ TỰ cũng phải có mặt trong payload. Với một đơn
+    // BOOKED, "bao giờ khách tới lấy xe" là `startsAt`; trả mỗi `endsAt` là đưa
+    // ngày trả cho câu hỏi ngày lấy. Hai mốc khác nhau ở đây (01/10 vs 30/10)
+    // nên test đỏ nếu ai đó nối nhầm hai trường vào nhau.
+    expect(row?.activeRental?.startsAt).toEqual(new Date("2026-10-01T00:00:00Z"));
     expect(row?.activeRental?.endsAt).toEqual(new Date("2026-10-30T00:00:00Z"));
+  });
+
+  it("hai đơn ONGOING trùng ends_at vẫn cho MỘT kết quả ổn định — chốt hạ bằng id", async () => {
+    // Không có `ORDER BY ... , id` thì ba khoá đầu đều hoà và Postgres được tự
+    // do nhặt bên nào cũng được: dòng nhảy giữa hai lần tải, và test nào chạm
+    // vào nó sẽ flaky về sau. Ghim vào `id` NHỎ NHẤT — thứ tự nhị phân của
+    // `uuid` trùng thứ tự chuỗi với dạng chuẩn thường-hoá, nên `.sort()` ở JS
+    // cho đúng cùng câu trả lời với `ORDER BY id` ở Postgres.
+    const res = await listCustomers({ q: `${P}Hoà điểm` });
+    const row = res.customers.find((c) => c.id === tied.id);
+    expect(row?.activeRental?.status).toBe("ONGOING");
+    expect(row?.activeRental?.id).toBe(tied.smallestId);
+
+    // Gọi lại: cùng một câu trả lời, không phải một trong hai.
+    const again = await listCustomers({ q: `${P}Hoà điểm` });
+    expect(again.customers.find((c) => c.id === tied.id)?.activeRental?.id).toBe(tied.smallestId);
   });
 
   it("COMPLETED và CANCELLED không bao giờ được chọn; lateReturnCount đếm returned_at > ends_at", async () => {

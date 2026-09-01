@@ -188,14 +188,31 @@ const CUSTOMERS_PAGE_SIZE_DEFAULT = 20;
 /**
  * Đơn đang chiếm dụng sự chú ý của nhân viên với khách này. `null` = không có.
  *
- * Hình dạng `{ status, endsAt }` KHÔNG tuỳ tiện: nó khớp đúng tham số cấu trúc
- * của `isOverdue(r: { status; endsAt }, now)` ở `@v9/shared/domain/rental`, nên
+ * `{ status, endsAt }` KHÔNG tuỳ tiện: đó đúng tham số cấu trúc của
+ * `isOverdue(r: { status; endsAt }, now)` ở `@v9/shared/domain/rental`, nên
  * frontend tô màu "quá hạn" bằng ĐỊNH NGHĨA DUY NHẤT đã có thay vì mọc thêm một
  * định nghĩa thứ hai cạnh nó.
+ *
+ * `startsAt` đi kèm vì HAI trạng thái ở đây hỏi hai câu khác nhau, và chỉ một
+ * cột thì trả lời được đúng một câu:
+ *
+ * - ONGOING → "bao giờ khách phải trả xe" → `endsAt`.
+ * - BOOKED → "bao giờ khách tới lấy xe" → `startsAt`. Đưa `endsAt` cho một đơn
+ *   chưa giao là đưa ngày trả cho câu hỏi ngày lấy.
+ *
+ * Quan trọng hơn: `isOverdue` trả `false` cho BOOKED **theo thiết kế**, nên
+ * thiếu `startsAt` thì frontend KHÔNG có đường nào phân biệt "lẽ ra phải lấy xe
+ * từ hôm qua" với "tuần sau mới lấy". Một BOOKED đã qua `starts_at` thường
+ * nghĩa là khách bỏ hẹn mà không ai huỷ đơn, HOẶC nhân viên đã giao xe rồi quên
+ * bấm "đã giao" — ca thứ hai làm `revenueAt` (đòi `handedOverAt`) không tính
+ * tiền trong khi `rentals_no_overlap` vẫn khoá xe, tức shop mất doanh thu ngay
+ * trên sổ của mình mà không màn hình nào nói ra. Đó cũng là lý do câu truy vấn
+ * bên dưới CỐ Ý không lọc theo `now()`: lọc đi là GIẤU ca đó, không phải dọn nó.
  */
 export interface ActiveRental {
   readonly id: string;
   readonly status: "ONGOING" | "BOOKED";
+  readonly startsAt: Date;
   readonly endsAt: Date;
 }
 
@@ -284,11 +301,16 @@ export async function listCustomers(input: {
   // Postgres đòi các biểu thức ORDER BY ngoài cùng bên trái phải TRÙNG với
   // biểu thức của `DISTINCT ON`, nên `customerId` bắt buộc đứng đầu `orderBy` —
   // đổi thứ tự đó là lỗi lúc chạy, không phải lúc biên dịch.
+  //
+  // KHÔNG lọc theo `now()` — cố ý. Một đơn BOOKED đã qua `starts_at` là tín hiệu
+  // cần thấy, không phải rác cần giấu; lý do đầy đủ ở doc comment của
+  // `ActiveRental`.
   const actives = await db
     .selectDistinctOn([schema.rentals.customerId], {
       customerId: schema.rentals.customerId,
       id: schema.rentals.id,
       status: schema.rentals.status,
+      startsAt: schema.rentals.startsAt,
       endsAt: schema.rentals.endsAt,
     })
     .from(schema.rentals)
@@ -302,6 +324,12 @@ export async function listCustomers(input: {
       schema.rentals.customerId,
       sql`CASE ${schema.rentals.status} WHEN 'ONGOING' THEN 0 ELSE 1 END`,
       sql`CASE ${schema.rentals.status} WHEN 'ONGOING' THEN ${schema.rentals.endsAt} ELSE ${schema.rentals.startsAt} END`,
+      // Chốt hạ bằng `id` để thứ tự TOÀN PHẦN, không chỉ gần đúng. Hai đơn
+      // ONGOING trùng `ends_at` — một khách thuê hai xe cùng khoảng ngày, đúng
+      // ca mà luật ưu tiên sinh ra để xử lý — là một thế HOÀ, và `DISTINCT ON`
+      // được tự do nhặt bên nào cũng được: dòng có thể nhảy giữa hai lần tải, và
+      // một test viết sau sẽ flaky mà không ai hiểu vì sao.
+      schema.rentals.id,
     );
   const activeByCustomer = new Map(actives.map((a) => [a.customerId, a]));
 
@@ -316,7 +344,12 @@ export async function listCustomers(input: {
         // `status` là `text` ở schema nên Drizzle suy ra `string`; WHERE ngay
         // trên đã thu hẹp về đúng hai giá trị này.
         activeRental: a
-          ? { id: a.id, status: a.status as "ONGOING" | "BOOKED", endsAt: a.endsAt }
+          ? {
+              id: a.id,
+              status: a.status as "ONGOING" | "BOOKED",
+              startsAt: a.startsAt,
+              endsAt: a.endsAt,
+            }
           : null,
       };
     }),

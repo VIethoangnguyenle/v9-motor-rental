@@ -34,10 +34,14 @@ const customerSchema = t.Object({
  * Một dòng của `GET /customers/list` — `customerSchema` cộng tín hiệu vận hành
  * suy ra từ `rentals`.
  *
- * `activeRental` khai `endsAt` + `status` chứ không phải một cờ `isOverdue` đã
- * tính sẵn: "quá hạn" phụ thuộc vào ĐỒNG HỒ lúc xem, nên tính ở server rồi
- * serialize là đóng băng một câu trả lời sẽ sai sau vài phút. Frontend gọi
- * `isOverdue()` của `@v9/shared` trên đúng hai trường này.
+ * `activeRental` khai `status` + hai mốc thời gian chứ không phải một cờ
+ * `isOverdue` đã tính sẵn: "quá hạn" phụ thuộc vào ĐỒNG HỒ lúc xem, nên tính ở
+ * server rồi serialize là đóng băng một câu trả lời sẽ sai sau vài phút.
+ * Frontend gọi `isOverdue()` của `@v9/shared` trên `status` + `endsAt`.
+ *
+ * `startsAt` có mặt vì `isOverdue` trả `false` cho BOOKED theo thiết kế: thiếu
+ * nó thì màn hình không phân biệt được "lẽ ra lấy xe hôm qua" với "tuần sau mới
+ * lấy". Lý lẽ đầy đủ ở `ActiveRental` (`services/customers.ts`).
  */
 const customerListRowSchema = t.Composite([
   customerSchema,
@@ -48,6 +52,7 @@ const customerListRowSchema = t.Composite([
       t.Object({
         id: t.String({ format: "uuid" }),
         status: t.Union([t.Literal("ONGOING"), t.Literal("BOOKED")]),
+        startsAt: t.Date(),
         endsAt: t.Date(),
       }),
     ),
