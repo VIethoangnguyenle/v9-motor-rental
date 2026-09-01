@@ -5,6 +5,7 @@ import type { Me } from "../../lib/me";
 import { Modal } from "../ui/modal";
 import { newRequestCountQuery } from "../../lib/requests";
 import { Icon, type IconName } from "../ui/icon";
+import { ThemeToggle } from "./theme-toggle";
 import { BuildStamp } from "./build-stamp";
 
 /**
@@ -152,6 +153,7 @@ function SidebarNav({ me, onSignOut }: { readonly me: Me | null; readonly onSign
           {me?.fullName} · {me?.role}
         </p>
         <BuildStamp />
+        <ThemeToggle className={`${TOUCH} gap-2 rounded-card px-3 text-ink hover:bg-canvas`} />
         <Link
           to="/change-password"
           className={`${TOUCH} gap-2 rounded-card px-3 text-ink hover:bg-canvas`}
@@ -299,6 +301,9 @@ function BottomNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignO
                 {me?.fullName} · {me?.role}
               </p>
               <BuildStamp />
+              <ThemeToggle
+                className={`${TOUCH} gap-2 rounded-card px-3 text-ink hover:bg-canvas`}
+              />
               <Link
                 to="/change-password"
                 onClick={closeMore}

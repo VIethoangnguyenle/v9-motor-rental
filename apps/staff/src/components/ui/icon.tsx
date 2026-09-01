@@ -12,10 +12,13 @@ import {
   Inbox,
   KeyRound,
   LogOut,
+  Monitor,
+  Moon,
   Phone,
   Plus,
   ReceiptText,
   Search,
+  Sun,
   Trash2,
   UserCog,
   Users,
@@ -113,6 +116,12 @@ const ICONS = {
   key: KeyRound,
   /** Đăng xuất. */
   "log-out": LogOut,
+  /** Nút gạt theme — trạng thái "theo hệ điều hành". */
+  monitor: Monitor,
+  /** Nút gạt theme — ép sáng. */
+  sun: Sun,
+  /** Nút gạt theme — ép tối. */
+  moon: Moon,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
