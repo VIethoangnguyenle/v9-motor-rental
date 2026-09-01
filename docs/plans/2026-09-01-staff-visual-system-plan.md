@@ -1228,6 +1228,23 @@ không gánh nổi."
 
 ## Task 5 — Token chuyển động + trạng thái nền
 
+> ⛔ **Bẫy do Task 3 để lại — đọc trước khi viết dòng CSS đầu tiên.**
+>
+> App nay có nút gạt theme đổi **22 biến màu cùng lúc**. Nếu `--duration-*`/`--ease-*` được gắn vào
+> một transition màu **diện rộng** (`*`, `body`, hay `:root`), mỗi lần gạt sẽ **cross-fade cả
+> trang** — trong khi `color-scheme` đổi **tức thì**. Kết quả: nửa giây giao diện lai, thanh cuộn và
+> control gốc đã đổi màu còn nền thì đang bò.
+>
+> Hai lời giải, chọn một và ghi lý do:
+> 1. **Không** đưa `--color-*` vào bất kỳ transition toàn cục nào — chỉ animate màu ở phần tử cụ thể
+>    (nút, hàng), đúng như §4.3 của design doc đã quy định.
+> 2. Nếu vẫn muốn transition rộng: thêm một class `theme-switching` do `applyChoice` bật/tắt quanh
+>    lúc đổi, và `transition: none !important` khi nó có mặt.
+>
+> Design doc §4.3 đã nghiêng về (1) — "chỉ animate `background-color`/`border-color` ở
+> `--duration-instant` trên phần tử đơn". Đây là ghi chú để việc đó là một **quyết định**, không phải
+> một chỗ may mà không đụng tới.
+
 **Files:**
 - Modify: `apps/staff/src/index.css`, `apps/staff/src/components/ui/button.tsx`
 
