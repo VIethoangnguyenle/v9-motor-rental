@@ -8,6 +8,31 @@
  * hai cách đều cho ra số sai một cách tự tin. `index.css` đã ghi cả hai bẫy.
  */
 
+/**
+ * Dung sai khi hỏi "màu này có nằm ngoài gamut sRGB không".
+ *
+ * ⚠️ Bản đầu của file này để **±0.002** và biện minh bằng "sai số dấu phẩy động
+ * của phép biến đổi". Lý do đó KHÔNG CÓ THẬT — đo trên ba màu sRGB thuần
+ * (#FF0000, #00FF00, #0000FF) cho sai lệch lớn nhất **6,7×10⁻⁷**, tức nhỏ hơn
+ * 0.002 khoảng ba nghìn lần.
+ *
+ * Hậu quả không phải lý thuyết: với 0.002, `oklch(52% 0.174 255)` — chính giá
+ * trị đợt này đưa ra để SỬA lỗi tràn gamut của accent — có kênh đỏ tuyến tính
+ * **−0,001655** và vẫn được báo là trong gamut. Chín token của hệ này rơi vào
+ * cùng cái bẫy đó, vì bảng màu được sinh ra bằng chính hàm mang dung sai sai.
+ *
+ * Dung sai thật sự cần là để chịu **hằng số oklch làm tròn 3–4 chữ số** trong
+ * test và tài liệu, không phải để chịu float. `1e-4` tách sạch hai ca:
+ *
+ *   #FF0000 (hằng số làm tròn)   lệch 0        → không báo tràn ✅
+ *   accent 0.174 (tràn thật)     lệch 1,66e-3  → báo tràn      ✅
+ *
+ * Đây là bài học đắt nhất của đợt này: **công cụ đo cũng phải bị đo.** Chú thích
+ * ở đầu file cảnh báo đừng tin `getComputedStyle`, mà chỗ hỏng lại nằm trong
+ * chính hàm thay thế nó.
+ */
+const GAMUT_EPSILON = 1e-4;
+
 export type Vision = "normal" | "protanopia" | "deuteranopia" | "tritanopia";
 
 export interface Color {
@@ -17,6 +42,10 @@ export interface Color {
   readonly lab: readonly [number, number, number];
   /** `true` nếu giá trị trước khi kẹp nằm ngoài gamut sRGB. */
   readonly clipped: boolean;
+}
+
+function clamp01(v: number): number {
+  return Math.min(1, Math.max(0, v));
 }
 
 function linearToOklab(r: number, g: number, b: number): [number, number, number] {
@@ -32,6 +61,17 @@ function linearToOklab(r: number, g: number, b: number): [number, number, number
 
 /** `L` ∈ [0,1] (không phải phần trăm), `C` tuyệt đối, `h` độ. */
 export function oklch(L: number, C: number, hDeg: number): Color {
+  // Task 2 parse index.css bằng regex; một lần bắt hụt là Number() ra NaN, và
+  // không guard thì assertion gamut xanh trên rác vì NaN < x và NaN > x đều
+  // false — clipped im lặng ra `false` cho một màu không tồn tại.
+  const invalid: string[] = [];
+  if (!Number.isFinite(L)) invalid.push(`L=${L}`);
+  if (!Number.isFinite(C)) invalid.push(`C=${C}`);
+  if (!Number.isFinite(hDeg)) invalid.push(`h=${hDeg}`);
+  if (invalid.length > 0) {
+    throw new RangeError(`oklch() nhận tham số không hữu hạn: ${invalid.join(", ")}.`);
+  }
+
   const h = (hDeg * Math.PI) / 180;
   const a = C * Math.cos(h);
   const b = C * Math.sin(h);
@@ -43,10 +83,8 @@ export function oklch(L: number, C: number, hDeg: number): Color {
     -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
     -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
   ];
-  // Biên ±0.002 chứ không 0: sai số dấu phẩy động của chính phép biến đổi này
-  // đủ để một màu nằm ĐÚNG trên mép gamut bị báo là tràn.
-  const clipped = raw.some((v) => v < -0.002 || v > 1.002);
-  const rgb = raw.map((v) => Math.min(1, Math.max(0, v))) as unknown as [number, number, number];
+  const clipped = raw.some((v) => v < -GAMUT_EPSILON || v > 1 + GAMUT_EPSILON);
+  const rgb: [number, number, number] = [clamp01(raw[0]), clamp01(raw[1]), clamp01(raw[2])];
   return { rgb, lab: linearToOklab(...rgb), clipped };
 }
 
@@ -73,8 +111,11 @@ export function contrast(a: Color, b: Color): number {
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 
+type Triple = readonly [number, number, number];
+type Matrix = readonly [Triple, Triple, Triple];
+
 /** Machado, Oliveira & Fernandes 2009, severity 1.0, áp trên sRGB tuyến tính. */
-const CVD: Record<Vision, readonly (readonly [number, number, number])[]> = {
+const CVD: Record<Vision, Matrix> = {
   normal: [
     [1, 0, 0],
     [0, 1, 0],
@@ -99,10 +140,19 @@ const CVD: Record<Vision, readonly (readonly [number, number, number])[]> = {
 
 export function simulate(c: Color, vision: Vision): Color {
   const m = CVD[vision];
-  const rgb = m.map((row) =>
-    Math.min(1, Math.max(0, row[0] * c.rgb[0] + row[1] * c.rgb[1] + row[2] * c.rgb[2])),
-  ) as unknown as [number, number, number];
-  return { rgb, lab: linearToOklab(...rgb), clipped: c.clipped };
+  const raw: [number, number, number] = [
+    m[0][0] * c.rgb[0] + m[0][1] * c.rgb[1] + m[0][2] * c.rgb[2],
+    m[1][0] * c.rgb[0] + m[1][1] * c.rgb[1] + m[1][2] * c.rgb[2],
+    m[2][0] * c.rgb[0] + m[2][1] * c.rgb[1] + m[2][2] * c.rgb[2],
+  ];
+  // Task 4 dùng simulate() + deltaE() để chứng minh hai màu trạng thái còn
+  // phân biệt được dưới mù màu; chính phép kẹp dưới đây là thứ nén ΔE lại, nên
+  // cờ clipped phải phản ánh cả tràn do ma trận CVD gây ra, không chỉ tràn gốc
+  // của màu nguồn — nếu không, một cặp bị kẹp im lặng trông giống một cặp
+  // chưa từng chạm biên gamut.
+  const clipped = c.clipped || raw.some((v) => v < -GAMUT_EPSILON || v > 1 + GAMUT_EPSILON);
+  const rgb: [number, number, number] = [clamp01(raw[0]), clamp01(raw[1]), clamp01(raw[2])];
+  return { rgb, lab: linearToOklab(...rgb), clipped };
 }
 
 /** Khoảng cách cảm nhận trong OKLab. Hai màu dưới 0,12 coi như khó phân biệt. */
