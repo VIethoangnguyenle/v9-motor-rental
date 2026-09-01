@@ -21,10 +21,10 @@ const TONE: Record<AlertTone, string> = {
 };
 
 /**
- * Icon theo tone. Trước đó ba tone chỉ khác nhau bằng MÀU — tức thông tin đi
+ * Icon theo tone. Không có nó thì ba tone chỉ khác nhau bằng MÀU — thông tin đi
  * bằng đúng một kênh, trượt SC 1.4.1, và người mù màu đỏ–lục không phân biệt
- * được `error` với `warning`. Đây cùng một lớp lỗi mà §2.5 của design doc đo
- * được trên chip trạng thái.
+ * được `error` với `warning`. Cùng lớp lỗi mà §2.5 của design doc đo được trên
+ * chip trạng thái.
  *
  * Ba SILHOUETTE khác nhau, không phải ba biểu tượng khác nhau: tam giác / bát
  * giác / tròn còn phân biệt được khi màu biến mất hoàn toàn, còn ba hình cùng

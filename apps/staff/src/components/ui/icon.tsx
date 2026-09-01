@@ -74,8 +74,15 @@ import {
  *
  * Import TỪNG icon một (không `import * as`) để tree-shaking còn cắt được phần
  * không dùng: cả bộ Lucide hơn 1.500 hình.
+ *
+ * `export` KHÔNG phải để chỗ khác render thẳng `ICONS[name]` — dùng `Icon` cho
+ * việc đó, nó mới là chỗ ghim `strokeWidth`, cỡ và `aria-hidden`. Nó mở ra cho
+ * hàng rào ở `lib/status-icon.test.ts`: một bảng KHOÁ icon (`STATUS_ICON`) chỉ
+ * chứng minh được sáu TÊN khác nhau, mà hai tên khác nhau vẫn trỏ chung một
+ * component và vẽ ra một hình. Phân giải tên → component ở đây là cách duy nhất
+ * để test hỏi được câu đúng.
  */
-const ICONS = {
+export const ICONS = {
   /** Đóng sheet/modal. */
   close: X,
   /** Lật về kỳ trước, và dấu "đơn còn kéo dài về trước" trên lưới lịch. */
@@ -128,11 +135,27 @@ const ICONS = {
   // nổi dưới deuteranopia và không giá trị màu nào sửa được — lý lẽ đầy đủ ở
   // `lib/rental-status.ts` (`STATUS_ICON`) và `ui/alert.tsx` (`TONE_ICON`).
   //
-  // Vì vậy tiêu chí chọn ở đây là SILHOUETTE, không phải mức dễ thương của
-  // biểu tượng: dưới mù màu nặng thì đường bao là thứ còn lại. Hai chỗ dùng
-  // chúng còn mượn lại `check`, `close`, `nav-calendar` và `nav-handover` ở
-  // trên — bốn hình đó đã đủ khác nhau, vẽ thêm hình mới cho chúng chỉ làm bộ
-  // icon phình ra mà không phân biệt thêm gì.
+  // Tiêu chí chọn là SILHOUETTE, không phải mức dễ thương của biểu tượng: dưới
+  // mù màu nặng thì đường bao là thứ còn lại.
+  //
+  // Nhưng tiêu chí đó ràng buộc TRONG một danh sách, không ràng buộc trên cả
+  // bộ icon — và hai hình ngay dưới đây là bằng chứng: `calendar-days` với
+  // `calendar-check` dùng chung NGUYÊN VĂN bốn node đầu của lucide 1.38.0
+  // (`M8 2v3`, `M16 2v3`, `rect 3,3,18,18`, `M3 9h18`), tức đường bao y hệt
+  // nhau, chỉ khác ruột. Chấp nhận được vì chúng không bao giờ đứng cùng một
+  // danh sách: `calendar-days` đi qua `nav-calendar` (thanh điều hướng, và
+  // `STATUS_ICON.BOOKED` trên lịch), còn `calendar-check` chỉ xuất hiện ở
+  // `attention-list.tsx`, nơi ba dòng mang `alert-triangle` / `calendar-check`
+  // / `nav-staff`. Thêm hình mới thì so đường bao với các hình CÙNG danh sách,
+  // không so với cả bộ.
+  //
+  // Ba chỗ dựng danh sách hình như vậy: `STATUS_ICON` (`lib/rental-status.ts`),
+  // `TONE_ICON` (`ui/alert.tsx`) và `attention-list.tsx`. Hai trong ba MƯỢN
+  // hình từ các nhóm trên thay vì vẽ mới — `STATUS_ICON` mượn `check`, `close`,
+  // `nav-calendar`, `nav-handover`; `attention-list.tsx` mượn `nav-staff`.
+  // `TONE_ICON` không mượn gì, cả ba hình của nó nằm trong nhóm này. Mượn được
+  // thì mượn: vẽ hình mới cho thứ đã có hình đủ khác chỉ làm bộ icon phình ra
+  // mà không phân biệt thêm gì.
 
   /** Quá hạn trả — xe đang ngoài đường. Tam giác: hình cảnh báo mạnh nhất. */
   "alert-triangle": TriangleAlert,
@@ -191,8 +214,14 @@ export function Icon({
   readonly name: IconName;
   readonly size?: keyof typeof SIZE;
   /**
-   * MÀU (`text-*`) và căn quang học (`mt-*`) — không phải CỠ. Cỡ đi qua `size`,
-   * xem lý lẽ ở `SIZE`: một `size-*` truyền qua đây hỏng im lặng.
+   * Ba loại đang được truyền qua đây: MÀU (`text-*`), căn quang học theo chiều
+   * dọc (`mt-*`), và giãn cách ngang với chữ đứng cạnh (`mr-*`/`ml-*`).
+   *
+   * KHÔNG phải CỠ. Cỡ đi qua prop `size`, và họ class DUY NHẤT hỏng IM LẶNG khi
+   * đi đường này là `size-*`/`w-*`/`h-*`: `Icon` đã tự đặt `size-*` rồi nối
+   * class của caller vào SAU, mà cả hai cùng là utility kích thước nên thứ tự
+   * trong stylesheet quyết định ai thắng, không phải thứ tự trong chuỗi. Xem
+   * lý lẽ và số đo ở `SIZE`.
    */
   readonly className?: string;
 }) {
