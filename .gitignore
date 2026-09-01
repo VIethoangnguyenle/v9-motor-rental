@@ -41,6 +41,13 @@ coverage/
 # impeccable ghi hook cho Codex CLI vào đây, nội dung hard-code path máy local
 .codex/
 
+# artifact của skill impeccable: cache của design hook + báo cáo `critique`.
+# Không neo `/` ở đầu vì nó mọc ở nhiều cấp — `critique-storage.mjs` ghi cạnh
+# target, nên một lần chạy trên `apps/staff` tạo `apps/staff/.impeccable/`, còn
+# chạy ở gốc thì tạo `.impeccable/`. Đây là ảnh chụp một phiên làm việc, không
+# phải nguồn sự thật: đợt sau chạy lại `/impeccable critique` là có bản mới.
+.impeccable/
+
 # index của codegraph — DB 2 MB dựng lại được bằng `codegraph init`, không phải
 # nguồn sự thật. Tự nó có .codegraph/.gitignore chặn DB, nhưng chính file đó lại
 # untracked nên `git status` bẩn vĩnh viễn; chặn cả thư mục cho gọn, cùng lối với
