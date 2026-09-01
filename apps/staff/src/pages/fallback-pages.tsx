@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
+import { Icon } from "../components/ui/icon";
 import { PageShell } from "../components/ui/page-shell";
 import { Skeleton } from "../components/ui/skeleton";
 
@@ -29,7 +30,8 @@ export function NotFoundPage() {
       {/* `min-h-11` khớp ngưỡng vùng chạm app tự đặt — đây có thể là thứ duy
           nhất bấm được trên màn hình, nên nó phải bấm trúng được. */}
       <Link to="/" className="mt-4 inline-flex min-h-11 items-center text-sm underline">
-        ← Về trang Thống kê
+        <Icon name="arrow-left" className="mr-1" />
+        Về trang Thống kê
       </Link>
     </PageShell>
   );

@@ -11,6 +11,7 @@ import {
   type RentalPhotoRow,
 } from "../../lib/photos";
 import { Alert } from "../ui/alert";
+import { Icon } from "../ui/icon";
 import { Button } from "../ui/button";
 
 const KIND_LABEL: Record<PhotoKind, string> = {
@@ -130,9 +131,11 @@ function PhotoThumb({
         // TẤM ẢNH, nên tương phản của dấu ✕ đỏ phụ thuộc vào ảnh nằm dưới — với
         // một tấm chụp xe tối màu thì không ai biết nó còn bao nhiêu. Đặc thì
         // khoá ở 5,16:1 bất kể ảnh gì.
-        className="absolute top-1 right-1 flex min-h-11 min-w-11 items-center justify-center rounded-card bg-canvas text-sm text-status-overdue disabled:opacity-50"
+        className="absolute top-1 right-1 flex min-h-11 min-w-11 items-center justify-center rounded-card bg-canvas text-base text-status-overdue disabled:opacity-50"
       >
-        ✕
+        {/* `trash` chứ không `close`: nút này XOÁ ảnh, không phải đóng gì cả.
+            `✕` cũ nói sai việc nó làm. */}
+        <Icon name="trash" />
       </button>
     </li>
   );
@@ -237,7 +240,8 @@ function KindSection({
         disabled={busy}
         onClick={() => inputRef.current?.click()}
       >
-        + Thêm ảnh
+        <Icon name="camera" className="mr-1" />
+        Thêm ảnh
       </Button>
     </section>
   );

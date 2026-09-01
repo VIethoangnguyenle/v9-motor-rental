@@ -4,6 +4,7 @@ import { CustomerEditForm } from "../components/customers/customer-edit-form";
 import { CustomerRentalHistory } from "../components/customers/customer-rental-history";
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
+import { Icon } from "../components/ui/icon";
 import { connectionFailed, customerDetailQuery, customerRentalsQuery } from "../lib/customers";
 import { errorMessage } from "../lib/errors";
 
@@ -50,7 +51,8 @@ export function CustomerDetailPage() {
         search={{ q: backSearch.q ?? "", page: backSearch.page ?? 1 }}
         className="flex min-h-11 items-center self-start text-sm text-muted underline-offset-2 hover:underline"
       >
-        ← Khách hàng
+        <Icon name="arrow-left" className="mr-1" />
+        Khách hàng
       </Link>
 
       {detail.isPending && <p className="text-sm text-muted">Đang tải…</p>}

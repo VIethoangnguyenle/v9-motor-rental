@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { StatsSummary } from "../../lib/rentals";
+import { Icon, StatusDot } from "../ui/icon";
 
 interface Row {
   readonly key: string;
@@ -63,14 +64,10 @@ export function AttentionList({ attention }: { readonly attention: StatsSummary[
             <li key={row.key}>
               <Link to={row.to} className={ROW}>
                 <span className="flex items-center gap-2">
-                  <span aria-hidden className={row.dotClassName}>
-                    ●
-                  </span>
+                  <StatusDot className={row.dotClassName} />
                   {row.label}
                 </span>
-                <span aria-hidden className="text-muted">
-                  ›
-                </span>
+                <Icon name="chevron-right" className="text-muted" />
               </Link>
             </li>
           ))}

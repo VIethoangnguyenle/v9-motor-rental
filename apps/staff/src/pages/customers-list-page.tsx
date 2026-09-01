@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { CustomerTable } from "../components/customers/customer-table";
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
+import { Icon } from "../components/ui/icon";
 import { TextField } from "../components/ui/text-field";
 import { CUSTOMERS_PAGE_SIZE, connectionFailed, customersListQuery } from "../lib/customers";
 import { shouldResyncSearchText } from "../lib/customers-search";
@@ -147,7 +148,8 @@ export function CustomersListPage() {
               disabled={page <= 1}
               onClick={() => void navigate({ search: { q, page: Math.max(1, page - 1) } })}
             >
-              ← Trước
+              <Icon name="arrow-left" className="mr-1" />
+              Trước
             </Button>
           )}
           <span className="text-sm text-muted">
@@ -161,7 +163,8 @@ export function CustomersListPage() {
               disabled={page >= totalPages}
               onClick={() => void navigate({ search: { q, page: Math.min(totalPages, page + 1) } })}
             >
-              Sau →
+              Sau
+              <Icon name="arrow-right" className="ml-1" />
             </Button>
           )}
         </div>

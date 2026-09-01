@@ -7,6 +7,7 @@ import {
 } from "../../lib/calendar-layout";
 import type { CalendarRental, FleetVehicle } from "../../lib/rentals";
 import { STATUS_LABEL, rentalChipClass } from "../../lib/rental-status";
+import { Icon } from "../ui/icon";
 
 /**
  * Ô ngày kiểu Google Calendar. Tuần bắt đầu THỨ HAI (quy ước VN, và khớp
@@ -205,9 +206,12 @@ export function CalendarMonth({
                         aria-label={`${label} · ${rental.customerName ?? "Khách chưa rõ"} · ${STATUS_LABEL[rental.status]} — xem chi tiết`}
                         className={`${CHIP} ${rentalChipClass(rental, now)}`}
                       >
-                        {placement.clippedStart && <span aria-hidden>‹</span>}
+                        {/* `size-3`: đây KHÔNG phải nút bấm mà là dấu "đơn còn kéo dài
+                      ngoài cửa sổ", nằm trong chip `text-xs`. Cỡ mặc định 20px
+                      sẽ nuốt mất tên khách đứng cạnh. */}
+                        {placement.clippedStart && <Icon name="chevron-left" size="sm" />}
                         <span className="min-w-0 truncate">{label}</span>
-                        {placement.clippedEnd && <span aria-hidden>›</span>}
+                        {placement.clippedEnd && <Icon name="chevron-right" size="sm" />}
                       </button>
                     );
                   })}

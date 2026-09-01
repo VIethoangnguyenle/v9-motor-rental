@@ -19,6 +19,7 @@ const RentalForm = lazy(() =>
 );
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
+import { Icon } from "../components/ui/icon";
 import { Skeleton } from "../components/ui/skeleton";
 import { errorMessage } from "../lib/errors";
 import { statsQuery } from "../lib/rentals";
@@ -56,7 +57,8 @@ export function StatsPage() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-ink">Thống kê</h1>
         <Button type="button" onClick={() => setFormOpen(true)}>
-          + Lên đơn
+          <Icon name="plus" className="mr-1" />
+          Lên đơn
         </Button>
       </div>
 

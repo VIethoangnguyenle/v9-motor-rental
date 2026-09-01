@@ -18,6 +18,7 @@ import { Alert } from "../ui/alert";
 import { HandoverDetails } from "./handover-details";
 import { HandoverPhotos } from "./handover-photos";
 import { Button } from "../ui/button";
+import { Icon } from "../ui/icon";
 import { Modal } from "../ui/modal";
 
 const DATE_FMT = new Intl.DateTimeFormat("vi-VN", {
@@ -128,7 +129,7 @@ export function RentalDetailSheet({
             </p>
           </div>
           <Button type="button" variant="ghost" onClick={onClose} aria-label="Đóng">
-            ✕
+            <Icon name="close" />
           </Button>
         </div>
 

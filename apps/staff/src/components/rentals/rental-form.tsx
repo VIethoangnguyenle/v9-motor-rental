@@ -9,6 +9,7 @@ import { errorCode, errorMessage } from "../../lib/errors";
 import { customersQuery, fleetQuery, type Customer, type FleetVehicle } from "../../lib/rentals";
 import { Alert } from "../ui/alert";
 import { Button } from "../ui/button";
+import { Icon } from "../ui/icon";
 import { Modal } from "../ui/modal";
 import { Select } from "../ui/select";
 import { SubmitButton } from "../ui/submit-button";
@@ -300,7 +301,7 @@ export function RentalForm({
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-ink">Lên đơn thuê xe</h2>
           <Button type="button" variant="ghost" onClick={onClose} aria-label="Đóng">
-            ✕
+            <Icon name="close" />
           </Button>
         </div>
 
@@ -396,7 +397,8 @@ export function RentalForm({
                     )}
 
                     <Button type="button" variant="ghost" onClick={() => setCustomerMode("create")}>
-                      + Khách hàng mới
+                      <Icon name="plus" className="mr-1" />
+                      Khách hàng mới
                     </Button>
                   </div>
                 ) : (
@@ -434,7 +436,8 @@ export function RentalForm({
                         variant="ghost"
                         onClick={() => setCustomerMode("search")}
                       >
-                        ← Quay lại tìm
+                        <Icon name="arrow-left" className="mr-1" />
+                        Quay lại tìm
                       </Button>
                     </div>
                   </div>

@@ -23,6 +23,7 @@ import {
 } from "../../lib/rentals";
 import { Alert } from "../ui/alert";
 import { Button } from "../ui/button";
+import { Icon } from "../ui/icon";
 import { Skeleton } from "../ui/skeleton";
 import { ToggleGroup } from "../ui/toggle-group";
 import { CalendarMonth } from "./calendar-month";
@@ -341,11 +342,11 @@ export function RentalCalendar() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="ghost" onClick={goPrev} aria-label="Kỳ trước">
-              ‹
+              <Icon name="chevron-left" />
             </Button>
             <span className="text-sm font-medium text-ink">{rangeLabel}</span>
             <Button type="button" variant="ghost" onClick={goNext} aria-label="Kỳ sau">
-              ›
+              <Icon name="chevron-right" />
             </Button>
             <Button type="button" variant="ghost" onClick={goToday}>
               Hôm nay
