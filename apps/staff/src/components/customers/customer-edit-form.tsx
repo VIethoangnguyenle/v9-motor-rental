@@ -67,6 +67,19 @@ export function CustomerEditForm({ customer, onSaved }: CustomerEditFormProps) {
     },
   });
 
+  /**
+   * 409 `CUSTOMER_EXISTS` là lỗi của ĐÚNG MỘT Ô — số điện thoại vừa gõ đã thuộc
+   * về khách khác. Trước đây nó chỉ hiện ở `Alert` cuối form, nên người dùng
+   * trình đọc màn hình nghe "Số điện thoại này đã thuộc về khách hàng khác: …"
+   * mà không có gì nối câu đó với ô cần sửa (WCAG 3.3.1, mức A).
+   *
+   * Mọi lỗi KHÁC giữ nguyên ở mức form: chúng không quy được về một ô.
+   */
+  const phoneError =
+    update.error instanceof UpdateCustomerError && update.error.code === "CUSTOMER_EXISTS"
+      ? update.error.message
+      : undefined;
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>): void {
     e.preventDefault();
     update.mutate();
@@ -92,6 +105,7 @@ export function CustomerEditForm({ customer, onSaved }: CustomerEditFormProps) {
         label="Số điện thoại"
         required
         type="tel"
+        error={phoneError}
         value={phone}
         onChange={(e) => {
           setPhone(e.target.value);
@@ -119,7 +133,9 @@ export function CustomerEditForm({ customer, onSaved }: CustomerEditFormProps) {
         />
       </label>
 
-      {update.error && <Alert tone="error">{update.error.message}</Alert>}
+      {/* `!phoneError`: khi lỗi đã được gắn vào ô điện thoại thì thôi lặp lại ở
+          đây — cùng một câu hiện hai chỗ làm người đọc đi tìm hai vấn đề. */}
+      {update.error && !phoneError && <Alert tone="error">{update.error.message}</Alert>}
       {/* Kết quả của một submit người dùng vừa chờ, không phải banner bật lên vì
           query settle — giữ mặc định `assertive` của `Alert`, KHÔNG truyền
           `live="polite"` (khác với hai banner tải dữ liệu ở

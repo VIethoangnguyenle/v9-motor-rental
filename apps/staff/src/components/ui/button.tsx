@@ -6,6 +6,25 @@ type Variant = "primary" | "ghost";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   readonly variant?: Variant;
+  /**
+   * Đang xử lý hành động của người dùng — KHÁC `disabled`.
+   *
+   * `disabled` nghĩa là "bạn không làm được việc này": nhãn không cần đọc, nên
+   * `opacity-50` là đúng. `pending` nghĩa là "đang làm, chờ chút": nhãn ("Đang
+   * tạo đơn…", "Đang huỷ…") là thông tin DUY NHẤT nói cho người dùng biết hệ
+   * thống đang làm gì, và nó xuất hiện đúng lúc họ đang chờ để đọc. Trước prop
+   * này cả hai dùng chung `disabled`, nên mọi nhãn "đang…" hiện ở **1,55:1**.
+   *
+   * WCAG 1.4.3 miễn trừ tương phản cho control bị vô hiệu — miễn trừ đó dành cho
+   * thứ người dùng không cần đọc, nên nó không che được ca này.
+   *
+   * Chặn kích hoạt bằng `preventDefault` trong `onClick` thay vì thuộc tính
+   * `disabled`: `disabled` gỡ nút khỏi tab order, nên trình duyệt bỏ tiêu điểm
+   * ngay giữa lúc gửi và người dùng bàn phím mất chỗ đứng. `preventDefault` trên
+   * click của nút `type="submit"` cũng chặn luôn việc submit form, nên không có
+   * đường gửi hai lần.
+   */
+  readonly pending?: boolean;
 }
 
 /**
@@ -37,6 +56,27 @@ const VARIANT: Record<Variant, string> = {
   ghost: "border border-border text-ink hover:border-muted hover:bg-canvas active:bg-border",
 };
 
-export function Button({ variant = "primary", className, ...rest }: ButtonProps) {
-  return <button {...rest} className={`${BASE} ${VARIANT[variant]} ${className ?? ""}`} />;
+export function Button({
+  variant = "primary",
+  pending = false,
+  className,
+  onClick,
+  ...rest
+}: ButtonProps) {
+  return (
+    <button
+      {...rest}
+      // `aria-disabled` chứ không `disabled`: trình đọc màn hình vẫn thông báo
+      // "không dùng được", nhưng nút giữ tiêu điểm và giữ nguyên độ tương phản.
+      aria-disabled={pending || undefined}
+      onClick={(e) => {
+        if (pending) {
+          e.preventDefault();
+          return;
+        }
+        onClick?.(e);
+      }}
+      className={`${BASE} ${VARIANT[variant]} ${pending ? "cursor-wait" : ""} ${className ?? ""}`}
+    />
+  );
 }

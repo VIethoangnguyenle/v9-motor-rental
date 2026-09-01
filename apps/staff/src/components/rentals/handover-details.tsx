@@ -118,7 +118,7 @@ export function HandoverDetails({
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
-          disabled={save.isPending}
+          pending={save.isPending}
           onClick={() =>
             save.mutate({
               documentType: docType === "" ? null : (docType as DocumentType),

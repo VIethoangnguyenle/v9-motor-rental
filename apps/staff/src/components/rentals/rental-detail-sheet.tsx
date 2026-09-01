@@ -194,7 +194,7 @@ export function RentalDetailSheet({
                     <div className="flex gap-2">
                       <Button
                         type="button"
-                        disabled={change.isPending}
+                        pending={change.isPending}
                         onClick={() => change.mutate(to)}
                       >
                         {change.isPending ? "Đang huỷ…" : "Huỷ đơn"}
@@ -211,7 +211,7 @@ export function RentalDetailSheet({
                   key={to}
                   type="button"
                   variant={destructive ? "ghost" : "primary"}
-                  disabled={change.isPending}
+                  pending={change.isPending}
                   onClick={() => (destructive ? setConfirming(to) : change.mutate(to))}
                 >
                   {change.isPending && !destructive ? "Đang lưu…" : TRANSITION_LABEL[to]}

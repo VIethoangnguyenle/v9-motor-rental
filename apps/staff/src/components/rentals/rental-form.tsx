@@ -418,13 +418,13 @@ export function RentalForm({
                       <Alert tone="error">{createCustomer.error.message}</Alert>
                     )}
                     <div className="flex items-center gap-2">
+                      {/* `pending` và `disabled` tách đôi: ô trống là "chưa
+                          làm được" (mờ đi là đúng), còn đang tạo là "đang làm,
+                          đọc nhãn đi" (phải giữ tương phản). */}
                       <Button
                         type="button"
-                        disabled={
-                          createCustomer.isPending ||
-                          newFullName.trim() === "" ||
-                          newPhone.trim() === ""
-                        }
+                        pending={createCustomer.isPending}
+                        disabled={newFullName.trim() === "" || newPhone.trim() === ""}
                         onClick={() => createCustomer.mutate()}
                       >
                         {createCustomer.isPending ? "Đang tạo…" : "Tạo & chọn khách hàng"}
@@ -453,20 +453,24 @@ export function RentalForm({
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
               />
+              {/* Câu này từng là một `<p>` trần đặt DƯỚI cả hai ô — đúng chữ,
+                  sai chỗ: nó nói về ô "Đến ngày" mà không có gì nối nó với ô đó,
+                  và trình đọc màn hình không biết ô nào đang sai. Nay đi qua
+                  `error` nên ô nhận `aria-invalid` + `aria-describedby`. */}
               <TextField
                 label="Đến ngày"
                 type="date"
                 required
                 min={startDate || undefined}
+                error={
+                  startDate !== "" && endDate !== "" && endDate < startDate
+                    ? "Ngày kết thúc phải từ ngày bắt đầu trở đi."
+                    : undefined
+                }
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
               />
             </div>
-            {startDate !== "" && endDate !== "" && endDate < startDate && (
-              <p className="text-sm text-status-overdue">
-                Ngày kết thúc phải từ ngày bắt đầu trở đi.
-              </p>
-            )}
             {days > 0 && <p className="text-sm text-muted">{days} ngày thuê.</p>}
           </div>
 

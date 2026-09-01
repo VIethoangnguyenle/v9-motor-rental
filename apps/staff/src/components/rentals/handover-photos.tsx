@@ -199,7 +199,7 @@ function KindSection({
             khi có tranh chấp xước xát — xoá rồi không lấy lại được.
           </Alert>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" disabled={busy} onClick={onConfirmDelete}>
+            <Button type="button" pending={busy} onClick={onConfirmDelete}>
               {busy ? "Đang xoá…" : "Xoá ảnh"}
             </Button>
             <Button type="button" variant="ghost" onClick={onCancelDelete}>
