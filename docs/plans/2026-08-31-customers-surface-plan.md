@@ -1201,7 +1201,62 @@ Expected: **không dòng nào**. Đó chính là lỗ: cả ba query chỉ xử 
 union). Nếu `queryFn` reject (mạng chết), `isPending` false và `data` undefined ⇒ không nhánh nào
 render gì.
 
-- [ ] **Step 2: Thêm `placeholderData` vào query danh sách**
+- [ ] **Step 2: Trả nợ `aria-live` mà Task 7 để lại — trong phạm vi màn Khách hàng**
+
+Task 7 thêm `role`/`aria-live` cho `Alert`, nhưng ánh xạ đi theo `tone` chứ không theo *"lỗi này
+có phải phản hồi một hành động người dùng đang chờ không"*. Soát cả 10 màn: **quá nửa** số
+`tone="error"` là banner báo lỗi **tải dữ liệu**, và `assertive` cắt ngang trình đọc màn hình vô cớ
+ở nhóm đó. Comment cảnh báo nằm sẵn ở `ui/alert.tsx`.
+
+Step 3 và 4 dưới đây sắp thêm **nhiều alert load-driven nữa** vào đúng hai trang này, nên trả nợ ở
+đây thay vì để nó lớn thêm.
+
+Thêm prop override vào `ui/alert.tsx`, mặc định suy từ `tone` nên **mọi call site hiện tại không
+đổi hành vi**:
+
+```tsx
+export function Alert({
+  tone,
+  live,
+  children,
+}: {
+  readonly tone: AlertTone;
+  /**
+   * Ghi đè mức khẩn của live region. Mặc định suy từ `tone`: `error` →
+   * `assertive` (cắt ngang), còn lại → `polite` (chờ tới lượt).
+   *
+   * Truyền `"polite"` cho banner báo lỗi TẢI DỮ LIỆU: nó xuất hiện vì một query
+   * settle, không phải vì người dùng vừa bấm gì và đang chờ — cắt ngang họ ở đó
+   * là mạnh hơn cần thiết. Giữ mặc định `assertive` cho lỗi submit (ca 409
+   * "Số điện thoại này đã thuộc về khách hàng khác").
+   */
+  readonly live?: "assertive" | "polite";
+  readonly children: React.ReactNode;
+}) {
+  const liveMode = live ?? (tone === "error" ? "assertive" : "polite");
+  return (
+    <p
+      role={liveMode === "assertive" ? "alert" : "status"}
+      aria-live={liveMode}
+      className={`rounded-card p-3 text-sm ${TONE[tone]}`}
+    >
+      {children}
+    </p>
+  );
+}
+```
+
+Rồi truyền `live="polite"` cho **mọi** `Alert` báo lỗi tải trong `customers-list-page.tsx` và
+`customer-detail-page.tsx` — gồm cả các nhánh `isError` bạn thêm ở Step 3 và 4. **Không** đụng
+`Alert` trong `customer-edit-form.tsx`: đó là lỗi submit, `assertive` đúng.
+
+**Ngoài phạm vi, ghi nợ ở Task 11:** `rental-calendar.tsx`, `rental-form.tsx`, `stats-page.tsx`,
+`staff-list-page.tsx` vẫn còn banner tải dùng mặc định `assertive`. Sửa chúng đòi kiểm lại những
+màn đợt này không đụng tới.
+
+Cập nhật luôn comment ⚠️ trong `ui/alert.tsx`: nay đã có cơ chế, phần còn lại là chỉnh call site.
+
+- [ ] **Step 3: Thêm `placeholderData` vào query danh sách**
 
 Trong `apps/staff/src/lib/customers.ts`, sửa `customersListQuery`:
 
@@ -1226,7 +1281,7 @@ export const customersListQuery = (q: string, page: number) => ({
 });
 ```
 
-- [ ] **Step 3: Nhánh `isError` + nút Thử lại ở trang danh sách**
+- [ ] **Step 4: Nhánh `isError` + nút Thử lại ở trang danh sách**
 
 Trong `customers-list-page.tsx`, ngay sau khối `query.data?.ok === false`, thêm:
 
@@ -1251,7 +1306,7 @@ Và đổi chỉ báo tải (dòng 62) từ `query.isPending` sang `query.isFetc
 }
 ```
 
-- [ ] **Step 4: Nhánh `isError` ở trang chi tiết**
+- [ ] **Step 5: Nhánh `isError` ở trang chi tiết**
 
 Trong `customer-detail-page.tsx`, thêm sau khối `detail.data?.ok === false`:
 
@@ -1275,7 +1330,7 @@ và tương tự cho `rentals` (dùng `rentals.isError` / `rentals.refetch()`), 
 import { Button } from "../components/ui/button";
 ```
 
-- [ ] **Step 5: Bỏ ba wrapper `<div>` rỗng quanh `Alert`**
+- [ ] **Step 6: Bỏ ba wrapper `<div>` rỗng quanh `Alert`**
 
 Review Task 3 chỉ ra: `Alert` **không nhận `className`** (`ui/alert.tsx`), nên
 `<div className="mt-3"><Alert/></div>` tồn tại **chỉ để** giữ chỗ cho `mt-3`. Task 3 đã bỏ `mt-3`,
@@ -1286,7 +1341,7 @@ Ba chỗ: `customers-list-page.tsx` (quanh Alert lỗi danh sách) · `customer-
 Alert lỗi chi tiết) · `customer-detail-page.tsx` (quanh Alert lỗi lịch sử). Số dòng đã dịch qua
 nhiều commit — tìm theo nội dung, đừng theo số dòng.
 
-- [ ] **Step 6: Verify bằng cách LÀM HỎNG thật**
+- [ ] **Step 7: Verify bằng cách LÀM HỎNG thật**
 
 ```bash
 bun run dev
@@ -1298,10 +1353,10 @@ trống. Bật API lại, bấm "Thử lại": dữ liệu hiện ra.
 
 Đổi trang khi API sống: bảng **không** trắng nữa, chỉ có dòng "Đang tải…".
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add apps/staff/src/lib/customers.ts apps/staff/src/pages/customers-list-page.tsx apps/staff/src/pages/customer-detail-page.tsx
+git add apps/staff/src/components/ui/alert.tsx apps/staff/src/lib/customers.ts apps/staff/src/pages/customers-list-page.tsx apps/staff/src/pages/customer-detail-page.tsx
 git commit -m "fix(staff): màn Khách hàng hết hỏng im lặng khi mạng chết
 
 Cả ba query chỉ xử lý res.error (lỗi HTTP trong union). Khi queryFn REJECT thì
