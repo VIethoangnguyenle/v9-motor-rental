@@ -361,6 +361,38 @@ một suppression sẽ che mất hồi quy sau này. Nó vừa che mất đúng 
 Hàng rào cũng canh **hai chiều**: một cặp đã khai ngoại lệ mà nay qua ngưỡng thì test **cũng đỏ**,
 kèm yêu cầu xoá khỏi bảng. Một bảng suppression chỉ an toàn chừng nào nó không mục được.
 
+#### 2.5b-bis Achromatopsia — phép thử chứng minh luận điểm, đo trên bản build
+
+Ba kiểu mù màu ở §2.5b giữ lại **một phần** thông tin màu. **Achromatopsia** (mù màu toàn phần,
+~1/30.000) không giữ gì: chỉ còn **độ sáng**. Đó cũng là ca chứng minh sạch nhất, vì ràng buộc "chữ
+trắng ≥ 4,5:1" **chính là** một ràng buộc lên độ sáng.
+
+Đo trên bản build thật (Task 4b, lấy pixel nền bằng `feColorMatrix` của Blink), và tái lập được
+bằng phép tính từ token:
+
+| Trạng thái  | Xám    |
+| ----------- | ------ |
+| `đã trả`    | 77/255 |
+| `đã đặt`    | 99     |
+| `cảnh báo`  | 103    |
+| `quá hạn`   | 106    |
+| `đang thuê` | 118    |
+
+**Bốn trong năm màu nằm trong 7/255 của nhau.** Bảng màu sụp thành đúng **hai nhóm**: `đã trả`, và
+tất cả những màu còn lại. Cặp chặt nhất là `cảnh báo ↔ quá hạn` ở **3/255 (1,2%)** — và đó chính là
+hai dòng nằm sát nhau trong `AttentionList`.
+
+> ⚠️ **Đính chính §2.5c:** dưới ba kiểu mù màu thông thường, cặp chặt nhất là `quá hạn ↔ đã trả`
+> (ΔE 0,073, protanopia). Dưới achromatopsia thì **ngược lại** — `đã trả` là màu **dễ** phân biệt
+> nhất, còn `quá hạn ↔ đang thuê` mới sát (12/255). Hai kết luận không mâu thuẫn: chúng đo hai thứ
+> khác nhau, và `đang thuê` sát `quá hạn` **do chính cách nó được giải ra** (L=55,7% là mức sáng nhất
+> còn đạt 4,5:1 với chữ trắng; `quá hạn` ở L=55%).
+
+Đây là chỗ luận điểm §2.5b thôi là suy luận và thành phép đo: **không cách chọn màu nào cứu được**,
+vì thứ ghim độ sáng lại chính là ràng buộc tương phản. Ở chế độ Tháng 390px dưới achromatopsia, chip
+là những ô xám trơn — **chỉ còn icon** phân biệt được chúng. Không có §5 thì màn đó là năm khối xám
+không đọc được.
+
 #### 2.5c Một cặp cố ý KHÔNG đuổi theo — `quá hạn` ↔ `đã trả` (ΔE 0,073)
 
 Cặp này **chữa được bằng màu**, và vẫn quyết định không chữa. Ghi ra vì im lặng ở đây sẽ đọc thành
