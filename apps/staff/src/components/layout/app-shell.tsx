@@ -32,6 +32,24 @@ export function AppShell({
   return (
     <div className="flex h-dvh flex-col bg-canvas md:flex-row">
       {/*
+       * Bỏ qua điều hướng (WCAG 2.4.1 Bypass Blocks, mức A).
+       *
+       * App đã có landmark `<nav>`/`<main>`, mà kỹ thuật ARIA11 được chấp nhận
+       * là cách thoả SC này — nên đây không phải sửa một vi phạm, mà là bịt chỗ
+       * mà landmark KHÔNG giúp được: người dùng **chỉ dùng bàn phím, không dùng
+       * trình đọc màn hình**. Họ không có danh sách landmark để nhảy, nên trước
+       * link này họ phải Tab qua 7 mục nav trên MỌI trang.
+       *
+       * `sr-only` cho tới khi nhận tiêu điểm — chỉ bàn phím mới tới được nó, nên
+       * dùng `focus:` chứ không `focus-visible:`.
+       */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:inline-flex focus:min-h-11 focus:items-center focus:rounded-card focus:border focus:border-border focus:bg-surface focus:px-4 focus:text-sm focus:font-semibold focus:text-ink"
+      >
+        Bỏ qua điều hướng
+      </a>
+      {/*
        * Sidebar: chỉ hiện ≥768. `shrink-0` để hàng flex không bóp nó lại khi
        * nội dung bên phải dài; tự cao hết chiều dọc nhờ `align-items: stretch`
        * mặc định của flex-row, không cần khai `h-full` hay `overflow` riêng —
@@ -49,7 +67,12 @@ export function AppShell({
        * sidebar không bị cuốn theo khi nội dung dài.
        */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        <main className="page-gutter flex-1 py-4">{children}</main>
+        {/* `tabIndex={-1}`: không có nó thì nhảy `#main` chỉ cuộn màn hình mà
+            KHÔNG chuyển tiêu điểm — lần Tab kế tiếp lại quay về ngay sau skip
+            link, tức nút đầu tiên của nav, và link trở thành vô dụng. */}
+        <main id="main" tabIndex={-1} className="page-gutter flex-1 py-4">
+          {children}
+        </main>
         <AppNav variant="bottom" me={me} onSignOut={onSignOut} />
       </div>
     </div>

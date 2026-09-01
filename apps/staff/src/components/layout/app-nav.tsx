@@ -103,7 +103,12 @@ function NewRequestBadge() {
 
 function SidebarNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignOut: () => void }) {
   return (
-    <nav className="flex h-full w-full flex-col p-3 text-sm">
+    // Cùng `aria-label` với bottom nav, và điều đó ĐÚNG chứ không phải trùng
+    // lặp: `AppShell` dựng cả hai biến thể, nhưng `hidden md:flex` / `md:hidden`
+    // cho `display: none` nên tại mỗi bề rộng chỉ một cái nằm trong cây a11y.
+    // Trước đây bản sidebar không có tên nào, nên nó hiện ra trong danh sách
+    // landmark chỉ là "navigation".
+    <nav aria-label="Điều hướng chính" className="flex h-full w-full flex-col p-3 text-sm">
       <ul className="flex flex-col gap-1">
         {NAV_ITEMS.filter((item) => visibleFor(item, me)).map((item) => (
           <li key={item.label}>
