@@ -254,6 +254,78 @@
 }
 
 /*
+ * ── Khoảnh khắc được dàn dựng: đơn vừa đổi trạng thái ────────────────────────
+ *
+ * Nhân viên bấm `Đã giao xe`: `handed_over_at` được đặt, đơn chuyển
+ * BOOKED → ONGOING, xe rời cửa hàng, và doanh thu thôi đứng ở 0 ₫ — bốn thứ xảy
+ * ra cùng lúc ở bốn chỗ khác nhau trên màn hình. Critique 2026-09-01 đo được
+ * rằng hành động này KHÔNG sinh ra phản hồi nào.
+ *
+ * VÒNG VIỀN, không phải một mảng tô phủ lên chip — và đây là một phép ĐO, không
+ * phải khẩu vị. Chip `ONGOING` là nền đặc + chữ `accent-ink`, đo được đúng
+ * 4,51:1 ở bảng sáng, tức không có một chút biên nào. Phủ `accent-soft` @55% lên
+ * nó cho 2,02:1 (bảng tối 8,62 → 3,36). Không độ mờ nào cứu được cách tô đó —
+ * @10% vẫn chỉ 3,89:1, vẫn dưới AA. Vòng viền nằm ở mép, không đụng chữ:
+ * accent/surface 5,59:1 ở bảng sáng và 6,37:1 ở bảng tối, đều qua ngưỡng 3:1 của
+ * SC 1.4.11 cho thành phần phi văn bản.
+ *
+ * `transform` + `opacity` trên `::after`, KHÔNG `box-shadow`: design doc §4.3
+ * xếp hiệu ứng này vào nhóm LẶP LẠI vì dấu này rồi sẽ chạy trên hàng lịch phía
+ * sau chứ không chỉ trên một chip trong lớp phủ. Chọn đúng nhóm ngay từ đầu
+ * nghĩa là ngày dời nó sang đó không phải viết lại.
+ *
+ * 600ms là ngoại lệ ĐƯỢC KHAI của trần 400ms ở `@theme` bên trên, không phải một
+ * chỗ quên: §4.4 mục 6 ghi thẳng "600ms ×1", và lý lẽ của trần — "app này được
+ * dùng hàng trăm lần mỗi ca" — không áp cho một chuỗi chạy vài chục lần mỗi ca
+ * trên đúng một phần tử.
+ *
+ * Chạy MỘT nhịp rồi tắt. Vòng xung lặp mãi là một lời cảnh báo, không phải một
+ * lời xác nhận.
+ */
+@keyframes v9-just-changed {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.15);
+  }
+}
+
+@utility just-changed {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 2px solid var(--color-accent);
+    border-radius: inherit;
+    pointer-events: none;
+    animation: v9-just-changed 600ms var(--ease-exit) 1 both;
+
+    /*
+     * Bản thay thế cho `prefers-reduced-motion` — BẮT BUỘC, không phải tuỳ chọn.
+     *
+     * Quét toàn cục ở `@layer base` bên dưới biến mọi animation về 1ms, tức với
+     * `both` thì vòng nhảy thẳng tới khung cuối (`opacity: 0`) và biến mất hoàn
+     * toàn. Dừng ở đó là người bật cờ này quay lại ĐÚNG lỗi P0 ở trên: app làm
+     * xong việc mà không nói gì. Ở đây vòng đứng yên, đủ đậm, và
+     * `rental-detail-sheet.tsx` giữ sheet mở 2s cho nó (design doc §4.6).
+     *
+     * `animation: none` đủ để thắng quét toàn cục dù quét đó `!important`: quét
+     * chỉ ép `animation-duration` và `animation-iteration-count`, không ép
+     * `animation-name`. Tên `none` thì không còn gì để chạy, nên `opacity` ngay
+     * dưới quyết định thứ nhìn thấy.
+     */
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+      opacity: 1;
+    }
+  }
+}
+
+/*
  * ── Vòng tiêu điểm bàn phím, khai MỘT chỗ cho cả app ─────────────────────────
  *
  * Trước dòng này app không có một khai báo focus nào (`grep -rn "focus:"` ra
