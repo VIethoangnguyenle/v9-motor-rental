@@ -14,12 +14,12 @@ chia làm ba plan nối tiếp:
 | C    | Màn Thống kê (`/`) và trang Lịch (`/calendar`), form lên đơn                              | ✅ **xong** — [`plans/2026-08-16-staff-stats-calendar-plan.md`](plans/2026-08-16-staff-stats-calendar-plan.md)   |
 
 Bốn tính năng của `apps/staff` mà `docs/ARCHITECTURE.md` liệt kê: **lịch**, **thống kê** và **quản lý
-khách hàng** đã xong (màn Khách hàng land 2026-08-31). **Lên đơn/bàn giao** xong phần tạo đơn và phần
-đổi trạng thái — chạm vào thanh đơn trên lịch mở sheet chi tiết có nút `Đã giao xe`/`Đã nhận lại xe`
-(2026-09-01), nên `handed_over_at` được đặt và doanh thu hết đứng yên ở `0 ₫`. **Còn thiếu đúng một
-mảnh: ảnh** — chụp giấy tờ và tình trạng xe lúc giao/nhận, lưu lên MinIO bucket `checkins`. Đó là
-thứ `PRODUCT.md` nguyên tắc #3 dựa vào khi có tranh chấp xước xát, nên "bàn giao" chưa gọi là xong
-được chừng nào chưa có nó.
+khách hàng** đã xong (màn Khách hàng land 2026-08-31). **Lên đơn/bàn giao** cũng đã xong
+(2026-09-01): chạm vào thanh đơn trên lịch mở sheet chi tiết có nút `Đã giao xe`/`Đã nhận lại xe`
+nên `handed_over_at` được đặt và doanh thu hết đứng yên ở `0 ₫`; cùng sheet đó ghi giấy tờ shop
+đang giữ, địa chỉ giao xe, và **ảnh** — ba nhóm `DOCUMENT`/`HANDOVER`/`RETURN` lưu vào MinIO bucket
+`checkins` (migration `0015`). Đó là thứ `PRODUCT.md` nguyên tắc #3 dựa vào khi có tranh chấp xước
+xát. **Bốn tính năng `apps/staff` mà `ARCHITECTURE.md` liệt kê nay đủ cả bốn.**
 
 **Đã xong — đợt trả nợ kỹ thuật 2026-08-18.** Bốn món nợ đóng, cách chứng minh từng món ghi ở
 [`DEBT.md`](DEBT.md): `getStatsSummary` nhận bộ lọc nên `stats.test.ts` hết cần xoá trắng bảng
@@ -73,12 +73,13 @@ lịch, thống kê, lên đơn/bàn giao, quản lý khách hàng · vai trò `
 
 `rental_requests` **đã xong** (migration `0013`, đợt 2026-09-01).
 
+Ảnh bàn giao **đã xong** (migration `0015`, bảng `rental_photos`).
+
 Còn lại trong nhóm nghiệp vụ: chính sách tính ngày thuê và bảng giá (Plan A **cố ý** để giá nhập
-tay) · **ảnh** bàn giao và ảnh tình trạng xe lên MinIO · huỷ đơn và hoàn cọc · bảo hiểm · vai trò
-`SALES`. Bốn món sau đều nằm trong mục "Chưa quyết — đừng bịa" của `PRODUCT.md`: chúng chặn ở một
+tay) · huỷ đơn và hoàn cọc · bảo hiểm · vai trò `SALES`. Bốn món sau đều nằm trong mục "Chưa quyết — đừng bịa" của `PRODUCT.md`: chúng chặn ở một
 quyết định nghiệp vụ, không chặn ở code.
 
-**Kỹ thuật:** `next-intl` khi thật sự có tiếng Anh · upload ảnh lên MinIO · các món nợ ở [`DEBT.md`](DEBT.md).
+**Kỹ thuật:** `next-intl` khi thật sự có tiếng Anh · các món nợ ở [`DEBT.md`](DEBT.md).
 **Chặn ở người, không chặn ở code** — ba việc này không tự làm được, cần asset từ shop:
 
 Hai việc đầu chờ **đúng một** thứ: **file logo thật của shop**. Việc thứ ba chờ **ảnh xe thật**.

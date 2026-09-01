@@ -33,8 +33,18 @@ services:
       timeout: 3s
       retries: 10
 
+  # Tạo bucket VÀ user riêng cho apps/api. User đó là một phần của hạ tầng, không
+  # phải bước thủ công: thiếu nó thì `apps/api` chết lúc khởi động (env `required`)
+  # và người mới clone repo không có cách nào biết vì sao. Cùng lý lẽ với việc
+  # bucket được tạo ở đây thay vì "nhớ tạo bằng tay".
+  #
+  # `|| true` sau mỗi lệnh admin: container này chạy lại mỗi lần `compose up`, và
+  # `user add` trên user đã tồn tại thì exit khác 0 — không có nó thì lần khởi
+  # động thứ hai trở đi báo lỗi dù mọi thứ đều đúng.
   minio-init:
     image: minio/mc:latest
+    volumes:
+      - ./scripts/api-minio-policy.json:/policies/api-minio-policy.json:ro
     depends_on:
       minio:
         condition: service_healthy
@@ -43,7 +53,10 @@ services:
       mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
       mc mb --ignore-existing local/${MINIO_BUCKET_VEHICLES} &&
       mc mb --ignore-existing local/${MINIO_BUCKET_CHECKINS} &&
-      echo 'buckets sẵn sàng'
+      mc admin user add local ${API_S3_KEY} ${API_S3_SECRET} 2>/dev/null || true &&
+      mc admin policy create local v9-api-checkins /policies/api-minio-policy.json 2>/dev/null || true &&
+      mc admin policy attach local v9-api-checkins --user ${API_S3_KEY} 2>/dev/null || true &&
+      echo 'buckets + user api sẵn sàng'
       "
 
   # Chỉ dữ liệu gốc: danh mục xe, ảnh, bảng giá. KHÔNG làm vận hành (lịch,

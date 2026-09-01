@@ -18,6 +18,11 @@ export interface Rental {
   readonly totalAmount: Vnd;
   readonly depositAmount: Vnd;
   readonly note: string | null;
+  /** Giấy tờ shop giữ cho ĐƠN này. `null` = chưa giữ gì. Migration `0012`. */
+  readonly documentType: string | null;
+  /** `null` = còn đang giữ. */
+  readonly documentReturnedAt: Date | null;
+  readonly deliveryAddress: string | null;
 }
 
 export type CreateRentalResult =
@@ -35,6 +40,12 @@ const COLUMNS = {
   totalAmount: schema.rentals.totalAmount,
   depositAmount: schema.rentals.depositAmount,
   note: schema.rentals.note,
+  // Ba cột bàn giao. Đi kèm mọi lượt đọc đơn chứ không có endpoint riêng: sheet
+  // chi tiết mở từ lịch cần chúng ngay, và một round-trip nữa cho ba giá trị
+  // nhỏ là đắt hơn việc mang chúng theo.
+  documentType: schema.rentals.documentType,
+  documentReturnedAt: schema.rentals.documentReturnedAt,
+  deliveryAddress: schema.rentals.deliveryAddress,
 };
 
 /**
@@ -244,4 +255,71 @@ export async function listRentalsForCustomer(customerId: string): Promise<Rental
     .limit(MAX_CUSTOMER_HISTORY_ROWS);
 
   return rows.map((r) => ({ ...r, status: r.status as RentalStatus }));
+}
+
+export type UpdateHandoverResult =
+  | { ok: true; rental: Rental }
+  | { ok: false; reason: "RENTAL_NOT_FOUND" | "DOCUMENT_RETURN_NEEDS_TYPE" };
+
+/**
+ * Ghi chi tiết bàn giao: giấy tờ shop đang giữ và địa chỉ giao xe.
+ *
+ * Ba cột này do migration `0012` mở sẵn và **chưa có ai ghi vào** cho tới đợt
+ * này — comment ở migration gọi đó là "hợp đồng dữ liệu cho đợt sau, không phải
+ * cột bị quên". Đây là đợt sau.
+ *
+ * `documentReturned` là CỜ chứ không phải dấu thời gian do phía gọi truyền:
+ * cùng lý lẽ `handedOverAt` ở `changeRentalStatus` — một route truyền sai giờ là
+ * một dòng lịch sử sai, và không có gì bắt được.
+ *
+ * Nhánh `DOCUMENT_RETURN_NEEDS_TYPE` dịch trước CHECK `rentals_document_return_needs_type`
+ * ở DB: bắt ở đây thì người dùng nhận 409 kèm câu tiếng Việt, để rơi xuống DB
+ * thì họ nhận 500 kèm một lỗi Postgres thô.
+ */
+export async function updateRentalHandover(
+  id: string,
+  input: {
+    documentType?: "CCCD" | "PASSPORT" | null;
+    deliveryAddress?: string | null;
+    documentReturned?: boolean;
+  },
+  now: Date,
+): Promise<UpdateHandoverResult> {
+  return db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({ id: schema.rentals.id, documentType: schema.rentals.documentType })
+      .from(schema.rentals)
+      .where(eq(schema.rentals.id, id))
+      .for("update")
+      .limit(1);
+
+    if (!current) return { ok: false as const, reason: "RENTAL_NOT_FOUND" as const };
+
+    // Loại giấy tờ SAU khi áp thay đổi của request — người dùng có thể vừa chọn
+    // loại vừa bấm đã-trả trong cùng một lần lưu.
+    const nextType =
+      input.documentType === undefined ? current.documentType : input.documentType;
+
+    if (input.documentReturned === true && (nextType === null || nextType === undefined)) {
+      return { ok: false as const, reason: "DOCUMENT_RETURN_NEEDS_TYPE" as const };
+    }
+
+    const [row] = await tx
+      .update(schema.rentals)
+      .set({
+        ...(input.documentType === undefined ? {} : { documentType: input.documentType }),
+        ...(input.deliveryAddress === undefined
+          ? {}
+          : { deliveryAddress: input.deliveryAddress }),
+        ...(input.documentReturned === undefined
+          ? {}
+          : { documentReturnedAt: input.documentReturned ? now : null }),
+        updatedAt: now,
+      })
+      .where(eq(schema.rentals.id, id))
+      .returning(COLUMNS);
+
+    if (!row) throw new Error("UPDATE rentals không trả về hàng nào");
+    return { ok: true as const, rental: { ...row, status: row.status as RentalStatus } };
+  });
 }

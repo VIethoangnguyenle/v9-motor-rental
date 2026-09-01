@@ -108,6 +108,9 @@ const rentalSchema = t.Object({
   // không JOIN. `t.Optional` chứ không phải trường riêng — đã kiểm bằng
   // Elysia thật (xem báo cáo task): trường vắng mặt bị lược khỏi JSON, không
   // phải `null`, và không bị elysia từ chối response.
+  documentType: t.Nullable(t.String()),
+  documentReturnedAt: t.Nullable(t.Date()),
+  deliveryAddress: t.Nullable(t.String()),
   customerName: t.Optional(t.String()),
   customerPhone: t.Optional(t.String()),
 });

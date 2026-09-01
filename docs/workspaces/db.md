@@ -21,23 +21,24 @@ Không phải rườm rà — xem mục kế tiếp.
 
 Migration hiện có:
 
-| File                        | Nội dung                                                                                                                                                                |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `0000_btree_gist`           | bật extension                                                                                                                                                           |
-| `0001_service_roles`        | role + schema cho Directus và SuperTokens                                                                                                                               |
-| `0002_tearful_plazm`        | `vehicles` + `vehicle_photos`, CHECK `slug`/`status`, partial index cho xe `published`                                                                                  |
-| `0003_puzzling_pete_wisdom` | CHECK tiền không âm và `engine_cc > 0`                                                                                                                                  |
-| `0004_real_mantis`          | hàm `set_updated_at()` + trigger `vehicles_set_updated_at`                                                                                                              |
-| `0005_tidy_machine_man`     | `staff_users` + `password_reset_codes`, CHECK `role`/`status`, partial index                                                                                            |
-| `0006_spooky_proteus`       | FK tự trỏ `staff_users.approved_by → staff_users.id`, `ON DELETE SET NULL`                                                                                              |
-| `0007_little_micromacro`    | đổi tên index/constraint của `0005` sang quy ước dài của Drizzle                                                                                                        |
-| `0008_flaky_carlie_cooper`  | `staff_users.sessions_invalid_before` — mốc thu hồi access token                                                                                                        |
-| `0009_watery_shinobi_shaw`  | `customers` (CHECK chuẩn hoá `phone`) + `rentals` (FK `vehicle_id`/`customer_id`/`created_by`, tám CHECK trạng thái/tiền/giao-trả), partial index `rentals_revenue_idx` |
-| `0010_clumsy_jack_power`    | cột sinh `rentals.period` (`tstzrange`) + exclusion constraint `rentals_no_overlap` chống đặt trùng xe                                                                  |
-| `0011_skinny_falcon`        | đổi unique `staff_users.email` từ text thô sang biểu thức `lower(email)` — sửa bug so sánh phân biệt hoa/thường                                                         |
-| `0012_crazy_kinsey_walden`  | bật `unaccent`/`pg_trgm`, hàm `f_unaccent()`, GIN index tìm khách theo tên không dấu; thêm ba cột giấy tờ/địa chỉ giao xe vào `rentals`                                 |
+| File                         | Nội dung                                                                                                                                                                                                  |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0000_btree_gist`            | bật extension                                                                                                                                                                                             |
+| `0001_service_roles`         | role + schema cho Directus và SuperTokens                                                                                                                                                                 |
+| `0002_tearful_plazm`         | `vehicles` + `vehicle_photos`, CHECK `slug`/`status`, partial index cho xe `published`                                                                                                                    |
+| `0003_puzzling_pete_wisdom`  | CHECK tiền không âm và `engine_cc > 0`                                                                                                                                                                    |
+| `0004_real_mantis`           | hàm `set_updated_at()` + trigger `vehicles_set_updated_at`                                                                                                                                                |
+| `0005_tidy_machine_man`      | `staff_users` + `password_reset_codes`, CHECK `role`/`status`, partial index                                                                                                                              |
+| `0006_spooky_proteus`        | FK tự trỏ `staff_users.approved_by → staff_users.id`, `ON DELETE SET NULL`                                                                                                                                |
+| `0007_little_micromacro`     | đổi tên index/constraint của `0005` sang quy ước dài của Drizzle                                                                                                                                          |
+| `0008_flaky_carlie_cooper`   | `staff_users.sessions_invalid_before` — mốc thu hồi access token                                                                                                                                          |
+| `0009_watery_shinobi_shaw`   | `customers` (CHECK chuẩn hoá `phone`) + `rentals` (FK `vehicle_id`/`customer_id`/`created_by`, tám CHECK trạng thái/tiền/giao-trả), partial index `rentals_revenue_idx`                                   |
+| `0010_clumsy_jack_power`     | cột sinh `rentals.period` (`tstzrange`) + exclusion constraint `rentals_no_overlap` chống đặt trùng xe                                                                                                    |
+| `0011_skinny_falcon`         | đổi unique `staff_users.email` từ text thô sang biểu thức `lower(email)` — sửa bug so sánh phân biệt hoa/thường                                                                                           |
+| `0012_crazy_kinsey_walden`   | bật `unaccent`/`pg_trgm`, hàm `f_unaccent()`, GIN index tìm khách theo tên không dấu; thêm ba cột giấy tờ/địa chỉ giao xe vào `rentals`                                                                   |
 | `0013_motionless_celestials` | `rental_requests` — yêu cầu thuê khách gửi từ `apps/web`. FK `vehicle_id`/`handled_by`, CHECK chuẩn hoá `phone` + trạng thái + trần `days` + "đã xử lý thì phải có `handled_at`", partial index cho `NEW` |
-| `0014_jazzy_edwin_jarvis`   | CHECK `vehicle_photos_alt_meaningful` — alt không rỗng và không phải tên file (`PRODUCT.md` §Accessibility)                                                             |
+| `0014_jazzy_edwin_jarvis`    | CHECK `vehicle_photos_alt_meaningful` — alt không rỗng và không phải tên file (`PRODUCT.md` §Accessibility)                                                                                               |
+| `0015_past_vin_gonzales`     | `rental_photos` — METADATA ảnh bàn giao (byte nằm ở MinIO bucket `checkins`). FK `rental_id` CASCADE / `uploaded_by` RESTRICT, `object_key` UNIQUE, CHECK loại/kích thước/content-type                    |
 
 `0002` và `0003` do `db:generate` sinh — kể cả bốn CHECK, vì chúng khai bằng `check()` ngay trong
 `src/schema/vehicles.ts`. `0004` thì **phải** là `db:custom`: Drizzle không mô tả được TRIGGER, nên
@@ -73,6 +74,13 @@ giải thích. Ràng buộc chống đặt trùng vẫn nguyên vẹn ở `renta
 test kèm alt viết đúng vẫn qua — và đó là ca đã xảy ra thật (xem comment trong
 `src/schema/vehicles.ts`). Đừng đọc constraint này như một bảo đảm rằng ảnh trong danh mục là ảnh
 thật của shop.
+
+⚠️ **`rental_photos` là bảng DUY NHẤT trong repo có một nửa dữ liệu nằm ngoài Postgres.** `object_key`
+là sợi dây nối, và hai kho lệch nhau theo hai chiều KHÔNG đối xứng: "hàng còn, object mất" thì ảnh
+hỏng lúc mở (thấy ngay), còn "object còn, hàng mất" là **rác vô hình** — không truy vấn nào thấy,
+không ai xoá, mà nó vẫn là ảnh CCCD của một người thật. Thứ tự ghi/xoá ở
+`apps/api/src/services/photos.ts` được chọn để nghiêng về chiều thứ nhất; đọc comment ở đó trước
+khi đổi. `ON DELETE CASCADE` của Postgres KHÔNG chạm được MinIO.
 
 ### ⚠️ `0012` trộn `db:generate` với SQL viết tay — cái bẫy nếu đổi thứ tự
 

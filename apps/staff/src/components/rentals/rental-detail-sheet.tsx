@@ -10,6 +10,8 @@ import { errorMessage } from "../../lib/errors";
 import { changeRentalStatus, type CalendarRental, type FleetVehicle } from "../../lib/rentals";
 import { STATUS_LABEL, TRANSITION_LABEL, rentalChipClass } from "../../lib/rental-status";
 import { Alert } from "../ui/alert";
+import { HandoverDetails } from "./handover-details";
+import { HandoverPhotos } from "./handover-photos";
 import { Button } from "../ui/button";
 
 const DATE_FMT = new Intl.DateTimeFormat("vi-VN", {
@@ -178,6 +180,21 @@ export function RentalDetailSheet({
         </dl>
 
         {rental.note && <p className="text-sm text-ink">{rental.note}</p>}
+
+        {/*
+         * Giấy tờ + ảnh đứng TRÊN nút đổi trạng thái, không phải dưới: nhân
+         * viên chụp ảnh rồi mới bấm "đã giao xe", nên thứ tự trên màn hình khớp
+         * thứ tự việc làm ngoài đời. Đặt nút trước thì luồng tự nhiên là bấm
+         * xong rồi cuộn xuống chụp — và tấm ảnh "lúc giao" chụp sau khi xe đã đi.
+         */}
+        <HandoverDetails
+          rentalId={rental.id}
+          documentType={rental.documentType}
+          documentReturnedAt={rental.documentReturnedAt}
+          deliveryAddress={rental.deliveryAddress}
+        />
+
+        <HandoverPhotos rentalId={rental.id} />
 
         {change.error && <Alert tone="error">{change.error.message}</Alert>}
 

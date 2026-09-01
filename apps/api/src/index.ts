@@ -6,6 +6,7 @@ import { auth } from "./plugins/auth";
 import { staffGuard } from "./plugins/staff-guard";
 import { timing } from "./plugins/timing";
 import { fleet } from "./routes/fleet";
+import { handover } from "./routes/handover";
 import { health } from "./routes/health";
 import { rentals } from "./routes/rentals";
 import { requests } from "./routes/requests";
@@ -77,6 +78,7 @@ const app = new Elysia()
   .use(staff)
   .use(fleet)
   .use(rentals)
+  .use(handover)
   .use(requests)
   .use(stats)
   .listen({ port: env.port, hostname: env.host });

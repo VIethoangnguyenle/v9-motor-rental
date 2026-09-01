@@ -44,6 +44,20 @@ export const env = {
     endpoint: required("MINIO_ENDPOINT"),
     bucketVehicles: required("MINIO_BUCKET_VEHICLES"),
     bucketCheckins: required("MINIO_BUCKET_CHECKINS"),
+    /**
+     * Khoá RIÊNG của `apps/api`, KHÔNG phải `MINIO_ROOT_*`.
+     *
+     * `docs/DEBT.md` đã đóng đúng món nợ này cho Directus: service phơi ra
+     * internet không được cầm khoá mở mọi bucket. Luật đó áp cho api y hệt —
+     * nó là service duy nhất chạm `checkins`, nơi chứa ảnh CCCD và bằng chứng
+     * tranh chấp, nên nó cần khoá chỉ mở được đúng bucket đó.
+     *
+     * `required()` chứ không fallback: thiếu biến thì API chết lúc khởi động
+     * với câu nói rõ thiếu gì. Fallback về root là biến một cấu hình sai thành
+     * một hệ thống chạy được với quyền quá rộng — hỏng theo chiều mở.
+     */
+    accessKey: required("API_S3_KEY"),
+    secretKey: required("API_S3_SECRET"),
   },
   apiDomain: process.env.API_DOMAIN ?? "http://localhost:3001",
   staffAppUrl: process.env.STAFF_APP_URL ?? "http://localhost:3003",

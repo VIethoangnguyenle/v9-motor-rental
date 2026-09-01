@@ -24,6 +24,7 @@ import {
   type StaffUser,
 } from "../services/staff";
 import type { RentalErrorCode } from "./rentals";
+import type { HandoverErrorCode } from "./handover";
 import type { RequestErrorCode } from "./requests";
 
 /**
@@ -121,6 +122,7 @@ export type ApiErrorCode =
   | GuardErrorCode
   | RentalErrorCode
   | RequestErrorCode
+  | HandoverErrorCode
   | "EMAIL_NOT_CONFIGURED"
   | "RATE_LIMITED";
 
