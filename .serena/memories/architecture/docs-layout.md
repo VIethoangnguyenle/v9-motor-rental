@@ -17,6 +17,18 @@ làm một việc cụ thể không thuộc về đó.
 **Vì sao ADR ở Serena chứ không phải markdown:** ADR được tra khi cần, không phải đọc tuần tự.
 `write_memory`/`read_memory` cho phép nạp đúng quyết định liên quan thay vì cả file.
 
+**Nhưng LUẬT và LỆNH thì KHÔNG được xuống memory.** Phân vai cứng: *memory giữ QUYẾT ĐỊNH và LÝ DO;
+file được track giữ LUẬT và LỆNH.* Đưa một hàng rào (probe, boundary, lệnh bắt buộc chạy) vào memory
+là biến ràng buộc repo-ép thành cấu hình local — đúng cái bẫy dự án đã dính bốn lần, xem
+`mem:process/verification-traps`.
+
+Lập luận này lần đầu được viết ra (2026-08-12, hồi ADR còn nằm ở agentmemory) để **cấm** chuyển luật
+sang memory, với lý do "memory sống ở `~/.claude/projects/…` nên không đi theo `git clone`". ⚠️ Vế
+lý do đó **không áp cho Serena**: đã kiểm 2026-09-01, `.serena/memories/**` **được git track** (chỉ
+`.serena/cache/` bị ignore), nên memory ở đây **có** đi theo clone. Vế kết luận thì vẫn giữ, vì lý do
+khác: không cơ chế nào *ép* ai đọc một memory, y như không linter nào kiểm được "đã hỏi CodeGraph
+chưa".
+
 ## ⚠️ Bẫy đã gặp khi tách (2026-09-01)
 
 Tách `CLAUDE.md` → `docs/ARCHITECTURE.md` làm **gãy 12 tham chiếu**: năm file workspace mở đầu bằng
@@ -34,5 +46,6 @@ Claude Code **tự nạp** file của workspace khi làm việc trong thư mục
 rằng workspace **thắng** root khi hai bên nói cùng một chuyện. Nghĩa là override là hành vi được
 thiết kế. Đã rà: không file nào hiện mâu thuẫn quy trình MCP mới.
 
-**Đã biết là lỗi thời:** `packages/db/CLAUDE.md` bảng migration dừng ở `0008` (thật: `0012`), và
-dòng 7 nói `customers`/`rentals` "chưa" có — sai từ `0009`.
+~~**Đã biết là lỗi thời:** `packages/db/CLAUDE.md` bảng migration dừng ở `0008`.~~ **Đã sửa
+2026-09-01** — nội dung nay ở skill `v9-db`, bảng migration đủ `0009`–`0012`, mỗi dòng đối chiếu
+với SQL thật. Câu `customers`/`rentals` "chưa có" thì commit tách đã bỏ sẵn, không phải sửa.

@@ -23,9 +23,13 @@ import { getClientIp, signupLimiter } from "./rate-limit";
 // SEAM: JWT auth — nay đã ghép SuperTokens thật (Round 2 Task 5, §4 design doc
 // docs/plans/2026-08-05-round2-directus-staff-design.md). Seam không còn là
 // giấy: mọi request `/auth/*` được chuyển thẳng vào SuperTokens core qua
-// middleware() của framework "custom". CHƯA route nghiệp vụ nào enforce auth —
-// chưa có route nghiệp vụ nào để bảo vệ, và một cơ chế permission chưa từng
-// được thực thi còn tệ hơn không có gì (§4.4 design doc).
+// middleware() của framework "custom".
+//
+// ⚠️ Comment cũ ở đây ghi "CHƯA route nghiệp vụ nào enforce auth" — SAI từ lâu.
+// `staffGuard` (`plugins/staff-guard.ts`) đang bảo vệ thật: `routes/stats.ts`,
+// `routes/rentals.ts`, `routes/staff.ts` đều `.use(staffGuard)`. Luật là
+// MẶC ĐỊNH CHẶN — thêm route mới là nó tự nằm sau guard, muốn công khai phải
+// khai tường minh. Chi tiết ở skill `v9-api`, mục xác thực.
 // Tìm bằng: grep -rn "SEAM: JWT auth"
 // ─────────────────────────────────────────────────────────────────────────
 
