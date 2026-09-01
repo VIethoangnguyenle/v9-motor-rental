@@ -5,7 +5,7 @@ description: Luật viết code trong packages/db (Drizzle + migration SQL): dri
 
 # packages/db
 
-Kiến trúc chung: [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) · Quy trình: [`CLAUDE.md`](../../../CLAUDE.md) · ADR: Serena memory `architecture/*`.
+Kiến trúc chung: [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) · Quy trình: [`CLAUDE.md`](../../CLAUDE.md) · ADR: Serena memory `architecture/*`.
 
 ## `drizzle-kit push` bị **cấm**
 

@@ -1767,7 +1767,7 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 
 ```markdown
 **Màn Khách hàng — đã land 2026-08-31**, xem
-[`plans/2026-08-31-customers-surface-design.md`](plans/2026-08-31-customers-surface-design.md).
+[`plans/2026-08-31-customers-surface-design.md`](2026-08-31-customers-surface-design.md).
 Chưa làm, cần brainstorm riêng: sort/lọc/nhảy trang và hành động hàng loạt (một shop 12.000 khách
 tới trang 300 là 300 cú click) · đổi thứ tự mặc định từ `asc(fullName)` sang _quá hạn → đang thuê →
 gần nhất_ (đổi nó là đổi hình dạng sản phẩm: danh sách duyệt → danh sách cần chú ý) · ảnh chụp giấy

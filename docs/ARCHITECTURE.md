@@ -14,18 +14,18 @@ deliverable ngang hàng với code, không phải phụ lục.
 
 ## Gặp việc này → mở cái này
 
-| Việc                                                            | Ở đâu                                                         | Nạp thế nào        |
-| --------------------------------------------------------------- | ------------------------------------------------------------- | ------------------ |
-| Đụng `eslint.config.js`, nâng version plugin, thêm thư mục code | skill `v9-fences`                                             | theo việc          |
-| Auth, role, session, đăng ký/duyệt nhân viên, FK tới nhân viên  | skill `v9-auth`                                               | theo việc          |
-| Directus: ảnh xe, quyền Public, sau khi nâng version            | skill `v9-directus`                                           | theo việc          |
-| Chuẩn bị deploy, sửa `compose.prod.yaml`                        | skill `v9-deploy`                                             | theo việc          |
-| Hiểu code có sẵn: ai gọi cái này, đổi nó vỡ gì                  | CodeGraph — `codegraph explore "<câu hỏi>"`                   | trước khi đọc file |
-| Cú pháp CodeGraph/Serena, probe sau khi nâng version            | skill `v9-codegraph`                                          | theo việc          |
-| Viết code trong một workspace                                   | `CLAUDE.md` của workspace đó                                  | theo thư mục       |
-| Đợt kế tiếp, việc nghiệp vụ cần brainstorm                      | [`docs/ROADMAP.md`](docs/ROADMAP.md)                          |                    |
-| Nợ đã biết                                                      | [`docs/DEBT.md`](docs/DEBT.md)                                |                    |
-| Lý do đằng sau một quyết định cũ                                | [`docs/plans/`](docs/plans/) · Serena memory `architecture/*` |                    |
+| Việc                                                            | Ở đâu                                                    | Nạp thế nào        |
+| --------------------------------------------------------------- | -------------------------------------------------------- | ------------------ |
+| Đụng `eslint.config.js`, nâng version plugin, thêm thư mục code | skill `v9-fences`                                        | theo việc          |
+| Auth, role, session, đăng ký/duyệt nhân viên, FK tới nhân viên  | skill `v9-auth`                                          | theo việc          |
+| Directus: ảnh xe, quyền Public, sau khi nâng version            | skill `v9-directus`                                      | theo việc          |
+| Chuẩn bị deploy, sửa `compose.prod.yaml`                        | skill `v9-deploy`                                        | theo việc          |
+| Hiểu code có sẵn: ai gọi cái này, đổi nó vỡ gì                  | CodeGraph — `codegraph explore "<câu hỏi>"`              | trước khi đọc file |
+| Cú pháp CodeGraph/Serena, probe sau khi nâng version            | skill `v9-codegraph`                                     | theo việc          |
+| Viết code trong một workspace                                   | `CLAUDE.md` của workspace đó                             | theo thư mục       |
+| Đợt kế tiếp, việc nghiệp vụ cần brainstorm                      | [`docs/ROADMAP.md`](ROADMAP.md)                          |                    |
+| Nợ đã biết                                                      | [`docs/DEBT.md`](DEBT.md)                                |                    |
+| Lý do đằng sau một quyết định cũ                                | [`docs/plans/`](plans/) · Serena memory `architecture/*` |                    |
 
 `CLAUDE.md` của workspace **thắng** file này khi hai bên nói cùng một chuyện; design doc trong
 `docs/plans/` thắng cả hai. Thấy mâu thuẫn thì **nêu cho người**, đừng tự chọn bên.
@@ -132,7 +132,7 @@ nên `e.code === "23P01"` là điều kiện **không bao giờ đúng** — va 
 **Nhưng `.errno` chỉ đúng cho Bun.SQL TRẦN.** Đi qua Drizzle (`db.insert(...)`), lỗi bị bọc trong
 `DrizzleQueryError` và trên đường đó `.errno` là **`undefined`** — tức `e.errno === "23P01"` cũng
 thành một điều kiện không bao giờ đúng, đúng cái bẫy trên chỉ sâu hơn một tầng. Lỗi thật nằm ở
-`e.cause`. Bảng đo hai tầng: [`apps/api/CLAUDE.md`](apps/api/CLAUDE.md).
+`e.cause`. Bảng đo hai tầng: [`apps/api/CLAUDE.md`](../apps/api/CLAUDE.md).
 
 **Lỗi trong transaction làm hỏng cả transaction** — bọc câu có thể lỗi trong `tx.savepoint(...)`,
 và `try/catch` phải bọc **cả lời gọi `savepoint`**, không bọc câu lệnh bên trong: nuốt lỗi bên
@@ -140,7 +140,7 @@ trong callback làm nó trông như thành công, rồi `RELEASE` một sub-tran
 ở ngoài tầm bắt của bạn.
 
 Chi tiết, cùng ba chỗ đang dựa vào `SELECT ... FOR UPDATE`:
-[`apps/api/CLAUDE.md`](apps/api/CLAUDE.md).
+[`apps/api/CLAUDE.md`](../apps/api/CLAUDE.md).
 
 ## Perf budget — vượt là coi như fail, không phải góp ý
 

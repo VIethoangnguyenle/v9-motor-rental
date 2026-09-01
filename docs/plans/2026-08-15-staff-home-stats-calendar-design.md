@@ -380,7 +380,7 @@ Nhóm quan trọng nhất là **màu trạng thái**, vì lịch sống bằng n
 `booked` · `ongoing` · `overdue` · `completed`.
 
 ⚠️ [`../ROADMAP.md`](../ROADMAP.md) chặn cứng "**đừng bịa màu**, chờ logo thật". Luật đó viết cho
-[`../DESIGN.md`](../DESIGN.md), tức cho `apps/web`. `apps/staff` **không dùng `DESIGN.md`**, và
+[`../DESIGN.md`](../../DESIGN.md), tức cho `apps/web`. `apps/staff` **không dùng `DESIGN.md`**, và
 màu trạng thái ở đây là **chức năng** (đỏ = quá hạn), không phải nhận diện thương hiệu. Accent
 dùng một màu hệ thống trung tính, **có comment trong CSS ghi rõ nó không phải màu thương hiệu**,
 để lần có logo thật không ai phải đoán chỗ nào được đổi.

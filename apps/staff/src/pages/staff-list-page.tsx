@@ -9,7 +9,7 @@ import { errorMessage } from "../lib/errors";
 
 /**
  * Duyệt LUÔN đặt role `STAFF`. Đợt này cố ý không phơi việc đổi vai trò ra UI:
- * `SALES` chưa được định nghĩa làm gì (CLAUDE.md), và OWNER thứ hai được tạo
+ * `SALES` chưa được định nghĩa làm gì (docs/ARCHITECTURE.md), và OWNER thứ hai được tạo
  * bằng `bun run staff:bootstrap` chứ không bằng một nút bấm nhầm được.
  * `POST /staff/users/:id/role` đã có sẵn cho lúc luật vai trò rõ hơn.
  */

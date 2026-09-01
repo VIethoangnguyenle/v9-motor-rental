@@ -5,7 +5,7 @@ description: Luật viết code trong apps/staff (Vite + TanStack, PWA): vì sao
 
 # apps/staff
 
-Kiến trúc chung: [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) · Quy trình: [`CLAUDE.md`](../../../CLAUDE.md) · ADR: Serena memory `architecture/*`.
+Kiến trúc chung: [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) · Quy trình: [`CLAUDE.md`](../../CLAUDE.md) · ADR: Serena memory `architecture/*`.
 
 ## Styling: Tailwind v4, theme mặc định — **không** dùng `DESIGN.md`
 

@@ -48,7 +48,7 @@ _Lưu ý:_ web **không** hiển thị tình trạng còn trống theo thời gi
 - **`apps/staff`** — vận hành hằng ngày: lịch đặt xe, thống kê, lên đơn và bàn giao xe (chụp ảnh giấy tờ, ký hợp đồng), quản lý khách hàng, tiếp nhận yêu cầu từ web.
 - Xác thực cho `apps/staff` dùng **SuperTokens** self-host. Khách trên `apps/web` **không cần tài khoản** — bắt đăng nhập chỉ làm giảm số yêu cầu nhận được, mà yêu cầu chính là thứ web sinh ra để tạo.
 
-**Bối cảnh kỹ thuật:** monorepo — `apps/api` (Bun + Elysia), `apps/web` (Next 16, SSG/ISR vì SEO quan trọng), `apps/staff` (Vite + TanStack, PWA). Chi tiết ở `CLAUDE.md`.
+**Bối cảnh kỹ thuật:** monorepo — `apps/api` (Bun + Elysia), `apps/web` (Next 16, SSG/ISR vì SEO quan trọng), `apps/staff` (Vite + TanStack, PWA). Chi tiết ở `docs/ARCHITECTURE.md`.
 
 ## Capabilities and Constraints
 

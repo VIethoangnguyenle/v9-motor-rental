@@ -5,7 +5,7 @@ description: Luật viết code trong packages/shared — functional core: TDD N
 
 # packages/shared
 
-Kiến trúc chung: [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) · Quy trình: [`CLAUDE.md`](../../../CLAUDE.md) · ADR: Serena memory `architecture/*`.
+Kiến trúc chung: [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) · Quy trình: [`CLAUDE.md`](../../CLAUDE.md) · ADR: Serena memory `architecture/*`.
 
 ## TDD nghiêm — bắt buộc, không có ngoại lệ
 

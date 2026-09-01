@@ -5,7 +5,7 @@ description: Cách dùng CodeGraph và Serena trong v9-rental — bảng kê too
 
 # CodeGraph và Serena — tra cứu
 
-Quy trình bắt buộc (bốn bước, ai cũng phải theo) nằm ở [`CLAUDE.md`](../../../CLAUDE.md), mục
+Quy trình bắt buộc (bốn bước, ai cũng phải theo) nằm ở [`CLAUDE.md`](../../CLAUDE.md), mục
 "Quy trình chạm code". File này là **tra cứu**: cú pháp, bảng kê tool, và những chỗ output nói dối.
 
 ## Hai đường gọi CodeGraph, cùng một output

@@ -1,6 +1,6 @@
 # Nợ đã biết
 
-Tách khỏi `CLAUDE.md` vì đây là danh sách việc-phải-làm, không phải luật. Trộn hai loại lại là
+Tách khỏi `docs/ARCHITECTURE.md` vì đây là danh sách việc-phải-làm, không phải luật. Trộn hai loại lại là
 cách một danh sách như thế này biến mất khỏi tầm nhìn.
 
 Không cái nào dưới đây tự báo. Roadmap ở [`ROADMAP.md`](ROADMAP.md).
@@ -10,7 +10,7 @@ Không cái nào dưới đây tự báo. Roadmap ở [`ROADMAP.md`](ROADMAP.md)
 Năm chỗ dưới đây **đã biết là thiếu** khi đợt auth land, không phải phát hiện sau — **cả năm đã
 đóng**. Dòng thứ năm, "tên hàm tiếng Việt/Anh lẫn lộn", đã **đóng**: đợt sửa 2026-08-13 đổi toàn bộ
 định danh `apps/api/src/services/` sang tiếng Anh. Luật đặt tên giờ sống ở root
-[`CLAUDE.md`](../CLAUDE.md), mục "Định danh tiếng Anh, nội dung tiếng Việt". Đợt trả nợ 2026-08-18
+[`ARCHITECTURE.md`](ARCHITECTURE.md), mục "Định danh tiếng Anh, nội dung tiếng Việt". Đợt trả nợ 2026-08-18
 đóng thêm hai dòng:
 
 - ~~"Email so sánh phân biệt hoa thường"~~ — **đóng**, migration `0011` (`db:custom`, viết tay):
@@ -26,7 +26,7 @@ staff_users (lower(email))`; `findStaffByEmail` giờ so `lower(...)` ở **cả
   (`used_at IS NULL AND expires_at < now()`) ngay trong transaction đang mở, chạy mỗi khi bất kỳ ai
   xin mã mới — cố ý **không** khoanh theo user xin mã (bước UPDATE liền trước đã tự dọn mã cũ chưa
   dùng của chính người đó; khoanh theo user thì hàng của người chỉ xin đúng một lần rồi không quay
-  lại sẽ không bao giờ được dọn). Không có scheduler trong repo (root `CLAUDE.md`) nên dọn ăn theo
+  lại sẽ không bao giờ được dọn). Không có scheduler trong repo (`docs/ARCHITECTURE.md`) nên dọn ăn theo
   đường ghi đã có sẵn thay vì cron riêng. Chứng minh bằng test mới: mã hết hạn **chưa dùng** của
   người B biến mất khỏi bảng (không chỉ bị đánh dấu đã dùng) khi người A xin mã; và trên DB dev
   thật — hai hàng rác có sẵn từ đợt auth trước tự biến mất khi bộ test chạy qua `createResetCode`.
@@ -270,7 +270,7 @@ nợ 2026-08-18, xem "Đã đóng trong Plan A" bên dưới cho cách chứng m
 
   **Không có gì trong repo ép luật này**: không migration nào chạy lại, không test nào bắt được, và
   màn hình vẫn trả về câu tự tin "Không tìm thấy khách hàng nào khớp." Cùng hạng với luật CodeGraph
-  ở root [`CLAUDE.md`](../CLAUDE.md) — quy ước trong tài liệu, không phải hàng rào.
+  ở [`ARCHITECTURE.md`](ARCHITECTURE.md) — quy ước trong tài liệu, không phải hàng rào.
 
 - **Không có chức năng gộp hồ sơ khách trùng** — quyết định 2026-08-31, không phải bỏ sót.
   `customers.phone` là `UNIQUE` nên hồ sơ trùng chỉ xảy ra khi MỘT người dùng hai số khác nhau; và

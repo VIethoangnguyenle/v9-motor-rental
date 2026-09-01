@@ -1,6 +1,6 @@
 # Việc còn để lại
 
-Tách khỏi `CLAUDE.md` để file đó không phình theo mỗi đợt — roadmap đổi thường xuyên, luật thì
+Tách khỏi `docs/ARCHITECTURE.md` để file đó không phình theo mỗi đợt — roadmap đổi thường xuyên, luật thì
 không. Nợ kỹ thuật ở [`DEBT.md`](DEBT.md); thiết kế của từng đợt ở [`plans/`](plans/).
 
 **Đã xong — đợt màn Thống kê + lịch thuê xe cho `apps/staff`.** Thiết kế ở
@@ -13,7 +13,7 @@ chia làm ba plan nối tiếp:
 | B    | Hệ thiết kế `apps/staff`: `@theme`, thang cách, app shell responsive, retrofit 6 màn auth | ✅ **xong** — [`plans/2026-08-16-staff-design-system-plan.md`](plans/2026-08-16-staff-design-system-plan.md)     |
 | C    | Màn Thống kê (`/`) và trang Lịch (`/calendar`), form lên đơn                              | ✅ **xong** — [`plans/2026-08-16-staff-stats-calendar-plan.md`](plans/2026-08-16-staff-stats-calendar-plan.md)   |
 
-Bốn tính năng của `apps/staff` mà `CLAUDE.md` liệt kê: **lịch** và **thống kê** đã xong; **lên đơn**
+Bốn tính năng của `apps/staff` mà `docs/ARCHITECTURE.md` liệt kê: **lịch** và **thống kê** đã xong; **lên đơn**
 xong phần tạo đơn (chưa có bàn giao và ảnh tình trạng xe); **quản lý khách hàng** mới có tìm và tạo
 nhanh trong form, chưa có màn riêng.
 

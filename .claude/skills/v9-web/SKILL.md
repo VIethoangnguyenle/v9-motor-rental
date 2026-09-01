@@ -5,7 +5,7 @@ description: Luật viết code trong apps/web (Next 16, SSG/ISR, SEO quan trọ
 
 # apps/web
 
-Kiến trúc chung: [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) · Quy trình: [`CLAUDE.md`](../../../CLAUDE.md) · ADR: Serena memory `architecture/*`.
+Kiến trúc chung: [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) · Quy trình: [`CLAUDE.md`](../../CLAUDE.md) · ADR: Serena memory `architecture/*`.
 
 ## ⚠️ App này KHÔNG chốt đơn — chỉ tạo yêu cầu
 
@@ -29,7 +29,7 @@ sẵn trong `messages/vi.json` dưới khoá `booking` — dùng lại, đừng 
 
 **Hệ quả kỹ thuật:** vì không cần availability thời gian thực, trang danh sách và trang chi tiết
 xe tĩnh hoàn toàn được. Đó đúng là lý do Next được chọn. Xem §3.3 của
-[`../../docs/plans/2026-08-05-round2-directus-staff-design.md`](../../docs/plans/2026-08-05-round2-directus-staff-design.md).
+[`../../docs/plans/2026-08-05-round2-directus-staff-design.md`](../../../docs/plans/2026-08-05-round2-directus-staff-design.md).
 
 ## SEO là lý do app này dùng Next
 
@@ -38,8 +38,8 @@ xe tĩnh hoàn toàn được. Đó đúng là lý do Next được chọn. Xem 
 
 ## UI phải tôn trọng `DESIGN.md` và `PRODUCT.md`
 
-[`../../DESIGN.md`](../../DESIGN.md) là hệ thiết kế của app này — nền **BMW M** (từ
-`VoltAgent/awesome-design-md`) đã adapt bảy chỗ cho V9. [`../../PRODUCT.md`](../../PRODUCT.md) là
+[`../../DESIGN.md`](../../../DESIGN.md) là hệ thiết kế của app này — nền **BMW M** (từ
+`VoltAgent/awesome-design-md`) đã adapt bảy chỗ cho V9. [`../../PRODUCT.md`](../../../PRODUCT.md) là
 ràng buộc sản phẩm. Khán giả: dân chơi mô tô phân khối lớn người Việt ở TP.HCM **cộng** khách du
 lịch nước ngoài.
 

@@ -3,7 +3,7 @@
 Hệ quản lý cho shop cho thuê mô tô phân khối lớn ở TP.HCM.
 
 File này là **hướng dẫn chạy máy local**. Luật kiến trúc và quyết định thiết kế nằm ở
-[`CLAUDE.md`](CLAUDE.md); nợ đã biết ở [`docs/DEBT.md`](docs/DEBT.md); đợt kế tiếp ở
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); nợ đã biết ở [`docs/DEBT.md`](docs/DEBT.md); đợt kế tiếp ở
 [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Dựng lần đầu
