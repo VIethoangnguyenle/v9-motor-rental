@@ -51,8 +51,11 @@ export function StatsPage() {
     // `<div>`, không `<main>`: `AppShell` (`components/layout/app-shell.tsx`) đã
     // bọc `children` trong CHÍNH MỘT `<main>` (`page-gutter flex-1 py-4`) — một
     // `<main>` thứ hai lồng bên trong là hai landmark cho cùng nội dung, và cộng
-    // dồn padding của cả hai lớp. `HealthPage`/`StaffListPage` cũ đã lỡ làm vậy;
-    // không sửa lại chúng (ngoài phạm vi Task 3), nhưng trang MỚI thì không lặp.
+    // dồn padding của cả hai lớp.
+    //
+    // Luật áp cho MỌI trang treo dưới `protectedLayoutRoute`, kể cả trang chỉ
+    // có một form: đó là chỗ `/change-password` từng trượt, vì nó mượn
+    // `ui/page-shell.tsx` — khung dành cho trang đứng NGOÀI shell.
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-ink">Thống kê</h1>
