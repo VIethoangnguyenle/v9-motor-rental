@@ -118,13 +118,13 @@ describe("color-math — gamut", () => {
     expect(oklch(0.52, 0.19, 255).clipped).toBe(true);
   });
 
-  it("accent mới oklch(52% 0.174 255) nằm TRONG gamut", () => {
-    expect(oklch(0.52, 0.174, 255).clipped).toBe(false);
+  it("accent mới oklch(52% 0.171 255) nằm TRONG gamut", () => {
+    expect(oklch(0.52, 0.171, 255).clipped).toBe(false);
   });
 
   it("maxChroma đồng ý với hai khẳng định trên", () => {
-    expect(maxChroma(0.52, 255)).toBeGreaterThanOrEqual(0.174);
-    expect(maxChroma(0.52, 255)).toBeLessThan(0.19);
+    expect(maxChroma(0.52, 255)).toBeGreaterThanOrEqual(0.171);
+    expect(maxChroma(0.52, 255)).toBeLessThan(0.174);
   });
 });
 
@@ -135,10 +135,10 @@ describe("color-math — mô phỏng mù màu", () => {
     expect(sim.rgb[0]).toBeCloseTo(c.rgb[0], 5);
   });
 
-  it("tái lập ΔE=0,039 giữa quá hạn và cảnh báo dưới deuteranopia (design doc §2.5)", () => {
+  it("tái lập ΔE≈0,040 giữa quá hạn và cảnh báo dưới deuteranopia (design doc §2.5)", () => {
     const overdue = simulate(oklch(0.55, 0.21, 27), "deuteranopia");
-    const warning = simulate(oklch(0.52, 0.111, 75), "deuteranopia");
-    expect(deltaE(overdue, warning)).toBeCloseTo(0.039, 2);
+    const warning = simulate(oklch(0.52, 0.109, 75), "deuteranopia");
+    expect(deltaE(overdue, warning)).toBeCloseTo(0.0395, 3);
   });
 });
 
@@ -169,6 +169,31 @@ Tạo `apps/staff/src/lib/color-math.ts`:
  * `oklch()` chứ không quy về sRGB, và với `::placeholder` nó trả màu KẾ THỪA —
  * hai cách đều cho ra số sai một cách tự tin. `index.css` đã ghi cả hai bẫy.
  */
+
+/**
+ * Dung sai khi hỏi "màu này có nằm ngoài gamut sRGB không".
+ *
+ * ⚠️ Bản đầu của file này để **±0.002** và biện minh bằng "sai số dấu phẩy động
+ * của phép biến đổi". Lý do đó KHÔNG CÓ THẬT — đo trên ba màu sRGB thuần
+ * (#FF0000, #00FF00, #0000FF) cho sai lệch lớn nhất **6,7×10⁻⁷**, tức nhỏ hơn
+ * 0.002 khoảng ba nghìn lần.
+ *
+ * Hậu quả không phải lý thuyết: với 0.002, `oklch(52% 0.174 255)` — chính giá
+ * trị đợt này đưa ra để SỬA lỗi tràn gamut của accent — có kênh đỏ tuyến tính
+ * **−0,001655** và vẫn được báo là trong gamut. Chín token của hệ này rơi vào
+ * cùng cái bẫy đó, vì bảng màu được sinh ra bằng chính hàm mang dung sai sai.
+ *
+ * Dung sai thật sự cần là để chịu **hằng số oklch làm tròn 3–4 chữ số** trong
+ * test và tài liệu, không phải để chịu float. `1e-4` tách sạch hai ca:
+ *
+ *   #FF0000 (hằng số làm tròn)   lệch 0        → không báo tràn ✅
+ *   accent 0.174 (tràn thật)     lệch 1,66e-3  → báo tràn      ✅
+ *
+ * Đây là bài học đắt nhất của đợt này: **công cụ đo cũng phải bị đo.** Chú thích
+ * ở đầu file cảnh báo đừng tin `getComputedStyle`, mà chỗ hỏng lại nằm trong
+ * chính hàm thay thế nó.
+ */
+const GAMUT_EPSILON = 1e-4;
 
 export type Vision = "normal" | "protanopia" | "deuteranopia" | "tritanopia";
 
@@ -205,9 +230,7 @@ export function oklch(L: number, C: number, hDeg: number): Color {
     -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
     -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
   ];
-  // Biên ±0.002 chứ không 0: sai số dấu phẩy động của chính phép biến đổi này
-  // đủ để một màu nằm ĐÚNG trên mép gamut bị báo là tràn.
-  const clipped = raw.some((v) => v < -0.002 || v > 1.002);
+  const clipped = raw.some((v) => v < -GAMUT_EPSILON || v > 1 + GAMUT_EPSILON);
   const rgb = raw.map((v) => Math.min(1, Math.max(0, v))) as unknown as [number, number, number];
   return { rgb, lab: linearToOklab(...rgb), clipped };
 }
@@ -494,16 +517,16 @@ ba thay đổi:
   --color-ink-soft: oklch(40% 0.016 255);
   --color-muted: oklch(52% 0.014 255);
 
-  /* ⚠️ Chroma 0.174, KHÔNG phải 0.19.
+  /* ⚠️ Chroma 0.171, KHÔNG phải 0.19.
 
-     Trần gamut sRGB ở L=52%, hue=255 đo được là 0.174. Ở 0.19 kênh đỏ tuyến tính
+     Trần gamut sRGB ở L=52%, hue=255 đo được là 0,17124. Ở 0.19 kênh đỏ tuyến tính
      rơi xuống âm và trình duyệt KẸP nó về 0 — token khai một màu, vẽ ra một màu
      khác. Đây đúng là lớp lỗi mà chú thích của nhóm `*-soft` bên dưới đã cảnh
      báo; luật đã có, chỉ là chưa được áp cho token này. */
-  --color-accent: oklch(52% 0.174 255);
+  --color-accent: oklch(52% 0.171 255);
   --color-accent-ink: oklch(100% 0 255);
-  --color-accent-hover: oklch(46% 0.155 255);
-  --color-accent-active: oklch(40% 0.137 255);
+  --color-accent-hover: oklch(46% 0.151 255);
+  --color-accent-active: oklch(40% 0.132 255);
 
   --color-status-booked: oklch(50% 0.09 255);
   /* ⚠️ ĐÃ ĐỔI HUE: 255 → 200.
@@ -514,14 +537,14 @@ ba thay đổi:
 
      L=55,7% là mức sáng nhất còn đạt 4,5:1 với chữ trắng — giải ngược từ ngưỡng,
      nên nó KHÔNG có biên. Đổi L là trượt AA. */
-  --color-status-ongoing: oklch(55.7% 0.095 200);
+  --color-status-ongoing: oklch(55.7% 0.094 200);
   --color-status-overdue: oklch(55% 0.21 27);
   --color-status-completed: oklch(46% 0 255);
-  /* Chroma 0.111 chứ không 0.13: trần gamut ở L=52%, hue=75. Cùng lý do accent. */
-  --color-warning: oklch(52% 0.111 75);
+  /* Chroma 0.109 chứ không 0.13: trần gamut ở L=52%, hue=75. Cùng lý do accent. */
+  --color-warning: oklch(52% 0.109 75);
 
-  --color-status-overdue-soft: oklch(96% 0.02 27);
-  --color-status-booked-soft: oklch(96% 0.02 255);
+  --color-status-overdue-soft: oklch(96% 0.019 27);
+  --color-status-booked-soft: oklch(96% 0.019 255);
   --color-status-completed-soft: oklch(96% 0 255);
   --color-warning-soft: oklch(96% 0.032 75);
   --color-accent-soft: oklch(96% 0.019 255);
@@ -566,9 +589,9 @@ Thêm vào cuối `@layer base { … }` đang có trong `index.css`:
       --color-ink: oklch(96.5% 0.006 255);
       --color-ink-soft: oklch(82% 0.012 255);
       --color-muted: oklch(70% 0.018 255);
-      --color-accent: oklch(70% 0.16 255);
+      --color-accent: oklch(70% 0.159 255);
       --color-accent-ink: oklch(17.5% 0.022 255);
-      --color-accent-hover: oklch(76% 0.125 255);
+      --color-accent-hover: oklch(76% 0.124 255);
       --color-accent-active: oklch(82% 0.091 255);
       --color-status-booked: oklch(68% 0.08 255);
       --color-status-ongoing: oklch(74% 0.12 200);
@@ -609,9 +632,9 @@ Thêm vào cuối `@layer base { … }` đang có trong `index.css`:
     --color-ink: oklch(96.5% 0.006 255);
     --color-ink-soft: oklch(82% 0.012 255);
     --color-muted: oklch(70% 0.018 255);
-    --color-accent: oklch(70% 0.16 255);
+    --color-accent: oklch(70% 0.159 255);
     --color-accent-ink: oklch(17.5% 0.022 255);
-    --color-accent-hover: oklch(76% 0.125 255);
+    --color-accent-hover: oklch(76% 0.124 255);
     --color-accent-active: oklch(82% 0.091 255);
     --color-status-booked: oklch(68% 0.08 255);
     --color-status-ongoing: oklch(74% 0.12 200);
@@ -663,7 +686,7 @@ git add apps/staff/src/index.css apps/staff/src/lib/theme-tokens.test.ts
 git commit -m "fix(staff): accent hết tràn gamut, 'đang thuê' hết trùng accent, tách border-strong
 
 Ba lỗi ĐÃ CÓ SẴN, phát hiện bằng đo chứ không bằng mắt:
-- accent oklch(52% 0.19 255) vượt trần gamut 0.174 -> trình duyệt kẹp kênh đỏ về 0
+- accent oklch(52% 0.19 255) vượt trần gamut 0,171 -> trình duyệt kẹp kênh đỏ về 0
 - status-ongoing TRÙNG KHÍT accent: 'đang thuê' và 'hành động chính' cùng màu
 - border 1,35:1 dùng cho cả đường chia lẫn viền control -> tách border-strong 3,00:1
 
@@ -967,7 +990,7 @@ git commit -m "feat(staff): theme sáng/tối theo hệ điều hành, có nút 
 ## Task 4 — Icon thành kênh thông tin thứ hai
 
 ⛔ **Đọc design doc §2.5 trước khi làm task này.** Đây không phải việc trang trí: `quá hạn` và
-`cảnh báo` đo được ΔE=0,039 dưới deuteranopia, và quét vét cạn chứng minh **không giá trị màu nào**
+`cảnh báo` đo được ΔE≈0,040 dưới deuteranopia, và quét vét cạn chứng minh **không giá trị màu nào**
 sửa được. Icon là kênh duy nhất còn lại.
 
 **Files:**
@@ -1034,7 +1057,7 @@ import type { IconName } from "../components/ui/icon";
  *
  * `docs/plans/2026-09-01-staff-visual-system-design.md` §2.5 đo được: dưới
  * deuteranopia (~6% nam giới), `status-overdue` và `warning` chỉ cách nhau
- * ΔE=0,039 — coi như cùng một màu. Một cuộc quét vét cạn L∈[0,50;0,80] ×
+ * ΔE≈0,040 — coi như cùng một màu. Một cuộc quét vét cạn L∈[0,50;0,80] ×
  * hue∈[60;105] cho kết quả RỖNG: không giá trị nào thoả đồng thời "chữ trắng
  * ≥4,5:1" và "phân biệt được ở cả bốn kiểu nhìn". Hai ràng buộc chọi nhau.
  *
@@ -1150,7 +1173,7 @@ Trong JSX, thay `<StatusDot className={row.dotClassName} />` bằng
 `<Icon name={row.icon} className={row.className} />`, và bỏ `StatusDot` khỏi import.
 
 > **Vì sao đổi:** ba dòng này hiện dùng **cùng một hình tròn**, chỉ khác màu — và hai dòng đầu là
-> đúng cặp màu đo được ΔE=0,039 dưới deuteranopia. Chúng nằm **cạnh nhau** trên màn hình.
+> đúng cặp màu đo được ΔE≈0,040 dưới deuteranopia. Chúng nằm **cạnh nhau** trên màn hình.
 
 - [ ] **Step 4.8: Kiểm bằng mắt + typecheck + test**
 
@@ -1171,7 +1194,7 @@ git add apps/staff/src/lib/rental-status.ts apps/staff/src/lib/status-icon.test.
         apps/staff/src/components/stats/attention-list.tsx
 git commit -m "fix(staff): trạng thái mang hình dạng riêng, không chỉ màu riêng
 
-Đo được: 'quá hạn' và 'cảnh báo' cách nhau ΔE=0,039 dưới deuteranopia — coi như
+Đo được: 'quá hạn' và 'cảnh báo' cách nhau ΔE≈0,040 dưới deuteranopia — coi như
 cùng màu, và hai dòng đó nằm CẠNH NHAU trong 'Cần chú ý'. Quét vét cạn cho kết
 quả rỗng: không giá trị màu nào thoả cả hai ràng buộc. Nên hình gánh phần màu
 không gánh nổi."
