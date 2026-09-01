@@ -4,12 +4,7 @@ import { MAX_PHOTO_BYTES } from "@v9/shared/domain/rental-photo";
 import { eq, like } from "drizzle-orm";
 import { db } from "../db";
 import { checkins } from "../storage";
-import {
-  addRentalPhoto,
-  deleteRentalPhoto,
-  listRentalPhotos,
-  readRentalPhoto,
-} from "./photos";
+import { addRentalPhoto, deleteRentalPhoto, listRentalPhotos, readRentalPhoto } from "./photos";
 import { updateRentalHandover } from "./rentals";
 
 const P = "ztest-anh-";
@@ -198,9 +193,10 @@ describe("deleteRentalPhoto", () => {
   });
 
   it("xoá ảnh không có thật trả PHOTO_NOT_FOUND", async () => {
-    expect(
-      await deleteRentalPhoto(rentalId, "00000000-0000-4000-8000-000000000000"),
-    ).toEqual({ ok: false, reason: "PHOTO_NOT_FOUND" });
+    expect(await deleteRentalPhoto(rentalId, "00000000-0000-4000-8000-000000000000")).toEqual({
+      ok: false,
+      reason: "PHOTO_NOT_FOUND",
+    });
   });
 
   it("id ảnh đúng nhưng SAI đơn thì không xoá được", async () => {
@@ -250,11 +246,7 @@ describe("updateRentalHandover", () => {
 
   it("lưu từng phần — không truyền trường nào thì trường đó giữ nguyên", async () => {
     await updateRentalHandover(rentalId, { documentType: "PASSPORT" }, new Date());
-    const r = await updateRentalHandover(
-      rentalId,
-      { deliveryAddress: "Địa chỉ mới" },
-      new Date(),
-    );
+    const r = await updateRentalHandover(rentalId, { deliveryAddress: "Địa chỉ mới" }, new Date());
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     // Địa chỉ đổi, loại giấy tờ KHÔNG bị xoá theo — đây là điểm khác nhau giữa

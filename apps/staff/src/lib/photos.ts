@@ -8,8 +8,7 @@ export type RentalPhotoRow = NonNullable<
 >[number];
 
 export type PhotosResult =
-  | { ok: true; photos: RentalPhotoRow[] }
-  | { ok: false; code: ApiErrorCode | null; value: unknown };
+  { ok: true; photos: RentalPhotoRow[] } | { ok: false; code: ApiErrorCode | null; value: unknown };
 
 export const rentalPhotosQuery = (rentalId: string) => ({
   queryKey: ["rental-photos", rentalId] as const,
@@ -21,8 +20,7 @@ export const rentalPhotosQuery = (rentalId: string) => ({
 });
 
 export type MutatePhotoResult =
-  | { ok: true }
-  | { ok: false; code: ApiErrorCode | null; value: unknown };
+  { ok: true } | { ok: false; code: ApiErrorCode | null; value: unknown };
 
 export async function uploadRentalPhoto(
   rentalId: string,

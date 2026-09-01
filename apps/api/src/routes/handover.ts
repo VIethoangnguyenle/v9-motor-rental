@@ -37,11 +37,7 @@ const errorSchema = t.Object({ message: t.String(), code: t.String() });
  * Khai tường minh + ràng buộc hai chiều, cùng khuôn `statusSchema` của
  * `routes/rentals.ts`: thêm một loại ảnh ở domain mà quên ở đây là lỗi biên dịch.
  */
-const kindSchema = t.Union([
-  t.Literal("DOCUMENT"),
-  t.Literal("HANDOVER"),
-  t.Literal("RETURN"),
-]);
+const kindSchema = t.Union([t.Literal("DOCUMENT"), t.Literal("HANDOVER"), t.Literal("RETURN")]);
 type KindSchemaValue = Static<typeof kindSchema>;
 type KindSetsMatch = [PhotoKind] extends [KindSchemaValue]
   ? [KindSchemaValue] extends [PhotoKind]

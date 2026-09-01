@@ -297,8 +297,7 @@ export async function updateRentalHandover(
 
     // Loại giấy tờ SAU khi áp thay đổi của request — người dùng có thể vừa chọn
     // loại vừa bấm đã-trả trong cùng một lần lưu.
-    const nextType =
-      input.documentType === undefined ? current.documentType : input.documentType;
+    const nextType = input.documentType === undefined ? current.documentType : input.documentType;
 
     if (input.documentReturned === true && (nextType === null || nextType === undefined)) {
       return { ok: false as const, reason: "DOCUMENT_RETURN_NEEDS_TYPE" as const };
@@ -308,9 +307,7 @@ export async function updateRentalHandover(
       .update(schema.rentals)
       .set({
         ...(input.documentType === undefined ? {} : { documentType: input.documentType }),
-        ...(input.deliveryAddress === undefined
-          ? {}
-          : { deliveryAddress: input.deliveryAddress }),
+        ...(input.deliveryAddress === undefined ? {} : { deliveryAddress: input.deliveryAddress }),
         ...(input.documentReturned === undefined
           ? {}
           : { documentReturnedAt: input.documentReturned ? now : null }),

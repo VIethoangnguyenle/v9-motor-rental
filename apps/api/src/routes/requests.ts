@@ -108,14 +108,10 @@ export const requests = new Elysia({ name: "requests" })
     },
   )
 
-  .get(
-    "/requests",
-    async ({ query }) => listRentalRequests(query.status ?? null),
-    {
-      query: t.Object({ status: t.Optional(statusSchema) }),
-      response: { 200: t.Array(requestWithVehicleSchema) },
-    },
-  )
+  .get("/requests", async ({ query }) => listRentalRequests(query.status ?? null), {
+    query: t.Object({ status: t.Optional(statusSchema) }),
+    response: { 200: t.Array(requestWithVehicleSchema) },
+  })
 
   .get("/requests/count-new", async () => ({ count: await countNewRequests() }), {
     response: { 200: t.Object({ count: t.Integer() }) },

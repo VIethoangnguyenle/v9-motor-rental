@@ -114,8 +114,7 @@ export type RentalDetail = NonNullable<
 >;
 
 export type ChangeStatusResult =
-  | { ok: true; rental: RentalDetail }
-  | { ok: false; code: ApiErrorCode | null; value: unknown };
+  { ok: true; rental: RentalDetail } | { ok: false; code: ApiErrorCode | null; value: unknown };
 
 /**
  * Đổi trạng thái một đơn — `POST /rentals/:id/status`.

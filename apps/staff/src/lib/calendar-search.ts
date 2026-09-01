@@ -40,7 +40,6 @@ export interface CalendarSearch {
   readonly from?: string; // YYYY-MM-DD theo giờ VN; vắng mặt = "hôm nay"
 }
 
-
 /**
  * `validateSearch` của route `/calendar` — ĐÚNG khuôn `loginRoute` đã dùng cho
  * `?reason=`: chỉ nhận giá trị nằm trong danh sách trắng, giá trị lạ bị lọc
@@ -59,7 +58,6 @@ export function validateCalendarSearch(search: Record<string, unknown>): Calenda
   const from = typeof rawFrom === "string" && parseYmd(rawFrom) ? rawFrom : undefined;
   return { view: foundView ?? DEFAULT_VIEW, from };
 }
-
 
 // ── Y-M-D: số học lịch THUẦN, không phụ thuộc múi giờ ───────────────────────
 //
