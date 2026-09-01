@@ -32,8 +32,8 @@ error  There is no policy allowing dependencies from elements of type
 ```
 
 Task 3 đã đâm vào nó: plan bảo tạo `ui/theme-toggle.tsx` import `lib/theme`. Chỗ đúng là
-`layout/theme-toggle.tsx` — và chính chú thích trong đoạn code của plan đã ghi *"`ui/` KHÔNG được
-biết domain"* ngay trên một import vi phạm luật đó.
+`layout/theme-toggle.tsx` — và chính chú thích trong đoạn code của plan đã ghi _"`ui/` KHÔNG được
+biết domain"_ ngay trên một import vi phạm luật đó.
 
 **Luật rút ra, áp cho mọi task còn lại:** một component đặt trong `ui/` phải **nhận mọi thứ qua
 prop**. Cần đọc `lib/` thì hoặc đổi chỗ sang thư mục biết-domain (`layout/`, `rentals/`,
@@ -63,28 +63,28 @@ kiểu `import type { IconName }`) thì hợp lệ.
 
 ## File Structure
 
-| File | Trách nhiệm | Task |
-| --- | --- | --- |
-| `apps/staff/src/lib/color-math.ts` | **Tạo.** oklch → sRGB, tương phản WCAG, mô phỏng mù màu. Thuần, không import gì của app. Chỉ test dùng — không nằm trong bundle. | 1 |
-| `apps/staff/src/lib/color-math.test.ts` | **Tạo.** Hiệu chuẩn toán màu bằng chính số `index.css` đã công bố. | 1 |
-| `apps/staff/src/lib/theme-tokens.test.ts` | **Tạo.** Hàng rào: đọc `index.css` thật, dựng lại bảng §2.4 của design doc. | 2 |
-| `apps/staff/src/index.css` | **Sửa.** Token màu mới, bảng tối, token chuyển động, reduced-motion. | 2, 3, 6 |
-| `apps/staff/src/lib/theme.ts` | **Tạo.** Đọc/ghi/áp lựa chọn theme. Thuần trừ hai hàm chạm DOM. | 3 |
-| `apps/staff/src/lib/theme.test.ts` | **Tạo.** Ba trạng thái theme, ưu tiên, dữ liệu hỏng trong `localStorage`. | 3 |
-| `apps/staff/index.html` | **Sửa.** Script chống nháy trắng + hai thẻ `theme-color`. | 3 |
-| `apps/staff/src/components/ui/theme-toggle.tsx` | **Tạo.** Nút gạt ba trạng thái. | 3 |
-| `apps/staff/src/components/layout/app-nav.tsx` | **Sửa.** Gắn nút gạt vào chân sidebar và sheet Thêm. | 3 |
-| `apps/staff/src/components/ui/icon.tsx` | **Sửa.** Thêm 6 icon; `StatusDot` nhận `name`. | 4 |
-| `apps/staff/src/lib/rental-status.ts` | **Sửa.** `STATUS_ICON` + `statusIconOf`. | 4, 4b |
-| `apps/staff/src/components/rentals/calendar-{timeline,month}.tsx` | **Sửa.** Thanh đơn mang hình trạng thái. | 4b |
-| `apps/staff/src/lib/rental-status.ts` | **Sửa.** Thêm `STATUS_ICON`; giữ nguyên logic màu. | 4 |
-| `apps/staff/src/lib/status-icon.test.ts` | **Tạo.** Hàng rào: 6 trạng thái → 6 icon khác nhau. | 4 |
-| `apps/staff/src/components/ui/alert.tsx` | **Sửa.** Icon theo tone. | 4 |
-| `apps/staff/src/components/stats/attention-list.tsx` | **Sửa.** Chấm → icon theo loại việc. | 4 |
-| `apps/staff/src/components/ui/button.tsx` | **Sửa.** Thêm transition. | 5 |
-| `apps/staff/src/components/ui/modal.tsx` | **Sửa.** Hiệu ứng vào/ra theo `placement`. | 6 |
-| `apps/staff/src/components/rentals/rental-detail-sheet.tsx` | **Sửa.** Khoảnh khắc bàn giao. | 7 |
-| `apps/staff/src/pages/staff-list-page.tsx` · `health-page.tsx` | **Sửa.** Bỏ `<main>` lồng nhau. | 8 |
+| File                                                              | Trách nhiệm                                                                                                                      | Task    |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `apps/staff/src/lib/color-math.ts`                                | **Tạo.** oklch → sRGB, tương phản WCAG, mô phỏng mù màu. Thuần, không import gì của app. Chỉ test dùng — không nằm trong bundle. | 1       |
+| `apps/staff/src/lib/color-math.test.ts`                           | **Tạo.** Hiệu chuẩn toán màu bằng chính số `index.css` đã công bố.                                                               | 1       |
+| `apps/staff/src/lib/theme-tokens.test.ts`                         | **Tạo.** Hàng rào: đọc `index.css` thật, dựng lại bảng §2.4 của design doc.                                                      | 2       |
+| `apps/staff/src/index.css`                                        | **Sửa.** Token màu mới, bảng tối, token chuyển động, reduced-motion.                                                             | 2, 3, 6 |
+| `apps/staff/src/lib/theme.ts`                                     | **Tạo.** Đọc/ghi/áp lựa chọn theme. Thuần trừ hai hàm chạm DOM.                                                                  | 3       |
+| `apps/staff/src/lib/theme.test.ts`                                | **Tạo.** Ba trạng thái theme, ưu tiên, dữ liệu hỏng trong `localStorage`.                                                        | 3       |
+| `apps/staff/index.html`                                           | **Sửa.** Script chống nháy trắng + hai thẻ `theme-color`.                                                                        | 3       |
+| `apps/staff/src/components/ui/theme-toggle.tsx`                   | **Tạo.** Nút gạt ba trạng thái.                                                                                                  | 3       |
+| `apps/staff/src/components/layout/app-nav.tsx`                    | **Sửa.** Gắn nút gạt vào chân sidebar và sheet Thêm.                                                                             | 3       |
+| `apps/staff/src/components/ui/icon.tsx`                           | **Sửa.** Thêm 6 icon; `StatusDot` nhận `name`.                                                                                   | 4       |
+| `apps/staff/src/lib/rental-status.ts`                             | **Sửa.** `STATUS_ICON` + `statusIconOf`.                                                                                         | 4, 4b   |
+| `apps/staff/src/components/rentals/calendar-{timeline,month}.tsx` | **Sửa.** Thanh đơn mang hình trạng thái.                                                                                         | 4b      |
+| `apps/staff/src/lib/rental-status.ts`                             | **Sửa.** Thêm `STATUS_ICON`; giữ nguyên logic màu.                                                                               | 4       |
+| `apps/staff/src/lib/status-icon.test.ts`                          | **Tạo.** Hàng rào: 6 trạng thái → 6 icon khác nhau.                                                                              | 4       |
+| `apps/staff/src/components/ui/alert.tsx`                          | **Sửa.** Icon theo tone.                                                                                                         | 4       |
+| `apps/staff/src/components/stats/attention-list.tsx`              | **Sửa.** Chấm → icon theo loại việc.                                                                                             | 4       |
+| `apps/staff/src/components/ui/button.tsx`                         | **Sửa.** Thêm transition.                                                                                                        | 5       |
+| `apps/staff/src/components/ui/modal.tsx`                          | **Sửa.** Hiệu ứng vào/ra theo `placement`.                                                                                       | 6       |
+| `apps/staff/src/components/rentals/rental-detail-sheet.tsx`       | **Sửa.** Khoảnh khắc bàn giao.                                                                                                   | 7       |
+| `apps/staff/src/pages/staff-list-page.tsx` · `health-page.tsx`    | **Sửa.** Bỏ `<main>` lồng nhau.                                                                                                  | 8       |
 
 ---
 
@@ -95,6 +95,7 @@ Trước khi tin bất kỳ số mới nào, hàm đo phải tái lập được
 ra là `4,38:1`.
 
 **Files:**
+
 - Create: `apps/staff/src/lib/color-math.ts`
 - Create: `apps/staff/src/lib/color-math.test.ts`
 
@@ -168,7 +169,10 @@ describe("color-math — mô phỏng mù màu", () => {
   });
 });
 
-function deltaE(a: { lab: readonly [number, number, number] }, b: { lab: readonly [number, number, number] }): number {
+function deltaE(
+  a: { lab: readonly [number, number, number] },
+  b: { lab: readonly [number, number, number] },
+): number {
   return Math.hypot(a.lab[0] - b.lab[0], a.lab[1] - b.lab[1], a.lab[2] - b.lab[2]);
 }
 ```
@@ -356,6 +360,7 @@ git commit -m "test(staff): toán màu đo được, hiệu chuẩn bằng số 
 ## Task 2 — Hàng rào token + sửa ba lỗi màu
 
 **Files:**
+
 - Create: `apps/staff/src/lib/theme-tokens.test.ts`
 - Modify: `apps/staff/src/index.css`
 
@@ -504,6 +509,7 @@ bun test apps/staff/src/lib/theme-tokens.test.ts
 ```
 
 Kỳ vọng FAIL, và **đọc kỹ nội dung fail** — nó phải kể đúng ba lỗi ở design doc §1:
+
 - `border-strong` chưa tồn tại → test "khai đủ token" đỏ
 - `accent` vượt gamut → test gamut đỏ
 - `status-ongoing` ΔE với `accent` = 0 → test "hai nghĩa" đỏ
@@ -518,17 +524,17 @@ design doc. **Giữ nguyên mọi chú thích đang có** — chúng chứa lậ
 ba thay đổi:
 
 ```css
-  /* Bề mặt và chữ. Sáng, không phải nền đen của apps/web: đây là công cụ đọc
+/* Bề mặt và chữ. Sáng, không phải nền đen của apps/web: đây là công cụ đọc
      nhiều giờ dưới ánh sáng gara, không phải trang bán hàng.
 
      Chroma 0.003–0.02 ở hue 255 (KHÔNG phải 0): sắc xanh của logo. Xám tuyệt
      đối làm accent đứng như vật thể lạ dán lên nền; nhuốm nhẹ cùng hue thì cả
      màn hình đọc ra một hệ. Nhìn từng ô riêng gần như không phân biệt được. */
-  --color-canvas: oklch(98.4% 0.003 255);
-  --color-surface: oklch(100% 0 255);
-  --color-surface-sunken: oklch(96.2% 0.005 255);
+--color-canvas: oklch(98.4% 0.003 255);
+--color-surface: oklch(100% 0 255);
+--color-surface-sunken: oklch(96.2% 0.005 255);
 
-  /* HAI token viền, không phải một.
+/* HAI token viền, không phải một.
 
      SC 1.4.11 đòi 3:1 cho ranh giới CẦN THIẾT để nhận ra một control — nó KHÔNG
      đòi vậy cho đường chia trang trí. Làm đậm mọi viền lên 3:1 biến bảng dữ liệu
@@ -536,26 +542,26 @@ ba thay đổi:
 
      `border` (1,44:1) cho đường chia; `border-strong` (đo được ĐÚNG 3,00:1, giải
      ngược từ ngưỡng) cho viền ô nhập và nút ghost. */
-  --color-border: oklch(87.8% 0.008 255);
-  --color-border-strong: oklch(66.9% 0.012 255);
+--color-border: oklch(87.8% 0.008 255);
+--color-border-strong: oklch(66.9% 0.012 255);
 
-  --color-ink: oklch(22% 0.02 255);
-  --color-ink-soft: oklch(40% 0.016 255);
-  --color-muted: oklch(52% 0.014 255);
+--color-ink: oklch(22% 0.02 255);
+--color-ink-soft: oklch(40% 0.016 255);
+--color-muted: oklch(52% 0.014 255);
 
-  /* ⚠️ Chroma 0.171, KHÔNG phải 0.19.
+/* ⚠️ Chroma 0.171, KHÔNG phải 0.19.
 
      Trần gamut sRGB ở L=52%, hue=255 đo được là 0,17124. Ở 0.19 kênh đỏ tuyến tính
      rơi xuống âm và trình duyệt KẸP nó về 0 — token khai một màu, vẽ ra một màu
      khác. Đây đúng là lớp lỗi mà chú thích của nhóm `*-soft` bên dưới đã cảnh
      báo; luật đã có, chỉ là chưa được áp cho token này. */
-  --color-accent: oklch(52% 0.171 255);
-  --color-accent-ink: oklch(100% 0 255);
-  --color-accent-hover: oklch(46% 0.151 255);
-  --color-accent-active: oklch(40% 0.132 255);
+--color-accent: oklch(52% 0.171 255);
+--color-accent-ink: oklch(100% 0 255);
+--color-accent-hover: oklch(46% 0.151 255);
+--color-accent-active: oklch(40% 0.132 255);
 
-  --color-status-booked: oklch(50% 0.09 255);
-  /* ⚠️ ĐÃ ĐỔI HUE: 255 → 200.
+--color-status-booked: oklch(50% 0.09 255);
+/* ⚠️ ĐÃ ĐỔI HUE: 255 → 200.
 
      Trước đợt này token này là oklch(52% 0.19 255) — TRÙNG KHÍT `--color-accent`.
      Tức "đơn đang thuê" và "hành động chính của app" tô cùng một màu, trong một
@@ -563,17 +569,17 @@ ba thay đổi:
 
      L=55,7% là mức sáng nhất còn đạt 4,5:1 với chữ trắng — giải ngược từ ngưỡng,
      nên nó KHÔNG có biên. Đổi L là trượt AA. */
-  --color-status-ongoing: oklch(55.7% 0.094 200);
-  --color-status-overdue: oklch(55% 0.21 27);
-  --color-status-completed: oklch(42% 0 255);
-  /* Chroma 0.109 chứ không 0.13: trần gamut ở L=52%, hue=75. Cùng lý do accent. */
-  --color-warning: oklch(52% 0.109 75);
+--color-status-ongoing: oklch(55.7% 0.094 200);
+--color-status-overdue: oklch(55% 0.21 27);
+--color-status-completed: oklch(42% 0 255);
+/* Chroma 0.109 chứ không 0.13: trần gamut ở L=52%, hue=75. Cùng lý do accent. */
+--color-warning: oklch(52% 0.109 75);
 
-  --color-status-overdue-soft: oklch(96% 0.019 27);
-  --color-status-booked-soft: oklch(96% 0.019 255);
-  --color-status-completed-soft: oklch(96% 0 255);
-  --color-warning-soft: oklch(96% 0.032 75);
-  --color-accent-soft: oklch(96% 0.019 255);
+--color-status-overdue-soft: oklch(96% 0.019 27);
+--color-status-booked-soft: oklch(96% 0.019 255);
+--color-status-completed-soft: oklch(96% 0 255);
+--color-warning-soft: oklch(96% 0.032 75);
+--color-accent-soft: oklch(96% 0.019 255);
 ```
 
 ⛔ **KHÔNG được viết `@theme inline`.** `inline` nội suy giá trị thẳng vào utility thay vì tham chiếu
@@ -584,7 +590,7 @@ ba thay đổi:
 Thêm vào cuối `@layer base { … }` đang có trong `index.css`:
 
 ```css
-  /*
+/*
    * ── Theme tối ────────────────────────────────────────────────────────────
    *
    * Ba trạng thái, không phải hai: `data-theme="light"` (ép sáng) ·
@@ -604,52 +610,9 @@ Thêm vào cuối `@layer base { … }` đang có trong `index.css`:
    *   • `accent-hover`/`active` SÁNG dần chứ không tối dần — xem chú thích riêng
    *     bên dưới.
    */
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      color-scheme: dark;
-      --color-canvas: oklch(17.5% 0.022 255);
-      --color-surface: oklch(22.5% 0.024 255);
-      --color-surface-sunken: oklch(14% 0.02 255);
-      --color-border: oklch(32% 0.026 255);
-      --color-border-strong: oklch(51.2% 0.03 255);
-      --color-ink: oklch(96.5% 0.006 255);
-      --color-ink-soft: oklch(82% 0.012 255);
-      --color-muted: oklch(70% 0.018 255);
-      --color-accent: oklch(70% 0.159 255);
-      --color-accent-ink: oklch(17.5% 0.022 255);
-      --color-accent-hover: oklch(76% 0.124 255);
-      --color-accent-active: oklch(82% 0.091 255);
-      --color-status-booked: oklch(68% 0.08 255);
-      --color-status-ongoing: oklch(74% 0.12 200);
-      --color-status-overdue: oklch(70% 0.17 27);
-      --color-status-completed: oklch(66% 0 255);
-      --color-warning: oklch(78% 0.14 75);
-      --color-status-overdue-soft: oklch(30% 0.05 27);
-      --color-status-booked-soft: oklch(30% 0.05 255);
-      --color-status-completed-soft: oklch(30% 0 255);
-      --color-warning-soft: oklch(30% 0.05 75);
-      --color-accent-soft: oklch(30% 0.05 255);
-    }
-  }
-
-  /*
-   * `accent-hover`/`accent-active` ở theme tối SÁNG dần, không tối dần.
-   *
-   * Luật cũ trong file này vẫn đúng nguyên văn — "cả hai đều ĐẬM hơn trạng thái
-   * thường, nên tương phản chỉ tăng". Điều bất biến thật nằm ở vế cuối: TƯƠNG
-   * PHẢN CHỈ ĐƯỢC TĂNG. "Đậm hơn" chỉ là cách vế đó biểu hiện trên nền sáng.
-   *
-   * Trên nền tối, accent SÁNG hơn nền, nên đậm đi là đi về phía nền. Đo được:
-   * làm tối theo đúng bản sáng thì `active` rơi xuống 4,39:1 với chính chữ của
-   * nó — TRƯỢT AA. Làm sáng lên: 10,89:1.
-   *
-   * Chroma giảm dần khi L tăng (0.160 → 0.125 → 0.091) là trần gamut ở từng mức
-   * L, không phải lựa chọn thẩm mỹ.
-   */
-  :root[data-theme="dark"] {
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
-    /* ⚠️ Chép Y HỆT khối `@media` ở trên. Hai khối phải giữ bằng nhau —
-       `theme-tokens.test.ts` đọc khối NÀY, nên khối kia lệch đi sẽ không bị bắt. */
     --color-canvas: oklch(17.5% 0.022 255);
     --color-surface: oklch(22.5% 0.024 255);
     --color-surface-sunken: oklch(14% 0.02 255);
@@ -673,6 +636,49 @@ Thêm vào cuối `@layer base { … }` đang có trong `index.css`:
     --color-warning-soft: oklch(30% 0.05 75);
     --color-accent-soft: oklch(30% 0.05 255);
   }
+}
+
+/*
+   * `accent-hover`/`accent-active` ở theme tối SÁNG dần, không tối dần.
+   *
+   * Luật cũ trong file này vẫn đúng nguyên văn — "cả hai đều ĐẬM hơn trạng thái
+   * thường, nên tương phản chỉ tăng". Điều bất biến thật nằm ở vế cuối: TƯƠNG
+   * PHẢN CHỈ ĐƯỢC TĂNG. "Đậm hơn" chỉ là cách vế đó biểu hiện trên nền sáng.
+   *
+   * Trên nền tối, accent SÁNG hơn nền, nên đậm đi là đi về phía nền. Đo được:
+   * làm tối theo đúng bản sáng thì `active` rơi xuống 4,39:1 với chính chữ của
+   * nó — TRƯỢT AA. Làm sáng lên: 10,89:1.
+   *
+   * Chroma giảm dần khi L tăng (0.160 → 0.125 → 0.091) là trần gamut ở từng mức
+   * L, không phải lựa chọn thẩm mỹ.
+   */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  /* ⚠️ Chép Y HỆT khối `@media` ở trên. Hai khối phải giữ bằng nhau —
+       `theme-tokens.test.ts` đọc khối NÀY, nên khối kia lệch đi sẽ không bị bắt. */
+  --color-canvas: oklch(17.5% 0.022 255);
+  --color-surface: oklch(22.5% 0.024 255);
+  --color-surface-sunken: oklch(14% 0.02 255);
+  --color-border: oklch(32% 0.026 255);
+  --color-border-strong: oklch(51.2% 0.03 255);
+  --color-ink: oklch(96.5% 0.006 255);
+  --color-ink-soft: oklch(82% 0.012 255);
+  --color-muted: oklch(70% 0.018 255);
+  --color-accent: oklch(70% 0.159 255);
+  --color-accent-ink: oklch(17.5% 0.022 255);
+  --color-accent-hover: oklch(76% 0.124 255);
+  --color-accent-active: oklch(82% 0.091 255);
+  --color-status-booked: oklch(68% 0.08 255);
+  --color-status-ongoing: oklch(74% 0.12 200);
+  --color-status-overdue: oklch(70% 0.17 27);
+  --color-status-completed: oklch(66% 0 255);
+  --color-warning: oklch(78% 0.14 75);
+  --color-status-overdue-soft: oklch(30% 0.05 27);
+  --color-status-booked-soft: oklch(30% 0.05 255);
+  --color-status-completed-soft: oklch(30% 0 255);
+  --color-warning-soft: oklch(30% 0.05 75);
+  --color-accent-soft: oklch(30% 0.05 255);
+}
 ```
 
 - [ ] **Step 2.5: Thêm test giữ hai khối tối bằng nhau**
@@ -724,6 +730,7 @@ Kèm bảng token theme tối và hàng rào dựng lại toàn bộ bảng số
 ## Task 3 — Cơ chế theme + nút gạt
 
 **Files:**
+
 - Create: `apps/staff/src/lib/theme.ts`, `apps/staff/src/lib/theme.test.ts`
 - Create: `apps/staff/src/components/ui/theme-toggle.tsx`
 - Modify: `apps/staff/index.html`, `apps/staff/src/components/layout/app-nav.tsx`
@@ -870,7 +877,7 @@ Kỳ vọng: 9 pass.
 Trong `apps/staff/index.html`, thay thẻ `<meta name="theme-color" …>` hiện tại bằng:
 
 ```html
-    <!--
+<!--
       Ba thẻ, và cả ba đều cần thiết:
 
       • Hai thẻ có `media` phục vụ trường hợp THEO HỆ ĐIỀU HÀNH — trình duyệt tự
@@ -883,10 +890,10 @@ Trong `apps/staff/index.html`, thay thẻ `<meta name="theme-color" …>` hiện
       trong `vite.config.ts` cũng chép tay `#f8fafc` — đổi canvas SÁNG thì phải
       đổi cả ba chỗ.
     -->
-    <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0a111a" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#f8fafc" />
-    <!--
+<meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0a111a" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#f8fafc" />
+<!--
       Chống nháy trắng. PHẢI là script ĐỒNG BỘ trong `<head>`, chạy trước khung
       hình đầu tiên. Đặt việc này trong React là muộn: người dùng thấy một nháy
       sáng mỗi lần mở app, và trên PWA khởi động lạnh thì rất rõ.
@@ -894,14 +901,14 @@ Trong `apps/staff/index.html`, thay thẻ `<meta name="theme-color" …>` hiện
       Chép tay khoá "v9-theme" vì script này chạy TRƯỚC khi bundle tải nên không
       import được. `theme.test.ts` là sợi dây giữ hai chỗ bằng nhau.
     -->
-    <script>
-      try {
-        var c = localStorage.getItem("v9-theme");
-        if (c === "light" || c === "dark") document.documentElement.setAttribute("data-theme", c);
-      } catch (e) {
-        /* Safari riêng tư ném khi đọc localStorage — đi theo hệ điều hành */
-      }
-    </script>
+<script>
+  try {
+    var c = localStorage.getItem("v9-theme");
+    if (c === "light" || c === "dark") document.documentElement.setAttribute("data-theme", c);
+  } catch (e) {
+    /* Safari riêng tư ném khi đọc localStorage — đi theo hệ điều hành */
+  }
+</script>
 ```
 
 - [ ] **Step 3.6: Cập nhật `vite.config.ts`**
@@ -983,7 +990,7 @@ Thêm vào dòng import từ `lucide-react`: `Monitor`, `Moon`, `Sun`. Thêm và
 Trong `SidebarNav`, thêm ngay **trên** link "Đổi mật khẩu":
 
 ```tsx
-        <ThemeToggle className={`${TOUCH} gap-2 rounded-card px-3 text-ink hover:bg-canvas`} />
+<ThemeToggle className={`${TOUCH} gap-2 rounded-card px-3 text-ink hover:bg-canvas`} />
 ```
 
 Trong `BottomNav`, thêm ở cùng vị trí trong khối chân của sheet **Thêm**, dùng đúng chuỗi class đó.
@@ -996,6 +1003,7 @@ bun run --filter @v9/staff build && bun run --filter @v9/staff preview
 ```
 
 Kiểm đủ bốn điều — `vite dev` **không** kiểm được vì PWA không chạy ở đó:
+
 1. Gạt qua ba trạng thái, mỗi lần tải lại trang: lựa chọn còn nguyên, **không có nháy trắng**.
 2. Đổi theme của hệ điều hành khi đang ở "Theo máy": app đổi theo ngay.
 3. Đang ở "Theo máy" + hệ điều hành tối → chọn "Sáng": app ra **sáng** (khối `@media` phải tự loại).
@@ -1020,6 +1028,7 @@ git commit -m "feat(staff): theme sáng/tối theo hệ điều hành, có nút 
 sửa được. Icon là kênh duy nhất còn lại.
 
 **Files:**
+
 - Create: `apps/staff/src/lib/status-icon.test.ts`
 - Modify: `apps/staff/src/lib/rental-status.ts`, `apps/staff/src/components/ui/icon.tsx`,
   `apps/staff/src/components/ui/alert.tsx`, `apps/staff/src/components/stats/attention-list.tsx`
@@ -1151,16 +1160,16 @@ const TONE_ICON: Record<AlertTone, IconName> = {
 Đổi thân component thành:
 
 ```tsx
-  return (
-    <p
-      role={liveMode === "assertive" ? "alert" : "status"}
-      aria-live={liveMode}
-      className={`flex items-start gap-2 rounded-card p-3 text-sm ${TONE[tone]}`}
-    >
-      <Icon name={TONE_ICON[tone]} className="mt-0.5" />
-      <span className="flex-1">{children}</span>
-    </p>
-  );
+return (
+  <p
+    role={liveMode === "assertive" ? "alert" : "status"}
+    aria-live={liveMode}
+    className={`flex items-start gap-2 rounded-card p-3 text-sm ${TONE[tone]}`}
+  >
+    <Icon name={TONE_ICON[tone]} className="mt-0.5" />
+    <span className="flex-1">{children}</span>
+  </p>
+);
 ```
 
 Thêm `import { Icon, type IconName } from "./icon";` ở đầu file.
@@ -1186,10 +1195,12 @@ Ba chỗ `rows.push` đổi tương ứng:
       icon: "alert-triangle",
       className: "text-status-overdue",
 ```
+
 ```ts
       icon: "calendar-check",
       className: "text-warning",
 ```
+
 ```ts
       icon: "nav-staff",
       className: "text-accent",
@@ -1237,11 +1248,11 @@ không gánh nổi."
 
 ### Đo lại chỗ nào thật sự thủng
 
-| Chỗ | Kênh đang có | Kết luận |
-| --- | --- | --- |
-| `customer-table.tsx:210` · `customer-rental-history.tsx:89` | màu + **nhãn chữ nhìn thấy được** (`STATUS_LABEL`) | **Đủ.** Chữ là kênh thứ hai hợp lệ. Icon ở đây là trang trí. |
-| `calendar-timeline.tsx:189-199` | màu + chữ, nhưng chữ là **`customerName`**; trạng thái chỉ ở `title=` + `aria-label` | ⛔ **Thủng** |
-| `calendar-month.tsx:205-207` | màu + chữ, nhưng chữ là **tên xe**; trạng thái chỉ ở `title=` + `aria-label` | ⛔ **Thủng** |
+| Chỗ                                                         | Kênh đang có                                                                         | Kết luận                                                     |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| `customer-table.tsx:210` · `customer-rental-history.tsx:89` | màu + **nhãn chữ nhìn thấy được** (`STATUS_LABEL`)                                   | **Đủ.** Chữ là kênh thứ hai hợp lệ. Icon ở đây là trang trí. |
+| `calendar-timeline.tsx:189-199`                             | màu + chữ, nhưng chữ là **`customerName`**; trạng thái chỉ ở `title=` + `aria-label` | ⛔ **Thủng**                                                 |
+| `calendar-month.tsx:205-207`                                | màu + chữ, nhưng chữ là **tên xe**; trạng thái chỉ ở `title=` + `aria-label`         | ⛔ **Thủng**                                                 |
 
 `aria-label` phục vụ trình đọc màn hình — đủ. `title=` **không bao giờ bắn khi chạm**, mà đây là PWA
 dùng trên điện thoại trong gara. Nên với người dùng **nhìn thấy, dùng chạm, mù màu**, trạng thái trên
@@ -1254,6 +1265,7 @@ cả hai nền đặc nên **cách tô không tách được**, và cả hai đ�
 ### Phạm vi
 
 **Files:**
+
 - Modify: `apps/staff/src/lib/rental-status.ts` — thêm `statusIconOf(rental, now): IconName`
 - Modify: `apps/staff/src/components/rentals/calendar-timeline.tsx`
 - Modify: `apps/staff/src/components/rentals/calendar-month.tsx`
@@ -1290,7 +1302,11 @@ describe("statusIconOf — hình phải khớp CÙNG luật với màu", () => {
   });
 
   it("COMPLETED → COMPLETED, không bị luật quá hạn cướp", () => {
-    const r = { status: "COMPLETED" as const, startsAt: at("2026-09-01"), endsAt: at("2026-09-05") };
+    const r = {
+      status: "COMPLETED" as const,
+      startsAt: at("2026-09-01"),
+      endsAt: at("2026-09-05"),
+    };
     expect(statusIconOf(r, NOW)).toBe(STATUS_ICON.COMPLETED);
   });
 });
@@ -1309,20 +1325,20 @@ gán nó thành `OVERDUE`. `isOverdue` của shared đã lọc theo `status === 
 
 - [ ] **Step 4b.5: Render icon trên thanh timeline** (`calendar-timeline.tsx:188-199`).
 
-      Dùng `<Icon name={statusIconOf(rental, now)} size="sm" />` — **`size="sm"` (12px)**, cùng cỡ
-      dấu "còn tiếp" đã có trong thanh. Đặt **trước** `customerName`, trong cùng `flex gap-1`.
+  Dùng `<Icon name={statusIconOf(rental, now)} size="sm" />` — **`size="sm"` (12px)**, cùng cỡ
+  dấu "còn tiếp" đã có trong thanh. Đặt **trước** `customerName`, trong cùng `flex gap-1`.
 
-      ⚠️ Thanh đơn hẹp và `customerName` đang `truncate`. Icon `shrink-0` (đã có sẵn trong `Icon`)
-      nên nó không bị bóp; chỗ nhường là tên khách. Đó là đánh đổi đúng: tên khách còn đọc được một
-      phần vẫn hữu ích, còn trạng thái sai màu thì vô dụng hoàn toàn.
+  ⚠️ Thanh đơn hẹp và `customerName` đang `truncate`. Icon `shrink-0` (đã có sẵn trong `Icon`)
+  nên nó không bị bóp; chỗ nhường là tên khách. Đó là đánh đổi đúng: tên khách còn đọc được một
+  phần vẫn hữu ích, còn trạng thái sai màu thì vô dụng hoàn toàn.
 
 - [ ] **Step 4b.6: Render icon trên chip tháng** (`calendar-month.tsx:205-207`), cùng cách.
 
 - [ ] **Step 4b.7: Kiểm mắt trên bản BUILD**, ở 390px và 1440px, cả hai chế độ lịch:
-      1. Mỗi thanh/chip có icon, và icon **khớp màu** (thanh đỏ đặc phải mang tam giác).
-      2. DevTools → Rendering → **Achromatopsia** (phép thử nặng nhất): hai thanh `quá hạn` và
-         `đã trả` **vẫn phân biệt được**.
-      3. Tên khách vẫn đọc được ở thanh hẹp nhất — chụp màn hình chỗ hẹp nhất tìm được.
+  1. Mỗi thanh/chip có icon, và icon **khớp màu** (thanh đỏ đặc phải mang tam giác).
+  2. DevTools → Rendering → **Achromatopsia** (phép thử nặng nhất): hai thanh `quá hạn` và
+     `đã trả` **vẫn phân biệt được**.
+  3. Tên khách vẫn đọc được ở thanh hẹp nhất — chụp màn hình chỗ hẹp nhất tìm được.
 
 - [ ] **Step 4b.8: Commit** — `feat(staff): thanh đơn trên lịch mang hình trạng thái, không chỉ màu`
 
@@ -1338,6 +1354,7 @@ gán nó thành `OVERDUE`. `isOverdue` của shared đã lọc theo `status === 
 > control gốc đã đổi màu còn nền thì đang bò.
 >
 > Hai lời giải, chọn một và ghi lý do:
+>
 > 1. **Không** đưa `--color-*` vào bất kỳ transition toàn cục nào — chỉ animate màu ở phần tử cụ thể
 >    (nút, hàng), đúng như §4.3 của design doc đã quy định.
 > 2. Nếu vẫn muốn transition rộng: thêm một class `theme-switching` do `applyChoice` bật/tắt quanh
@@ -1348,12 +1365,13 @@ gán nó thành `OVERDUE`. `isOverdue` của shared đã lọc theo `status === 
 > một chỗ may mà không đụng tới.
 
 **Files:**
+
 - Modify: `apps/staff/src/index.css`, `apps/staff/src/components/ui/button.tsx`
 
 - [ ] **Step 5.1: Thêm token chuyển động vào `@theme`**
 
 ```css
-  /*
+/*
    * ── Chuyển động ──────────────────────────────────────────────────────────
    *
    * Luận điểm: chuyển động ở đây tồn tại để CHỨNG MINH CÓ CHUYỆN VỪA XẢY RA,
@@ -1365,19 +1383,19 @@ gán nó thành `OVERDUE`. `isOverdue` của shared đã lọc theo `status === 
    * thuế thu ở mỗi lần dùng. Vào chậm hơn ra: thứ người dùng vừa gọi ra phải
    * tới nhanh, thứ họ vừa bỏ đi phải biến mất nhanh hơn nữa.
    */
-  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+--ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+--ease-exit: cubic-bezier(0.4, 0, 1, 1);
+--ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
-  --duration-instant: 120ms;
-  --duration-quick: 180ms;
-  --duration-panel: 280ms;
+--duration-instant: 120ms;
+--duration-quick: 180ms;
+--duration-panel: 280ms;
 ```
 
 - [ ] **Step 5.2: Thêm khối reduced-motion vào `@layer base`**
 
 ```css
-  /*
+/*
    * Bỏ ĐƯỜNG ĐI, giữ ĐÍCH ĐẾN. Bỏ hẳn hiệu ứng là lấy mất thông tin của đúng
    * người đã bật cờ này.
    *
@@ -1388,16 +1406,16 @@ gán nó thành `OVERDUE`. `isOverdue` của shared đã lọc theo `status === 
    * có bản thay thế riêng (nền tô nhạt giữ 2s) — xem chú thích ở đó. Không có
    * nó thì người bật cờ quay lại đúng lỗi P0 mô tả ở `@theme`.
    */
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 1ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 1ms !important;
-      scroll-behavior: auto !important;
-    }
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
   }
+}
 ```
 
 - [ ] **Step 5.3: `Button` — thêm transition**
@@ -1448,12 +1466,13 @@ git commit -m "feat(staff): token chuyển động + trạng thái nền, tôn t
 Animate nó **không** phải chuyện thêm một dòng `transition`.
 
 **Files:**
+
 - Modify: `apps/staff/src/components/ui/modal.tsx`
 
 - [ ] **Step 6.1: Thêm CSS cho lớp phủ vào `index.css`, trong `@layer base`**
 
 ```css
-  /*
+/*
    * ── Hiệu ứng vào/ra của `<dialog>` ───────────────────────────────────────
    *
    * BA thứ, thiếu một là hỏng theo ba kiểu khác nhau — và cả ba đều hỏng ÂM
@@ -1470,46 +1489,46 @@ Animate nó **không** phải chuyện thêm một dòng `transition`.
    * neo: sheet trượt lên từ đáy là quy ước gốc của điện thoại; hộp thoại giữa
    * màn thì phóng nhẹ. Dùng chung một hướng cho cả ba là chỗ dễ làm ẩu nhất.
    */
+dialog[open] {
+  transition:
+    opacity var(--duration-panel) var(--ease-enter),
+    display var(--duration-panel) allow-discrete,
+    overlay var(--duration-panel) allow-discrete;
+  opacity: 1;
+}
+@starting-style {
   dialog[open] {
-    transition:
-      opacity var(--duration-panel) var(--ease-enter),
-      display var(--duration-panel) allow-discrete,
-      overlay var(--duration-panel) allow-discrete;
-    opacity: 1;
-  }
-  @starting-style {
-    dialog[open] {
-      opacity: 0;
-    }
-  }
-  dialog:not([open]) {
     opacity: 0;
-    transition-duration: var(--duration-quick);
-    transition-timing-function: var(--ease-exit);
   }
+}
+dialog:not([open]) {
+  opacity: 0;
+  transition-duration: var(--duration-quick);
+  transition-timing-function: var(--ease-exit);
+}
 
-  dialog[open] > [data-panel] {
-    transition: transform var(--duration-panel) var(--ease-enter);
-    transform: none;
+dialog[open] > [data-panel] {
+  transition: transform var(--duration-panel) var(--ease-enter);
+  transform: none;
+}
+@starting-style {
+  dialog[open] > [data-panel][data-placement="bottom"],
+  dialog[open] > [data-panel][data-placement="adaptive"] {
+    transform: translateY(100%);
   }
-  @starting-style {
-    dialog[open] > [data-panel][data-placement="bottom"],
-    dialog[open] > [data-panel][data-placement="adaptive"] {
-      transform: translateY(100%);
-    }
-    dialog[open] > [data-panel][data-placement="top"] {
-      transform: translateY(-12px);
-    }
+  dialog[open] > [data-panel][data-placement="top"] {
+    transform: translateY(-12px);
   }
-  /* Từ 640px, `adaptive` chuyển sang hộp thoại giữa màn — vào bằng phóng nhẹ,
+}
+/* Từ 640px, `adaptive` chuyển sang hộp thoại giữa màn — vào bằng phóng nhẹ,
      không trượt: nó không neo vào cạnh nào để mà trượt tới. */
-  @media (width >= 40rem) {
-    @starting-style {
-      dialog[open] > [data-panel][data-placement="adaptive"] {
-        transform: scale(0.98);
-      }
+@media (width >= 40rem) {
+  @starting-style {
+    dialog[open] > [data-panel][data-placement="adaptive"] {
+      transform: scale(0.98);
     }
   }
+}
 ```
 
 - [ ] **Step 6.2: Gắn thuộc tính vào panel trong `modal.tsx`**
@@ -1532,6 +1551,7 @@ bun run --filter @v9/staff build && bun run --filter @v9/staff preview
 ```
 
 Kiểm cả ba lớp phủ, ở **cả hai** bề rộng (390px và 1440px):
+
 1. Sheet **Thêm** (bottom nav, <768px) — trượt lên từ đáy.
 2. Sheet chi tiết đơn (chạm thanh trên lịch) — trượt lên ở 390px, **phóng nhẹ** ở 1440px.
 3. Form lên đơn (nút `+ Lên đơn`) — rơi xuống nhẹ từ trên.
@@ -1561,12 +1581,13 @@ thứ ba thì panel nhảy xuống dưới lớp mờ ở khung hình cuối."
 Đây là **một** khoảnh khắc được dàn dựng của cả đợt, và là thứ trực tiếp chữa lỗi P0.
 
 **Files:**
+
 - Modify: `apps/staff/src/index.css`, `apps/staff/src/components/rentals/rental-detail-sheet.tsx`
 
 - [ ] **Step 7.1: Thêm animation "vừa đổi" vào `index.css`**
 
 ```css
-  /*
+/*
    * ── Khoảnh khắc được dàn dựng: đơn vừa đổi trạng thái ────────────────────
    *
    * Nhân viên bấm `Đã giao xe`: `handed_over_at` được đặt, đơn chuyển
@@ -1580,31 +1601,31 @@ thứ ba thì panel nhảy xuống dưới lớp mờ ở khung hình cuối."
    * Chạy MỘT nhịp rồi tắt. Vòng xung lặp mãi là một lời cảnh báo, không phải
    * một lời xác nhận.
    */
-  @keyframes v9-just-changed {
-    from {
-      opacity: 0.55;
-      transform: scale(1);
-    }
-    to {
-      opacity: 0;
-      transform: scale(1.04);
-    }
+@keyframes v9-just-changed {
+  from {
+    opacity: 0.55;
+    transform: scale(1);
   }
-
-  @utility just-changed {
-    position: relative;
-    &::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      background: var(--color-accent-soft);
-      pointer-events: none;
-      animation: v9-just-changed 600ms var(--ease-exit) 1 both;
-    }
+  to {
+    opacity: 0;
+    transform: scale(1.04);
   }
+}
 
-  /*
+@utility just-changed {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--color-accent-soft);
+    pointer-events: none;
+    animation: v9-just-changed 600ms var(--ease-exit) 1 both;
+  }
+}
+
+/*
    * Bản thay thế cho reduced-motion — BẮT BUỘC, không phải tuỳ chọn.
    *
    * Quét toàn cục ở trên biến animation thành 1ms, tức vòng sáng biến mất hoàn
@@ -1612,16 +1633,16 @@ thứ ba thì panel nhảy xuống dưới lớp mờ ở khung hình cuối."
    * làm xong việc mà không nói gì. Nền tô giữ 2s nói cùng một điều mà không cần
    * chuyển động nào.
    */
-  @media (prefers-reduced-motion: reduce) {
-    .just-changed::after {
-      animation: none;
-      opacity: 0.55;
-      transition: opacity 1ms linear 2s;
-    }
-    .just-changed[data-settled]::after {
-      opacity: 0;
-    }
+@media (prefers-reduced-motion: reduce) {
+  .just-changed::after {
+    animation: none;
+    opacity: 0.55;
+    transition: opacity 1ms linear 2s;
   }
+  .just-changed[data-settled]::after {
+    opacity: 0;
+  }
+}
 ```
 
 - [ ] **Step 7.2: Gắn vào `rental-detail-sheet.tsx`**
@@ -1629,15 +1650,15 @@ thứ ba thì panel nhảy xuống dưới lớp mờ ở khung hình cuối."
 Trong `RentalDetailSheet`, thêm state đánh dấu vừa đổi và gắn class lên hàng trạng thái:
 
 ```tsx
-  /**
-   * Đơn vừa đổi trạng thái trong phiên này. Dùng để chạy vòng sáng MỘT nhịp —
-   * xem `@utility just-changed` ở `index.css` và design doc §4.1.
-   *
-   * State cục bộ chứ không suy từ dữ liệu: "vừa đổi" là một sự kiện của phiên
-   * làm việc này, không phải một thuộc tính của đơn. Tải lại trang thì nó biến
-   * mất, và đó là đúng.
-   */
-  const [justChanged, setJustChanged] = useState(false);
+/**
+ * Đơn vừa đổi trạng thái trong phiên này. Dùng để chạy vòng sáng MỘT nhịp —
+ * xem `@utility just-changed` ở `index.css` và design doc §4.1.
+ *
+ * State cục bộ chứ không suy từ dữ liệu: "vừa đổi" là một sự kiện của phiên
+ * làm việc này, không phải một thuộc tính của đơn. Tải lại trang thì nó biến
+ * mất, và đó là đúng.
+ */
+const [justChanged, setJustChanged] = useState(false);
 ```
 
 Trong `onSuccess` của mutation `change`, thêm `setJustChanged(true);`.
@@ -1655,6 +1676,7 @@ bun run --filter @v9/staff dev
 ```
 
 Tạo một đơn, mở sheet chi tiết từ lịch, bấm `Đã giao xe`. Xác nhận:
+
 1. Chip đổi **cả hình lẫn màu** (`nav-calendar` → `nav-handover`, viền → nền đặc).
 2. Vòng sáng chạy **đúng một nhịp** rồi tắt.
 3. Bật `prefers-reduced-motion: reduce` trong DevTools, làm lại: **nền tô vẫn hiện** rồi tự tắt —
@@ -1673,6 +1695,7 @@ git commit -m "feat(staff): bàn giao xe có phản hồi thị giác — chữa
 ## Task 8 — Dọn component
 
 **Files:**
+
 - Modify: `apps/staff/src/pages/staff-list-page.tsx`, `apps/staff/src/pages/health-page.tsx`
 
 - [ ] **Step 8.1: Bỏ `<main>` lồng nhau**
@@ -1697,7 +1720,7 @@ bun run --filter @v9/staff dev
 Trong DevTools console, ở `/staff` rồi ở `/customers`:
 
 ```js
-getComputedStyle(document.querySelector("h1")).fontSize
+getComputedStyle(document.querySelector("h1")).fontSize;
 ```
 
 Hai giá trị phải **bằng nhau**. Và `document.querySelectorAll("main").length` phải bằng `1` ở mọi
@@ -1729,10 +1752,10 @@ Hook design của impeccable chạy tự động sau mỗi lần sửa file UI. 
 
 Trên bản **build** (`build` + `preview`), chụp **mọi** màn ở **bốn** tổ hợp:
 
-| | 390×844 | 1440×900 |
-| --- | --- | --- |
-| **sáng** | ✓ | ✓ |
-| **tối** | ✓ | ✓ |
+|          | 390×844 | 1440×900 |
+| -------- | ------- | -------- |
+| **sáng** | ✓       | ✓        |
+| **tối**  | ✓       | ✓        |
 
 Màn phải chụp: `/` · `/calendar` (cả `timeline` và `month`) · `/customers` · `/customers/:id` ·
 `/requests` · `/staff` · `/login` · `/signup` · `/forgot-password` · `/change-password` ·
@@ -1807,28 +1830,28 @@ Ba chỗ tài liệu đang trôi (design doc §9), cộng hai chỗ đợt này 
 
 - [ ] **Step 10.1: Sửa `docs/workspaces/staff.md`**
 
-| Đang ghi | Sửa thành |
-| --- | --- |
-| `src/index.css` **cố ý không khai `@theme` riêng** | khai đầy đủ từ đợt Plan B; đợt 2026-09-01 thêm bảng theme tối và token chuyển động |
-| `public/icon-{192,512}.png` hiện là **ô màu đặc** | logo mô tô thật, land 2026-09-01 |
+| Đang ghi                                                       | Sửa thành                                                                                   |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `src/index.css` **cố ý không khai `@theme` riêng**             | khai đầy đủ từ đợt Plan B; đợt 2026-09-01 thêm bảng theme tối và token chuyển động          |
+| `public/icon-{192,512}.png` hiện là **ô màu đặc**              | logo mô tô thật, land 2026-09-01                                                            |
 | `impeccable: audit nhẹ, **không polish trừ khi được yêu cầu**` | đã được yêu cầu và đã chạy 2026-09-01; xem `docs/plans/2026-09-01-staff-visual-system-*.md` |
 
 - [ ] **Step 10.2: Sửa chú thích trong `apps/staff/index.html`**
 
-Chú thích cạnh `apple-touch-icon` vẫn ghi *"File đang trỏ tới vẫn là ô màu đặc … chờ logo thật của
-shop"*. Sai từ 2026-09-01. Thay bằng ghi chú rằng logo đã có, và giữ nguyên phần giải thích **vì sao
+Chú thích cạnh `apple-touch-icon` vẫn ghi _"File đang trỏ tới vẫn là ô màu đặc … chờ logo thật của
+shop"_. Sai từ 2026-09-01. Thay bằng ghi chú rằng logo đã có, và giữ nguyên phần giải thích **vì sao
 thẻ này cần thiết** (iOS không đọc `icons` của manifest) — đó vẫn đúng và vẫn đáng giữ.
 
 - [ ] **Step 10.3: Sửa chú thích trong `ui/skeleton.tsx`**
 
-Nó khai *"`animate-pulse` là animation DUY NHẤT trong app, nên đây cũng là chỗ duy nhất phải tôn
-trọng `prefers-reduced-motion`"*. Sai sau Task 5. Thay bằng con trỏ tới khối reduced-motion toàn cục
+Nó khai _"`animate-pulse` là animation DUY NHẤT trong app, nên đây cũng là chỗ duy nhất phải tôn
+trọng `prefers-reduced-motion`"_. Sai sau Task 5. Thay bằng con trỏ tới khối reduced-motion toàn cục
 ở `index.css`.
 
 - [ ] **Step 10.4: Cập nhật `docs/ROADMAP.md`**
 
-Thêm mục "đã xong" cho đợt này, và **gỡ** dòng *"Icon thật cho `apps/staff` — `public/icon-{192,512}.png`
-đang là ô màu đặc"* khỏi nhóm "chặn ở người". Nó đã xong.
+Thêm mục "đã xong" cho đợt này, và **gỡ** dòng _"Icon thật cho `apps/staff` — `public/icon-{192,512}.png`
+đang là ô màu đặc"_ khỏi nhóm "chặn ở người". Nó đã xong.
 
 > ⚠️ **Không** gỡ mục "màu accent của `DESIGN.md`" — mục đó nói về `apps/web` và **vẫn đang chặn**.
 > Logo đã land được vẽ TỪ `--color-accent` của `apps/staff`, không phải rút RA TỪ nhận diện thật của
@@ -1848,23 +1871,23 @@ git commit -m "docs: đồng bộ tài liệu với hệ thị giác mới của
 
 **Phủ design doc:**
 
-| Mục design doc | Task |
-| --- | --- |
-| §1.1 accent tràn gamut | 2 |
-| §1.2 `status-ongoing` trùng accent | 2 |
-| §1.3 tách `border-strong` | 2 |
-| §2.1–2.4 bảng token hai theme | 2 |
-| §2.3b `accent-hover`/`active` đảo chiều | 2 |
-| §2.5 mù màu + kênh hình dạng | 4 |
-| §3 cơ chế theme + bốn cái bẫy | 3 |
-| §4.2 token chuyển động | 5 |
-| §4.4 bảng kê tám chỗ | 5, 6, 7 |
-| §4.5 bẫy `<dialog>` | 6 |
-| §4.6 reduced-motion | 5, 7 |
-| §5 icon | 3, 4 |
-| §6 component | 4, 8 |
-| §7 cách kiểm chứng → test hàng rào | 1, 2, 4 |
-| §9 tài liệu trôi | 10 |
+| Mục design doc                          | Task    |
+| --------------------------------------- | ------- |
+| §1.1 accent tràn gamut                  | 2       |
+| §1.2 `status-ongoing` trùng accent      | 2       |
+| §1.3 tách `border-strong`               | 2       |
+| §2.1–2.4 bảng token hai theme           | 2       |
+| §2.3b `accent-hover`/`active` đảo chiều | 2       |
+| §2.5 mù màu + kênh hình dạng            | 4       |
+| §3 cơ chế theme + bốn cái bẫy           | 3       |
+| §4.2 token chuyển động                  | 5       |
+| §4.4 bảng kê tám chỗ                    | 5, 6, 7 |
+| §4.5 bẫy `<dialog>`                     | 6       |
+| §4.6 reduced-motion                     | 5, 7    |
+| §5 icon                                 | 3, 4    |
+| §6 component                            | 4, 8    |
+| §7 cách kiểm chứng → test hàng rào      | 1, 2, 4 |
+| §9 tài liệu trôi                        | 10      |
 
 **Lỗ đã biết, cố ý để lại:**
 
