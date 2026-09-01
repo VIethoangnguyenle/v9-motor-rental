@@ -38,14 +38,17 @@ kicker phía trên tiêu đề_ — đó là cấm tuyệt đối, và bản nh�
 
 ---
 
-## 1. Ba lỗi màu đã có sẵn trong code — phép đo bắt được, không phải mắt
+## 1. Bốn lỗi màu — ba nằm trong code, một nằm trong chính công cụ đo
 
-Đo bằng oklch → sRGB → tỉ lệ tương phản WCAG, script ở phần §7. Cả ba đều **đã tồn tại trước đợt
-này**; không cái nào do thiết kế mới sinh ra.
+Đo bằng oklch → sRGB → tỉ lệ tương phản WCAG, script ở phần §7.
+
+Ba lỗi đầu **đã tồn tại trước đợt này**; không cái nào do thiết kế mới sinh ra. Lỗi thứ tư (§1.4) thì
+ngược lại — **chính đợt này sinh ra nó**, nó nằm trong hàm dùng để sinh ra bảng màu, và nó chỉ lộ ra
+ở vòng review chứ không lộ ra ở bất kỳ test nào.
 
 ### 1.1 `--color-accent` vượt gamut sRGB — token nói dối về màu nó vẽ
 
-`oklch(52% 0.19 255)`. Trần chroma trong gamut ở `L=52%`, `hue=255` đo được là **0.174**. Ở 0.19,
+`oklch(52% 0.19 255)`. Trần chroma trong gamut ở `L=52%`, `hue=255` đo được là **0.171** (chính xác 0,17124). Ở 0.19,
 kênh đỏ tuyến tính rơi xuống âm và trình duyệt **kẹp về 0** — màu render ra không phải màu token
 khai.
 
@@ -54,8 +57,8 @@ khai.
 > _"Chroma là mức LỚN NHẤT không tràn gamut sRGB ở L đó — cao hơn thì trình duyệt tự cắt, và token
 > sẽ nói dối về màu nó vẽ ra."_
 
-Luật đã có, chỉ là chưa áp cho `accent`. **Sửa: `oklch(52% 0.174 255)`.** Về mắt gần như không đổi
-(cả hai render ra `#0066c9`/`#0065d2`); về tính đúng đắn thì token thôi nói dối.
+Luật đã có, chỉ là chưa áp cho `accent`. **Sửa: `oklch(52% 0.171 255)`.** Về mắt gần như không đổi
+(cả hai render ra `#0067c8`/`#0065d2`); về tính đúng đắn thì token thôi nói dối.
 
 ### 1.2 `--color-status-ongoing` trùng khít `--color-accent`
 
@@ -66,7 +69,7 @@ App này dạy người dùng rằng màu có nghĩa — `rental-status.ts` xây
 xử lý không, cách tô = xe đã rời shop chưa). Để hai nghĩa khác hẳn nhau dùng chung một màu là phá
 chính hệ đó, ở chỗ đắt nhất: nút `+ Lên đơn` và thanh "đang thuê" trên lịch cạnh nhau, cùng màu.
 
-**Sửa: `--color-status-ongoing: oklch(55.7% 0.095 200)`** — teal. Giải ngược từ ràng buộc "chữ
+**Sửa: `--color-status-ongoing: oklch(55.7% 0.094 200)`** — teal. Giải ngược từ ràng buộc "chữ
 trắng phải đạt 4.5:1": `L=55.7%` là mức sáng nhất còn đạt, đo được **4,51:1**.
 
 Hue 200 chọn vì nó xa 255 đủ để phân biệt, nhưng vẫn nằm trong nửa lạnh — không đọc thành "cảnh
@@ -82,6 +85,52 @@ tức chữa một lỗi bằng cách gây một lỗi khác.
 **Sửa: giữ `--color-border` cho đường chia, thêm `--color-border-strong` cho viền control**
 (`text-input`, nút `ghost`). Giải ngược từ 3:1: `oklch(66.9% 0.012 255)` → đo được **3,00:1** trên
 `surface`.
+
+### 1.4 ⚠️ Lỗi thứ tư — nằm trong chính công cụ đo, phát hiện lúc review Task 1
+
+Ba lỗi trên tìm ra bằng phép đo. **Lỗi này nằm trong phép đo.**
+
+Hàm `maxChroma` dùng để sinh **toàn bộ** bảng §2 ban đầu hỏi "màu này có ngoài gamut không" với dung
+sai **±0.002**, kèm chú thích biện minh rằng đó là để chịu sai số dấu phẩy động của phép biến đổi.
+
+**Lý do đó không có thật.** Đo trên ba màu sRGB thuần:
+
+| Màu       | Sai lệch lớn nhất khỏi `[0,1]` |
+| --------- | ------------------------------ |
+| `#FF0000` | 0                              |
+| `#00FF00` | 6,7×10⁻⁷                       |
+| `#0000FF` | 1,3×10⁻⁷                       |
+
+Dung sai lỏng hơn mức cần khoảng **ba nghìn lần**. Hậu quả:
+
+| Token                       | Bảng ban đầu ghi | Trần gamut thật | Kênh tuyến tính              |
+| --------------------------- | ---------------- | --------------- | ---------------------------- |
+| `accent` sáng               | 0.174            | **0,17124**     | đỏ = **−0,001655** ⛔        |
+| `accent-hover` sáng         | 0.155            | 0,15148         | ⛔                            |
+| `accent-active` sáng        | 0.137            | 0,13172         | ⛔                            |
+| `warning` sáng              | 0.111            | 0,1098          | ⛔                            |
+| `status-ongoing` sáng       | 0.095            | 0,0948          | ⛔                            |
+| `status-overdue-soft` sáng  | 0.02             | 0,0198          | ⛔                            |
+| `status-booked-soft` sáng   | 0.02             | 0,0198          | ⛔                            |
+| `accent` tối                | 0.16             | 0,1598          | ⛔                            |
+| `accent-hover` tối          | 0.125            | 0,1249          | ⛔                            |
+
+**Chín token.** Trong đó `accent = 0.174` là giá trị §1.1 đưa ra để _sửa_ lỗi tràn gamut — nó cũng
+tràn gamut. Và một hàng rào ở §7 với tên nguyên văn _"không token nào vượt gamut sRGB — token không
+được nói dối về màu nó vẽ"_ sẽ **xanh** trên cả chín.
+
+**Sửa:** dung sai `1e-4` — vẫn chịu được hằng số oklch làm tròn 3–4 chữ số trong test và tài liệu
+(ca `#FF0000` lệch 0), mà bắt được vi phạm nhỏ nhất trong hệ này (`accent` lệch 1,66×10⁻³, cách
+ngưỡng 16 lần). Bảng §2.2/§2.3 dưới đây **đã là bảng đã sửa**.
+
+Kiểm lại sau khi hạ chín chroma: **14/14 cặp vẫn đạt ở cả hai theme**, gồm cả ba cặp không có biên
+(4,51:1 và 3,00:1 không đổi). ΔE `đang thuê` vs `hành động` = **0,145** sáng · **0,139** tối. Không
+có hồi quy — độ lệch màu là ΔE 0,0013, bằng **1%** ngưỡng phân biệt.
+
+**Bài học, và lý do nó nằm trong tài liệu chứ không nằm trong một dòng commit:** chú thích ở đầu
+module đo cảnh báo đừng tin `getComputedStyle` vì nó trả số sai một cách tự tin. Chỗ hỏng lại nằm
+trong chính hàm viết ra để thay thế nó. **Công cụ đo cũng phải bị đo** — và ở đây thứ bắt được nó
+không phải một test, mà là một vòng review đọc lại lý lẽ của chú thích và thấy nó không khớp thực tế.
 
 ---
 
@@ -110,14 +159,14 @@ Chi phí: 0. Cùng số lượng token, cùng số dòng CSS.
 | `--color-ink`               | `oklch(22% 0.02 255)`    | `#141b24` | chữ chính                   |
 | `--color-ink-soft`          | `oklch(40% 0.016 255)`   | `#424850` | chữ phụ đậm                 |
 | `--color-muted`             | `oklch(52% 0.014 255)`   | `#646971` | metadata, placeholder       |
-| `--color-accent`            | `oklch(52% 0.174 255)`   | `#0066c9` | hành động chính             |
+| `--color-accent`            | `oklch(52% 0.171 255)`   | `#0067c8` | hành động chính             |
 | `--color-accent-ink`        | `oklch(100% 0 255)`      | `#ffffff` | chữ trên accent             |
 | `--color-status-overdue`    | `oklch(55% 0.21 27)`     | `#d01d21` | quá hạn — _giữ nguyên_      |
-| `--color-warning`           | `oklch(52% 0.111 75)`    | `#8e5e00` | cảnh báo — chroma vào gamut |
-| `--color-status-ongoing`    | `oklch(55.7% 0.095 200)` | `#008489` | đang thuê — **đổi hue**     |
+| `--color-warning`           | `oklch(52% 0.109 75)`    | `#8d5e02` | cảnh báo — chroma vào gamut |
+| `--color-status-ongoing`    | `oklch(55.7% 0.094 200)` | `#048489` | đang thuê — **đổi hue**     |
 | `--color-status-booked`     | `oklch(50% 0.09 255)`    | —         | đã đặt — _giữ nguyên_       |
 | `--color-status-completed`  | `oklch(46% 0 255)`       | —         | đã trả — _giữ nguyên_       |
-| `--color-status-overdue-soft` | `oklch(96% 0.02 27)`   | `#ffedeb` | nền chip quá hạn            |
+| `--color-status-overdue-soft` | `oklch(96% 0.019 27)`   | `#ffedeb` | nền chip quá hạn            |
 | `--color-warning-soft`      | `oklch(96% 0.032 75)`    | `#ffefdb` | nền chip cảnh báo           |
 | `--color-accent-soft`       | `oklch(96% 0.019 255)`   | `#eaf3ff` | nền chip accent             |
 
@@ -136,7 +185,7 @@ xám bất kỳ.
 | `--color-ink`               | `oklch(96.5% 0.006 255)` | `#f1f4f7` |
 | `--color-ink-soft`          | `oklch(82% 0.012 255)`   | `#bfc5cc` |
 | `--color-muted`             | `oklch(70% 0.018 255)`   | `#979faa` |
-| `--color-accent`            | `oklch(70% 0.16 255)`    | `#53a0ff` |
+| `--color-accent`            | `oklch(70% 0.159 255)`    | `#53a0ff` |
 | `--color-accent-ink`        | `oklch(17.5% 0.022 255)` | `#0a111a` |
 | `--color-status-overdue`    | `oklch(70% 0.17 27)`     | `#f66d62` |
 | `--color-warning`           | `oklch(78% 0.14 75)`     | `#eba941` |
@@ -151,7 +200,7 @@ xám bất kỳ.
 ~2,5:1. Đây là chỗ dễ sai nhất khi bê bảng sáng sang tối bằng cách đảo ngược.
 
 ⚠️ **Nhóm `*-soft` ở theme tối là L=30%, không phải L=96%.** Không có cách nào "tự động" suy ra —
-mỗi cái phải đo lại. `warning` cũng đổi cả chroma (0.111 → 0.14) vì trần gamut ở L cao thì rộng hơn.
+mỗi cái phải đo lại. `warning` cũng đổi cả chroma (0.109 → 0.14) vì trần gamut ở L cao thì rộng hơn.
 
 ### 2.3b `accent-hover` / `accent-active` — luật cũ giữ nguyên, chiều thực thi **đảo ngược**
 
@@ -166,8 +215,8 @@ phản _giảm_.
 
 | Theme | accent                   | hover                    | active                   |
 | ----- | ------------------------ | ------------------------ | ------------------------ |
-| Sáng  | `oklch(52% 0.174 255)`   | `oklch(46% 0.155 255)`   | `oklch(40% 0.137 255)`   |
-| Tối   | `oklch(70% 0.160 255)`   | `oklch(76% 0.125 255)`   | `oklch(82% 0.091 255)`   |
+| Sáng  | `oklch(52% 0.171 255)`   | `oklch(46% 0.151 255)`   | `oklch(40% 0.132 255)`   |
+| Tối   | `oklch(70% 0.160 255)`   | `oklch(76% 0.124 255)`   | `oklch(82% 0.091 255)`   |
 
 Số đo với chữ trên nút (sáng: trắng · tối: `accent-ink` = màu nền):
 
@@ -201,7 +250,7 @@ không phải lựa chọn thẩm mỹ.
 | `border-strong` / `surface`  | **3,00:1**| **3,00:1**| 3.0    |
 | `overdue` / `overdue-soft`   | 4,78:1    | 4,83:1    | 4.5    |
 | `warning` / `warning-soft`   | 4,99:1    | 6,73:1    | 4.5    |
-| `accent` / `accent-soft`     | 4,98:1    | 5,08:1    | 4.5    |
+| `accent` / `accent-soft`     | 4,99:1    | 5,08:1    | 4.5    |
 
 Ba cặp in đậm là **giải ngược từ ngưỡng** — chọn L nhỏ nhất còn đạt, để màu đậm nhất có thể mà
 không trượt. Chúng không có biên; đổi L của chúng là trượt AA.
@@ -213,7 +262,7 @@ lấy ở **ΔE ≥ 0,12**.
 
 | Cặp                          | Nhìn thường | Protanopia | **Deuteranopia** | Tritanopia |
 | ---------------------------- | ----------- | ---------- | ---------------- | ---------- |
-| `quá hạn` ↔ `cảnh báo`       | 0,161       | 0,062      | **0,039**        | 0,149      |
+| `quá hạn` ↔ `cảnh báo`       | 0,162       | 0,062      | **0,040**        | 0,151      |
 
 **Deuteranopia là dạng phổ biến nhất (~6% nam giới).** Ở đó hai màu này coi như **một**. Và đó đúng
 là hai màu đắt nhất trong app: `AttentionList` xếp _"N xe quá hạn chưa trả"_ ngay trên _"N xe phải
@@ -517,7 +566,7 @@ dùng đang chờ để đọc.
 lập luận đo đạc đầy đủ. **Không đụng vào lớp bọc đó.**
 
 ⛔ **Mục này là điều kiện để §2 đứng được.** §2.5 đo được rằng `quá hạn` và `cảnh báo` không phân biệt
-nổi dưới deuteranopia (ΔE=0,039), và **không giá trị màu nào sửa được**. Icon là kênh thứ hai duy
+nổi dưới deuteranopia (ΔE≈0,040), và **không giá trị màu nào sửa được**. Icon là kênh thứ hai duy
 nhất còn lại. Cắt mục này đi thì hệ màu ở §2 mang một lỗi tiếp cận đã biết mà không có gì đỡ.
 
 Vì vậy thứ tự thi công là: **icon trước, hoặc cùng lúc với màu — không phải sau.**

@@ -68,10 +68,26 @@ describe("color-math — mô phỏng mù màu", () => {
     }
   });
 
-  it("tái lập ΔE=0,039 giữa quá hạn và cảnh báo dưới deuteranopia (design doc §2.5)", () => {
+  /**
+   * Đây là con số mà toàn bộ lập luận "icon là kênh CHỊU LỰC" của design doc
+   * §2.5 dựa vào — nếu nó sai thì §5 mất căn cứ. Nên nó được canh bằng test.
+   *
+   * ⚠️ `0.109`, KHÔNG phải `0.111`. Bản đầu dùng 0.111 — giá trị sinh ra từ hàm
+   * `maxChroma` mang dung sai gamut hỏng (xem `GAMUT_EPSILON`). Ở `L=52%,
+   * hue=75` trần thật là **0.109**, nên 0.111 tràn gamut và ΔE khi đó được đo
+   * trên một màu ĐÃ BỊ KẸP — tức đo một màu không tồn tại trong hệ.
+   *
+   * Đo lại trên giá trị đúng: 0,0395 thay vì 0,0392. Kết luận không đổi và đó
+   * mới là điều đáng nói — vẫn ở khoảng **một phần ba** ngưỡng phân biệt 0,12,
+   * nên hai màu này vẫn không phân biệt nổi dưới deuteranopia và icon vẫn phải
+   * gánh.
+   */
+  it("tái lập ΔE≈0,04 giữa quá hạn và cảnh báo dưới deuteranopia (design doc §2.5)", () => {
     const overdue = simulate(oklch(0.55, 0.21, 27), "deuteranopia");
-    const warning = simulate(oklch(0.52, 0.111, 75), "deuteranopia");
-    expect(deltaE(overdue, warning)).toBeCloseTo(0.039, 2);
+    const warning = simulate(oklch(0.52, 0.109, 75), "deuteranopia");
+    expect(deltaE(overdue, warning)).toBeCloseTo(0.0395, 3);
+    // Và điều thật sự quan trọng: nó nằm SÂU dưới ngưỡng phân biệt.
+    expect(deltaE(overdue, warning)).toBeLessThan(0.12);
   });
 });
 
