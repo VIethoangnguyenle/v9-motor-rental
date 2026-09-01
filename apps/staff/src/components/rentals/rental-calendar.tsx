@@ -43,7 +43,6 @@ import { STATUS_LABEL } from "../../lib/rental-status";
 
 // ── State ở URL ──────────────────────────────────────────────────────────
 
-
 // ── Y-M-D theo giờ VN — bản RIÊNG của file này, có chủ ý ───────────────────
 
 /**
@@ -334,7 +333,8 @@ export function RentalCalendar() {
   // Đọc lại từ danh sách vừa fetch, không từ state — xem chú thích `selectedId`.
   // Đơn biến mất khỏi cửa sổ đang xem (đổi kỳ, hoặc vừa bị huỷ) thì sheet tự đóng.
   const allRentals = rentals.data?.ok === true ? rentals.data.rentals : [];
-  const selected = selectedId === null ? null : (allRentals.find((r) => r.id === selectedId) ?? null);
+  const selected =
+    selectedId === null ? null : (allRentals.find((r) => r.id === selectedId) ?? null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -431,8 +431,21 @@ export function RentalCalendar() {
           rental={selected}
           vehicle={vehicles.find((v) => v.id === selected.vehicleId)}
           onClose={() => setSelectedId(null)}
+          /*
+           * ⚠️ `onChanged` KHÔNG gỡ sheet nữa — chỉ `onClose` mới được làm việc đó.
+           *
+           * Gỡ ở đây là gỡ `<dialog>` thẳng khỏi cây, không đi qua
+           * `dialog.close()`, tức đúng đường mà `ui/modal.tsx` ghi thành luật là
+           * làm mất hiệu ứng ra. Đo được trên bản build trước khi sửa: sheet còn
+           * ở t=585ms và biến mất ở t=620ms, trong khi hiệu ứng ra 180ms lẽ ra
+           * phải giữ nó tới ~780ms.
+           *
+           * Nay `rental-detail-sheet.tsx` tự gọi `close` sau khi vòng sáng chạy
+           * hết nhịp; `close` bắn event `close` của `<dialog>`, `Modal` chờ hiệu
+           * ứng ra xong rồi mới gọi `onClose` — và `onClose` mới là chỗ
+           * `setSelectedId(null)`. Thứ tự: vòng sáng → hiệu ứng ra → gỡ.
+           */
           onChanged={(to: RentalStatus) => {
-            setSelectedId(null);
             setChanged(`Đã cập nhật: ${STATUS_LABEL[to].toLowerCase()}.`);
           }}
         />
