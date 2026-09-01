@@ -68,6 +68,7 @@
     "matkhaumoi",
     "thuhoi", // tiền tố `ztest-thuhoi-`
     "yeucau",
+    "nogit", // dự phòng khi build không có `git`, xem `apps/staff/vite.config.ts`
     "ztest", // tiền tố dữ liệu test
     "cust", // viết tắt trong `scripts/seed-dev.ts`
 

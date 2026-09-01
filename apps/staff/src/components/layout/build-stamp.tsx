@@ -28,7 +28,20 @@
  * vừa dựng cái này bao lâu rồi", một câu hỏi về đồng hồ của chính người đang
  * ngồi trước máy, không phải về giờ mở cửa của shop.
  */
-const BUILT_AT = new Date(__APP_BUILT_AT__);
+/**
+ * ⚠️ Đọc qua `typeof`, KHÔNG đọc thẳng ba hằng.
+ *
+ * `define` của Vite thay thế lúc BUILD, nên nếu bundle chạy mà không đi qua
+ * config đó thì tên hằng còn nguyên và JS ném `ReferenceError` — làm TRẮNG cả
+ * app. Đã cắn thật: dev server đang chạy sẵn không nạp lại `vite.config.ts` khi
+ * file đó đổi, nên vừa thêm `define` xong là màn hình trắng cho tới khi restart.
+ *
+ * Một cái nhãn chẩn đoán mà đánh sập được app thì tệ hơn là không có nhãn. Ba
+ * giá trị dự phòng dưới đây khiến trường hợp xấu nhất chỉ là hiện "dev".
+ */
+const VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "dev";
+const COMMIT = typeof __APP_COMMIT__ === "string" ? __APP_COMMIT__ : "local";
+const BUILT_AT = new Date(typeof __APP_BUILT_AT__ === "string" ? __APP_BUILT_AT__ : Date.now());
 
 const STAMP_FMT = new Intl.DateTimeFormat("vi-VN", {
   day: "2-digit",
@@ -43,9 +56,9 @@ export function BuildStamp() {
     // ngắn để không chiếm chỗ của danh tính người dùng ngay trên nó.
     <p
       className="truncate px-3 text-xs text-muted tabular-nums"
-      title={`v${__APP_VERSION__} · ${__APP_COMMIT__} · dựng lúc ${BUILT_AT.toLocaleString("vi-VN")}`}
+      title={`v${VERSION} · ${COMMIT} · dựng lúc ${BUILT_AT.toLocaleString("vi-VN")}`}
     >
-      v{__APP_VERSION__} · {__APP_COMMIT__} · {STAMP_FMT.format(BUILT_AT)}
+      v{VERSION} · {COMMIT} · {STAMP_FMT.format(BUILT_AT)}
     </p>
   );
 }
