@@ -116,27 +116,15 @@ Chỉ `git add` file thuộc phạm vi việc đang làm — **không bao giờ 
 commit **import** một symbol nằm trong file chưa commit, phải kéo file đó vào cùng commit, nếu
 không `git bisect` vỡ.
 
-> Phiên 2026-09-01 dính đúng lỗi này **hai lần**: `routes/rentals.ts` commit trước
-> `services/rentals.ts` mà nó import; và `apps/staff` không dựng được suốt 8 commit vì
-> `lib/customers.ts` chưa bao giờ được track.
-
 ### 3. Đo hay suy — nói rõ cái nào
 
 Khẳng định thứ gì đó render/chạy ra sao thì **hoặc đo nó, hoặc nói thẳng là suy luận**. Cả hai đều
 được. Trình bày cái thứ hai như cái thứ nhất **không được**.
 
-> Cùng phiên đó: một số đo được đóng dấu "ĐO ĐƯỢC" nhưng bất khả thi về cơ chế (`flex-wrap` mặc
-> định `nowrap` nên hai thẻ không thể xuống dòng), và một comment giải thích sai bản chất React
-> Fragment. Cả hai lọt vào commit, phải reviewer đọc lại và **đo lại** mới bắt được.
-
 ### 4. Test phải đo được thứ nó tuyên bố đo
 
 Một test xanh chứng minh ít hơn vẻ ngoài của nó. Trước khi tin: **phá thứ nó canh và xem nó có đỏ
 không.**
-
-> Cùng phiên: một test parity tự nhận là "hàng rào duy nhất ép hai hàm đi chung một đường" nhưng
-> chỉ assert `length > 0` cho cả hai — vẫn xanh khi hai hàm lệch thành hai tập khác nhau. Sửa xong
-> **vẫn** xanh khi bỏ mệnh đề `where`, vì bảng chỉ có một hàng; phải thêm một hồ sơ mồi mới có răng.
 
 ### 5. TDD: nghiêm ở đâu, không nghiêm ở đâu
 
