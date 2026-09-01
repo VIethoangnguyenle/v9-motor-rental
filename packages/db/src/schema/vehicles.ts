@@ -92,5 +92,33 @@ export const vehiclePhotos = pgTable(
     alt: text("alt").notNull(),
     sort: integer("sort").notNull().default(0),
   },
-  (t) => [index("vehicle_photos_vehicle_idx").on(t.vehicleId, t.sort)],
+  (t) => [
+    index("vehicle_photos_vehicle_idx").on(t.vehicleId, t.sort),
+    /**
+     * `NOT NULL` ở trên chặn được "không có alt", KHÔNG chặn được `''` hay
+     * `'IMG_2481.jpg'` — và cả hai đều lọt thẳng ra trang công khai, nơi
+     * `PRODUCT.md` §Accessibility nói alt phải mô tả THẬT (loại xe, phân khối,
+     * tình trạng) vì nội dung của app dựa nhiều vào ảnh.
+     *
+     * Ràng buộc diễn đạt ĐÚNG hai điều `PRODUCT.md` nói, không hơn: alt phải có
+     * nội dung, và alt không được là một tên file.
+     *
+     * Bản đầu của CHECK này ép `length >= 10` — một proxy sai. Nó chặn nhầm mô
+     * tả ngắn hợp lệ (fixture `'ảnh probe'` ở `vehicles-schema.test.ts` dài 9 ký
+     * tự và bị từ chối), trong khi vẫn cho lọt `DSC_00012.jpeg` vì chuỗi đó dài
+     * hơn 10. Độ dài không phân biệt được mô tả với tên file; phần đuôi mở rộng
+     * thì có. Luật thuộc về DB chứ không thuộc về code review — cùng lý lẽ
+     * `vehicles_status_valid` ở trên.
+     *
+     * ⚠️ CHECK này KHÔNG phát hiện được ảnh SAI nội dung. Một tấm ảnh test kèm
+     * alt viết đúng vẫn qua được, và đó chính là ca đã xảy ra thật: file
+     * `honda-cb500x-01.png` trong Directus là một bảng màu kiểm tra, mang alt
+     * "Honda CB500X 471cc màu đỏ, nhìn nghiêng bên phải". Không có ràng buộc kỹ
+     * thuật nào bắt được điều đó — nó là việc của người đăng ảnh.
+     */
+    check(
+      "vehicle_photos_alt_meaningful",
+      sql`btrim(${t.alt}) <> '' AND ${t.alt} !~* '\\.(jpe?g|png|webp|avif|gif|heic|heif|bmp|tiff?)$'`,
+    ),
+  ],
 );

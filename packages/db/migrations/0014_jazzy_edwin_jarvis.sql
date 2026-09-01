@@ -1,0 +1,1 @@
+ALTER TABLE "vehicle_photos" ADD CONSTRAINT "vehicle_photos_alt_meaningful" CHECK (btrim("vehicle_photos"."alt") <> '' AND "vehicle_photos"."alt" !~* '\.(jpe?g|png|webp|avif|gif|heic|heif|bmp|tiff?)$');

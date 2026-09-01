@@ -36,6 +36,8 @@ Migration hiện có:
 | `0010_clumsy_jack_power`    | cột sinh `rentals.period` (`tstzrange`) + exclusion constraint `rentals_no_overlap` chống đặt trùng xe                                                                  |
 | `0011_skinny_falcon`        | đổi unique `staff_users.email` từ text thô sang biểu thức `lower(email)` — sửa bug so sánh phân biệt hoa/thường                                                         |
 | `0012_crazy_kinsey_walden`  | bật `unaccent`/`pg_trgm`, hàm `f_unaccent()`, GIN index tìm khách theo tên không dấu; thêm ba cột giấy tờ/địa chỉ giao xe vào `rentals`                                 |
+| `0013_motionless_celestials` | `rental_requests` — yêu cầu thuê khách gửi từ `apps/web`. FK `vehicle_id`/`handled_by`, CHECK chuẩn hoá `phone` + trạng thái + trần `days` + "đã xử lý thì phải có `handled_at`", partial index cho `NEW` |
+| `0014_jazzy_edwin_jarvis`   | CHECK `vehicle_photos_alt_meaningful` — alt không rỗng và không phải tên file (`PRODUCT.md` §Accessibility)                                                             |
 
 `0002` và `0003` do `db:generate` sinh — kể cả bốn CHECK, vì chúng khai bằng `check()` ngay trong
 `src/schema/vehicles.ts`. `0004` thì **phải** là `db:custom`: Drizzle không mô tả được TRIGGER, nên
@@ -55,6 +57,22 @@ kiểu range lẫn `EXCLUDE USING gist` — không có khai báo TypeScript nào
 ``uniqueIndex("staff_users_email_lower_idx").on(sql`lower(${t.email})`)`` (trong
 `src/schema/staff.ts`) là thứ Drizzle diễn đạt trọn vẹn — phần bình luận dài ở đầu file SQL của
 `0011` là thêm tay SAU khi generate, không phải bằng chứng nó là `db:custom`.
+
+`0013` và `0014` do `db:generate` sinh, đúng mẫu `0002`/`0009`: cả bảng `rental_requests` lẫn hai
+CHECK của nó khai thẳng bằng `check()` trong `src/schema/rental-requests.ts`, và CHECK alt khai
+trong `src/schema/vehicles.ts`.
+
+⚠️ **`rental_requests` CỐ Ý không có exclusion constraint** dù nó cũng mang xe + khoảng ngày. Đó
+không phải bỏ sót: `apps/web` không đọc availability thời gian thực, nên hai khách xin cùng một xe
+cùng một khoảng ngày là chuyện bình thường và phải ghi nhận được cả hai. Chặn ở đây là dạy database
+một điều web không biết, và khách thứ hai bị từ chối bằng một lỗi không nhân viên nào nhìn thấy để
+giải thích. Ràng buộc chống đặt trùng vẫn nguyên vẹn ở `rentals`, nơi nhân viên chạm vào lúc chốt
+đơn — xem `packages/shared/src/domain/rental-request.ts`.
+
+⚠️ **CHECK alt của `0014` chỉ chặn được HÌNH DẠNG, không chặn được nội dung sai.** Một tấm ảnh
+test kèm alt viết đúng vẫn qua — và đó là ca đã xảy ra thật (xem comment trong
+`src/schema/vehicles.ts`). Đừng đọc constraint này như một bảo đảm rằng ảnh trong danh mục là ảnh
+thật của shop.
 
 ### ⚠️ `0012` trộn `db:generate` với SQL viết tay — cái bẫy nếu đổi thứ tự
 

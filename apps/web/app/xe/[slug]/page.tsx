@@ -85,7 +85,21 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
               className="object-cover"
             />
           </section>
-        ) : null}
+        ) : (
+          /*
+           * KHÔNG `null`. Ảnh là toàn bộ điện áp của trang (DESIGN.md §1) và là
+           * lời hứa trung tâm của sản phẩm — "khách thấy đúng con xe mình sẽ
+           * nhận" (PRODUCT.md nguyên tắc #2). Khi chưa có ảnh, bỏ trống băng làm
+           * trang mở ra bằng một khoảng đen câm: khách không phân biệt được
+           * "shop chưa chụp" với "trang hỏng", và im lặng ở đúng chỗ quan trọng
+           * nhất là câu trả lời tệ nhất.
+           *
+           * Băng giữ nguyên tỉ lệ 16:9 để nhịp trang không đổi khi ảnh về.
+           */
+          <section className="flex aspect-[16/9] w-full items-center justify-center border-y border-hairline bg-surface-card">
+            <p className="label-upper m-0 text-body">{messages.vehicles.noPhoto}</p>
+          </section>
+        )}
 
         <section className="py-section">
           <div className={CONTAINER}>
