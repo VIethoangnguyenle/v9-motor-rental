@@ -196,10 +196,29 @@ dụng cho bảng `min-w-[560px]`. `stats-page.tsx:19-23` đã ghi luật này t
 
 ## 7. Hỏng im lặng (đóng P1) — sửa ở tầng dùng chung
 
-Cả ba query hiện chỉ xử lý `res.error` (lỗi HTTP gói trong discriminated union). Nếu `queryFn`
-**reject** (mạng chết, api down), `isPending` false và `data` undefined ⇒ **không nhánh nào render
-gì**. Nhân viên thấy tiêu đề, ô tìm, header bảng rỗng, không một thông báo. Kiểm chứng cơ học:
-`isError` **không xuất hiện một lần nào** trong toàn `apps/staff/src/`.
+> **⚠️ Sửa 2026-09-01 — tiền đề gốc của mục này SAI.** Đo thật (đọc source `@elysiajs/eden@1.4.9`
+> + probe vào cổng chết): Eden bọc `fetch` trong try/catch và, vì repo không bật `throwHttpError`,
+> **nuốt rejection** rồi `return { data: null, error: EdenFetchError(503, exception) }`. Promise
+> **resolve**, `res.error` truthy, `queryFn` trả `ok: false` bình thường — `status` của TanStack
+> không bao giờ thành `"error"`, nên **`isError` là nhánh chết**.
+>
+> Nghĩa là **màn hình chưa bao giờ trắng**. Trước khi sửa, API chết cho ra câu fallback chung chung
+> *"Không tải được danh sách"* và **không có đường thử lại**. Vẫn là lỗi thật, nhưng không phải lỗi
+> đã mô tả — và mức độ nhẹ hơn hẳn mô tả gốc.
+>
+> Lỗi thứ hai lộ ra khi đo: dưới Bun, exception mang `.code = "ConnectionRefused"`, nên
+> `parseApiError` **thành công** và `errorMessage` sẽ in *"Unable to connect. Is the computer able
+> to access the url?"* — tiếng Anh thô vào mặt nhân viên người Việt. Chrome ném `TypeError` không
+> có `.code` nên chỉ rơi về fallback.
+>
+> Cách sửa đúng: phân loại bằng `res.error.value instanceof Error` (`connectionFailed()` ở
+> `lib/customers.ts`). Chính xác chứ không phải heuristic — nhánh catch của Eden lưu nguyên
+> exception, còn lỗi API thật luôn đi qua `JSON.parse` nên không bao giờ là `Error`.
+
+~~Cả ba query hiện chỉ xử lý `res.error`. Nếu `queryFn` **reject**, `isPending` false và `data`
+undefined ⇒ không nhánh nào render gì.~~ (Sai — xem khối trên.) Điều đúng: cả ba chỉ có **một**
+câu lỗi chung chung và **không có nút thử lại** nào; `refetch` không được gọi ở đâu trong toàn
+`apps/staff`.
 
 - Thêm nhánh `isError` + nút "Thử lại" gọi `refetch()` cho cả ba query.
 - `placeholderData: keepPreviousData` và đổi chỉ báo tải sang `isFetching` (khớp
