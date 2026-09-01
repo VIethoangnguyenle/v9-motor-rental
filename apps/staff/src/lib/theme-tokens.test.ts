@@ -74,11 +74,100 @@ const PAIRS: readonly (readonly [string, string, number])[] = [
   ["accent-ink", "status-overdue", 4.5],
   ["accent-ink", "warning", 4.5],
   ["accent-ink", "status-ongoing", 4.5],
+  // Sáu badge trạng thái đều tô NỀN ĐẶC + chữ `accent-ink`, nên cả sáu phải được
+  // đo, không phải bốn. Thiếu hai dòng này thì việc hạ `status-completed` xuống
+  // L=42% (chữa hồi quy CVD) không có gì canh phía tương phản.
+  ["accent-ink", "status-booked", 4.5],
+  ["accent-ink", "status-completed", 4.5],
   ["border-strong", "surface", 3],
   ["status-overdue", "status-overdue-soft", 4.5],
   ["warning", "warning-soft", 4.5],
   ["accent", "accent-soft", 4.5],
 ];
+
+/**
+ * ── Mù màu: một THUỘC TÍNH CẤU TRÚC, không phải một danh sách ca lẻ ──────────
+ *
+ * Sáu màu trạng thái đều tô NỀN ĐẶC với chữ `accent-ink` đè lên. Ràng buộc "chữ
+ * đạt ≥4,5:1" ghim cả sáu vào một dải độ sáng hẹp — đo được L ∈ [0,42; 0,557] ở
+ * bảng sáng. Mù màu thì XOÁ HUE. Còn lại đúng ~0,14 đơn vị độ sáng để chia cho
+ * sáu màu, nên va chạm là điều KHÔNG TRÁNH ĐƯỢC BẰNG CÁCH CHỌN MÀU: đo hết 15
+ * cặp × 3 kiểu mù màu ra 12 va chạm ở bảng sáng và 14 ở bảng tối.
+ *
+ * Đây là dạng tổng quát của kết luận §2.5, và nó nói rằng đuổi theo từng cặp là
+ * sai hướng. Hai kênh khác gánh, và chúng gánh cho TẤT CẢ các cặp:
+ *
+ *   • HÌNH DẠNG — sáu icon riêng cho sáu trạng thái (Task 4, `STATUS_ICON`).
+ *   • CÁCH TÔ — nền nhạt + viền so với nền đặc, đã có sẵn từ đợt trước.
+ *
+ * ⚠️ ĐIỀU KIỆN, KHÔNG PHẢI GHI CHÚ: bảng ngoại lệ dưới đây chỉ có giá trị KHI
+ * kênh hình dạng tồn tại. Task 4 bị cắt thì ngoại lệ này hết hiệu lực và sáu
+ * trạng thái quay lại chỗ chỉ phân biệt được bằng màu — tức không phân biệt được.
+ *
+ * Vì sao vẫn giữ hàng rào dù phải khai 26 ngoại lệ: nó là một BẢN KHOÁ, canh cả
+ * HAI CHIỀU. Cặp nào tụt xuống dưới ngưỡng mà chưa khai → đỏ (đúng thứ đã để lọt
+ * `đang thuê ↔ đã trả`, 0,131 → 0,100, ở vòng trước). Cặp nào đã khai mà nay qua
+ * được ngưỡng → CŨNG đỏ, kèm lời nhắc xoá: một suppression rộng hơn mức cần là
+ * một suppression sẽ che mất hồi quy sau này.
+ *
+ * Khoá ở mức `kiểu nhìn|a|b`, không phải `a|b`. Mức cặp tha luôn những kiểu nhìn
+ * mà cặp đó thật ra vẫn ổn — `quá hạn ↔ cảnh báo` qua tritanopia với ΔE 0,151,
+ * và một ngoại lệ mức cặp sẽ bịt mắt luôn chiều đó.
+ *
+ * Lý do ghi theo HỌ VA CHẠM chứ không theo con số: con số đổi mỗi lần chỉnh
+ * token và sẽ mục, còn cơ chế thì không. Số đo thật in ra khi test đỏ.
+ */
+const CVD_VISIONS: readonly Vision[] = ["protanopia", "deuteranopia", "tritanopia"];
+const CVD_THRESHOLD = 0.12;
+const SEMANTIC = [
+  "accent",
+  "status-booked",
+  "status-ongoing",
+  "status-overdue",
+  "status-completed",
+  "warning",
+] as const;
+
+const SAME_HUE = "booked và accent cùng hue 255 — CVD xoá hue, còn lại chênh lệch L quá nhỏ";
+const TRIT_BLUE = "tritanopia gộp trục lam–lục, mà accent/booked là lam còn ongoing là lam-lục";
+const BLUE_VS_GREY = "booked chroma thấp, dưới CVD tụt về gần trục xám của completed";
+const RED_AXIS = "trục đỏ–lục: protanopia/deuteranopia kéo đỏ về tối, chạm nhóm trung tính";
+const SECTION_2_5 =
+  "design doc §2.5 — không màu nào vừa đạt 4,5:1 vừa tách khỏi đỏ ở mọi kiểu nhìn";
+
+/** `kiểu nhìn|a|b` → họ va chạm. Xem chú thích trên: khoá hai chiều, không phải tắt hàng rào. */
+const CVD_EXCEPTIONS: Record<string, ReadonlyMap<string, string>> = {
+  SÁNG: new Map([
+    ["protanopia|accent|status-booked", SAME_HUE],
+    ["deuteranopia|accent|status-booked", SAME_HUE],
+    ["tritanopia|accent|status-booked", SAME_HUE],
+    ["tritanopia|accent|status-ongoing", TRIT_BLUE],
+    ["protanopia|status-booked|status-ongoing", TRIT_BLUE],
+    ["deuteranopia|status-booked|status-ongoing", TRIT_BLUE],
+    ["tritanopia|status-booked|status-ongoing", TRIT_BLUE],
+    ["deuteranopia|status-booked|status-completed", BLUE_VS_GREY],
+    ["tritanopia|status-booked|status-completed", BLUE_VS_GREY],
+    ["protanopia|status-overdue|status-completed", RED_AXIS],
+    ["protanopia|status-overdue|warning", SECTION_2_5],
+    ["deuteranopia|status-overdue|warning", SECTION_2_5],
+  ]),
+  TỐI: new Map([
+    ["protanopia|accent|status-booked", SAME_HUE],
+    ["deuteranopia|accent|status-booked", SAME_HUE],
+    ["tritanopia|accent|status-booked", SAME_HUE],
+    ["tritanopia|accent|status-ongoing", TRIT_BLUE],
+    ["protanopia|status-booked|status-ongoing", TRIT_BLUE],
+    ["deuteranopia|status-booked|status-ongoing", TRIT_BLUE],
+    ["tritanopia|status-booked|status-ongoing", TRIT_BLUE],
+    ["protanopia|status-booked|status-completed", BLUE_VS_GREY],
+    ["deuteranopia|status-booked|status-completed", BLUE_VS_GREY],
+    ["tritanopia|status-booked|status-completed", BLUE_VS_GREY],
+    ["deuteranopia|status-ongoing|status-completed", BLUE_VS_GREY],
+    ["protanopia|status-overdue|status-completed", RED_AXIS],
+    ["deuteranopia|status-overdue|status-completed", RED_AXIS],
+    ["deuteranopia|status-overdue|warning", SECTION_2_5],
+  ]),
+};
 
 for (const [themeName, marker] of [
   ["SÁNG", "@theme {"],
@@ -115,73 +204,33 @@ for (const [themeName, marker] of [
       const t = await readTokens(marker);
       expect(deltaE(need(t, "status-ongoing"), need(t, "accent"))).toBeGreaterThan(0.12);
     });
-  });
-}
 
-/**
- * Mù màu. Hai cặp là NGOẠI LỆ ĐÃ ĐO, không phải hai lần tắt hàng rào — mỗi cái
- * kèm số đo và lý do bên dưới. Cả hai được đỡ bằng KÊNH HÌNH DẠNG
- * (`status-icon.test.ts`), không bằng màu.
- *
- * Ngoại lệ ghi tường minh ở đây thay vì bỏ cặp đó ra khỏi danh sách: ngày ai đó
- * tìm được màu tốt hơn, test này sẽ chỉ thẳng vào chỗ cần cập nhật.
- *
- * ⚠️ Ngoại lệ thứ hai KHÔNG có trong design doc — nó lộ ra khi chạy chính hàng
- * rào này lần đầu, sau khi §2.2 đổi `status-ongoing` sang hue 200 để gỡ lỗi
- * "trùng khít accent". Bản sửa đó gỡ được lỗi ở mắt thường (ΔE 0,145) và ở
- * protanopia/deuteranopia (0,144 · 0,146), nhưng dưới tritanopia hai màu tụt về
- * ΔE 0,040 — vì tritanopia gộp cả trục lam–lục, mà `accent` là màu lam.
- *
- * Quét vét cạn (L 25–75%, cả 360 hue, chroma từ trần gamut xuống 10%) cho ra
- * ràng buộc thật, và nó chặt hơn vẻ ngoài:
- *
- *   • hue 200 (giá trị đang dùng): "trắng ≥4,5:1" đòi L ≤ 55,7%, còn "ΔE ≥0,12
- *     với accent dưới tritanopia" đòi L ≥ 65% — hai điều kiện KHÔNG giao nhau.
- *   • toàn bộ dải lục/lam-lục vướng đúng chuyện đó (hue 145 ở L=55%: ΔE 0,050).
- *   • nghiệm duy nhất nằm ở L ≤ 46%, hue 291–295, một tím xám nhạt — và mọi
- *     nghiệm đều rơi đúng vào khoảng ΔE 0,120–0,123, tức ĐÚNG ngưỡng, không
- *     biên. Hệ này đã có ba giá trị không biên; thêm cái thứ tư ở 0,120 là dựng
- *     một hàng rào đỏ lên vì làm tròn.
- *   • L=46% lại trùng `status-completed`, nên nó cũng phá luôn nhịp sáng của
- *     bốn badge (46 · 50 · 52 · 55%).
- *
- * Nên: giữ hue 200 và ghi ngoại lệ. Lỗi mà §2.2 sinh ra để sửa — "đang thuê" và
- * "hành động chính" là CÙNG MỘT MÀU — vẫn được canh riêng và canh chặt bởi test
- * "'đang thuê' KHÁC 'hành động chính'" ở trên, chạy ở mắt thường.
- */
-const KNOWN_CVD_EXCEPTION = new Map([
-  [
-    "status-overdue|warning",
-    "design doc §2.5: quét vét cạn, không màu nào vừa đạt 4,5:1 với chữ trắng vừa " +
-      "tách được khỏi đỏ ở cả bốn kiểu nhìn (deuteranopia ΔE 0,040)",
-  ],
-  [
-    "status-ongoing|accent",
-    "tritanopia gộp trục lam–lục và accent là lam (ΔE 0,040); nghiệm duy nhất là " +
-      "tím xám L≤46% ở đúng ngưỡng 0,120 — xem chú thích trên",
-  ],
-]);
+    it("bảng va chạm mù màu khớp ĐÚNG bảng ngoại lệ đã khai — cả hai chiều", async () => {
+      const t = await readTokens(marker);
+      const declared = CVD_EXCEPTIONS[themeName];
+      if (!declared) throw new Error(`Chưa khai bảng ngoại lệ CVD cho theme ${themeName}`);
 
-describe("mù màu", () => {
-  const VISIONS: Vision[] = ["protanopia", "deuteranopia", "tritanopia"];
-  const SEMANTIC = ["status-overdue", "warning", "status-ongoing", "accent"] as const;
-
-  it("mọi cặp ngữ nghĩa phân biệt được, trừ ngoại lệ đã ghi", async () => {
-    const t = await readTokens("@theme {");
-    const bad: string[] = [];
-    for (const vision of VISIONS) {
-      for (const [i, a] of SEMANTIC.entries()) {
-        for (const b of SEMANTIC.slice(i + 1)) {
-          const key = `${a}|${b}`;
-          if (KNOWN_CVD_EXCEPTION.has(key)) continue;
-          const d = deltaE(simulate(need(t, a), vision), simulate(need(t, b), vision));
-          if (d < 0.12) bad.push(`${vision}: ${key} ΔE=${d.toFixed(3)}`);
+      const undeclared: string[] = [];
+      const stale: string[] = [];
+      for (const vision of CVD_VISIONS) {
+        for (const [i, a] of SEMANTIC.entries()) {
+          for (const b of SEMANTIC.slice(i + 1)) {
+            const key = `${vision}|${a}|${b}`;
+            const d = deltaE(simulate(need(t, a), vision), simulate(need(t, b), vision));
+            if (d < CVD_THRESHOLD && !declared.has(key)) {
+              undeclared.push(`${key} ΔE=${d.toFixed(3)} — tụt dưới ngưỡng mà chưa khai`);
+            }
+            if (d >= CVD_THRESHOLD && declared.has(key)) {
+              stale.push(`${key} ΔE=${d.toFixed(3)} — nay đã qua ngưỡng, XOÁ khỏi bảng ngoại lệ`);
+            }
+          }
         }
       }
-    }
-    expect(bad).toEqual([]);
+      expect(undeclared).toEqual([]);
+      expect(stale).toEqual([]);
+    });
   });
-});
+}
 
 /**
  * Bảng tối chép tay HAI LẦN (`@media` + `[data-theme="dark"]`) là nợ có thật, và
