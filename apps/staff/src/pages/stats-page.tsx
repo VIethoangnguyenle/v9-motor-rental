@@ -6,6 +6,7 @@ import { RevenueCards } from "../components/stats/revenue-cards";
 import { RentalForm, type CreatedRental } from "../components/rentals/rental-form";
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
+import { Skeleton } from "../components/ui/skeleton";
 import { errorMessage } from "../lib/errors";
 import { statsQuery } from "../lib/rentals";
 
@@ -68,7 +69,30 @@ export function StatsPage() {
         </Alert>
       )}
 
-      {isPending && <p className="text-sm text-muted">Đang tải…</p>}
+      {/* Skeleton dựng đúng hình dạng thứ sắp thay nó: một hàng ba thẻ doanh
+          thu (xếp dọc dưới `md`, ba cột từ `md` — khớp `RevenueCards`) rồi ba
+          dòng "Cần chú ý". Một khối xám chung chung thì vẫn nhảy layout, chỉ là
+          nhảy ít hơn. */}
+      {isPending && (
+        <>
+          <p className="text-sm text-muted">Đang tải…</p>
+          <section>
+            <Skeleton className="h-4 w-24" />
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <Skeleton className="h-20" />
+              <Skeleton className="h-20" />
+              <Skeleton className="h-20" />
+            </div>
+          </section>
+          <section>
+            <Skeleton className="h-4 w-24" />
+            <div className="mt-2 flex flex-col gap-1">
+              <Skeleton className="h-11" />
+              <Skeleton className="h-11" />
+            </div>
+          </section>
+        </>
+      )}
 
       {/*
        * `statsQuery` trả discriminated union thay vì ném lỗi (xem `lib/rentals.ts`).

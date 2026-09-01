@@ -12,6 +12,7 @@ import {
 } from "../../lib/rentals";
 import { Alert } from "../ui/alert";
 import { Button } from "../ui/button";
+import { Skeleton } from "../ui/skeleton";
 import { CalendarMonth } from "./calendar-month";
 import { CalendarTimeline } from "./calendar-timeline";
 import { RentalDetailSheet } from "./rental-detail-sheet";
@@ -444,8 +445,11 @@ export function RentalCalendar() {
       {isLoading && (
         <div>
           <p className="text-sm text-muted">Đang tải lịch…</p>
-          {/* Khung giữ đúng chỗ — dữ liệu tới không làm trang nhảy layout. */}
-          <div className="mt-2 min-h-96 animate-pulse rounded-card border border-border bg-canvas" />
+          {/* Khung giữ đúng chỗ — dữ liệu tới không làm trang nhảy layout. Khối
+              này từng viết tại chỗ bằng `animate-pulse`; nay đi qua
+              `ui/skeleton.tsx` để sáu màn còn lại dùng chung một hình dạng, và
+              để `prefers-reduced-motion` được tôn trọng ở đúng một nơi. */}
+          <Skeleton className="mt-2 min-h-96" />
         </div>
       )}
 

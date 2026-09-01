@@ -28,6 +28,19 @@
   --color-accent: oklch(52% 0.19 255);
   --color-accent-ink: oklch(100% 0 0);
 
+  /*
+   * Hai bậc tối hơn của accent cho hover/active của nút chính. KHÔNG dùng
+   * `bg-accent/90` — pha alpha trên nền trang làm nút SÁNG lên khi rê chuột
+   * (nền trang sáng hơn accent), tức đi ngược trực giác "nhấn xuống thì đậm
+   * hơn", và tương phản với chữ trắng thì phụ thuộc nền phía sau — đúng lớp
+   * lỗi mà token `*-soft` sinh ra để diệt.
+   *
+   * Đo với chữ trắng: hover 7,15:1 · active 9,23:1 (nền thường 5,56:1). Cả hai
+   * đều ĐẬM hơn trạng thái thường, nên tương phản chỉ tăng.
+   */
+  --color-accent-hover: oklch(46% 0.19 255);
+  --color-accent-active: oklch(40% 0.19 255);
+
   /* Bốn trạng thái đơn thuê. Khớp `RentalStatus` ở @v9/shared/domain/rental —
      đổi tên một trạng thái ở đó thì phải đổi ở đây, không có gì ép. */
   /* L50% + chroma thấp, KHÔNG phải L62%: ở 62% màu này chỉ đạt 3,66:1 với chữ
@@ -126,4 +139,34 @@
  */
 @utility pb-safe {
   padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+}
+
+/*
+ * ── Vòng tiêu điểm bàn phím, khai MỘT chỗ cho cả app ─────────────────────────
+ *
+ * Trước dòng này app không có một khai báo focus nào (`grep -rn "focus:"` ra
+ * rỗng), tức nó sống hoàn toàn nhờ vòng mặc định của trình duyệt. Chưa phải vi
+ * phạm SC 2.4.7 — preflight của Tailwind v4 KHÔNG xoá outline (nó chỉ có
+ * `:-moz-focusring{outline:auto}`, đã kiểm trong CSS build) — nhưng nghĩa là
+ * app không sở hữu trạng thái focus của chính nó: mỗi trình duyệt vẽ một kiểu,
+ * và trên nút `bg-accent` đặc thì vòng mặc định của Chromium chìm vào nền.
+ *
+ * Khai ở `:focus-visible` toàn cục thay vì rắc class vào từng component:
+ * component tương tác nằm ở 20+ file, và bất kỳ file nào quên là một lỗ không
+ * ai thấy cho tới khi có người dùng bàn phím. `:focus-visible` (không phải
+ * `:focus`) nên chuột bấm KHÔNG hiện vòng — đúng thứ người dùng chuột mong đợi.
+ *
+ * `outline` chứ không `box-shadow`/`ring`: outline không chiếm chỗ trong layout
+ * (không đẩy hàng bảng), và tự bám theo `border-radius` của phần tử.
+ *
+ * `outline-offset: 2px` là điều kiện để nó đọc được TRÊN NÚT ĐẶC: khe 2px để lộ
+ * nền trang, nên hai mép của vòng đều tựa vào nền sáng — accent/canvas 5,31:1 và
+ * accent/surface 5,56:1, đều qua ngưỡng 3:1 của SC 2.4.11. Không có khe thì vòng
+ * accent nằm ngay cạnh nút accent và biến mất (1,03:1 trên chip đỏ đặc).
+ */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
 }

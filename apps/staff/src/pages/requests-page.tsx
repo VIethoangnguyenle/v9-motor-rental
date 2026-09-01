@@ -9,6 +9,7 @@ import {
 import { SHOP_TIMEZONE } from "@v9/shared/domain/rental";
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
+import { Skeleton } from "../components/ui/skeleton";
 import { errorMessage } from "../lib/errors";
 import {
   changeRequestStatus,
@@ -208,7 +209,16 @@ export function RequestsPage() {
 
       {change.error && <Alert tone="error">{change.error.message}</Alert>}
 
-      {list.isPending && <p className="text-sm text-muted">Đang tải…</p>}
+      {/* Hai thẻ giữ chỗ, cao xấp xỉ một `RequestCard` thật. */}
+      {list.isPending && (
+        <>
+          <p className="text-sm text-muted">Đang tải…</p>
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-40" />
+            <Skeleton className="h-40" />
+          </div>
+        </>
+      )}
 
       {list.data && !list.data.ok && (
         <Alert tone="error" live="polite">
