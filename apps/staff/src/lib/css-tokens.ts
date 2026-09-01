@@ -11,19 +11,31 @@ import { oklch, type Color } from "./color-math";
  */
 const CSS_PATH = new URL("./index.css", new URL("../", import.meta.url)).pathname;
 
+/**
+ * `index.css` đã BÓC HẾT chú thích. Hai lý do, cả hai đã dựng lại được thành
+ * "hàng rào xanh trên file hỏng":
+ *   • `matchAll` duyệt tuần tự và ghi đè, nên một khai báo nằm trong chú thích
+ *     mà đứng SAU sẽ THẮNG khai báo thật. Một dòng vô hại kiểu
+ *     `/* Giá trị trước đợt này: --color-status-ongoing: oklch(55.7% ...) *\/`
+ *     đủ để che một token đang trượt AA. File kia viết chú thích rất dày và
+ *     đã có sẵn hai chỗ trích giá trị token cũ — nó thoát chỉ vì tình cờ chưa
+ *     viết ở dạng `--color-x: ...`.
+ *   • bộ đếm ngoặc trong `readTokens` không phân biệt ngoặc trong chú thích với
+ *     ngoặc thật, nên một `{` lẻ trong văn xuôi làm lệch toàn bộ phép cắt khối.
+ *
+ * Export chứ không để riêng trong `readTokens`: `motion-budget.test.ts` cũng
+ * phải quét file này và cũng dính đúng hai cái bẫy trên (một `600ms` trích trong
+ * văn xuôi là đủ để một hàng rào ngân sách chuyển động báo oan hoặc bỏ sót).
+ * Chép bộ bóc này ra làm bản thứ hai là tự tạo đúng thứ các hàng rào sinh ra để
+ * chặn.
+ */
+export async function readCss(): Promise<string> {
+  return (await Bun.file(CSS_PATH).text()).replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
 /** Đọc token trong MỘT khối `{...}` — `@theme` cho sáng, `[data-theme="dark"]` cho tối. */
 export async function readTokens(startMarker: string): Promise<Record<string, Color>> {
-  // Bóc chú thích TRƯỚC khi làm bất cứ gì khác. Hai lý do, cả hai đã dựng lại
-  // được thành "hàng rào xanh trên file hỏng":
-  //   • `matchAll` duyệt tuần tự và ghi đè, nên một khai báo nằm trong chú thích
-  //     mà đứng SAU sẽ THẮNG khai báo thật. Một dòng vô hại kiểu
-  //     `/* Giá trị trước đợt này: --color-status-ongoing: oklch(55.7% ...) */`
-  //     đủ để che một token đang trượt AA. File kia viết chú thích rất dày và
-  //     đã có sẵn hai chỗ trích giá trị token cũ — nó thoát chỉ vì tình cờ chưa
-  //     viết ở dạng `--color-x: ...`.
-  //   • bộ đếm ngoặc bên dưới không phân biệt ngoặc trong chú thích với ngoặc
-  //     thật, nên một `{` lẻ trong văn xuôi làm lệch toàn bộ phép cắt khối.
-  const css = (await Bun.file(CSS_PATH).text()).replace(/\/\*[\s\S]*?\*\//g, "");
+  const css = await readCss();
   const start = css.indexOf(startMarker);
   if (start === -1) throw new Error(`Không tìm thấy khối "${startMarker}" trong index.css`);
 
