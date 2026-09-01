@@ -21,6 +21,30 @@ trong design doc trở thành **test hàng rào** chứ không phải ảnh ch�
 
 ---
 
+## ⛔ Hàng rào kiến trúc — plan này đã vi phạm nó một lần
+
+`eslint-plugin-boundaries` cấm `frontend-ui → frontend`: **`components/ui/` không được import bất
+cứ thứ gì trong `lib/`.** Đo được (Task 3):
+
+```
+error  There is no policy allowing dependencies from elements of type
+       "frontend-ui" to elements of type "frontend"   boundaries/dependencies
+```
+
+Task 3 đã đâm vào nó: plan bảo tạo `ui/theme-toggle.tsx` import `lib/theme`. Chỗ đúng là
+`layout/theme-toggle.tsx` — và chính chú thích trong đoạn code của plan đã ghi *"`ui/` KHÔNG được
+biết domain"* ngay trên một import vi phạm luật đó.
+
+**Luật rút ra, áp cho mọi task còn lại:** một component đặt trong `ui/` phải **nhận mọi thứ qua
+prop**. Cần đọc `lib/` thì hoặc đổi chỗ sang thư mục biết-domain (`layout/`, `rentals/`,
+`customers/`, `stats/`), hoặc đẩy phần biết-domain lên chỗ gọi.
+
+Vì vậy `status-chip.tsx` (Task 4) nằm ở **`components/rentals/`**, không phải `ui/` — nó cần
+`STATUS_ICON` và `getRentalClass` từ `lib/rental-status.ts`.
+
+**Không được sửa `eslint.config.js` để lách.** Đụng file đó là kéo theo bốn probe của skill
+`v9-fences`, và hàng rào này là cố ý.
+
 ## ⚠️ Đọc trước khi bắt đầu
 
 1. **Đọc [`docs/workspaces/staff.md`](../workspaces/staff.md)** — bẫy của workspace này. Đặc biệt:
@@ -50,7 +74,7 @@ trong design doc trở thành **test hàng rào** chứ không phải ảnh ch�
 | `apps/staff/src/components/ui/theme-toggle.tsx` | **Tạo.** Nút gạt ba trạng thái. | 3 |
 | `apps/staff/src/components/layout/app-nav.tsx` | **Sửa.** Gắn nút gạt vào chân sidebar và sheet Thêm. | 3 |
 | `apps/staff/src/components/ui/icon.tsx` | **Sửa.** Thêm 6 icon; `StatusDot` nhận `name`. | 4 |
-| `apps/staff/src/components/ui/status-chip.tsx` | **Tạo.** Chip trạng thái = màu **+ hình**. | 4 |
+| `apps/staff/src/components/rentals/status-chip.tsx` | **Tạo.** Chip trạng thái = màu **+ hình**. | 4 |
 | `apps/staff/src/lib/rental-status.ts` | **Sửa.** Thêm `STATUS_ICON`; giữ nguyên logic màu. | 4 |
 | `apps/staff/src/lib/status-icon.test.ts` | **Tạo.** Hàng rào: 6 trạng thái → 6 icon khác nhau. | 4 |
 | `apps/staff/src/components/ui/alert.tsx` | **Sửa.** Icon theo tone. | 4 |
@@ -994,7 +1018,7 @@ git commit -m "feat(staff): theme sáng/tối theo hệ điều hành, có nút 
 sửa được. Icon là kênh duy nhất còn lại.
 
 **Files:**
-- Create: `apps/staff/src/components/ui/status-chip.tsx`, `apps/staff/src/lib/status-icon.test.ts`
+- Create: `apps/staff/src/components/rentals/status-chip.tsx`, `apps/staff/src/lib/status-icon.test.ts`
 - Modify: `apps/staff/src/lib/rental-status.ts`, `apps/staff/src/components/ui/icon.tsx`,
   `apps/staff/src/components/ui/alert.tsx`, `apps/staff/src/components/stats/attention-list.tsx`
 
