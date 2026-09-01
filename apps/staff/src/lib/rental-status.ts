@@ -178,6 +178,32 @@ export const STATUS_ICON = {
 } as const satisfies Record<string, IconName>;
 
 /**
+ * Hình cho một đơn thuê CỤ THỂ — khác `STATUS_ICON` ở trên, vốn chỉ là bảng tra
+ * theo khoá. Hai trạng thái phái sinh (`OVERDUE`, `PICKUP_OVERDUE`) không nằm
+ * trong `rental.status`; chúng suy ra từ `now`, nên phải có một hàm suy.
+ *
+ * Nhận CÙNG hình dạng tham số và chạy CÙNG thứ tự vị từ với `rentalChipClass`
+ * ngay trên. Đó không phải trùng lặp mà là ràng buộc: hai hàm này quyết định
+ * HÌNH và MÀU cho cùng một thanh đơn, nên chúng phải đồng ý với nhau về "quá
+ * hạn là gì". Lệch nhau cho ra thanh đỏ mang hình xanh — hai kênh mâu thuẫn,
+ * tệ hơn hẳn một kênh thiếu.
+ *
+ * Gọi lại `isOverdue`/`isPickupOverdue` của domain thay vì tự so `endsAt < now`
+ * cũng vì thế, và nó chặn luôn cái bẫy `COMPLETED`: một đơn đã trả gần như luôn
+ * có `endsAt` trong quá khứ, nên luật viết tay sẽ gán nó thành OVERDUE.
+ * `isOverdue` đã lọc theo `status === "ONGOING"` nên nhánh đó không tới được.
+ * Ca này khoá ở `status-icon.test.ts`.
+ */
+export function statusIconOf(
+  rental: { status: RentalStatus; startsAt: Date; endsAt: Date },
+  now: Date,
+): IconName {
+  if (isOverdue(rental, now)) return STATUS_ICON.OVERDUE;
+  if (isPickupOverdue(rental, now)) return STATUS_ICON.PICKUP_OVERDUE;
+  return STATUS_ICON[rental.status];
+}
+
+/**
  * Mốc CUỐI CÙNG còn nằm trong đơn, suy ra từ `endsAt` — vốn là biên MỞ.
  *
  * `[startsAt, endsAt)` là hợp đồng của cả DB (`tstzrange '[)'`), domain

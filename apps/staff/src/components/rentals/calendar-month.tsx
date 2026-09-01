@@ -6,7 +6,7 @@ import {
   type GridWindow,
 } from "../../lib/calendar-layout";
 import type { CalendarRental, FleetVehicle } from "../../lib/rentals";
-import { STATUS_LABEL, rentalChipClass } from "../../lib/rental-status";
+import { STATUS_LABEL, rentalChipClass, statusIconOf } from "../../lib/rental-status";
 import { Icon } from "../ui/icon";
 
 /**
@@ -206,10 +206,26 @@ export function CalendarMonth({
                         aria-label={`${label} · ${rental.customerName ?? "Khách chưa rõ"} · ${STATUS_LABEL[rental.status]} — xem chi tiết`}
                         className={`${CHIP} ${rentalChipClass(rental, now)}`}
                       >
-                        {/* `size-3`: đây KHÔNG phải nút bấm mà là dấu "đơn còn kéo dài
-                      ngoài cửa sổ", nằm trong chip `text-xs`. Cỡ mặc định 20px
-                      sẽ nuốt mất tên khách đứng cạnh. */}
+                        {/* `size="sm"` (12px) cho cả ba icon: chúng nằm trong
+                            một chip `text-xs`, cỡ mặc định 20px sẽ nuốt mất nhãn
+                            đứng cạnh. Cỡ đi qua PROP — `className="size-3"` hỏng
+                            im lặng, xem `ui/icon.tsx`.
+
+                            `‹`/`›` là dấu "đơn còn kéo dài ngoài ô ngày này",
+                            không phải nút bấm; chúng đứng sát hai mép chip vì
+                            mũi tên chỉ ra ngoài ô. */}
                         {placement.clippedStart && <Icon name="chevron-left" size="sm" />}
+                        {/* Chữ trên chip này là TÊN XE, nên trạng thái ở đây
+                            cũng đi bằng màu và CHỈ màu — lý lẽ đầy đủ ở
+                            `calendar-timeline.tsx`, chỗ gọi `statusIconOf` kia.
+                            Chế độ Tháng còn ngặt hơn: trên 390px chip rộng
+                            41,8px, nhãn xe vốn đã chỉ còn một ký tự, nên hình là
+                            thứ DUY NHẤT còn đọc được ở bề rộng đó.
+
+                            `now` dùng chung với `rentalChipClass` ngay trên:
+                            hình và màu của MỘT chip phải suy từ cùng một thời
+                            điểm. */}
+                        <Icon name={statusIconOf(rental, now)} size="sm" />
                         <span className="min-w-0 truncate">{label}</span>
                         {placement.clippedEnd && <Icon name="chevron-right" size="sm" />}
                       </button>

@@ -7,7 +7,7 @@ import {
   type GridWindow,
 } from "../../lib/calendar-layout";
 import type { CalendarRental, FleetVehicle } from "../../lib/rentals";
-import { STATUS_LABEL, rentalChipClass } from "../../lib/rental-status";
+import { STATUS_LABEL, rentalChipClass, statusIconOf } from "../../lib/rental-status";
 import { Icon } from "../ui/icon";
 
 /**
@@ -50,7 +50,9 @@ export interface CalendarTimelineProps {
   readonly rentals: readonly CalendarRental[];
   readonly gridWindow: GridWindow;
   /** Chạm vào một thanh đơn — mở sheet chi tiết. `title` không bao giờ hiện
-   *  trên điện thoại, nên đây là đường DUY NHẤT đọc được trạng thái ở đó. */
+   *  trên điện thoại, nên trạng thái phải đọc được NGAY TRÊN thanh (icon của
+   *  `statusIconOf`); sheet là chỗ đọc phần còn lại của đơn, không phải chỗ duy
+   *  nhất đọc trạng thái. */
   readonly onSelect: (rental: CalendarRental) => void;
 }
 
@@ -191,11 +193,30 @@ export function CalendarTimeline({
                 >
                   {/* `‹`/`›`: đơn kéo dài ra ngoài cửa sổ đang xem — không phải
                       trang trí, mà là dấu hiệu "còn tiếp" để không đọc nhầm là
-                      đơn kết thúc/bắt đầu đúng mép lưới. */}
-                  {/* `size-3`: đây KHÔNG phải nút bấm mà là dấu "đơn còn kéo dài
-                      ngoài cửa sổ", nằm trong chip `text-xs`. Cỡ mặc định 20px
-                      sẽ nuốt mất tên khách đứng cạnh. */}
+                      đơn kết thúc/bắt đầu đúng mép lưới. Chúng đứng SÁT hai mép
+                      thanh vì mũi tên chỉ ra ngoài lưới; kẹp icon trạng thái vào
+                      giữa mép và mũi tên thì mũi tên hoá ra đang chỉ vào nó. */}
+                  {/* `size="sm"` (12px) cho cả ba icon trong thanh: chúng nằm
+                      trong một chip `text-xs`, cỡ mặc định 20px sẽ nuốt mất tên
+                      khách đứng cạnh. Cỡ đi qua PROP — `className="size-3"` hỏng
+                      im lặng, xem `ui/icon.tsx`. */}
                   {placement.clippedStart && <Icon name="chevron-left" size="sm" />}
+                  {/* Chữ trên thanh này là TÊN KHÁCH, nên không có icon thì
+                      trạng thái đi bằng màu và CHỈ màu: `title=` không bao giờ
+                      bắn khi chạm, và app này chạy trên điện thoại trong gara.
+
+                      Màu một mình không đủ, và đó là chuyện đã GHI NHẬN chứ
+                      không phải phòng xa: `theme-tokens.test.ts` giữ sẵn ngoại
+                      lệ `protanopia|status-overdue|status-completed`. Hai nền
+                      đó đều ĐẶC nên cách tô cũng không tách được chúng. Đo trên
+                      bản build dưới lọc achromatopsia, lấy pixel nền thanh:
+                      `quá hạn` ra xám 106, `đang thuê` 119, `đã trả` 77 — ba
+                      thanh đặc nằm trong một dải hẹp.
+
+                      `now` dùng chung với `rentalChipClass` ngay trên, không
+                      gọi `new Date()` lần nữa: hình và màu của MỘT thanh phải
+                      suy từ cùng một thời điểm. */}
+                  <Icon name={statusIconOf(rental, now)} size="sm" />
                   <span className="min-w-0 truncate">{rental.customerName ?? "—"}</span>
                   {placement.clippedEnd && <Icon name="chevron-right" size="sm" />}
                 </button>
