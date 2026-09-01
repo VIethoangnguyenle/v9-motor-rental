@@ -15,39 +15,46 @@ const TONE: Record<AlertTone, string> = {
 
 export function Alert({
   tone,
+  live,
   children,
 }: {
   readonly tone: AlertTone;
+  /**
+   * Ghi đè mức khẩn của live region. Mặc định suy từ `tone`: `error` →
+   * `assertive` (cắt ngang), còn lại → `polite` (chờ tới lượt). Vì có mặc định,
+   * MỌI call site cũ giữ nguyên hành vi — prop này chỉ mở đường chỉnh từng chỗ.
+   *
+   * Truyền `"polite"` cho banner báo lỗi TẢI DỮ LIỆU: nó xuất hiện vì một query
+   * settle, không phải vì người dùng vừa bấm gì và đang chờ — cắt ngang họ ở đó
+   * là mạnh hơn cần thiết. Giữ mặc định `assertive` cho lỗi submit (ca 409
+   * "Số điện thoại này đã thuộc về khách hàng khác").
+   */
+  readonly live?: "assertive" | "polite";
   readonly children: React.ReactNode;
 }) {
+  // `role="alert"` cho `assertive` (ngắt lời trình đọc màn hình — người dùng cần
+  // biết NGAY), `role="status"` cho `polite` (chờ tới lượt, không cắt ngang).
+  // Trước đây đây là `<p>` trần: câu 409 "Số điện thoại này đã thuộc về khách
+  // hàng khác: …" hiện lên màn hình và KHÔNG được đọc ra — người dùng screen
+  // reader nghe thấy đúng con số không.
+  //
+  // `role="alert"` đã NGẦM mang `aria-live="assertive"` (và `role="status"`
+  // ngầm mang `polite`) — khai `aria-live` tường minh là dư nhưng vô hại; giữ
+  // lại cho rõ ý khi đọc code, và để không phụ thuộc việc mọi trình đọc màn
+  // hình đều tự suy đúng live-mode ngầm định từ `role`.
+  //
+  // ⚠️ Nợ CÒN LẠI sau khi có prop `live`: cơ chế đã xong, phần còn lại thuần tuý
+  // là chỉnh call site. Đợt màn Khách hàng đã chuyển `customers-list-page.tsx`
+  // và `customer-detail-page.tsx` sang `live="polite"`. VẪN dùng mặc định
+  // `assertive` cho banner TẢI DỮ LIỆU (sai mức, nhưng sửa thì phải kiểm lại
+  // những màn đợt này không đụng tới): `rental-calendar.tsx` (tải đội xe + tải
+  // lịch), `rental-form.tsx` (tải đội xe + tìm khách), `stats-page.tsx`, một
+  // nhánh lỗi của `staff-list-page.tsx`.
+  const liveMode = live ?? (tone === "error" ? "assertive" : "polite");
   return (
-    // `role="alert"` cho lỗi (ngắt lời trình đọc màn hình — người dùng cần biết
-    // NGAY), `role="status"` + `aria-live="polite"` cho warning/info (chờ tới
-    // lượt, không cắt ngang). Trước đây đây là `<p>` trần: câu 409 "Số điện
-    // thoại này đã thuộc về khách hàng khác: …" hiện lên màn hình và KHÔNG được
-    // đọc ra — người dùng screen reader nghe thấy đúng con số không.
-    //
-    // `role="alert"` đã NGẦM mang `aria-live="assertive"` (và `role="status"`
-    // ngầm mang `polite`) — khai `aria-live` tường minh là dư nhưng vô hại; giữ
-    // lại cho rõ ý khi đọc code, và để không phụ thuộc việc mọi trình đọc màn
-    // hình đều tự suy đúng live-mode ngầm định từ `role`.
-    //
-    // ⚠️ Biết trước, CHƯA sửa trong đổi này: mapping đi theo `tone`, không theo
-    // "lỗi này có phải phản hồi một hành động người dùng đang chờ hay không".
-    // Soát cả 10 màn dùng `Alert` (2026-08-31): quá nửa số `tone="error"` là
-    // banner báo lỗi TẢI DỮ LIỆU tự động lúc vào trang, không phải lỗi submit
-    // đang chờ như ca 409 ở trên — `rental-calendar.tsx` (tải đội xe + tải lịch),
-    // `rental-form.tsx` (tải đội xe + tìm khách), `customer-detail-page.tsx`
-    // (hồ sơ + lịch sử thuê), `customers-list-page.tsx`, `stats-page.tsx`, một
-    // nhánh lỗi của `staff-list-page.tsx`. `assertive` cắt ngang AT ngay lúc
-    // query lỗi dù người dùng có đang chờ hay không — mạnh hơn cần thiết cho
-    // nhóm này. Sửa đúng là thêm prop override (vd. `live?: "assertive" |
-    // "polite"`, mặc định suy từ `tone`) rồi chỉnh từng call site — vượt phạm
-    // vi task này (chỉ đổi `ui/alert.tsx` + `ui/text-field.tsx`, không đổi call
-    // site). Để lại làm việc kế tiếp, không âm thầm bỏ qua.
     <p
-      role={tone === "error" ? "alert" : "status"}
-      aria-live={tone === "error" ? "assertive" : "polite"}
+      role={liveMode === "assertive" ? "alert" : "status"}
+      aria-live={liveMode}
       className={`rounded-card p-3 text-sm ${TONE[tone]}`}
     >
       {children}

@@ -5,7 +5,7 @@ import { CustomerTable } from "../components/customers/customer-table";
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { TextField } from "../components/ui/text-field";
-import { CUSTOMERS_PAGE_SIZE, customersListQuery } from "../lib/customers";
+import { CUSTOMERS_PAGE_SIZE, connectionFailed, customersListQuery } from "../lib/customers";
 import { shouldResyncSearchText } from "../lib/customers-search";
 import { errorMessage } from "../lib/errors";
 
@@ -74,6 +74,12 @@ export function CustomersListPage() {
 
   const query = useQuery(customersListQuery(q, page));
 
+  // Hỏng vì KHÔNG tới được máy chủ, khác hẳn "máy chủ trả lời và câu trả lời là
+  // một lỗi" — hai ca cần hai câu chữ và chỉ một trong hai đáng có nút thử lại.
+  // Lý do phải tự phân loại (Eden nuốt lỗi mạng thành `ok: false` chứ không để
+  // promise reject, nên `isError` một mình không đủ): `lib/customers.ts`.
+  const offline = connectionFailed(query);
+
   const total = query.data?.ok ? query.data.total : 0;
   const totalPages = Math.max(1, Math.ceil(total / CUSTOMERS_PAGE_SIZE));
 
@@ -92,15 +98,35 @@ export function CustomersListPage() {
         />
       </div>
 
-      {query.data?.ok === false && (
-        <div>
-          <Alert tone="error">{errorMessage(query.data.value, "Không tải được danh sách")}</Alert>
+      {/* `live="polite"`: banner này bật lên vì một query settle, không phải vì
+          người dùng vừa bấm gì và đang đứng chờ — `assertive` sẽ cắt ngang trình
+          đọc màn hình vô cớ. Lỗi submit thì ngược lại, xem `ui/alert.tsx`.
+          Không còn `<div>` bọc: `Alert` không nhận `className` nên `<div>` đó
+          từng chỉ để giữ chỗ cho một `mt-3` nay đã bỏ. `Alert` render `<p>`,
+          làm flex item trực tiếp được. */}
+      {query.data?.ok === false && !offline && (
+        <Alert tone="error" live="polite">
+          {errorMessage(query.data.value, "Không tải được danh sách")}
+        </Alert>
+      )}
+
+      {offline && (
+        <div className="flex flex-col items-start gap-2">
+          <Alert tone="error" live="polite">
+            Không kết nối được máy chủ.
+          </Alert>
+          <Button type="button" variant="ghost" onClick={() => void query.refetch()}>
+            Thử lại
+          </Button>
         </div>
       )}
 
       <CustomerTable rows={query.data?.ok ? query.data.customers : []} listSearch={{ q, page }} />
 
-      {query.isPending && <p className="text-sm text-muted">Đang tải…</p>}
+      {/* `isFetching`, KHÔNG `isPending`: với `placeholderData` thì từ lần tải thứ
+          hai trở đi `status` là "success" ngay nên `isPending` luôn false —
+          `isPending` sẽ chỉ sáng đúng một lần trong đời trang. */}
+      {query.isFetching && <p className="text-sm text-muted">Đang tải…</p>}
       {query.data?.ok && query.data.customers.length === 0 && (
         <p className="text-sm text-muted">
           {q === "" ? "Chưa có khách hàng nào." : "Không tìm thấy khách hàng nào khớp."}

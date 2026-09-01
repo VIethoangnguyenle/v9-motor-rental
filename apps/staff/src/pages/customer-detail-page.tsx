@@ -3,7 +3,8 @@ import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { CustomerEditForm } from "../components/customers/customer-edit-form";
 import { CustomerRentalHistory } from "../components/customers/customer-rental-history";
 import { Alert } from "../components/ui/alert";
-import { customerDetailQuery, customerRentalsQuery } from "../lib/customers";
+import { Button } from "../components/ui/button";
+import { connectionFailed, customerDetailQuery, customerRentalsQuery } from "../lib/customers";
 import { errorMessage } from "../lib/errors";
 
 /**
@@ -19,6 +20,12 @@ export function CustomerDetailPage() {
 
   const detail = useQuery(customerDetailQuery(id));
   const rentals = useQuery(customerRentalsQuery(id));
+
+  // Hai query độc lập nên hỏng độc lập: mất mạng lúc mở trang thì cả hai cùng
+  // hỏng, nhưng API sập một nửa thì chỉ một cái. Phân loại riêng từng cái.
+  // Vì sao `isError` một mình không đủ: `lib/customers.ts`.
+  const detailOffline = connectionFailed(detail);
+  const rentalsOffline = connectionFailed(rentals);
 
   /**
    * Ba cache cần làm mới sau khi sửa: chính hồ sơ này, trang danh sách (tên/
@@ -48,9 +55,22 @@ export function CustomerDetailPage() {
 
       {detail.isPending && <p className="text-sm text-muted">Đang tải…</p>}
 
-      {detail.data?.ok === false && (
-        <div>
-          <Alert tone="error">{errorMessage(detail.data.value, "Không tải được khách hàng")}</Alert>
+      {/* `live="polite"` + không còn `<div>` bọc — cùng lý do đã ghi ở
+          `customers-list-page.tsx`. */}
+      {detail.data?.ok === false && !detailOffline && (
+        <Alert tone="error" live="polite">
+          {errorMessage(detail.data.value, "Không tải được khách hàng")}
+        </Alert>
+      )}
+
+      {detailOffline && (
+        <div className="flex flex-col items-start gap-2">
+          <Alert tone="error" live="polite">
+            Không kết nối được máy chủ.
+          </Alert>
+          <Button type="button" variant="ghost" onClick={() => void detail.refetch()}>
+            Thử lại
+          </Button>
         </div>
       )}
 
@@ -74,11 +94,20 @@ export function CustomerDetailPage() {
           <h2 className="text-lg font-semibold">Lịch sử thuê xe</h2>
 
           {rentals.isPending && <p className="text-sm text-muted">Đang tải…</p>}
-          {rentals.data?.ok === false && (
-            <div>
-              <Alert tone="error">
-                {errorMessage(rentals.data.value, "Không tải được lịch sử")}
+          {rentals.data?.ok === false && !rentalsOffline && (
+            <Alert tone="error" live="polite">
+              {errorMessage(rentals.data.value, "Không tải được lịch sử")}
+            </Alert>
+          )}
+
+          {rentalsOffline && (
+            <div className="flex flex-col items-start gap-2">
+              <Alert tone="error" live="polite">
+                Không kết nối được máy chủ.
               </Alert>
+              <Button type="button" variant="ghost" onClick={() => void rentals.refetch()}>
+                Thử lại
+              </Button>
             </div>
           )}
           {rentals.data?.ok && <CustomerRentalHistory rentals={rentals.data.rentals} />}
