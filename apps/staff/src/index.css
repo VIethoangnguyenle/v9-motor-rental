@@ -100,10 +100,22 @@
    */
   --color-status-ongoing: oklch(55.7% 0.094 200);
   --color-status-overdue: oklch(55% 0.21 27);
-  /* L46% chứ không phải 60%: badge trạng thái dùng chữ TRẮNG, và ở 60% cặp đó
-     chỉ đạt ~3,95:1 — dưới ngưỡng AA cho chữ thường. Đo lúc khai token, trước khi
-     có badge nào tồn tại, nên đây là chỗ rẻ nhất để sửa. */
-  --color-status-completed: oklch(46% 0 255);
+  /* L42%, và có HAI lý do — lý do thứ hai mới, đắt hơn lý do thứ nhất.
+   *
+   * (1) KHÔNG phải 60%: badge trạng thái dùng chữ TRẮNG, và ở 60% cặp đó chỉ đạt
+   * ~3,95:1 — dưới ngưỡng AA cho chữ thường. Đo lúc khai token, trước khi có
+   * badge nào tồn tại, nên đây là chỗ rẻ nhất để sửa.
+   *
+   * (2) 42% CHỨ KHÔNG PHẢI 46% — chữa một hồi quy do chính đợt này gây ra. Khi
+   * `status-ongoing` đổi sang hue 200, cặp `đang thuê ↔ đã trả` tụt từ ΔE 0,131
+   * xuống 0,100 dưới deuteranopia: đang ở TRÊN ngưỡng thì bị đẩy xuống dưới. Đây
+   * là cặp đắt nhất trong hệ — cả hai đều tô nền đặc và đứng CẠNH NHAU trong
+   * `customer-rental-history.tsx` và `customer-table.tsx`, nơi màu là kênh duy
+   * nhất. Ở 42%: ΔE 0,138 (qua ngưỡng), chữ trắng 8,46:1 (từ 7,13), trên
+   * `status-completed-soft` 7,53:1 (từ 6,34) — ba số đều tốt lên, không đánh đổi.
+   *
+   * Ngữ nghĩa cũng thuận: "đã trả, không còn việc gì" thì lùi ra sau là đúng. */
+  --color-status-completed: oklch(42% 0 255);
 
   /*
    * Cảnh báo — KHÔNG phải một trạng thái đơn thuê, nên không nằm trong nhóm
@@ -136,7 +148,7 @@
    *   text-warning          trên warning-soft           4,99:1 ✅
    *   text-accent           trên accent-soft            4,99:1 ✅
    *   text-status-booked    trên status-booked-soft     5,35:1 ✅
-   *   text-status-completed trên status-completed-soft  6,34:1 ✅
+   *   text-status-completed trên status-completed-soft  7,53:1 ✅
    *
    * L=96% là mức cao nhất còn tô THẤY được: nền nổi so với `canvas` 1,07–1,08:1,
    * ngang hoặc hơn mấy lớp pha cũ. Chroma là mức LỚN NHẤT không tràn gamut sRGB ở
