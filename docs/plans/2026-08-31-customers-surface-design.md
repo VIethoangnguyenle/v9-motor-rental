@@ -34,12 +34,12 @@ Ba phát hiện nữa đáng ghi vì chúng sửa lại giả định của chí
 
 ## 2. Bốn quyết định nghiệp vụ
 
-| # | Câu hỏi | Quyết định | Lý do |
-|---|---------|-----------|-------|
-| 1 | Giấy tờ tùy thân đang giữ sống ở đâu? | **`rentals`** | Giấy tờ được giữ cho MỘT lượt thuê rồi trả lại. `rentals` đã có `handedOverAt`/`returnedAt`/`depositAmount` — vòng đời khớp sẵn. PII bị khoá trong phạm vi một đơn, xoá được theo đơn. |
-| 2 | Lưu sâu tới đâu? | **Loại + đã trả chưa, KHÔNG lưu số** | Trả lời được câu vận hành duy nhất thật sự cần ("đơn này còn giữ giấy gì"). Bằng chứng đối chiếu để ảnh chụp lo (MinIO), giống ảnh tình trạng xe. |
-| 3 | Địa chỉ giao xe? | **`rentals.delivery_address`**, "lần gần nhất" là **truy vấn dẫn xuất** | Khách du lịch đổi chỗ ở mỗi chuyến — một `default_address` trên `customers` sẽ nói dối. Dẫn xuất thì không có cột nào phải đồng bộ. |
-| 4 | `customers.note` xử thế nào? | **Giữ tự do, đổi sang textarea**, cộng **chỉ số trả trễ suy ra từ `rentals`** | Quyết định 1 và 3 đã hút mất hai trong bốn loại dữ liệu đang lẫn trong `note`. Phần còn lại là chữ người viết cho người đọc. "Trả trễ N lần" tính từ `returned_at > ends_at` — không thêm cột, và không bao giờ lệch với thực tế như ghi chú tay. |
+| #   | Câu hỏi                               | Quyết định                                                                    | Lý do                                                                                                                                                                                                                                             |
+| --- | ------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Giấy tờ tùy thân đang giữ sống ở đâu? | **`rentals`**                                                                 | Giấy tờ được giữ cho MỘT lượt thuê rồi trả lại. `rentals` đã có `handedOverAt`/`returnedAt`/`depositAmount` — vòng đời khớp sẵn. PII bị khoá trong phạm vi một đơn, xoá được theo đơn.                                                            |
+| 2   | Lưu sâu tới đâu?                      | **Loại + đã trả chưa, KHÔNG lưu số**                                          | Trả lời được câu vận hành duy nhất thật sự cần ("đơn này còn giữ giấy gì"). Bằng chứng đối chiếu để ảnh chụp lo (MinIO), giống ảnh tình trạng xe.                                                                                                 |
+| 3   | Địa chỉ giao xe?                      | **`rentals.delivery_address`**, "lần gần nhất" là **truy vấn dẫn xuất**       | Khách du lịch đổi chỗ ở mỗi chuyến — một `default_address` trên `customers` sẽ nói dối. Dẫn xuất thì không có cột nào phải đồng bộ.                                                                                                               |
+| 4   | `customers.note` xử thế nào?          | **Giữ tự do, đổi sang textarea**, cộng **chỉ số trả trễ suy ra từ `rentals`** | Quyết định 1 và 3 đã hút mất hai trong bốn loại dữ liệu đang lẫn trong `note`. Phần còn lại là chữ người viết cho người đọc. "Trả trễ N lần" tính từ `returned_at > ends_at` — không thêm cột, và không bao giờ lệch với thực tế như ghi chú tay. |
 
 ## 3. Hai ngã rẽ kỹ thuật
 
@@ -232,9 +232,9 @@ Bắt buộc có:
 
 **Không có chức năng gộp hồ sơ trùng.** `customers.phone` đã `UNIQUE` nên trùng chỉ xảy ra khi một
 người dùng hai số khác nhau — hiếm, và sau khi sửa tìm kiếm thì nhân viên sẽ **tìm ra** hồ sơ cũ
-thay vì tạo mới. Quan trọng hơn, migration `0011` đã ghi thành văn lập trường của repo: *"gộp ngầm
+thay vì tạo mới. Quan trọng hơn, migration `0011` đã ghi thành văn lập trường của repo: _"gộp ngầm
 hai hồ sơ trùng — có thể là hai vai trò, hai lịch sử duyệt khác nhau — là quyết định nghiệp vụ,
-không phải thứ một migration tự động nên tự ý làm."* Ghi vào `DEBT.md` kèm điều kiện mở lại: khi
+không phải thứ một migration tự động nên tự ý làm."_ Ghi vào `DEBT.md` kèm điều kiện mở lại: khi
 xuất hiện ca trùng thật.
 
 **Không có trường giảm giá / hạng khách quen.** `PRODUCT.md` liệt chính sách tính ngày thuê và bảng
@@ -248,7 +248,7 @@ với ảnh tình trạng xe.
 nhưng đó là tính năng mới, không phải lỗi. Ghi `ROADMAP.md`.
 
 **Không đổi thứ tự mặc định `asc(fullName)`.** Critique đặt câu hỏi hay — thứ tự có ích cho một
-shop là *quá hạn → đang thuê → gần nhất* — nhưng đổi nó là đổi hình dạng sản phẩm (danh sách
+shop là _quá hạn → đang thuê → gần nhất_ — nhưng đổi nó là đổi hình dạng sản phẩm (danh sách
 duyệt → danh sách cần chú ý), xứng đáng một brainstorm riêng.
 
 ## 10. Rủi ro đã biết
@@ -263,6 +263,7 @@ duyệt → danh sách cần chú ý), xứng đáng một brainstorm riêng.
   (`Bitmap Index Scan on customers_full_name_search_idx` trên 2000 hàng).
 
   Điều này quan trọng cho prod: không phải xin superuser cho role deploy.
+
 - **GIN index làm chậm đường ghi.** Không đáng kể ở quy mô một shop, nhưng nếu `bun run bench`
   báo vượt budget thì đây là nghi phạm đầu tiên.
 - **Đợt này chạm `ui/text-field.tsx`, `ui/alert.tsx` và `lib/rental-status.ts`** — ba module dùng

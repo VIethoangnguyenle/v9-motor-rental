@@ -17,8 +17,8 @@
 Design doc §3.2 chọn `LEFT JOIN LATERAL`. **Plan này không dùng LATERAL**, và đây là lý do:
 
 `listCustomers` **đã có sẵn** một truy vấn phụ khoanh theo đúng trang đang xem
-(`apps/api/src/services/customers.ts:204-216`), kèm comment giải thích: *"Đếm rental CHỈ cho đúng
-trang đang xem — không đếm cả bảng `rentals` cho 12.000 khách để rồi vứt đi 11.980 kết quả."*
+(`apps/api/src/services/customers.ts:204-216`), kèm comment giải thích: _"Đếm rental CHỈ cho đúng
+trang đang xem — không đếm cả bảng `rentals` cho 12.000 khách để rồi vứt đi 11.980 kết quả."_
 
 Ba lựa chọn trong design doc phân biệt nhau ở **hình dạng API** (một round trip HTTP / hai lời gọi
 HTTP / cột denormalized). Truy vấn phụ sẵn có vẫn là **một round trip HTTP**, không có state trùng
@@ -31,23 +31,23 @@ Kết quả vẫn y hệt design doc: `activeRental` + `lateReturnCount`, suy ra
 
 ## File structure
 
-| File | Trách nhiệm | Task |
-|---|---|---|
-| `apps/staff/src/router.tsx` | Khai hai route mới + `validateSearch` | 1, 2 |
-| `apps/staff/src/components/layout/app-nav.tsx` | Mở khoá mục "Khách hàng" | 1 |
-| `apps/staff/src/lib/customers-search.ts` | **Tạo mới** — `validateCustomersSearch`, tách khỏi page để tránh chu trình module | 2 |
-| `packages/db/migrations/00XX_*.sql` | **Tạo mới** — extension, `f_unaccent`, GIN index, 3 cột | 4 |
-| `packages/db/src/schema/rentals.ts` | Ba cột mới vào định nghĩa Drizzle | 4 |
-| `packages/db/src/schema/rentals-schema.test.ts` | Test hai CHECK mới | 4 |
-| `apps/api/src/services/customers.ts` | `fullNameMatches()`, tín hiệu vận hành | 5, 6 |
-| `apps/api/src/services/customers.test.ts` | Test bỏ dấu, test index, test parity | 5, 6 |
-| `apps/api/src/routes/rentals.ts` | Mở rộng `customerListRowSchema` | 6 |
-| `apps/staff/src/components/ui/alert.tsx` | `role`/`aria-live` | 7 |
-| `apps/staff/src/components/ui/text-field.tsx` | `min-h-11` | 7 |
-| `apps/staff/src/lib/customers.ts` | `placeholderData`, kiểu mới | 8 |
-| `apps/staff/src/lib/rental-status.ts` | Nới tham số `rentalChipClass` | 9 |
-| `apps/staff/src/components/customers/*.tsx` | Tiêu thụ tín hiệu, vùng chạm | 9, 10 |
-| `docs/DEBT.md`, `docs/ROADMAP.md` | Ghi nợ đã quyết không trả | 11 |
+| File                                            | Trách nhiệm                                                                       | Task  |
+| ----------------------------------------------- | --------------------------------------------------------------------------------- | ----- |
+| `apps/staff/src/router.tsx`                     | Khai hai route mới + `validateSearch`                                             | 1, 2  |
+| `apps/staff/src/components/layout/app-nav.tsx`  | Mở khoá mục "Khách hàng"                                                          | 1     |
+| `apps/staff/src/lib/customers-search.ts`        | **Tạo mới** — `validateCustomersSearch`, tách khỏi page để tránh chu trình module | 2     |
+| `packages/db/migrations/00XX_*.sql`             | **Tạo mới** — extension, `f_unaccent`, GIN index, 3 cột                           | 4     |
+| `packages/db/src/schema/rentals.ts`             | Ba cột mới vào định nghĩa Drizzle                                                 | 4     |
+| `packages/db/src/schema/rentals-schema.test.ts` | Test hai CHECK mới                                                                | 4     |
+| `apps/api/src/services/customers.ts`            | `fullNameMatches()`, tín hiệu vận hành                                            | 5, 6  |
+| `apps/api/src/services/customers.test.ts`       | Test bỏ dấu, test index, test parity                                              | 5, 6  |
+| `apps/api/src/routes/rentals.ts`                | Mở rộng `customerListRowSchema`                                                   | 6     |
+| `apps/staff/src/components/ui/alert.tsx`        | `role`/`aria-live`                                                                | 7     |
+| `apps/staff/src/components/ui/text-field.tsx`   | `min-h-11`                                                                        | 7     |
+| `apps/staff/src/lib/customers.ts`               | `placeholderData`, kiểu mới                                                       | 8     |
+| `apps/staff/src/lib/rental-status.ts`           | Nới tham số `rentalChipClass`                                                     | 9     |
+| `apps/staff/src/components/customers/*.tsx`     | Tiêu thụ tín hiệu, vùng chạm                                                      | 9, 10 |
+| `docs/DEBT.md`, `docs/ROADMAP.md`               | Ghi nợ đã quyết không trả                                                         | 11    |
 
 ---
 
@@ -57,6 +57,7 @@ Kết quả vẫn y hệt design doc: `activeRental` + `lateReturnCount`, suy ra
 thì không task nào sau đó kiểm chứng được.
 
 **Files:**
+
 - Modify: `apps/staff/src/router.tsx:248-263`
 - Modify: `apps/staff/src/components/layout/app-nav.tsx:26,35`
 - Modify: `apps/staff/src/pages/customer-detail-page.tsx:16`
@@ -91,7 +92,8 @@ export interface CustomersSearch {
 export function validateCustomersSearch(search: Record<string, unknown>): CustomersSearch {
   const rawQ = search["q"];
   const rawPage = search["page"];
-  const page = typeof rawPage === "number" && Number.isInteger(rawPage) && rawPage >= 1 ? rawPage : 1;
+  const page =
+    typeof rawPage === "number" && Number.isInteger(rawPage) && rawPage >= 1 ? rawPage : 1;
   return { q: typeof rawQ === "string" ? rawQ : "", page };
 }
 ```
@@ -153,7 +155,7 @@ Sửa nhánh `protectedLayoutRoute.addChildren([...])` thành:
 (`router.tsx:97`), ID đầy đủ là `/protected/customers/$id`:
 
 ```tsx
-  const { id } = useParams({ from: "/protected/customers/$id" });
+const { id } = useParams({ from: "/protected/customers/$id" });
 ```
 
 `<Link to="/customers/$id">` ở `customer-table.tsx:31` và `<Link to="/customers">` ở
@@ -213,6 +215,7 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ## Task 2: State lên URL (đóng P1 "User Control and Freedom")
 
 **Files:**
+
 - Modify: `apps/staff/src/pages/customers-list-page.tsx:19-39`
 - Modify: `apps/staff/src/router.tsx` (thêm `validateSearch` cho `customerDetailRoute`)
 - Modify: `apps/staff/src/components/customers/customer-table.tsx` (mang `q`/`page` sang trang chi tiết)
@@ -228,8 +231,8 @@ riêng; **Step 4 dưới đây nối `search.page` thẳng vào `customersListQu
 Trong `apps/staff/src/lib/customers-search.ts`, đổi `Number.isInteger` thành `Number.isSafeInteger`:
 
 ```ts
-  const page =
-    typeof rawPage === "number" && Number.isSafeInteger(rawPage) && rawPage >= 1 ? rawPage : 1;
+const page =
+  typeof rawPage === "number" && Number.isSafeInteger(rawPage) && rawPage >= 1 ? rawPage : 1;
 ```
 
 - [ ] **Step 2: Viết test cho `validateCustomersSearch`** (hàm đã tạo ở Task 1 Step 2)
@@ -381,17 +384,17 @@ interface CustomerTableProps {
 Trong `customer-detail-page.tsx`, đọc lại và trả về đúng chỗ:
 
 ```tsx
-  const backSearch = useSearch({ strict: false });
+const backSearch = useSearch({ strict: false });
 ```
 
 ```tsx
-      <Link
-        to="/customers"
-        search={{ q: backSearch.q ?? "", page: backSearch.page ?? 1 }}
-        className="text-sm text-muted underline-offset-2 hover:underline"
-      >
-        ← Khách hàng
-      </Link>
+<Link
+  to="/customers"
+  search={{ q: backSearch.q ?? "", page: backSearch.page ?? 1 }}
+  className="text-sm text-muted underline-offset-2 hover:underline"
+>
+  ← Khách hàng
+</Link>
 ```
 
 - [ ] **Step 6: Đồng bộ `searchText` khi `q` đổi từ Back/Forward**
@@ -417,11 +420,11 @@ props change" của React), không dùng `useEffect` thứ hai — effect chạy
 nháy một khung hình giá trị cũ:
 
 ```tsx
-  const [lastQ, setLastQ] = useState(q);
-  if (shouldResyncSearchText(q, lastQ)) {
-    setLastQ(q);
-    setSearchText(q);
-  }
+const [lastQ, setLastQ] = useState(q);
+if (shouldResyncSearchText(q, lastQ)) {
+  setLastQ(q);
+  setSearchText(q);
+}
 ```
 
 Test: `shouldResyncSearchText("", "nguyen")` → `true` (gõ "nguyen" rồi Back về rỗng);
@@ -459,6 +462,7 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ## Task 3: Bỏ `<main>` lồng nhau (đóng P1 "Consistency and Standards")
 
 **Files:**
+
 - Modify: `apps/staff/src/pages/customers-list-page.tsx:42,94`
 - Modify: `apps/staff/src/pages/customer-detail-page.tsx:37,71`
 
@@ -468,8 +472,8 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 sed -n '15,30p' apps/staff/src/pages/stats-page.tsx
 ```
 
-Expected: thấy comment nói `AppShell` đã bọc `children` trong CHÍNH MỘT `<main>`, và *"trang MỚI
-thì không lặp"*.
+Expected: thấy comment nói `AppShell` đã bọc `children` trong CHÍNH MỘT `<main>`, và _"trang MỚI
+thì không lặp"_.
 
 - [ ] **Step 2: Sửa `customers-list-page.tsx`**
 
@@ -537,6 +541,7 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ## Task 4: Migration — extension, `f_unaccent`, GIN index, ba cột
 
 **Files:**
+
 - Create: `packages/db/migrations/00XX_*.sql` (số do `db:custom` sinh)
 - Modify: `packages/db/src/schema/rentals.ts`
 - Modify: `packages/db/src/schema/rentals-schema.test.ts`
@@ -746,6 +751,7 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ## Task 5: Chuẩn hoá tìm kiếm ở API (đóng P1 "ô tìm nói dối")
 
 **Files:**
+
 - Modify: `apps/api/src/services/customers.ts:3,32-52,180-190`
 - Modify: `apps/api/src/services/customers.test.ts`
 
@@ -754,10 +760,10 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 Thêm vào `apps/api/src/services/customers.test.ts`, trong `describe("searchCustomers")` đã có:
 
 ```ts
-  it("gõ thường KHÔNG DẤU vẫn ra đúng hồ sơ", async () => {
-    const rows = await searchCustomers(`${P}minh`);
-    expect(rows.length).toBeGreaterThan(0);
-  });
+it("gõ thường KHÔNG DẤU vẫn ra đúng hồ sơ", async () => {
+  const rows = await searchCustomers(`${P}minh`);
+  expect(rows.length).toBeGreaterThan(0);
+});
 ```
 
 Và một `describe` mới cho hàng rào parity:
@@ -835,11 +841,11 @@ Trong `searchCustomers` (khoảng dòng 45-49), thay:
 Trong `listCustomers` (khoảng dòng 184-188), thay:
 
 ```ts
-  const where = term
-    ? asPhone
-      ? or(eq(schema.customers.phone, asPhone), fullNameMatches(term))
-      : fullNameMatches(term)
-    : undefined; // KHÔNG lọc — đúng điểm khác biệt cố ý với searchCustomers.
+const where = term
+  ? asPhone
+    ? or(eq(schema.customers.phone, asPhone), fullNameMatches(term))
+    : fullNameMatches(term)
+  : undefined; // KHÔNG lọc — đúng điểm khác biệt cố ý với searchCustomers.
 ```
 
 Bỏ `like` khỏi import dòng 3 nếu không còn chỗ nào dùng:
@@ -906,6 +912,7 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ## Task 6: Tín hiệu vận hành ở API
 
 **Files:**
+
 - Modify: `apps/api/src/services/customers.ts:150-222`
 - Modify: `apps/api/src/routes/rentals.ts:34`
 - Modify: `apps/api/src/services/customers.test.ts`
@@ -941,22 +948,22 @@ export interface CustomerListRow extends Customer {
 Thay khối `counts` (khoảng dòng 204-216) bằng:
 
 ```ts
-  const ids = rows.map((r) => r.id);
+const ids = rows.map((r) => r.id);
 
-  // Đếm rental CHỈ cho đúng trang đang xem — không đếm cả bảng `rentals` cho
-  // 12.000 khách để rồi vứt đi 11.980 kết quả không hiện ra màn hình.
-  // `lateReturnCount` đi ké đúng câu này: cùng bảng, cùng phạm vi, thêm một
-  // aggregate có FILTER thì rẻ hơn hẳn một vòng mạng thứ hai.
-  const counts = await db
-    .select({
-      customerId: schema.rentals.customerId,
-      n: sql<number>`count(*)::int`,
-      late: sql<number>`(count(*) FILTER (WHERE ${schema.rentals.returnedAt} > ${schema.rentals.endsAt}))::int`,
-    })
-    .from(schema.rentals)
-    .where(inArray(schema.rentals.customerId, ids))
-    .groupBy(schema.rentals.customerId);
-  const countByCustomer = new Map(counts.map((c) => [c.customerId, c]));
+// Đếm rental CHỈ cho đúng trang đang xem — không đếm cả bảng `rentals` cho
+// 12.000 khách để rồi vứt đi 11.980 kết quả không hiện ra màn hình.
+// `lateReturnCount` đi ké đúng câu này: cùng bảng, cùng phạm vi, thêm một
+// aggregate có FILTER thì rẻ hơn hẳn một vòng mạng thứ hai.
+const counts = await db
+  .select({
+    customerId: schema.rentals.customerId,
+    n: sql<number>`count(*)::int`,
+    late: sql<number>`(count(*) FILTER (WHERE ${schema.rentals.returnedAt} > ${schema.rentals.endsAt}))::int`,
+  })
+  .from(schema.rentals)
+  .where(inArray(schema.rentals.customerId, ids))
+  .groupBy(schema.rentals.customerId);
+const countByCustomer = new Map(counts.map((c) => [c.customerId, c]));
 ```
 
 - [ ] **Step 3: Thêm truy vấn `activeRental`**
@@ -964,30 +971,30 @@ Thay khối `counts` (khoảng dòng 204-216) bằng:
 Ngay sau khối `counts`:
 
 ```ts
-  // `DISTINCT ON` lấy ĐÚNG MỘT đơn mỗi khách — thứ tự trong ORDER BY chính là
-  // luật ưu tiên: ONGOING trước BOOKED, rồi trong mỗi nhóm lấy mốc thời gian
-  // gần nhất (ONGOING xét `ends_at` vì nó sắp tới hạn; BOOKED xét `starts_at`
-  // vì nó sắp bắt đầu). Cũng khoanh theo trang như câu trên.
-  const actives = await db
-    .selectDistinctOn([schema.rentals.customerId], {
-      customerId: schema.rentals.customerId,
-      id: schema.rentals.id,
-      status: schema.rentals.status,
-      endsAt: schema.rentals.endsAt,
-    })
-    .from(schema.rentals)
-    .where(
-      and(
-        inArray(schema.rentals.customerId, ids),
-        inArray(schema.rentals.status, ["ONGOING", "BOOKED"]),
-      ),
-    )
-    .orderBy(
-      schema.rentals.customerId,
-      sql`CASE ${schema.rentals.status} WHEN 'ONGOING' THEN 0 ELSE 1 END`,
-      sql`CASE ${schema.rentals.status} WHEN 'ONGOING' THEN ${schema.rentals.endsAt} ELSE ${schema.rentals.startsAt} END`,
-    );
-  const activeByCustomer = new Map(actives.map((a) => [a.customerId, a]));
+// `DISTINCT ON` lấy ĐÚNG MỘT đơn mỗi khách — thứ tự trong ORDER BY chính là
+// luật ưu tiên: ONGOING trước BOOKED, rồi trong mỗi nhóm lấy mốc thời gian
+// gần nhất (ONGOING xét `ends_at` vì nó sắp tới hạn; BOOKED xét `starts_at`
+// vì nó sắp bắt đầu). Cũng khoanh theo trang như câu trên.
+const actives = await db
+  .selectDistinctOn([schema.rentals.customerId], {
+    customerId: schema.rentals.customerId,
+    id: schema.rentals.id,
+    status: schema.rentals.status,
+    endsAt: schema.rentals.endsAt,
+  })
+  .from(schema.rentals)
+  .where(
+    and(
+      inArray(schema.rentals.customerId, ids),
+      inArray(schema.rentals.status, ["ONGOING", "BOOKED"]),
+    ),
+  )
+  .orderBy(
+    schema.rentals.customerId,
+    sql`CASE ${schema.rentals.status} WHEN 'ONGOING' THEN 0 ELSE 1 END`,
+    sql`CASE ${schema.rentals.status} WHEN 'ONGOING' THEN ${schema.rentals.endsAt} ELSE ${schema.rentals.startsAt} END`,
+  );
+const activeByCustomer = new Map(actives.map((a) => [a.customerId, a]));
 ```
 
 - [ ] **Step 4: Ráp vào kết quả**
@@ -995,21 +1002,21 @@ Ngay sau khối `counts`:
 Thay khối `return` cuối `listCustomers`:
 
 ```ts
-  return {
-    customers: rows.map((r) => {
-      const c = countByCustomer.get(r.id);
-      const a = activeByCustomer.get(r.id);
-      return {
-        ...r,
-        rentalCount: c?.n ?? 0,
-        lateReturnCount: c?.late ?? 0,
-        activeRental: a
-          ? { id: a.id, status: a.status as "ONGOING" | "BOOKED", endsAt: a.endsAt }
-          : null,
-      };
-    }),
-    total,
-  };
+return {
+  customers: rows.map((r) => {
+    const c = countByCustomer.get(r.id);
+    const a = activeByCustomer.get(r.id);
+    return {
+      ...r,
+      rentalCount: c?.n ?? 0,
+      lateReturnCount: c?.late ?? 0,
+      activeRental: a
+        ? { id: a.id, status: a.status as "ONGOING" | "BOOKED", endsAt: a.endsAt }
+        : null,
+    };
+  }),
+  total,
+};
 ```
 
 - [ ] **Step 5: Mở rộng response schema**
@@ -1044,10 +1051,10 @@ nó sinh ra để chặn. Hôm nay may mắn chỉ có một hàng khớp nên n
 Nâng lên so **tập `id`**, gần như miễn phí:
 
 ```ts
-    const idsFromSearch = fromSearch.map((c) => c.id).sort();
-    const idsFromList = fromList.customers.map((c) => c.id).sort();
-    expect(idsFromSearch.length).toBeGreaterThan(0);
-    expect(idsFromSearch).toEqual(idsFromList);
+const idsFromSearch = fromSearch.map((c) => c.id).sort();
+const idsFromList = fromList.customers.map((c) => c.id).sort();
+expect(idsFromSearch.length).toBeGreaterThan(0);
+expect(idsFromSearch).toEqual(idsFromList);
 ```
 
 Lưu ý khi seed thêm khách cho Task 6: `searchCustomers` có `.limit(20)` còn `listCustomers` phân
@@ -1101,6 +1108,7 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ## Task 7: `ui/alert.tsx` và `ui/text-field.tsx` (dùng chung — sửa một chỗ, vá sáu màn)
 
 **Files:**
+
 - Modify: `apps/staff/src/components/ui/alert.tsx:23`
 - Modify: `apps/staff/src/components/ui/text-field.tsx:18`
 
@@ -1118,20 +1126,20 @@ Expected: liệt kê các màn đang dùng (gồm sáu màn auth). Ghi lại —
 Trong `apps/staff/src/components/ui/alert.tsx`, thay dòng 23:
 
 ```tsx
-  return (
-    // `role="alert"` cho lỗi (ngắt lời trình đọc màn hình — người dùng cần biết
-    // NGAY), `role="status"` + `aria-live="polite"` cho warning/info (chờ tới
-    // lượt, không cắt ngang). Trước đây đây là `<p>` trần: câu 409 "Số điện
-    // thoại này đã thuộc về khách hàng khác: …" hiện lên màn hình và KHÔNG được
-    // đọc ra — người dùng screen reader nghe thấy đúng con số không.
-    <p
-      role={tone === "error" ? "alert" : "status"}
-      aria-live={tone === "error" ? "assertive" : "polite"}
-      className={`rounded-card p-3 text-sm ${TONE[tone]}`}
-    >
-      {children}
-    </p>
-  );
+return (
+  // `role="alert"` cho lỗi (ngắt lời trình đọc màn hình — người dùng cần biết
+  // NGAY), `role="status"` + `aria-live="polite"` cho warning/info (chờ tới
+  // lượt, không cắt ngang). Trước đây đây là `<p>` trần: câu 409 "Số điện
+  // thoại này đã thuộc về khách hàng khác: …" hiện lên màn hình và KHÔNG được
+  // đọc ra — người dùng screen reader nghe thấy đúng con số không.
+  <p
+    role={tone === "error" ? "alert" : "status"}
+    aria-live={tone === "error" ? "assertive" : "polite"}
+    className={`rounded-card p-3 text-sm ${TONE[tone]}`}
+  >
+    {children}
+  </p>
+);
 ```
 
 - [ ] **Step 3: `TextField` đạt vùng chạm 44px**
@@ -1178,6 +1186,7 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ## Task 8: Nhánh lỗi và hết nhấp nháy (đóng P1 "hỏng im lặng")
 
 **Files:**
+
 - Modify: `apps/staff/src/lib/customers.ts:43-52`
 - Modify: `apps/staff/src/pages/customers-list-page.tsx`
 - Modify: `apps/staff/src/pages/customer-detail-page.tsx`
@@ -1222,20 +1231,24 @@ export const customersListQuery = (q: string, page: number) => ({
 Trong `customers-list-page.tsx`, ngay sau khối `query.data?.ok === false`, thêm:
 
 ```tsx
-      {query.isError && (
-        <div className="flex flex-col items-start gap-2">
-          <Alert tone="error">Không kết nối được máy chủ.</Alert>
-          <Button type="button" variant="ghost" onClick={() => void query.refetch()}>
-            Thử lại
-          </Button>
-        </div>
-      )}
+{
+  query.isError && (
+    <div className="flex flex-col items-start gap-2">
+      <Alert tone="error">Không kết nối được máy chủ.</Alert>
+      <Button type="button" variant="ghost" onClick={() => void query.refetch()}>
+        Thử lại
+      </Button>
+    </div>
+  );
+}
 ```
 
 Và đổi chỉ báo tải (dòng 62) từ `query.isPending` sang `query.isFetching`:
 
 ```tsx
-      {query.isFetching && <p className="text-sm text-muted">Đang tải…</p>}
+{
+  query.isFetching && <p className="text-sm text-muted">Đang tải…</p>;
+}
 ```
 
 - [ ] **Step 4: Nhánh `isError` ở trang chi tiết**
@@ -1243,14 +1256,16 @@ Và đổi chỉ báo tải (dòng 62) từ `query.isPending` sang `query.isFetc
 Trong `customer-detail-page.tsx`, thêm sau khối `detail.data?.ok === false`:
 
 ```tsx
-      {detail.isError && (
-        <div className="flex flex-col items-start gap-2">
-          <Alert tone="error">Không kết nối được máy chủ.</Alert>
-          <Button type="button" variant="ghost" onClick={() => void detail.refetch()}>
-            Thử lại
-          </Button>
-        </div>
-      )}
+{
+  detail.isError && (
+    <div className="flex flex-col items-start gap-2">
+      <Alert tone="error">Không kết nối được máy chủ.</Alert>
+      <Button type="button" variant="ghost" onClick={() => void detail.refetch()}>
+        Thử lại
+      </Button>
+    </div>
+  );
+}
 ```
 
 và tương tự cho `rentals` (dùng `rentals.isError` / `rentals.refetch()`), đặt cạnh khối
@@ -1305,6 +1320,7 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ## Task 9: Tín hiệu vận hành ở UI
 
 **Files:**
+
 - Modify: `apps/staff/src/lib/rental-status.ts:46-49`
 - Modify: `apps/staff/src/components/customers/customer-table.tsx`
 - Modify: `apps/staff/src/components/customers/customer-rental-history.tsx:52`
@@ -1332,10 +1348,7 @@ Trong `apps/staff/src/lib/rental-status.ts`, thay chữ ký `rentalChipClass`:
  * dạng hẹp hơn. Khớp đúng chữ ký `isOverdue` (`@v9/shared/domain/rental`) nên
  * không có định nghĩa "quá hạn" thứ hai nào sinh ra.
  */
-export function rentalChipClass(
-  rental: { status: RentalStatus; endsAt: Date },
-  now: Date,
-): string {
+export function rentalChipClass(rental: { status: RentalStatus; endsAt: Date }, now: Date): string {
   if (isOverdue(rental, now)) return "bg-status-overdue text-accent-ink";
   return STATUS_CLASS[rental.status];
 }
@@ -1357,11 +1370,21 @@ export function CustomerTable({ rows }: CustomerTableProps) {
         {rows.length > 0 && (
           <thead>
             <tr className="border-b border-border text-muted">
-              <th scope="col" className="card-pad">Họ tên</th>
-              <th scope="col" className="card-pad">Điện thoại</th>
-              <th scope="col" className="card-pad">Tình trạng</th>
-              <th scope="col" className="card-pad">Ghi chú</th>
-              <th scope="col" className="card-pad text-right">Số đơn</th>
+              <th scope="col" className="card-pad">
+                Họ tên
+              </th>
+              <th scope="col" className="card-pad">
+                Điện thoại
+              </th>
+              <th scope="col" className="card-pad">
+                Tình trạng
+              </th>
+              <th scope="col" className="card-pad">
+                Ghi chú
+              </th>
+              <th scope="col" className="card-pad text-right">
+                Số đơn
+              </th>
             </tr>
           </thead>
         )}
@@ -1384,7 +1407,10 @@ export function CustomerTable({ rows }: CustomerTableProps) {
                 <div className="card-pad flex items-center gap-3">
                   {/* Shop chạy bằng Zalo (PRODUCT.md). Số điện thoại là HÀNH
                       ĐỘNG, không phải dữ liệu để copy bằng một tay ngoài nắng. */}
-                  <a href={`tel:${row.phone}`} className="min-h-11 flex items-center text-ink underline-offset-2 hover:underline">
+                  <a
+                    href={`tel:${row.phone}`}
+                    className="min-h-11 flex items-center text-ink underline-offset-2 hover:underline"
+                  >
                     {row.phone}
                   </a>
                   <a
@@ -1438,19 +1464,17 @@ import { rentalChipClass, STATUS_LABEL } from "../../lib/rental-status";
 Trong `customer-rental-history.tsx`, thay dòng 52:
 
 ```tsx
-              <td className="card-pad">
-                <span
-                  className={`inline-block rounded-card px-2 py-0.5 ${rentalChipClass(r, new Date())}`}
-                >
-                  {STATUS_LABEL[r.status]}
-                </span>
-              </td>
+<td className="card-pad">
+  <span className={`inline-block rounded-card px-2 py-0.5 ${rentalChipClass(r, new Date())}`}>
+    {STATUS_LABEL[r.status]}
+  </span>
+</td>
 ```
 
 và dòng 53 thêm `tabular-nums` + canh phải:
 
 ```tsx
-              <td className="card-pad text-right tabular-nums">{formatVnd(r.totalAmount)}</td>
+<td className="card-pad text-right tabular-nums">{formatVnd(r.totalAmount)}</td>
 ```
 
 Sửa import dòng 4:
@@ -1507,6 +1531,7 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ## Task 10: Dọn phần còn lại
 
 **Files:**
+
 - Modify: `apps/staff/src/pages/customers-list-page.tsx`
 - Modify: `apps/staff/src/components/customers/customer-edit-form.tsx`
 
@@ -1515,34 +1540,36 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 Trong `customers-list-page.tsx`, tách số tổng khỏi điều kiện phân trang. Thay khối `total > CUSTOMERS_PAGE_SIZE`:
 
 ```tsx
-      {query.data?.ok && total > 0 && (
-        <div className="flex items-center gap-3">
-          {total > CUSTOMERS_PAGE_SIZE && (
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={page <= 1}
-              onClick={() => void navigate({ search: { q, page: Math.max(1, page - 1) } })}
-            >
-              ← Trước
-            </Button>
-          )}
-          <span className="text-sm text-muted">
-            {total > CUSTOMERS_PAGE_SIZE ? `Trang ${page}/${totalPages} · ` : ""}
-            {total} khách hàng
-          </span>
-          {total > CUSTOMERS_PAGE_SIZE && (
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={page >= totalPages}
-              onClick={() => void navigate({ search: { q, page: Math.min(totalPages, page + 1) } })}
-            >
-              Sau →
-            </Button>
-          )}
-        </div>
+{
+  query.data?.ok && total > 0 && (
+    <div className="flex items-center gap-3">
+      {total > CUSTOMERS_PAGE_SIZE && (
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={page <= 1}
+          onClick={() => void navigate({ search: { q, page: Math.max(1, page - 1) } })}
+        >
+          ← Trước
+        </Button>
       )}
+      <span className="text-sm text-muted">
+        {total > CUSTOMERS_PAGE_SIZE ? `Trang ${page}/${totalPages} · ` : ""}
+        {total} khách hàng
+      </span>
+      {total > CUSTOMERS_PAGE_SIZE && (
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={page >= totalPages}
+          onClick={() => void navigate({ search: { q, page: Math.min(totalPages, page + 1) } })}
+        >
+          Sau →
+        </Button>
+      )}
+    </div>
+  );
+}
 ```
 
 Trước đó shop có 18 khách không bao giờ nhìn thấy mình có bao nhiêu khách.
@@ -1567,19 +1594,19 @@ Trong `customer-edit-form.tsx`, gọi `update.reset()` khi người dùng gõ ti
 `customer-edit-form.tsx` bằng markup tại chỗ, cùng token:
 
 ```tsx
-        <label className="flex flex-col gap-1 text-sm text-ink">
-          Ghi chú
-          <textarea
-            value={note}
-            maxLength={500}
-            rows={3}
-            onChange={(e) => {
-              setNote(e.target.value);
-              if (update.isSuccess) update.reset();
-            }}
-            className="min-h-11 rounded-card border border-border bg-surface px-3 py-2 text-ink"
-          />
-        </label>
+<label className="flex flex-col gap-1 text-sm text-ink">
+  Ghi chú
+  <textarea
+    value={note}
+    maxLength={500}
+    rows={3}
+    onChange={(e) => {
+      setNote(e.target.value);
+      if (update.isSuccess) update.reset();
+    }}
+    className="min-h-11 rounded-card border border-border bg-surface px-3 py-2 text-ink"
+  />
+</label>
 ```
 
 - [ ] **Step 4: Verify**
@@ -1609,6 +1636,7 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 ## Task 11: Ghi nợ đã quyết không trả
 
 **Files:**
+
 - Modify: `docs/DEBT.md`
 - Modify: `docs/ROADMAP.md`
 
@@ -1618,8 +1646,8 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 - **Không có chức năng gộp hồ sơ khách trùng** — quyết định 2026-08-31, không phải bỏ sót.
   `customers.phone` là `UNIQUE` nên hồ sơ trùng chỉ xảy ra khi MỘT người dùng hai số khác nhau; và
   từ khi tìm kiếm bỏ dấu (migration `00XX`), nhân viên tìm ra hồ sơ cũ thay vì tạo mới. Lập trường
-  đã có tiền lệ thành văn ở migration `0011`: *gộp ngầm hai hồ sơ là quyết định nghiệp vụ, không
-  phải thứ một migration tự động nên tự ý làm.*
+  đã có tiền lệ thành văn ở migration `0011`: _gộp ngầm hai hồ sơ là quyết định nghiệp vụ, không
+  phải thứ một migration tự động nên tự ý làm._
   **Điều kiện mở lại:** xuất hiện ca trùng thật (hai hồ sơ, hai số, cùng một người).
 
 - **Ba cột `rentals.document_type` / `document_returned_at` / `delivery_address` chưa có writer** —
@@ -1652,8 +1680,8 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
 **Màn Khách hàng — đã land 2026-08-31**, xem
 [`plans/2026-08-31-customers-surface-design.md`](plans/2026-08-31-customers-surface-design.md).
 Chưa làm, cần brainstorm riêng: sort/lọc/nhảy trang và hành động hàng loạt (một shop 12.000 khách
-tới trang 300 là 300 cú click) · đổi thứ tự mặc định từ `asc(fullName)` sang *quá hạn → đang thuê →
-gần nhất* (đổi nó là đổi hình dạng sản phẩm: danh sách duyệt → danh sách cần chú ý) · ảnh chụp giấy
+tới trang 300 là 300 cú click) · đổi thứ tự mặc định từ `asc(fullName)` sang _quá hạn → đang thuê →
+gần nhất_ (đổi nó là đổi hình dạng sản phẩm: danh sách duyệt → danh sách cần chú ý) · ảnh chụp giấy
 tờ lên MinIO cùng đợt bàn giao.
 ```
 
