@@ -165,6 +165,28 @@
  * accent nằm ngay cạnh nút accent và biến mất (1,03:1 trên chip đỏ đặc).
  */
 @layer base {
+  /*
+   * Màu chữ placeholder — hệ thiết kế phải SỞ HỮU nó.
+   *
+   * Không khai thì preflight Tailwind v4 để nguyên mặc định của nó:
+   * `color-mix(in oklab, currentcolor 50%, transparent)`. Trong ô nhập
+   * `currentcolor` là `--color-ink`, nên placeholder render ra `rgb(138,138,138)`
+   * trên `bg-surface` = **3,45:1**, dưới ngưỡng AA 4,5:1 cho chữ. Ba ô có
+   * placeholder: tìm khách hàng, tìm khách ở form lên đơn, địa chỉ giao xe.
+   *
+   * Đây là điểm mù của đợt đo token trước: mọi cặp màu app TỰ KHAI đều được đo,
+   * nhưng placeholder không nằm trong `@theme` — nó là mặc định kế thừa, tức
+   * không có gì để đem ra đo. `--color-muted` cho 5,49:1 trên surface và 5,26:1
+   * trên canvas, và nó vốn đã là token dành cho chữ phụ.
+   *
+   * ⚠️ Tự kiểm bằng `getComputedStyle(input, '::placeholder').color` sẽ RA SAI:
+   * Chromium trả về màu KẾ THỪA (`oklch(0.2 0 0)`), cho ra 18,10:1. Phải tự tính
+   * `color-mix` rồi tô vào `<canvas>` mà đọc pixel.
+   */
+  ::placeholder {
+    color: var(--color-muted);
+  }
+
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
