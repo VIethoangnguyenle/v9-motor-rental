@@ -33,6 +33,7 @@ import { SignupPage } from "./pages/signup-page";
 import { LoginPage } from "./pages/login-page";
 import { HealthPage } from "./pages/health-page";
 import { StaffListPage } from "./pages/staff-list-page";
+import { RequestsPage } from "./pages/requests-page";
 import { StatsPage } from "./pages/stats-page";
 import { ForgotPasswordPage } from "./pages/forgot-password-page";
 
@@ -174,6 +175,18 @@ const pendingApprovalRoute = createRoute({
   component: PendingApprovalPage,
 });
 
+/**
+ * Yêu cầu thuê từ `apps/web`. Treo dưới `protectedLayoutRoute` như mọi trang
+ * nghiệp vụ — KHÔNG `ownerOnly`: tiếp nhận yêu cầu là việc hằng ngày của nhân
+ * viên, không phải việc quản trị. Hàng rào dữ liệu tương ứng ở server là
+ * `staffGuard` (đòi hồ sơ ACTIVE), không phải `requireRole`.
+ */
+const requestsRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/requests",
+  component: RequestsPage,
+});
+
 const homeRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: "/",
@@ -286,6 +299,7 @@ const routeTree = rootRoute.addChildren([
     calendarRoute,
     customersListRoute,
     customerDetailRoute,
+    requestsRoute,
   ]),
 ]);
 

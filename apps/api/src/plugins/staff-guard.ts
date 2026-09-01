@@ -23,6 +23,13 @@ const PUBLIC_ROUTES: readonly RouteMatcher[] = [
   { method: "GET", pattern: /^\/health/ },
   { method: "GET", pattern: /^\/vehicles(\/|$)/ }, // apps/web SSG cần
   { method: "POST", pattern: /^\/staff\/password-reset\/(request|confirm)$/ },
+  // ⚠️ Đường ghi công khai DUY NHẤT của API. Khách trên `apps/web` không có tài
+  // khoản (PRODUCT.md), nên gửi yêu cầu thuê không thể đòi session.
+  //
+  // Neo `$` ở cuối là cơ chế, không phải thẩm mỹ: nó mở ĐÚNG `POST /requests`.
+  // Bỏ neo đi thì `POST /requests/:id/status` — route nhân viên đổi trạng thái —
+  // cũng khớp, và bất kỳ ai trên internet đóng được yêu cầu của shop.
+  { method: "POST", pattern: /^\/requests$/ },
 ];
 
 /**
@@ -34,6 +41,19 @@ const PUBLIC_ROUTES: readonly RouteMatcher[] = [
  * họ cần không vào được.
  */
 const SESSION_ONLY_ROUTES: readonly RouteMatcher[] = [{ method: "GET", pattern: /^\/staff\/me$/ }];
+
+/**
+ * Hàm THUẦN phơi ra CHỈ để test được danh sách công khai mà không phải dựng
+ * request thật — cùng lý lẽ `decideEntry` ở `apps/staff/src/lib/guard-decision.ts`.
+ *
+ * Vì sao cần: đi qua HTTP KHÔNG kiểm được cạnh này. Handler của
+ * `POST /requests/:id/status` có nhánh phòng thủ `if (!staff) return 401` với
+ * cùng `code` guard trả, nên khi guard cho lọt thì response vẫn là 401 và một
+ * test HTTP vẫn xanh. Đã đo: bỏ neo `$` khỏi pattern `/requests` thì bộ test
+ * HTTP không đổi màu. Cạnh chỉ lộ ra khi hỏi thẳng danh sách.
+ */
+export const isPublicRoute = (method: string, path: string): boolean =>
+  matchesRoute(PUBLIC_ROUTES, method, path);
 
 const matchesRoute = (list: readonly RouteMatcher[], method: string, path: string): boolean =>
   list.some((r) => (r.method === "*" || r.method === method) && r.pattern.test(path));

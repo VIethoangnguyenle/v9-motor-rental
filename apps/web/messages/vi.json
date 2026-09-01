@@ -32,14 +32,31 @@
     "perDay": "/ ngày",
     "depositLabel": "Tiền cọc",
     "longTerm": "Thuê dài ngày có giá riêng — liên hệ shop để được báo giá.",
-    "specs": { "engine": "Phân khối", "year": "Đời xe", "odo": "ODO", "color": "Màu" }
+    "specs": {
+      "engine": "Phân khối",
+      "year": "Đời xe",
+      "odo": "ODO",
+      "color": "Màu"
+    }
   },
   "terms": {
     "heading": "Thủ tục thuê",
-    "papers": { "value": "CCCD / Hộ chiếu", "label": "Giấy tờ giữ lại" },
-    "deposit": { "value": "Đặt cọc tiền", "label": "Kèm giấy tờ tùy thân" },
-    "unit": { "value": "Theo ngày", "label": "Đơn vị thuê cơ bản" },
-    "delivery": { "value": "Giao tận nơi", "label": "Khách sạn hoặc địa chỉ hẹn" },
+    "papers": {
+      "value": "CCCD / Hộ chiếu",
+      "label": "Giấy tờ giữ lại"
+    },
+    "deposit": {
+      "value": "Đặt cọc tiền",
+      "label": "Kèm giấy tờ tùy thân"
+    },
+    "unit": {
+      "value": "Theo ngày",
+      "label": "Đơn vị thuê cơ bản"
+    },
+    "delivery": {
+      "value": "Giao tận nơi",
+      "label": "Khách sạn hoặc địa chỉ hẹn"
+    },
     "photoNote": "Shop chụp ảnh tình trạng xe lúc giao và lúc nhận lại. Ảnh đó là bằng chứng khi có tranh chấp xước xát — bảo vệ cả bạn lẫn shop."
   },
   "footer": {
@@ -50,5 +67,26 @@
   },
   "placeholder": {
     "imageTag": "Ảnh AI tạm — chưa phải xe của shop"
+  },
+  "request": {
+    "heading": "Gửi yêu cầu thuê",
+    "lead": "Điền thông tin bên dưới, shop sẽ liên hệ để xác nhận xe và thời gian.",
+    "vehicle": "Xe muốn thuê",
+    "vehiclePlaceholder": "— Chọn xe —",
+    "fullName": "Họ và tên",
+    "phone": "Số điện thoại",
+    "phoneHint": "Shop gọi hoặc nhắn Zalo vào số này.",
+    "startDate": "Ngày nhận xe",
+    "days": "Số ngày thuê",
+    "deliveryAddress": "Địa chỉ giao xe",
+    "deliveryHint": "Khách sạn hoặc địa chỉ bạn hẹn. Để trống nếu bạn tự tới shop lấy xe.",
+    "note": "Ghi chú",
+    "notePlaceholder": "Bằng lái, kinh nghiệm chạy xe, hoặc điều bạn muốn shop biết trước.",
+    "optional": "không bắt buộc",
+    "submitting": "Đang gửi…",
+    "backToVehicle": "← Quay lại trang xe",
+    "failed": "Chưa gửi được yêu cầu. Bạn thử lại sau ít phút, hoặc nhắn Zalo hoặc Fanpage cho shop.",
+    "required": "Vui lòng điền đầy đủ họ tên, số điện thoại và ngày nhận xe.",
+    "noVehicles": "Chưa có xe nào được đăng, nên chưa gửi yêu cầu được."
   }
 }

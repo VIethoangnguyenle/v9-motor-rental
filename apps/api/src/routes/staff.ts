@@ -24,6 +24,7 @@ import {
   type StaffUser,
 } from "../services/staff";
 import type { RentalErrorCode } from "./rentals";
+import type { RequestErrorCode } from "./requests";
 
 /**
  * Route là tầng DUY NHẤT được phép chạm cả `services/` lẫn `supertokens-node`.
@@ -116,7 +117,12 @@ type Reason = PermissionReason | PasswordReason | ChangePasswordReason;
  * suy ra được của `ApiErrorCode`.
  */
 export type ApiErrorCode =
-  Reason | GuardErrorCode | RentalErrorCode | "EMAIL_NOT_CONFIGURED" | "RATE_LIMITED";
+  | Reason
+  | GuardErrorCode
+  | RentalErrorCode
+  | RequestErrorCode
+  | "EMAIL_NOT_CONFIGURED"
+  | "RATE_LIMITED";
 
 /**
  * Domain trả `reason` (pattern 3 của repo — discriminated union, không throw);

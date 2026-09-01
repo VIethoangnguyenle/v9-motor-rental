@@ -8,6 +8,7 @@ import { timing } from "./plugins/timing";
 import { fleet } from "./routes/fleet";
 import { health } from "./routes/health";
 import { rentals } from "./routes/rentals";
+import { requests } from "./routes/requests";
 import { staff } from "./routes/staff";
 import { stats } from "./routes/stats";
 import { vehicles } from "./routes/vehicles";
@@ -26,10 +27,23 @@ const app = new Elysia()
   // cùng lúc — để lệch một commit là để lệch một khoảng thời gian có lỗ hổng
   // thật. §7 docs/plans/2026-08-10-staff-auth-design.md.
   //
-  // Siết origin KHÔNG làm vỡ `apps/web`: đã grep 2026-08-11 — `apps/web` không
-  // có MỘT file `"use client"` nào, mọi lời gọi API nằm trong server component
-  // (`app/page.tsx`, `app/xe/page.tsx`, `app/xe/[slug]/page.tsx`) chạy lúc
-  // build/render phía server. Fetch phía server không đi qua CORS.
+  // Siết origin KHÔNG làm vỡ `apps/web`, nhưng LÝ DO đã đổi kể từ đợt form gửi
+  // yêu cầu (2026-09-01) — câu cũ ở đây dựa vào việc app đó không có file
+  // `"use client"` nào, và điều đó KHÔNG còn đúng:
+  // `apps/web/app/gui-yeu-cau/request-form.tsx` là một client component.
+  //
+  // Bất biến thật sự đang đỡ dòng `origin` bên dưới là hẹp hơn và bền hơn:
+  // **không có lời gọi nào tới API này xuất phát từ trình duyệt của khách.**
+  // Form kia submit vào một Server Action (`gui-yeu-cau/actions.ts`), tức request
+  // bay về server Next, rồi server Next mới gọi `POST /requests`. Fetch phía
+  // server không đi qua CORS.
+  //
+  // ⚠️ Hệ quả cho người sửa sau: thêm một `fetch(NEXT_PUBLIC_API_URL)` vào bất kỳ
+  // component `"use client"` nào của `apps/web` sẽ hỏng ở đây — và hỏng theo kiểu
+  // tệ nhất, chạy được ở dev rồi chết ở production. Cách đúng là gọi qua Server
+  // Action, KHÔNG phải thêm origin công khai vào mảng dưới đây: `POST /requests`
+  // là đường ghi không cần auth, và mở CORS cho nó nghĩa là mọi trang web trên
+  // đời gọi được nó bằng trình duyệt của khách.
   .use(
     cors({
       // Mảng chuỗi là hình dạng hợp lệ: `origin?: Origin | boolean | Origin[]`
@@ -63,6 +77,7 @@ const app = new Elysia()
   .use(staff)
   .use(fleet)
   .use(rentals)
+  .use(requests)
   .use(stats)
   .listen({ port: env.port, hostname: env.host });
 

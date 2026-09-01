@@ -118,3 +118,40 @@
     -webkit-font-smoothing: antialiased;
   }
 }
+
+/* Ô nhập — DESIGN.md §4. Gom thành utility cùng lý lẽ `btn-shape`: cả nhóm
+ * thuộc tính hình dạng phải đi cùng nhau, tách ra là sớm muộn có chỗ quên
+ * `rounded-none` hoặc quên chiều cao 48px.
+ *
+ * Focus làm viền DÀY LÊN và chuyển trắng, không phải một vòng ring bên ngoài:
+ * hệ này không có đổ bóng và không có lớp chrome (§6), nên tín hiệu focus phải
+ * đến từ chính đường viền vốn đã ở đó. `outline: none` mà không thay thế bằng gì
+ * là bỏ người dùng bàn phím lại phía sau — ở đây viền 2px trắng trên nền
+ * `surface-card` là tín hiệu đó.
+ */
+@utility text-input {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-radius: 0;
+  border: 1px solid var(--color-hairline);
+  background: var(--color-surface-card);
+  color: var(--color-ink);
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1.5;
+
+  &::placeholder {
+    color: var(--color-muted);
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--color-ink);
+    border-width: 2px;
+    /* Bù đúng 1px viền dày thêm ở cả bốn phía — thiếu dòng này thì ô nhảy 2px
+       lúc focus, và trên form nhiều ô liên tiếp cả cột giật theo. */
+    padding: 11px 15px;
+  }
+}

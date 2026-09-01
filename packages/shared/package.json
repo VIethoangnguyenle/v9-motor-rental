@@ -9,7 +9,8 @@
     "./domain/money": "./src/domain/money.ts",
     "./domain/staff": "./src/domain/staff.ts",
     "./domain/rental": "./src/domain/rental.ts",
-    "./domain/phone": "./src/domain/phone.ts"
+    "./domain/phone": "./src/domain/phone.ts",
+    "./domain/rental-request": "./src/domain/rental-request.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

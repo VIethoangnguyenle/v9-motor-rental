@@ -1,10 +1,12 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import type { Me } from "../../lib/me";
+import { newRequestCountQuery } from "../../lib/requests";
 
 /**
- * Sáu điểm đến, hai hình dạng. `NAV_ITEMS` là danh sách duy nhất — sidebar
- * (≥768) hiện cả sáu; bottom nav (<768) chỉ có chỗ cho hai cái đầu trực tiếp
+ * Bảy điểm đến, hai hình dạng. `NAV_ITEMS` là danh sách duy nhất — sidebar
+ * (≥768) hiện cả bảy; bottom nav (<768) chỉ có chỗ cho hai cái đầu trực tiếp
  * (Thống kê, Lịch), phần còn lại nằm sau nút **Thêm**. Một nguồn dữ liệu duy
  * nhất nghĩa là thêm một mục mới chỉ sửa MỘT chỗ, không phải nhớ sửa cả hai
  * hình dạng.
@@ -23,7 +25,9 @@ type NavItem =
   | {
       readonly kind: "link";
       readonly label: string;
-      readonly to: "/" | "/staff" | "/calendar" | "/customers";
+      readonly to: "/" | "/staff" | "/calendar" | "/customers" | "/requests";
+      /** Hiện số việc đang chờ cạnh nhãn. Chỉ `/requests` dùng, xem `AppNav`. */
+      readonly badge?: "newRequests";
       readonly ownerOnly?: true;
     }
   | { readonly kind: "soon"; readonly label: string };
@@ -31,6 +35,7 @@ type NavItem =
 const NAV_ITEMS: readonly NavItem[] = [
   { kind: "link", label: "Thống kê", to: "/" },
   { kind: "link", label: "Lịch", to: "/calendar" },
+  { kind: "link", label: "Yêu cầu", to: "/requests", badge: "newRequests" },
   { kind: "soon", label: "Đơn thuê" },
   { kind: "link", label: "Khách hàng", to: "/customers" },
   { kind: "soon", label: "Bàn giao" },
@@ -75,6 +80,26 @@ export function AppNav({
   return <BottomNav me={me} onSignOut={onSignOut} />;
 }
 
+/**
+ * Số yêu cầu chưa xử lý, hiện cạnh nhãn "Yêu cầu".
+ *
+ * `null` = chưa biết (query lỗi hoặc đang tải) và khi đó KHÔNG vẽ gì. Một badge
+ * "0" khi thực ra không đọc được số là nói dối theo hướng nguy hiểm nhất ở đây:
+ * nhân viên tin rằng không có việc gì chờ.
+ */
+function NewRequestBadge() {
+  const { data } = useQuery(newRequestCountQuery);
+  if (data === null || data === undefined || data === 0) return null;
+  return (
+    <span
+      className="rounded-card bg-accent px-2 py-0.5 text-xs font-semibold text-accent-ink"
+      aria-label={`${String(data)} yêu cầu chưa xử lý`}
+    >
+      {data}
+    </span>
+  );
+}
+
 function SidebarNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignOut: () => void }) {
   return (
     <nav className="flex h-full w-full flex-col p-3 text-sm">
@@ -87,7 +112,10 @@ function SidebarNav({ me, onSignOut }: { readonly me: Me | null; readonly onSign
                 className={`${TOUCH} rounded-card px-3 text-ink hover:bg-canvas`}
                 activeProps={{ className: "bg-canvas font-semibold" }}
               >
-                {item.label}
+                <span className="flex w-full items-center justify-between gap-2">
+                  {item.label}
+                  {item.badge === "newRequests" && <NewRequestBadge />}
+                </span>
               </Link>
             ) : (
               <button

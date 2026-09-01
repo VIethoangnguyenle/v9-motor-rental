@@ -10,3 +10,4 @@
 export { vehiclePhotos, vehicles } from "./vehicles";
 export { passwordResetCodes, staffUsers } from "./staff";
 export { customers, rentals } from "./rentals";
+export { rentalRequests } from "./rental-requests";

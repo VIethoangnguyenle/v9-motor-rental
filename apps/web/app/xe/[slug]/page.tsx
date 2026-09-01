@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatVnd } from "@v9/shared/domain/money";
 import { SiteFooter } from "@/app/_components/site-footer";
@@ -116,12 +117,23 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
               <p className="mt-3 mb-0 text-body">{messages.vehicles.longTerm}</p>
               {/* Copy lấy nguyên từ messages.booking — KHÔNG hứa xe còn trống.
                   apps/web/AGENTS.md là luật cứng ở đây. */}
-              <a
-                href="/#gui-yeu-cau"
+              {/*
+               * `?xe=${slug}` là toàn bộ điểm của dòng này. Bản cũ trỏ
+               * `/#gui-yeu-cau` — rời trang chi tiết, sang một băng chung
+               * KHÔNG mang theo chiếc xe khách vừa xem, nên khách phải tự
+               * nhớ tên xe, giá và cọc rồi gõ lại qua một kênh không tồn
+               * tại. Mang slug đi thì form tự chọn sẵn đúng xe đó.
+               *
+               * `<Link>` chứ không `<a>`: `<a>` ép tải lại cả tài liệu
+               * giữa hai trang của cùng một app Next — trên dữ liệu di
+               * động đó là một khoảng trắng không cần thiết.
+               */}
+              <Link
+                href={`/gui-yeu-cau?xe=${vehicle.slug}`}
                 className="btn-shape mt-6 border-ink bg-ink text-canvas no-underline transition-colors hover:bg-transparent hover:text-ink"
               >
                 {messages.booking.cta}
-              </a>
+              </Link>
               <p className="caption-text mt-4 mb-0 text-body">{messages.booking.note}</p>
             </div>
 

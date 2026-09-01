@@ -68,12 +68,12 @@ export default async function Page() {
               <h1 className="display-xl m-0 text-ink">{messages.hero.headline}</h1>
               <p className="my-6 max-w-[46ch] text-lg text-body-strong">{messages.hero.sub}</p>
               <div className="flex flex-wrap gap-4">
-                <a
-                  href="#gui-yeu-cau"
+                <Link
+                  href="/gui-yeu-cau"
                   className="btn-shape border-ink bg-ink text-canvas no-underline transition-colors hover:bg-transparent hover:text-ink"
                 >
                   {messages.booking.cta}
-                </a>
+                </Link>
                 <Link
                   href="/xe"
                   className="btn-shape border-ink bg-transparent text-ink no-underline transition-colors hover:bg-ink hover:text-canvas"
@@ -144,12 +144,23 @@ export default async function Page() {
           <div className={CONTAINER}>
             <h2 className="display-md m-0 text-ink">{messages.booking.cta}</h2>
             <p className="mx-auto my-6 max-w-[52ch] text-body">{messages.booking.note}</p>
-            <a
-              href="#gui-yeu-cau"
-              className="btn-shape border-ink bg-transparent text-ink no-underline transition-colors hover:bg-ink hover:text-canvas"
+            {/*
+             * Trước đây là `<a href="#gui-yeu-cau">` nằm BÊN TRONG chính
+             * `<section id="gui-yeu-cau">` — nút cuộn tới đúng chỗ nó đang
+             * đứng, tức là không làm gì. Đủ hover, đủ transition, và tuyệt
+             * đối không có tác dụng: không lỗi, không log.
+             *
+             * Biến thể ĐẶC chứ không trong suốt: DESIGN.md §4 giao nền trắng
+             * chữ đen cho nút trên nền đen PHẲNG, trong suốt cho nút đè lên
+             * ẢNH. Băng này là nền phẳng, nên bản cũ dùng ngược — và hệ quả
+             * là khoảnh khắc chuyển đổi cuối trang mang biến thể yếu nhất.
+             */}
+            <Link
+              href="/gui-yeu-cau"
+              className="btn-shape border-ink bg-ink text-canvas no-underline transition-colors hover:bg-transparent hover:text-ink"
             >
               {messages.booking.cta}
-            </a>
+            </Link>
           </div>
         </section>
       </main>
