@@ -25,10 +25,12 @@ export function Skeleton({ className = "" }: { readonly className?: string }) {
       // `Alert` hoặc qua chính câu "Đang tải…" mà phía gọi vẫn giữ — đọc thêm
       // một loạt ô trống là nhiễu thuần tuý.
       aria-hidden
-      // `motion-reduce:animate-none`: `animate-pulse` là animation DUY NHẤT
-      // trong app, nên đây cũng là chỗ duy nhất phải tôn trọng
-      // `prefers-reduced-motion`. Bỏ nhấp nháy đi thì khối xám vẫn giữ chỗ và
-      // vẫn nói được "chưa có gì ở đây" — mất chuyển động, không mất thông tin.
+      // `motion-reduce:animate-none` KHÔNG thừa dù `index.css` nay có quét toàn
+      // cục cho `prefers-reduced-motion`: quét đó chỉ ép thời lượng còn 1ms và
+      // số lần lặp còn 1, tức hoạt ảnh VẪN CHẠY và khối chỉ đặc lại nhờ nó kết
+      // thúc kịp. `animate-none` bỏ hẳn hoạt ảnh, nói thẳng điều muốn nói.
+      // Bỏ nhấp nháy đi thì khối xám vẫn giữ chỗ và vẫn nói được "chưa có gì ở
+      // đây" — mất chuyển động, không mất thông tin.
       className={`animate-pulse rounded-card bg-border motion-reduce:animate-none ${className}`}
     />
   );

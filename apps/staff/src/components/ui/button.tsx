@@ -35,10 +35,20 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
  * `disabled:cursor-not-allowed` đi kèm `disabled:opacity-50`: mờ đi nói "không
  * dùng được" cho người NHÌN thấy, con trỏ nói cùng điều đó cho người đang rê
  * chuột tới bấm. Vòng focus không khai ở đây — `:focus-visible` toàn cục ở
- * `index.css` lo, xem lý lẽ ở đó.
+ * `index.css` lo, xem lý lẽ ở đó. Vòng focus cũng cố ý KHÔNG nằm trong danh
+ * sách transition: một vòng tiêu điểm tới trễ là lỗi, không phải hiệu ứng.
+ *
+ * Chỉ `background-color` và `border-color` — hai thứ sinh paint chứ không sinh
+ * layout. KHÔNG thêm `transform`: nút nằm trong hàng bảng và trong sheet, và
+ * một nút nhích lên khi rê chuột làm hàng bên cạnh trông như bị lệch.
+ *
+ * `duration-(--duration-instant)`, KHÔNG phải `duration-instant`: `--duration-*`
+ * không phải namespace của Tailwind — lý lẽ đầy đủ ở `index.css`, cạnh chỗ khai
+ * token. Gõ nhầm thành `duration-instant` thì nút chạy 150ms mặc định và KHÔNG
+ * có gì kêu.
  */
 const BASE =
-  "inline-flex min-h-11 items-center justify-center rounded-card px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-11 items-center justify-center rounded-card px-4 text-sm font-semibold transition-[background-color,border-color] duration-(--duration-instant) ease-standard disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
  * Mỗi biến thể có đủ default · hover · active. Bản trước chỉ có default và
