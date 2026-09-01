@@ -289,12 +289,16 @@
    *   • `accent-hover`/`active` SÁNG dần chứ không tối dần — xem chú thích riêng
    *     bên dưới.
    *
-   * ⚠️ Hàng rào mù màu của `theme-tokens.test.ts` chỉ chạy trên bảng SÁNG. Đo
-   * riêng bảng tối: ngoài cặp `quá hạn ↔ cảnh báo` đã biết (ΔE 0,091 dưới
-   * deuteranopia), còn `đang thuê ↔ accent` tụt xuống ΔE 0,055 dưới tritanopia.
-   * Cả hai vẫn phải dựa vào KÊNH HÌNH DẠNG, y như bảng sáng — nên đây không mở
-   * ra một lớp lỗi mới, nhưng đừng đọc "hàng rào xanh" thành "bảng tối miễn
-   * nhiễm mù màu".
+   * ⚠️ Bảng tối KHÔNG miễn nhiễm mù màu — nó còn va chạm nhiều hơn bảng sáng:
+   * 14 cặp/kiểu-nhìn dưới ngưỡng ΔE 0,12, so với 12 ở bảng sáng. Trong đó
+   * `quá hạn ↔ cảnh báo` 0,091 (deuteranopia) và `đang thuê ↔ accent` 0,055
+   * (tritanopia).
+   *
+   * Không phải nợ chưa ai đo: `theme-tokens.test.ts` chạy hàng rào mù màu cho
+   * CẢ HAI bảng, mỗi bảng một bộ ngoại lệ riêng, và cả 14 cặp trên nằm trong
+   * `CVD_EXCEPTIONS.TỐI` — được đo lại mỗi lần chạy test, canh cả hai chiều.
+   * Kênh gánh vẫn là HÌNH DẠNG, y như bảng sáng; lập luận cấu trúc đầy đủ nằm ở
+   * chú thích đầu bảng ngoại lệ trong file test đó.
    */
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
