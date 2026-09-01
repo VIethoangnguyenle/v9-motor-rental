@@ -1,3 +1,5 @@
+import { Icon, type IconName } from "./icon";
+
 /**
  * Ba mức, ba nền — đi qua token thay vì `bg-red-100`/`bg-amber-100`/`bg-gray-100`
  * rải rác. `--color-warning` (`index.css`) được thêm sau file này ở đợt token
@@ -16,6 +18,22 @@ const TONE: Record<AlertTone, string> = {
   error: "bg-status-overdue-soft text-status-overdue",
   warning: "bg-warning-soft text-warning",
   info: "bg-accent-soft text-accent",
+};
+
+/**
+ * Icon theo tone. Trước đó ba tone chỉ khác nhau bằng MÀU — tức thông tin đi
+ * bằng đúng một kênh, trượt SC 1.4.1, và người mù màu đỏ–lục không phân biệt
+ * được `error` với `warning`. Đây cùng một lớp lỗi mà §2.5 của design doc đo
+ * được trên chip trạng thái.
+ *
+ * Ba SILHOUETTE khác nhau, không phải ba biểu tượng khác nhau: tam giác / bát
+ * giác / tròn còn phân biệt được khi màu biến mất hoàn toàn, còn ba hình cùng
+ * đường bao tròn thì không. Thứ tự đó cũng đọc ra đúng mức khẩn.
+ */
+const TONE_ICON: Record<AlertTone, IconName> = {
+  error: "alert-triangle",
+  warning: "octagon-alert",
+  info: "info",
 };
 
 export function Alert({
@@ -60,9 +78,15 @@ export function Alert({
     <p
       role={liveMode === "assertive" ? "alert" : "status"}
       aria-live={liveMode}
-      className={`rounded-card p-3 text-sm ${TONE[tone]}`}
+      className={`flex items-start gap-2 rounded-card p-3 text-sm ${TONE[tone]}`}
     >
-      {children}
+      {/* `mt-0.5` là căn QUANG HỌC, không phải căn hộp: icon 20px và line box
+          `text-sm` cũng 20px nên `items-start` đã khớp hộp — nhưng đỉnh chữ nằm
+          thấp hơn đỉnh line box (half-leading + khoảng ascender-tới-cap) trong
+          khi nét icon gần sát mép trên của nó, nên không bù thì icon trông
+          nhô lên. Cỡ vẫn đi qua prop `size`, không qua `className`. */}
+      <Icon name={TONE_ICON[tone]} className="mt-0.5" />
+      <span className="flex-1">{children}</span>
     </p>
   );
 }
