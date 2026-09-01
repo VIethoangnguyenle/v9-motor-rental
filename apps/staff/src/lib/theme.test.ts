@@ -1,0 +1,197 @@
+import { runInNewContext } from "node:vm";
+import { describe, expect, it } from "bun:test";
+import {
+  CANVAS_HEX,
+  THEME_STORAGE_KEY,
+  nextChoice,
+  parseChoice,
+  resolveTheme,
+  themeColorFor,
+} from "./theme";
+
+describe("parseChoice", () => {
+  it("nhận ba giá trị hợp lệ", () => {
+    expect(parseChoice("light")).toBe("light");
+    expect(parseChoice("dark")).toBe("dark");
+    expect(parseChoice("system")).toBe("system");
+  });
+
+  it("rơi về 'system' với dữ liệu rác — localStorage là dữ liệu KHÔNG TIN ĐƯỢC", () => {
+    expect(parseChoice(null)).toBe("system");
+    expect(parseChoice("")).toBe("system");
+    expect(parseChoice("Dark")).toBe("system");
+    expect(parseChoice('{"a":1}')).toBe("system");
+  });
+});
+
+describe("resolveTheme", () => {
+  it("lựa chọn tường minh THẮNG hệ điều hành ở cả hai chiều", () => {
+    expect(resolveTheme("light", true)).toBe("light");
+    expect(resolveTheme("dark", false)).toBe("dark");
+  });
+
+  it("'system' đi theo hệ điều hành", () => {
+    expect(resolveTheme("system", true)).toBe("dark");
+    expect(resolveTheme("system", false)).toBe("light");
+  });
+});
+
+describe("nextChoice — vòng ba trạng thái", () => {
+  it("system → light → dark → system", () => {
+    expect(nextChoice("system")).toBe("light");
+    expect(nextChoice("light")).toBe("dark");
+    expect(nextChoice("dark")).toBe("system");
+  });
+});
+
+describe("khoá lưu trữ", () => {
+  it("giữ đúng chuỗi 'v9-theme'", () => {
+    // Khoá này là hợp đồng với dữ liệu ĐÃ NẰM trên máy người dùng: đổi tên nó
+    // làm mọi lựa chọn đã lưu thành mồ côi, và app im lặng quay về "theo máy"
+    // trên mọi máy đang cài.
+    expect(THEME_STORAGE_KEY).toBe("v9-theme");
+  });
+
+  it("khớp CHÍNH XÁC khoá mà script trong index.html dùng", async () => {
+    // Script chống nháy trắng trong `index.html` chép tay khoá này — nó chạy
+    // TRƯỚC khi bundle tải, nên không import được từ đây. Test này là sợi dây
+    // duy nhất giữ hai chỗ bằng nhau, nên nó phải ĐỌC `index.html` thật: một
+    // assertion chỉ so hằng số ở đây với hằng số viết trong test vẫn xanh khi
+    // hai chỗ đã lệch nhau, tức canh đúng thứ nó không canh.
+    //
+    // Lệch nhau hỏng trong im lặng: script đặt `data-theme` từ một khoá không
+    // ai ghi, nên nút gạt vẫn chạy đúng trong phiên và chỉ nháy trắng ở lần tải
+    // sau — mà nháy trắng thì chỉ thấy trên bản build, không thấy ở `vite dev`.
+    const html = await Bun.file(new URL("../../index.html", import.meta.url).pathname).text();
+    const key = /localStorage\.getItem\(\s*"([^"]*)"\s*\)/.exec(html)?.[1];
+    expect(key).toBe(THEME_STORAGE_KEY);
+  });
+});
+
+/**
+ * Trang có BA thẻ `<meta name="theme-color">`, và trình duyệt chỉ dùng MỘT: thẻ
+ * ĐẦU TIÊN theo thứ tự tài liệu có `media` khớp (HTML Standard, §meta
+ * theme-color). Đó là chỗ bản đầu của `applyChoice` sai: nó chỉ ghi thẻ không có
+ * `media`, tức thẻ ĐỨNG CUỐI — nên khi máy đang sáng mà người dùng ép TỐI, thẻ
+ * `(prefers-color-scheme: light)` vẫn khớp, vẫn đứng trước, và thanh địa chỉ ở
+ * lại màu sáng trên một app đã tối. Đo được trên bản build, không có lỗi ở đâu.
+ *
+ * `themeColorFor` trả lời "thẻ NÀY phải mang màu gì", nên lời giải không phụ
+ * thuộc vào việc đọc đúng luật chọn thẻ: khi người dùng ép theme, CẢ BA thẻ đều
+ * mang màu hiệu lực, nên thẻ nào thắng cũng ra cùng một màu.
+ */
+describe("themeColorFor", () => {
+  it("theo hệ điều hành: mỗi thẻ media giữ đúng màu của theme nó phục vụ", () => {
+    expect(themeColorFor("light", "system", false)).toBe(CANVAS_HEX.light);
+    expect(themeColorFor("dark", "system", false)).toBe(CANVAS_HEX.dark);
+    expect(themeColorFor("light", "system", true)).toBe(CANVAS_HEX.light);
+    expect(themeColorFor("dark", "system", true)).toBe(CANVAS_HEX.dark);
+  });
+
+  it("theo hệ điều hành: thẻ không media đi theo máy — nó là thẻ dự phòng", () => {
+    expect(themeColorFor(null, "system", true)).toBe(CANVAS_HEX.dark);
+    expect(themeColorFor(null, "system", false)).toBe(CANVAS_HEX.light);
+  });
+
+  it("ép theme: MỌI thẻ mang màu hiệu lực, kể cả thẻ của theme ngược lại", () => {
+    // Máy SÁNG + ép TỐI. Thẻ `(prefers-color-scheme: light)` vẫn khớp và vẫn
+    // đứng đầu, nên nó phải mang màu TỐI — nếu không, thanh địa chỉ nói dối.
+    expect(themeColorFor("light", "dark", false)).toBe(CANVAS_HEX.dark);
+    expect(themeColorFor("dark", "dark", false)).toBe(CANVAS_HEX.dark);
+    expect(themeColorFor(null, "dark", false)).toBe(CANVAS_HEX.dark);
+
+    // Máy TỐI + ép SÁNG — chiều ngược lại, cùng một cái bẫy.
+    expect(themeColorFor("dark", "light", true)).toBe(CANVAS_HEX.light);
+    expect(themeColorFor("light", "light", true)).toBe(CANVAS_HEX.light);
+    expect(themeColorFor(null, "light", true)).toBe(CANVAS_HEX.light);
+  });
+});
+
+describe("màu canvas chép tay", () => {
+  it("khớp giữa theme.ts, ba thẻ meta của index.html và manifest của vite.config.ts", async () => {
+    // `CANVAS_HEX` là sRGB của `--color-canvas` (`index.css`) chép tay, vì cả
+    // thẻ meta lẫn manifest đều không đọc được biến CSS. Chú thích ở hai file
+    // kia hứa "đổi canvas thì đổi cả ba chỗ"; test này là thứ giữ lời hứa đó.
+    const dir = new URL("../../", import.meta.url).pathname;
+    const html = await Bun.file(`${dir}index.html`).text();
+    const config = await Bun.file(`${dir}vite.config.ts`).text();
+
+    const contentOf = (attrs: string) =>
+      new RegExp(`<meta name="theme-color" content="(#[0-9a-f]{6})"${attrs}`).exec(html)?.[1];
+
+    expect(contentOf(' media="\\(prefers-color-scheme: light\\)"')).toBe(CANVAS_HEX.light);
+    expect(contentOf(' media="\\(prefers-color-scheme: dark\\)"')).toBe(CANVAS_HEX.dark);
+    expect(contentOf(" />")).toBe(CANVAS_HEX.light);
+
+    // Manifest chỉ có MỘT giá trị — nó không nhận media query, nên splash luôn sáng.
+    expect(/background_color: "(#[0-9a-f]{6})"/.exec(config)?.[1]).toBe(CANVAS_HEX.light);
+    expect(/theme_color: "(#[0-9a-f]{6})"/.exec(config)?.[1]).toBe(CANVAS_HEX.light);
+  });
+});
+
+/**
+ * Chạy THẬT đoạn script trong `<head>` của `index.html`, không phải một bản chép
+ * của nó.
+ *
+ * Đó là mảnh logic duy nhất của app KHÔNG import được — nó phải chạy trước khi
+ * bundle tải — nên nếu test này không thực thi nó thì nó không có test nào, và
+ * thứ nó canh (nháy trắng, màu thanh địa chỉ) lại là thứ chỉ bản build mới lộ.
+ *
+ * DOM giả dưới đây chỉ dựng đúng những API script đang dùng. Script gọi thêm thứ
+ * gì khác là test NÉM — đúng ý muốn: một đoạn không có test nào khác thì mỗi lần
+ * nó mọc thêm khả năng, phải có người đọc lại chỗ này.
+ */
+async function runHeadScript(stored: string | null) {
+  const html = await Bun.file(new URL("../../index.html", import.meta.url).pathname).text();
+  const source = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1];
+  if (source === undefined) throw new Error("index.html không còn script đồng bộ trong <head>");
+
+  const metas = [
+    { media: "(prefers-color-scheme: light)", content: CANVAS_HEX.light },
+    { media: "(prefers-color-scheme: dark)", content: CANVAS_HEX.dark },
+    { media: "", content: CANVAS_HEX.light },
+  ];
+  const attrs: Record<string, string> = {};
+  const doc = {
+    documentElement: {
+      setAttribute: (k: string, v: string) => {
+        attrs[k] = v;
+      },
+    },
+    querySelector: (sel: string) => {
+      const wanted = /media\*="(\w+)"/.exec(sel)?.[1];
+      return metas.find((m) => (wanted === undefined ? m.media === "" : m.media.includes(wanted)));
+    },
+    querySelectorAll: () => metas,
+  };
+
+  // `runInNewContext` chứ không `new Function`: đoạn kia là một script cổ điển
+  // trong `<head>`, chạy nó như một thân hàm là chạy một thứ khác thứ sẽ ship.
+  runInNewContext(source, { localStorage: { getItem: () => stored }, document: doc });
+  return { attrs, contents: metas.map((m) => m.content) };
+}
+
+describe("script chống nháy trắng trong index.html", () => {
+  it("ép TỐI: đặt data-theme và kéo CẢ BA thẻ theme-color về màu tối", async () => {
+    // Thẻ `(prefers-color-scheme: light)` vẫn khớp trên một máy đang sáng và vẫn
+    // đứng đầu, nên để nguyên nó là để thanh địa chỉ sáng trên một app đã tối —
+    // ngay từ lần tải trang, trước cả khi người dùng chạm vào nút gạt.
+    const { attrs, contents } = await runHeadScript("dark");
+    expect(attrs["data-theme"]).toBe("dark");
+    expect(contents).toEqual([CANVAS_HEX.dark, CANVAS_HEX.dark, CANVAS_HEX.dark]);
+  });
+
+  it("ép SÁNG trên máy tối: cùng một cái bẫy, chiều ngược lại", async () => {
+    const { attrs, contents } = await runHeadScript("light");
+    expect(attrs["data-theme"]).toBe("light");
+    expect(contents).toEqual([CANVAS_HEX.light, CANVAS_HEX.light, CANVAS_HEX.light]);
+  });
+
+  it("theo máy hoặc dữ liệu rác: không chạm gì, để trình duyệt tự chọn", async () => {
+    for (const stored of ["system", null, "Dark", '{"a":1}']) {
+      const { attrs, contents } = await runHeadScript(stored);
+      expect(attrs["data-theme"]).toBeUndefined();
+      expect(contents).toEqual([CANVAS_HEX.light, CANVAS_HEX.dark, CANVAS_HEX.light]);
+    }
+  });
+});

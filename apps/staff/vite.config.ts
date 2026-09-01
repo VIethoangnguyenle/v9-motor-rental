@@ -71,22 +71,26 @@ export default defineConfig({
         lang: "vi",
         display: "standalone",
         /*
-         * ⚠️ Hai màu này TỪNG là `#111111` — gần đen, trong khi `apps/staff` là
-         * app NỀN SÁNG (`--color-canvas: oklch(98.4% 0 0)`). Hệ quả sau khi cài:
-         * splash screen gần đen chớp lên rồi nhường chỗ cho một app trắng, và
-         * thanh trạng thái mang màu không có ở đâu trong giao diện.
+         * ⚠️ Hai màu này TỪNG là `#111111` — gần đen, trong khi theme MẶC ĐỊNH
+         * của `apps/staff` là nền sáng (`--color-canvas: oklch(98.4% 0.003 255)`).
+         * Hệ quả sau khi cài: splash screen gần đen chớp lên rồi nhường chỗ cho
+         * một app trắng, và thanh trạng thái mang màu không có ở đâu trong giao diện.
          *
          * `#111111` là màu của `apps/web` (nền đen tuyền, `DESIGN.md` §2) lọt
          * sang đây — đúng thứ `docs/workspaces/staff.md` dặn đừng bê qua. Manifest
          * nằm ngoài tầm với của cả detector lẫn typecheck nên nó sống sót lâu hơn
          * mọi chỗ khác.
          *
-         * `#fafafa` = sRGB của `--color-canvas`. Khai lại bằng tay vì manifest
-         * không đọc được biến CSS; `index.html` (`<meta name="theme-color">`) là
-         * chỗ thứ hai phải khớp.
+         * `#f8fafc` = sRGB của `--color-canvas` bản SÁNG. Khai lại bằng tay vì
+         * manifest không đọc được biến CSS; ba thẻ `<meta name="theme-color">`
+         * trong `index.html` là chỗ thứ hai phải khớp.
+         *
+         * Chỉ có MỘT giá trị dù app có hai theme: manifest không nhận media
+         * query, nên splash screen luôn là bản sáng. Thẻ meta trong `index.html`
+         * mới là thứ theo được theme; đừng cố nhét biến thể tối vào đây.
          */
-        background_color: "#fafafa",
-        theme_color: "#fafafa",
+        background_color: "#f8fafc",
+        theme_color: "#f8fafc",
         icons: [
           { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
           { src: "/icon-512.png", sizes: "512x512", type: "image/png" },

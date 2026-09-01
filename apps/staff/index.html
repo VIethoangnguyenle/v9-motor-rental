@@ -16,14 +16,56 @@
     -->
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <!--
-      Màu thanh trạng thái / thanh địa chỉ. PHẢI khớp `theme_color` của manifest
-      trong `vite.config.ts` — hai chỗ khai, một giá trị.
+      Ba thẻ, và cả ba đều cần thiết:
 
-      `#fafafa` là sRGB của `--color-canvas` (`oklch(98.4% 0 0)`, `src/index.css`).
-      Manifest không đọc được biến CSS nên đây là chỗ DUY NHẤT token đó bị chép
-      tay; đổi `--color-canvas` thì phải đổi cả hai chỗ này.
+      • Hai thẻ có `media` phục vụ trường hợp THEO HỆ ĐIỀU HÀNH — trình duyệt tự
+        chọn, không cần script, nên chúng đúng ngay cả trước khi bundle tải.
+      • Thẻ KHÔNG có `media` là thứ `applyChoice()` (src/lib/theme.ts) ghi đè khi
+        người dùng ép theme bằng tay; `media` không diễn đạt được "người dùng đã
+        chọn", chỉ diễn đạt được "hệ điều hành đang ở chế độ nào".
+
+      ⚠️ Khi người dùng ép theme, `applyChoice()` ghi CẢ BA thẻ chứ không riêng
+      thẻ cuối: trình duyệt chỉ dùng thẻ ĐẦU TIÊN có `media` khớp, nên máy sáng +
+      ép tối mà chỉ sửa thẻ cuối thì thanh địa chỉ ở lại màu sáng. Lý lẽ đầy đủ ở
+      `themeColorFor` (src/lib/theme.ts).
+
+      Giá trị là sRGB của `--color-canvas` từng theme (src/index.css). Manifest
+      trong `vite.config.ts` cũng chép tay `#f8fafc` — đổi canvas SÁNG thì phải
+      đổi cả ba chỗ; `theme.test.ts` canh cho ba chỗ khớp nhau.
     -->
-    <meta name="theme-color" content="#fafafa" />
+    <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a111a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f8fafc" />
+    <!--
+      Chống nháy trắng. PHẢI là script ĐỒNG BỘ trong `<head>`, chạy trước khung
+      hình đầu tiên. Đặt việc này trong React là muộn: người dùng thấy một nháy
+      sáng mỗi lần mở app, và trên PWA khởi động lạnh thì rất rõ.
+
+      Nó cũng lo luôn ba thẻ trên: `applyChoice()` chỉ chạy khi người dùng BẤM nút
+      gạt, nên nếu để một mình nó thì mọi lần tải trang sau đó, thẻ meta lại quay
+      về theo hệ điều hành trong khi app theo lựa chọn đã lưu — và trang đăng nhập
+      thì không có nút gạt để mà bấm.
+
+      Màu lấy từ chính hai thẻ media ở trên, KHÔNG viết lại hằng số: đây đã là chỗ
+      thứ ba chép tay `--color-canvas` rồi.
+
+      Chép tay khoá "v9-theme" vì script này chạy TRƯỚC khi bundle tải nên không
+      import được. `theme.test.ts` là sợi dây giữ hai chỗ bằng nhau, và nó CHẠY
+      đoạn dưới đây chứ không chỉ đọc.
+    -->
+    <script>
+      try {
+        var c = localStorage.getItem("v9-theme");
+        if (c === "light" || c === "dark") {
+          document.documentElement.setAttribute("data-theme", c);
+          var src = document.querySelector('meta[name="theme-color"][media*="' + c + '"]');
+          var all = document.querySelectorAll('meta[name="theme-color"]');
+          for (var i = 0; i < all.length; i++) all[i].content = src.content;
+        }
+      } catch (e) {
+        /* Safari riêng tư ném khi đọc localStorage — đi theo hệ điều hành */
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
