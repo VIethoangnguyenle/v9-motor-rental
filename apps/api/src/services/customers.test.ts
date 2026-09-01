@@ -87,12 +87,33 @@ describe("searchCustomers", () => {
  * duy nhất ép chúng đi chung một đường.
  */
 describe("searchCustomers và listCustomers không được lệch nhau", () => {
-  it("cùng từ khoá không dấu, cả hai đều tìm ra", async () => {
+  it("cùng từ khoá không dấu, hai hàm trả về ĐÚNG CÙNG một tập hồ sơ", async () => {
+    // So TẬP `id`, không so `length > 0` cho từng bên: bản cũ vẫn xanh khi hai
+    // hàm lệch thành hai tập KHÁC NHAU mà đều không rỗng — đúng cái nó sinh ra
+    // để chặn.
+    //
+    // Hồ sơ MỒI dưới đây là thứ làm phép so đó có răng. Không có nó, ở thời
+    // điểm này bảng `customers` chỉ có đúng một hàng (`${P}Mĩnh Anh`), nên một
+    // `listCustomers` bỏ quên hẳn mệnh đề lọc vẫn trả về đúng một hàng đó và
+    // hai tập vẫn bằng nhau — đã đo bằng cách xoá `where` khỏi `listCustomers`:
+    // test vẫn xanh. Hồ sơ mồi KHÔNG khớp `${P}minh`, nên hễ đường lọc của hai
+    // hàm lệch nhau là nó lọt vào đúng một bên và hai tập khác nhau ngay.
+    //
+    // ⚠️ Từ khoá phải đủ HẸP để dưới 20 hồ sơ khớp: `searchCustomers` có
+    // `.limit(20)` còn `listCustomers` phân trang, nên vượt ngưỡng đó thì hai
+    // tập lệch nhau một cách HỢP LỆ và test đỏ vì lý do sai. `${P}minh` hôm nay
+    // chỉ khớp `${P}Mĩnh Anh`; đừng nới nó thành `P` trần.
+    const decoy = await createCustomer({ fullName: `${P}Hồ sơ mồi`, phone: "0913000040" });
+    if (!decoy.ok) throw new Error("seed hỏng");
+
     const term = `${P}minh`;
     const fromSearch = await searchCustomers(term);
     const fromList = await listCustomers({ q: term });
-    expect(fromSearch.length).toBeGreaterThan(0);
-    expect(fromList.customers.length).toBeGreaterThan(0);
+    const idsFromSearch = fromSearch.map((c) => c.id).sort();
+    const idsFromList = fromList.customers.map((c) => c.id).sort();
+    expect(idsFromSearch.length).toBeGreaterThan(0);
+    expect(idsFromSearch).not.toContain(decoy.customer.id);
+    expect(idsFromSearch).toEqual(idsFromList);
   });
 });
 
@@ -237,6 +258,231 @@ describe("listCustomers", () => {
     const rowWithout = r.customers.find((c) => c.id === withoutRental.customer.id);
     expect(rowWith?.rentalCount).toBe(1);
     expect(rowWithout?.rentalCount).toBe(0);
+  });
+});
+
+/**
+ * Hai câu hỏi duy nhất khiến nhân viên mở màn Khách hàng giữa ca làm: khách này
+ * đang giữ xe nào, và có hay trả trễ không. Cả hai SUY RA từ `rentals` lúc đọc —
+ * không cột lưu sẵn, không trigger — nên bộ test này là chỗ duy nhất chứng minh
+ * luật chọn `activeRental` đúng như đã khai trong `CustomerListRow`.
+ */
+describe("listCustomers — tín hiệu vận hành", () => {
+  // Ba xe RIÊNG, không phải một: `rentals_no_overlap` là EXCLUDE trên
+  // (`vehicle_id`, `period`), nên một khách giữ nhiều xe CÙNG LÚC — đúng ca mà
+  // luật "ONGOING có ends_at sớm nhất" sinh ra để xử lý — chỉ dựng được khi các
+  // đơn nằm trên các xe khác nhau.
+  let holding: { id: string; ongoingSoonId: string; bookedId: string };
+  let bookedOnly: { id: string; nearestId: string };
+  let lateReturner: { id: string };
+
+  async function seedVehicle(slug: string) {
+    const [v] = await db
+      .insert(schema.vehicles)
+      .values({
+        slug,
+        make: "Honda",
+        model: "CB500X",
+        engineCc: 471,
+        pricePerDay: 500_000,
+        deposit: 5_000_000,
+      })
+      .returning();
+    if (!v) throw new Error("seed xe hỏng");
+    return v.id;
+  }
+
+  beforeAll(async () => {
+    const [a, b, c] = await Promise.all([
+      seedVehicle(`${P}xe-tin-hieu-1`),
+      seedVehicle(`${P}xe-tin-hieu-2`),
+      seedVehicle(`${P}xe-tin-hieu-3`),
+    ]);
+    const [staffRow] = await db
+      .insert(schema.staffUsers)
+      .values({
+        id: `${P}nv-tin-hieu`,
+        email: `${P}nv-tin-hieu@example.com`,
+        fullName: "NV test tín hiệu",
+        role: "OWNER",
+        status: "ACTIVE",
+      })
+      .returning();
+    const x = await createCustomer({ fullName: `${P}Đang giữ xe`, phone: "0913000030" });
+    const y = await createCustomer({ fullName: `${P}Chỉ đặt trước`, phone: "0913000031" });
+    const z = await createCustomer({ fullName: `${P}Trả trễ`, phone: "0913000032" });
+    if (!a || !b || !c || !staffRow || !x.ok || !y.ok || !z.ok) throw new Error("seed hỏng");
+
+    const base = { createdBy: staffRow.id, totalAmount: 1_000_000, depositAmount: 0 };
+
+    // Khách X: HAI đơn ONGOING (hai xe khác nhau) cộng một đơn BOOKED bắt đầu
+    // SỚM HƠN cả hai. Nếu luật ưu tiên sai thì đơn BOOKED này thắng — đó là lý
+    // do nó có mặt.
+    //
+    // Hai đơn ONGOING được xếp để `starts_at` và `ends_at` cho hai câu trả lời
+    // NGƯỢC NHAU: đơn bắt đầu sớm hơn lại kết thúc muộn hơn. Nhờ vậy test đỏ cả
+    // khi ai đó đổi cột sắp thứ tự của nhánh ONGOING sang `starts_at` — nếu hai
+    // đơn cùng `starts_at` thì phép so đó hoà và test xanh oan.
+    const xRows = await db
+      .insert(schema.rentals)
+      .values([
+        {
+          ...base,
+          vehicleId: a,
+          customerId: x.customer.id,
+          status: "ONGOING",
+          startsAt: new Date("2026-09-01T00:00:00Z"), // bắt đầu SỚM hơn…
+          endsAt: new Date("2026-09-20T00:00:00Z"), // …nhưng kết thúc MUỘN hơn
+          handedOverAt: new Date("2026-09-01T00:00:00Z"),
+        },
+        {
+          ...base,
+          vehicleId: b,
+          customerId: x.customer.id,
+          status: "ONGOING",
+          startsAt: new Date("2026-09-05T00:00:00Z"),
+          endsAt: new Date("2026-09-10T00:00:00Z"), // ← sớm nhất, phải là đơn được chọn
+          handedOverAt: new Date("2026-09-05T00:00:00Z"),
+        },
+        {
+          ...base,
+          vehicleId: c,
+          customerId: x.customer.id,
+          status: "BOOKED",
+          startsAt: new Date("2026-09-02T00:00:00Z"),
+          endsAt: new Date("2026-09-03T00:00:00Z"),
+        },
+      ])
+      .returning({ id: schema.rentals.id, endsAt: schema.rentals.endsAt });
+
+    // Khách Y: chỉ BOOKED. Cùng thủ thuật ngược chiều như hai đơn ONGOING ở
+    // trên, đảo vai: đơn bắt đầu GẦN hơn lại kết thúc MUỘN hơn, nên sắp nhầm
+    // theo `ends_at` là ra đơn kia. Hai đơn chồng thời gian nên phải nằm trên
+    // HAI xe — `rentals_no_overlap` không cho chúng dùng chung một xe.
+    //
+    // Đơn nhập TRƯỚC lại bắt đầu MUỘN hơn, để test không thể xanh nhờ tình cờ
+    // trùng thứ tự chèn.
+    const yRows = await db
+      .insert(schema.rentals)
+      .values([
+        {
+          ...base,
+          vehicleId: b,
+          customerId: y.customer.id,
+          status: "BOOKED",
+          startsAt: new Date("2026-10-10T00:00:00Z"),
+          endsAt: new Date("2026-10-12T00:00:00Z"),
+        },
+        {
+          ...base,
+          vehicleId: a,
+          customerId: y.customer.id,
+          status: "BOOKED",
+          startsAt: new Date("2026-10-01T00:00:00Z"), // ← gần nhất, phải là đơn được chọn
+          endsAt: new Date("2026-10-30T00:00:00Z"),
+        },
+      ])
+      .returning({ id: schema.rentals.id, startsAt: schema.rentals.startsAt });
+
+    // Khách Z: hai đơn trả TRỄ, một đơn trả ĐÚNG HẠN (`returned_at = ends_at`,
+    // không phải `>` — biên chặt là chỗ dễ đếm dôi một), và một đơn CANCELLED.
+    // CANCELLED nằm chồng thời gian với đơn ONGOING của khách X trên cùng xe A
+    // một cách CỐ Ý: `rentals_no_overlap` có `WHERE status <> 'CANCELLED'`, nên
+    // hàng này còn kiểm luôn rằng giả định đó vẫn đúng.
+    await db.insert(schema.rentals).values([
+      {
+        ...base,
+        vehicleId: a,
+        customerId: z.customer.id,
+        status: "COMPLETED",
+        startsAt: new Date("2026-07-01T00:00:00Z"),
+        endsAt: new Date("2026-07-03T00:00:00Z"),
+        handedOverAt: new Date("2026-07-01T00:00:00Z"),
+        returnedAt: new Date("2026-07-05T00:00:00Z"), // trễ
+      },
+      {
+        ...base,
+        vehicleId: a,
+        customerId: z.customer.id,
+        status: "COMPLETED",
+        startsAt: new Date("2026-07-10T00:00:00Z"),
+        endsAt: new Date("2026-07-12T00:00:00Z"),
+        handedOverAt: new Date("2026-07-10T00:00:00Z"),
+        returnedAt: new Date("2026-07-12T00:00:00Z"), // ĐÚNG hạn, không tính
+      },
+      {
+        ...base,
+        vehicleId: a,
+        customerId: z.customer.id,
+        status: "COMPLETED",
+        startsAt: new Date("2026-07-20T00:00:00Z"),
+        endsAt: new Date("2026-07-22T00:00:00Z"),
+        handedOverAt: new Date("2026-07-20T00:00:00Z"),
+        returnedAt: new Date("2026-07-25T00:00:00Z"), // trễ
+      },
+      {
+        ...base,
+        vehicleId: a,
+        customerId: z.customer.id,
+        status: "CANCELLED",
+        startsAt: new Date("2026-09-05T00:00:00Z"),
+        endsAt: new Date("2026-09-06T00:00:00Z"),
+      },
+    ]);
+
+    const ongoingSoon = xRows.find((r) => r.endsAt.toISOString().startsWith("2026-09-10"));
+    const booked = xRows.find((r) => r.endsAt.toISOString().startsWith("2026-09-03"));
+    const nearest = yRows.find((r) => r.startsAt.toISOString().startsWith("2026-10-01"));
+    if (!ongoingSoon || !booked || !nearest) throw new Error("seed hỏng");
+    holding = { id: x.customer.id, ongoingSoonId: ongoingSoon.id, bookedId: booked.id };
+    bookedOnly = { id: y.customer.id, nearestId: nearest.id };
+    lateReturner = { id: z.customer.id };
+  });
+
+  it("khách chưa có đơn thì activeRental null và lateReturnCount 0", async () => {
+    const res = await listCustomers({ q: `${P}Minh` });
+    const row = res.customers[0];
+    expect(row).toBeDefined();
+    expect(row?.activeRental).toBeNull();
+    expect(row?.lateReturnCount).toBe(0);
+  });
+
+  it("có ONGOING thì chọn đơn ONGOING có ends_at SỚM NHẤT, không phải đơn BOOKED sắp bắt đầu", async () => {
+    const res = await listCustomers({ q: `${P}Đang giữ xe` });
+    const row = res.customers.find((c) => c.id === holding.id);
+    expect(row?.activeRental?.id).toBe(holding.ongoingSoonId);
+    expect(row?.activeRental?.id).not.toBe(holding.bookedId);
+    expect(row?.activeRental?.status).toBe("ONGOING");
+    expect(row?.activeRental?.endsAt).toEqual(new Date("2026-09-10T00:00:00Z"));
+    expect(row?.rentalCount).toBe(3);
+  });
+
+  it("không có ONGOING thì chọn đơn BOOKED có starts_at GẦN NHẤT", async () => {
+    const res = await listCustomers({ q: `${P}Chỉ đặt trước` });
+    const row = res.customers.find((c) => c.id === bookedOnly.id);
+    expect(row?.activeRental?.id).toBe(bookedOnly.nearestId);
+    expect(row?.activeRental?.status).toBe("BOOKED");
+    // `endsAt` của CHÍNH đơn được chọn — không phải `startsAt` đã dùng để xếp thứ tự.
+    expect(row?.activeRental?.endsAt).toEqual(new Date("2026-10-30T00:00:00Z"));
+  });
+
+  it("COMPLETED và CANCELLED không bao giờ được chọn; lateReturnCount đếm returned_at > ends_at", async () => {
+    const res = await listCustomers({ q: `${P}Trả trễ` });
+    const row = res.customers.find((c) => c.id === lateReturner.id);
+    expect(row?.activeRental).toBeNull();
+    expect(row?.rentalCount).toBe(4);
+    // 2 trễ, KHÔNG tính đơn trả đúng hạn (`returned_at = ends_at`) và đơn CANCELLED.
+    expect(row?.lateReturnCount).toBe(2);
+  });
+
+  it("lateReturnCount là SỐ, không phải chuỗi bigint lọt qua biên Eden Treaty", async () => {
+    // `count(*) FILTER (...)` trả `bigint`; quên `::int` thì driver đưa về chuỗi
+    // và `toBe(2)` ở test trên vẫn đỏ — nhưng đỏ mơ hồ. Kiểm thẳng kiểu ở đây để
+    // thông báo lỗi chỉ đúng chỗ.
+    const res = await listCustomers({ q: `${P}Trả trễ` });
+    const row = res.customers.find((c) => c.id === lateReturner.id);
+    expect(typeof row?.lateReturnCount).toBe("number");
+    expect(typeof row?.rentalCount).toBe("number");
   });
 });
 

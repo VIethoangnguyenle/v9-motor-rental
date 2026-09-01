@@ -1,6 +1,6 @@
 import { schema } from "@v9/db";
 import { normalizePhone } from "@v9/shared/domain/phone";
-import { asc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "../db";
 
 export interface Customer {
@@ -185,8 +185,31 @@ export async function updateCustomer(
 export const CUSTOMERS_PAGE_SIZE_MAX = 50;
 const CUSTOMERS_PAGE_SIZE_DEFAULT = 20;
 
+/**
+ * Đơn đang chiếm dụng sự chú ý của nhân viên với khách này. `null` = không có.
+ *
+ * Hình dạng `{ status, endsAt }` KHÔNG tuỳ tiện: nó khớp đúng tham số cấu trúc
+ * của `isOverdue(r: { status; endsAt }, now)` ở `@v9/shared/domain/rental`, nên
+ * frontend tô màu "quá hạn" bằng ĐỊNH NGHĨA DUY NHẤT đã có thay vì mọc thêm một
+ * định nghĩa thứ hai cạnh nó.
+ */
+export interface ActiveRental {
+  readonly id: string;
+  readonly status: "ONGOING" | "BOOKED";
+  readonly endsAt: Date;
+}
+
 export interface CustomerListRow extends Customer {
   readonly rentalCount: number;
+  /**
+   * Chọn theo thứ tự: (1) đơn ONGOING có `ends_at` sớm nhất — một khách thuê
+   * được nhiều xe, và đơn sắp tới hạn nhất là đơn cần chú ý nhất; (2) nếu
+   * không có ONGOING thì đơn BOOKED có `starts_at` gần nhất; (3) `null`.
+   * COMPLETED và CANCELLED không bao giờ được chọn.
+   */
+  readonly activeRental: ActiveRental | null;
+  /** Số đơn đã trả TRỄ (`returned_at > ends_at`). Suy ra, không lưu. */
+  readonly lateReturnCount: number;
 }
 
 export interface CustomerListResult {
@@ -231,22 +254,72 @@ export async function listCustomers(input: {
 
   if (rows.length === 0) return { customers: [], total };
 
+  const ids = rows.map((r) => r.id);
+
   // Đếm rental CHỈ cho đúng trang đang xem — không đếm cả bảng `rentals` cho
   // 12.000 khách để rồi vứt đi 11.980 kết quả không hiện ra màn hình.
+  //
+  // `lateReturnCount` đi ké ĐÚNG câu này: cùng bảng, cùng phạm vi, thêm một
+  // aggregate có FILTER thì rẻ hơn hẳn một vòng mạng thứ hai.
+  //
+  // ⚠️ `count(*) FILTER (...)` trả `bigint`, và `::int` phải bọc CẢ cụm — viết
+  // `count(*)::int FILTER (...)` là lỗi cú pháp, còn quên hẳn thì Bun trả về
+  // chuỗi và `lateReturnCount` lặng lẽ thành `string` khi đi qua Eden Treaty.
   const counts = await db
-    .select({ customerId: schema.rentals.customerId, n: sql<number>`count(*)::int` })
+    .select({
+      customerId: schema.rentals.customerId,
+      n: sql<number>`count(*)::int`,
+      late: sql<number>`(count(*) FILTER (WHERE ${schema.rentals.returnedAt} > ${schema.rentals.endsAt}))::int`,
+    })
+    .from(schema.rentals)
+    .where(inArray(schema.rentals.customerId, ids))
+    .groupBy(schema.rentals.customerId);
+  const countByCustomer = new Map(counts.map((c) => [c.customerId, c]));
+
+  // `DISTINCT ON` lấy ĐÚNG MỘT đơn mỗi khách — thứ tự trong ORDER BY chính là
+  // luật ưu tiên: ONGOING trước BOOKED, rồi trong mỗi nhóm lấy mốc thời gian
+  // gần nhất (ONGOING xét `ends_at` vì nó sắp tới hạn; BOOKED xét `starts_at`
+  // vì nó sắp bắt đầu). Cũng khoanh theo TRANG như câu trên, cùng một lý do.
+  //
+  // Postgres đòi các biểu thức ORDER BY ngoài cùng bên trái phải TRÙNG với
+  // biểu thức của `DISTINCT ON`, nên `customerId` bắt buộc đứng đầu `orderBy` —
+  // đổi thứ tự đó là lỗi lúc chạy, không phải lúc biên dịch.
+  const actives = await db
+    .selectDistinctOn([schema.rentals.customerId], {
+      customerId: schema.rentals.customerId,
+      id: schema.rentals.id,
+      status: schema.rentals.status,
+      endsAt: schema.rentals.endsAt,
+    })
     .from(schema.rentals)
     .where(
-      inArray(
-        schema.rentals.customerId,
-        rows.map((r) => r.id),
+      and(
+        inArray(schema.rentals.customerId, ids),
+        inArray(schema.rentals.status, ["ONGOING", "BOOKED"]),
       ),
     )
-    .groupBy(schema.rentals.customerId);
-  const countByCustomer = new Map(counts.map((c) => [c.customerId, c.n]));
+    .orderBy(
+      schema.rentals.customerId,
+      sql`CASE ${schema.rentals.status} WHEN 'ONGOING' THEN 0 ELSE 1 END`,
+      sql`CASE ${schema.rentals.status} WHEN 'ONGOING' THEN ${schema.rentals.endsAt} ELSE ${schema.rentals.startsAt} END`,
+    );
+  const activeByCustomer = new Map(actives.map((a) => [a.customerId, a]));
 
   return {
-    customers: rows.map((r) => ({ ...r, rentalCount: countByCustomer.get(r.id) ?? 0 })),
+    customers: rows.map((r) => {
+      const c = countByCustomer.get(r.id);
+      const a = activeByCustomer.get(r.id);
+      return {
+        ...r,
+        rentalCount: c?.n ?? 0,
+        lateReturnCount: c?.late ?? 0,
+        // `status` là `text` ở schema nên Drizzle suy ra `string`; WHERE ngay
+        // trên đã thu hẹp về đúng hai giá trị này.
+        activeRental: a
+          ? { id: a.id, status: a.status as "ONGOING" | "BOOKED", endsAt: a.endsAt }
+          : null,
+      };
+    }),
     total,
   };
 }

@@ -3,7 +3,13 @@ import { schema } from "@v9/db";
 import { RENTAL_STATUSES } from "@v9/shared/domain/rental";
 import { eq, like } from "drizzle-orm";
 import { client, db } from "../db";
-import { changeRentalStatus, createRental, listRentalsInRange, MAX_RANGE_DAYS } from "./rentals";
+import {
+  changeRentalStatus,
+  createRental,
+  listRentalsForCustomer,
+  listRentalsInRange,
+  MAX_RANGE_DAYS,
+} from "./rentals";
 
 const P = "ztest-thue-";
 const AUG = (d: number) => new Date(`2026-08-${String(d).padStart(2, "0")}T00:00:00+07:00`);
@@ -310,6 +316,92 @@ describe("changeRentalStatus", () => {
   it("trả NOT_FOUND cho id không tồn tại", async () => {
     const r = await changeRentalStatus(crypto.randomUUID(), "ONGOING", NOW);
     expect(r).toEqual({ ok: false, reason: "NOT_FOUND" });
+  });
+});
+
+describe("listRentalsForCustomer", () => {
+  /**
+   * Cửa sổ ngày ở đây được chọn để KHÔNG giao với bất kỳ đơn nào các describe
+   * khác trong file này đã tạo trên CÙNG `vehicleId` dùng chung — nếu không,
+   * exclusion constraint `rentals_no_overlap` sẽ chặn chính bước SEED của bài
+   * test này (lỗi không liên quan gì tới điều đang kiểm). Các khoảng đã bị
+   * chiếm ở trên: [1,3) [12,17) [17,20) [20,22) [25,27) [28,30).
+   */
+  it("mới nhất trước, và bao gồm CẢ đơn đã huỷ", async () => {
+    const [customer] = await db
+      .insert(schema.customers)
+      .values({ fullName: `${P}Lịch sử riêng`, phone: "0912000102" })
+      .returning();
+    if (!customer) throw new Error("seed hỏng");
+
+    const older = await createRental({
+      vehicleId,
+      customerId: customer.id,
+      startsAt: AUG(3),
+      endsAt: AUG(5),
+      totalAmount: 1_000_000,
+      depositAmount: 0,
+      createdBy: staffId,
+    });
+    const newer = await createRental({
+      vehicleId,
+      customerId: customer.id,
+      startsAt: AUG(6),
+      endsAt: AUG(8),
+      totalAmount: 1_000_000,
+      depositAmount: 0,
+      createdBy: staffId,
+    });
+    if (!older.ok || !newer.ok) throw new Error("seed hỏng");
+
+    const [cancelled] = await db
+      .insert(schema.rentals)
+      .values({
+        vehicleId,
+        customerId: customer.id,
+        createdBy: staffId,
+        startsAt: AUG(8),
+        endsAt: AUG(10),
+        totalAmount: 500_000,
+        depositAmount: 0,
+        status: "CANCELLED",
+      })
+      .returning();
+    if (!cancelled) throw new Error("seed hỏng");
+
+    const rows = await listRentalsForCustomer(customer.id);
+    // Ba đơn CỦA CHÍNH khách hàng test này — không lẫn đơn của `customerId` gốc
+    // (fixture dùng chung ở `beforeAll`), vì đây là khách hàng RIÊNG vừa tạo.
+    expect(rows.map((r) => r.id)).toEqual([cancelled.id, newer.rental.id, older.rental.id]);
+    expect(rows[0]?.status).toBe("CANCELLED");
+    expect(rows[0]?.vehicleMake).toBe("Honda");
+    expect(rows[0]?.vehicleModel).toBe("CB500X");
+  });
+
+  it("chỉ lịch sử của ĐÚNG khách hàng đó, không lẫn khách khác", async () => {
+    const [other] = await db
+      .insert(schema.customers)
+      .values({ fullName: `${P}Khách khác`, phone: "0912000103" })
+      .returning();
+    if (!other) throw new Error("seed hỏng");
+
+    const r = await createRental({
+      vehicleId,
+      customerId: other.id,
+      startsAt: AUG(10),
+      endsAt: AUG(12),
+      totalAmount: 1_000_000,
+      depositAmount: 0,
+      createdBy: staffId,
+    });
+    if (!r.ok) throw new Error("seed hỏng");
+
+    const rows = await listRentalsForCustomer(customerId); // customerId gốc, KHÔNG PHẢI `other`
+    expect(rows.some((x) => x.id === r.rental.id)).toBe(false);
+  });
+
+  it("id lạ trả về mảng rỗng, không throw", async () => {
+    expect(await listRentalsForCustomer(crypto.randomUUID())).toEqual([]);
   });
 });
 

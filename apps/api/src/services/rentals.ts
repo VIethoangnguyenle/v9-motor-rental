@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { schema } from "@v9/db";
 import type { Vnd } from "@v9/shared/domain/money";
 import { transition } from "@v9/shared/domain/rental";
@@ -196,4 +196,52 @@ export async function changeRentalStatus(
     if (!row) throw new Error("UPDATE rentals không trả về hàng nào");
     return { ok: true as const, rental: { ...row, status: row.status as RentalStatus } };
   });
+}
+
+/** Trần lịch sử một khách hàng — bảo hiểm rẻ, cùng lý lẽ `CUSTOMERS_PAGE_SIZE_MAX`
+ *  ở `services/customers.ts`: một khách rất lâu năm không nên kéo cả nghìn hàng
+ *  vào một màn chi tiết. */
+export const MAX_CUSTOMER_HISTORY_ROWS = 200;
+
+export interface RentalWithVehicle extends Rental {
+  readonly vehicleMake: string;
+  readonly vehicleModel: string;
+  readonly vehiclePlate: string | null;
+}
+
+/**
+ * Toàn bộ đơn của MỘT khách hàng, MỚI NHẤT trước — khác hẳn `listRentalsInRange`
+ * ở trên cả về TRỤC lọc lẫn phạm vi TRẠNG THÁI, nên tách hàm thay vì cơi nới
+ * hàm đó:
+ *
+ *   • Trục lọc: `listRentalsInRange` lọc theo MỘT KHOẢNG THỜI GIAN, không quan
+ *     tâm khách nào — đúng cho lịch. Hàm này lọc theo MỘT KHÁCH HÀNG, không có
+ *     khoảng thời gian nào cả — đúng cho "xem lại toàn bộ giao dịch của người
+ *     này", nơi một đơn từ sáu tháng trước vẫn phải hiện ra.
+ *   • Trạng thái: `listRentalsInRange` ẩn `CANCELLED` (đơn huỷ không chiếm chỗ
+ *     trên lịch — đúng việc nó phục vụ). Lịch sử khách hàng thì NGƯỢC LẠI: đơn
+ *     huỷ vẫn là một phần thật của quan hệ giao dịch với khách này (biết ai
+ *     hay đặt-rồi-huỷ là dữ liệu có ích), nên không lọc gì theo `status` —
+ *     UI tự hiện nhãn/màu theo từng trạng thái (`STATUS_LABEL`, `apps/staff`).
+ *
+ * JOIN với `vehicles` thay vì `customers` (khác `RentalWithCustomer` ở trên):
+ * người gọi ĐÃ biết khách hàng nào (chính là tham số `customerId`), cái còn
+ * thiếu để hiện một dòng lịch sử đọc được là XE nào, không phải tên khách lặp
+ * lại ở mọi dòng.
+ */
+export async function listRentalsForCustomer(customerId: string): Promise<RentalWithVehicle[]> {
+  const rows = await db
+    .select({
+      ...COLUMNS,
+      vehicleMake: schema.vehicles.make,
+      vehicleModel: schema.vehicles.model,
+      vehiclePlate: schema.vehicles.plate,
+    })
+    .from(schema.rentals)
+    .innerJoin(schema.vehicles, eq(schema.vehicles.id, schema.rentals.vehicleId))
+    .where(eq(schema.rentals.customerId, customerId))
+    .orderBy(desc(schema.rentals.startsAt))
+    .limit(MAX_CUSTOMER_HISTORY_ROWS);
+
+  return rows.map((r) => ({ ...r, status: r.status as RentalStatus }));
 }
