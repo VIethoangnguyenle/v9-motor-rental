@@ -31,11 +31,16 @@ export function LoginPage() {
 
       <LoginForm />
 
+      {/* `flex min-h-11 items-center` trên CHÍNH thẻ link, không phải trên hàng
+          bọc: hàng cao 44px mà link vẫn là một line box 20px thì vùng chạm không
+          đổi — đo được 96 × 20 px ở bản trước. Đây là màn hình đầu tiên của một
+          PWA dùng bằng một tay, nên hai lối đi duy nhất ra khỏi nó phải bấm
+          trúng được. */}
       <div className="mt-4 flex justify-between text-sm">
-        <Link to="/signup" className="underline">
+        <Link to="/signup" className="flex min-h-11 items-center underline">
           Tạo tài khoản
         </Link>
-        <Link to="/forgot-password" className="underline">
+        <Link to="/forgot-password" className="flex min-h-11 items-center underline">
           Quên mật khẩu
         </Link>
       </div>

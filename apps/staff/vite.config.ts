@@ -35,8 +35,23 @@ export default defineConfig({
         description: "Lịch, bàn giao xe, khách hàng",
         lang: "vi",
         display: "standalone",
-        background_color: "#111111",
-        theme_color: "#111111",
+        /*
+         * ⚠️ Hai màu này TỪNG là `#111111` — gần đen, trong khi `apps/staff` là
+         * app NỀN SÁNG (`--color-canvas: oklch(98.4% 0 0)`). Hệ quả sau khi cài:
+         * splash screen gần đen chớp lên rồi nhường chỗ cho một app trắng, và
+         * thanh trạng thái mang màu không có ở đâu trong giao diện.
+         *
+         * `#111111` là màu của `apps/web` (nền đen tuyền, `DESIGN.md` §2) lọt
+         * sang đây — đúng thứ `docs/workspaces/staff.md` dặn đừng bê qua. Manifest
+         * nằm ngoài tầm với của cả detector lẫn typecheck nên nó sống sót lâu hơn
+         * mọi chỗ khác.
+         *
+         * `#fafafa` = sRGB của `--color-canvas`. Khai lại bằng tay vì manifest
+         * không đọc được biến CSS; `index.html` (`<meta name="theme-color">`) là
+         * chỗ thứ hai phải khớp.
+         */
+        background_color: "#fafafa",
+        theme_color: "#fafafa",
         icons: [
           { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
           { src: "/icon-512.png", sizes: "512x512", type: "image/png" },

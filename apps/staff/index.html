@@ -4,6 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>V9 Motor Rental — Nhân viên</title>
+    <!--
+      iOS KHÔNG đọc `icons` của web manifest cho biểu tượng màn hình chính — nó
+      đọc đúng thẻ này. Thiếu nó, "Thêm vào MH chính" trên iPhone lấy một ẢNH
+      CHỤP MÀN HÌNH của trang làm icon. Không có cảnh báo ở đâu cả, và chỉ lộ ra
+      sau khi người dùng đã cài.
+
+      ⛔ File đang trỏ tới vẫn là ô màu đặc (đo được: đúng 1 màu duy nhất trên cả
+      192×192) — chờ logo thật của shop, xem `docs/ROADMAP.md`. Dây đã nối sẵn để
+      ngày có asset chỉ phải thay file, không phải nhớ ra là còn thiếu thẻ này.
+    -->
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <!--
+      Màu thanh trạng thái / thanh địa chỉ. PHẢI khớp `theme_color` của manifest
+      trong `vite.config.ts` — hai chỗ khai, một giá trị.
+
+      `#fafafa` là sRGB của `--color-canvas` (`oklch(98.4% 0 0)`, `src/index.css`).
+      Manifest không đọc được biến CSS nên đây là chỗ DUY NHẤT token đó bị chép
+      tay; đổi `--color-canvas` thì phải đổi cả hai chỗ này.
+    -->
+    <meta name="theme-color" content="#fafafa" />
   </head>
   <body>
     <div id="root"></div>

@@ -48,7 +48,7 @@ export function CustomerDetailPage() {
       <Link
         to="/customers"
         search={{ q: backSearch.q ?? "", page: backSearch.page ?? 1 }}
-        className="text-sm text-muted underline-offset-2 hover:underline"
+        className="flex min-h-11 items-center self-start text-sm text-muted underline-offset-2 hover:underline"
       >
         ← Khách hàng
       </Link>

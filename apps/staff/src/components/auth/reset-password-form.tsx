@@ -80,7 +80,11 @@ export function ResetPasswordForm({
       <SubmitButton pending={confirmReset.isPending} pendingLabel="Đang đổi…">
         Đặt mật khẩu mới
       </SubmitButton>
-      <button type="button" onClick={onBack} className="text-sm underline">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex min-h-11 items-center self-start text-sm underline"
+      >
         Đổi email khác
       </button>
     </form>

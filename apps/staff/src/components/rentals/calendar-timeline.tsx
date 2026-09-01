@@ -138,7 +138,7 @@ export function CalendarTimeline({
             <Fragment key={vehicle.id}>
               <div
                 style={{ gridColumn: "1", gridRow }}
-                className="sticky left-0 z-10 min-h-11 truncate border-r border-b border-border bg-surface card-pad text-sm text-ink"
+                className="sticky left-0 z-10 min-h-12 truncate border-r border-b border-border bg-surface card-pad text-sm text-ink"
                 title={`${vehicle.make} ${vehicle.model}${vehicle.plate ? ` · ${vehicle.plate}` : ""}`}
               >
                 {vehicle.make} {vehicle.model}
@@ -151,7 +151,7 @@ export function CalendarTimeline({
                   z-index thủ công giữa nền hàng và thanh đơn. */}
               <div
                 style={{ gridColumn: `2 / span ${String(cols.length)}`, gridRow }}
-                className="relative min-h-11 border-b border-border"
+                className="relative min-h-12 border-b border-border"
               >
                 {placed.length === 0 && (
                   // Yêu cầu #… của Task 4: xe trống cả kỳ là THÔNG TIN, không
@@ -172,6 +172,11 @@ export function CalendarTimeline({
                     gridColumn: `${String(placement.startCol + 1)} / span ${String(placement.span)}`,
                     gridRow,
                   }}
+                  // `min-h-11` = 44px, ngưỡng vùng chạm app tự đặt (`ui/button.tsx`).
+                  // Hàng phải là `min-h-12` (48px) để chứa nó: `m-0.5` ăn 2px mỗi
+                  // đầu, nên trong một hàng 44px thanh chỉ cao được 40px — đúng
+                  // con số đo được ở bản trước, dưới chuẩn của chính app này.
+                  //
                   // `relative` KHÔNG phải trang trí: nền hàng ngay trên là
                   // `position: relative` (nó neo nhãn "trống cả kỳ" tuyệt đối),
                   // và một phần tử ĐƯỢC ĐỊNH VỊ luôn vẽ đè lên anh em KHÔNG được
@@ -179,7 +184,7 @@ export function CalendarTimeline({
                   // không ai thấy; thành `<button>` thì nền hàng nuốt hết cú
                   // chạm và sheet không bao giờ mở. Đo bằng `elementFromPoint`
                   // ở giữa thanh: trả về nền hàng, không phải thanh.
-                  className={`relative m-0.5 flex min-h-10 items-center gap-1 rounded-card px-2 text-left text-xs ${rentalChipClass(rental, now)}`}
+                  className={`relative m-0.5 flex min-h-11 items-center gap-1 rounded-card px-2 text-left text-xs ${rentalChipClass(rental, now)}`}
                   title={`${rental.customerName ?? "—"} · ${STATUS_LABEL[rental.status]}`}
                   aria-label={`${rental.customerName ?? "Khách chưa rõ"} · ${STATUS_LABEL[rental.status]} — xem chi tiết`}
                 >

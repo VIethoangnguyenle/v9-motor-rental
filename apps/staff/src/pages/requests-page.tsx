@@ -134,7 +134,7 @@ function RequestCard({
         <Link
           to="/calendar"
           search={{ view: "timeline", from: toYmd(row.startDate) }}
-          className="text-xs text-accent underline"
+          className="inline-flex min-h-11 items-center text-xs text-accent underline"
         >
           Xem lịch quanh ngày này →
         </Link>

@@ -44,6 +44,15 @@ export interface CalendarMonthProps {
   readonly gridWindow: GridWindow;
   /** Chạm vào một chip đơn — mở sheet chi tiết. Xem `CalendarTimelineProps`. */
   readonly onSelect: (rental: CalendarRental) => void;
+  /**
+   * Chạm vào "+k nữa" — mở Timeline neo vào đúng ngày đó.
+   *
+   * Trước đây "+k nữa" là một `<div>` trơ: từ đơn thứ tư trở đi của một ngày
+   * KHÔNG có đường nào chạm tới trong chế độ Tháng, và cũng không có gì gợi ý
+   * rằng chúng ở đâu. Điều hướng thuộc `rental-calendar.tsx` (nó sở hữu URL),
+   * nên component này chỉ báo ra ngày được chạm.
+   */
+  readonly onShowDay: (date: Date) => void;
 }
 
 const WEEKDAY_HEADER = ["Th 2", "Th 3", "Th 4", "Th 5", "Th 6", "Th 7", "CN"];
@@ -71,13 +80,35 @@ function dayLabel(date: Date): string {
  * Tối đa 3 dòng đơn mỗi ô trước khi gộp thành "+k nữa".
  *
  * Vì sao 3, không phải 4 hay 5: ô lịch tháng chia đều 7 cột nên đã hẹp theo
- * chiều ngang (điện thoại ~50px/ô); giữ chiều cao ô gần vuông (không kéo dài
- * để nhét thêm dòng) nghĩa là số dòng chip phải nhỏ. 3 chip (~1rem/dòng) cộng
- * số ngày + khoảng đệm vừa một ô ~6rem cao — đọc được cả trên điện thoại. Hơn
- * 3 dòng ở độ rộng ~50px thì tên khách/xe bị truncate tới mức vô nghĩa, lúc đó
- * "+k nữa" là thông tin hữu ích hơn dòng chip thứ tư không đọc nổi.
+ * chiều ngang (điện thoại ~51px/ô, đo ở 390px); hơn 3 dòng ở độ rộng đó thì tên
+ * xe bị truncate tới mức vô nghĩa, lúc ấy "+k nữa" là thông tin hữu ích hơn một
+ * dòng chip thứ tư không đọc nổi.
+ *
+ * Con số này KHÔNG giảm khi chip cao lên 24px (xem `CHIP` bên dưới): giảm nó đi
+ * một dòng là đẩy thêm một đơn nữa ra khỏi tầm chạm trực tiếp, mà chi phí giữ
+ * nguyên chỉ là ô cao thêm ~8px. Ô lịch tháng cao lên là chấp nhận được — lưới
+ * vốn đã cuộn.
  */
 const MAX_CHIPS = 3;
+
+/**
+ * Chip đơn thuê trong ô ngày. `min-h-6` = 24px là **ngưỡng WCAG 2.2 SC 2.5.8
+ * (Target Size Minimum, mức AA)**, không phải một con số thẩm mỹ.
+ *
+ * Bản trước không khai chiều cao gì cả, nên chip cao đúng bằng line box của
+ * `text-xs`: **đo được 52 × 16 px, xếp cách nhau 2px** (`gap-0.5`). Vừa dưới
+ * ngưỡng 24px, vừa không lọt ngoại lệ giãn cách (vòng tròn 24px quanh mỗi chip
+ * chồng lên chip kế bên) — trượt ở cả hai đường. Mà đây là đường DUY NHẤT mở
+ * được sheet chi tiết từ lịch tháng.
+ *
+ * Vì sao 24px chứ không phải 44px như `ui/button.tsx` và `AppNav` tự đặt: 44px
+ * × 3 chip đẩy ô ngày lên ~168px, tức một lưới 6 tuần cao hơn 1000px và mất hẳn
+ * cái làm nên giá trị của chế độ Tháng — nhìn một phát thấy cả tháng. Chế độ
+ * Tháng là mặt phẳng để QUÉT; mặt phẳng để LÀM là Timeline, và ở đó thanh đơn
+ * mang đủ 44px. Hai chế độ, hai vai trò, đúng ngưỡng cho từng vai.
+ */
+const CHIP =
+  "flex min-h-6 w-full items-center gap-0.5 truncate rounded-card px-1 text-left text-xs";
 
 interface Chip {
   readonly rental: CalendarRental;
@@ -89,6 +120,7 @@ export function CalendarMonth({
   rentals,
   gridWindow,
   onSelect,
+  onShowDay,
 }: CalendarMonthProps) {
   const now = new Date();
   const cols = dayColumns(gridWindow);
@@ -155,7 +187,10 @@ export function CalendarMonth({
                   {dayLabel(col.date)}
                 </span>
 
-                <div className="mt-1 flex flex-col gap-0.5">
+                {/* `gap-1` (4px), không `gap-0.5`: hai vùng chạm 24px cách nhau
+                    2px là mời chạm nhầm sang đơn bên cạnh — trên điện thoại,
+                    một tay, trong gara. */}
+                <div className="mt-1 flex flex-col gap-1">
                   {shown.map(({ rental, placement }) => {
                     const vehicle = vehicleById.get(rental.vehicleId);
                     const label = vehicle
@@ -168,16 +203,23 @@ export function CalendarMonth({
                         onClick={() => onSelect(rental)}
                         title={`${vehicle ? `${vehicle.make} ${vehicle.model}` : "?"} · ${rental.customerName ?? "—"} · ${STATUS_LABEL[rental.status]}`}
                         aria-label={`${label} · ${rental.customerName ?? "Khách chưa rõ"} · ${STATUS_LABEL[rental.status]} — xem chi tiết`}
-                        className={`w-full truncate rounded-card px-1 text-left text-xs ${rentalChipClass(rental, now)}`}
+                        className={`${CHIP} ${rentalChipClass(rental, now)}`}
                       >
                         {placement.clippedStart && <span aria-hidden>‹</span>}
-                        {label}
+                        <span className="min-w-0 truncate">{label}</span>
                         {placement.clippedEnd && <span aria-hidden>›</span>}
                       </button>
                     );
                   })}
                   {hiddenCount > 0 && (
-                    <div className="px-1 text-xs text-muted">+{String(hiddenCount)} nữa</div>
+                    <button
+                      type="button"
+                      onClick={() => onShowDay(col.date)}
+                      aria-label={`Còn ${String(hiddenCount)} đơn nữa ngày ${DAY_MONTH_FMT.format(col.date)} — xem trên Timeline`}
+                      className={`${CHIP} text-muted underline underline-offset-2`}
+                    >
+                      +{String(hiddenCount)} nữa
+                    </button>
                   )}
                 </div>
               </div>

@@ -280,6 +280,7 @@ function renderGrid(
   rentals: readonly CalendarRental[],
   gridWindow: GridWindow,
   onSelect: (rental: CalendarRental) => void,
+  onShowDay: (date: Date) => void,
 ) {
   if (view === "timeline") {
     return (
@@ -298,6 +299,7 @@ function renderGrid(
         rentals={rentals}
         gridWindow={gridWindow}
         onSelect={onSelect}
+        onShowDay={onShowDay}
       />
     );
   }
@@ -351,6 +353,22 @@ export function RentalCalendar() {
   }
   function switchView(next: CalendarView): void {
     void navigate({ search: (prev) => ({ ...prev, view: next }) });
+  }
+  /**
+   * "+k nữa" trên một ô lịch tháng → sang Timeline neo vào đúng ngày đó.
+   *
+   * Đổi CẢ `view` lẫn `from` trong MỘT lần navigate, không phải hai: hai lần
+   * điều hướng liên tiếp đẻ ra hai history entry, và Back sẽ đưa người dùng về
+   * một trạng thái trung gian họ chưa từng thấy (Timeline ở ngày cũ).
+   *
+   * Ngày đi qua `zonedYmdOf` chứ không `toISOString().slice(0,10)`: `col.date`
+   * là instant nửa đêm giờ VN, tức 17h hôm TRƯỚC theo UTC — cắt chuỗi ISO ra sẽ
+   * neo lịch sai một ngày. Cùng cái bẫy `calendar-timeline.tsx` đã ghi.
+   */
+  function showDay(date: Date): void {
+    void navigate({
+      search: (prev) => ({ ...prev, view: "timeline", from: ymdToString(zonedYmdOf(date)) }),
+    });
   }
 
   let rangeLabel: string;
@@ -463,10 +481,17 @@ export function RentalCalendar() {
         !noFleet &&
         !rentalsFailed &&
         rentals.data?.ok === true &&
-        renderGrid(view, vehicles, rentals.data.rentals, gridWindow, (r) => {
-          setChanged(null);
-          setSelectedId(r.id);
-        })}
+        renderGrid(
+          view,
+          vehicles,
+          rentals.data.rentals,
+          gridWindow,
+          (r) => {
+            setChanged(null);
+            setSelectedId(r.id);
+          },
+          showDay,
+        )}
 
       {selected && (
         <RentalDetailSheet
