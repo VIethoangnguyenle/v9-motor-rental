@@ -97,13 +97,21 @@ export function RentalDetailSheet({ rental, vehicle, onClose, onChanged }: Renta
   const [confirming, setConfirming] = useState<RentalStatus | null>(null);
 
   /**
-   * Đơn vừa đổi trạng thái TRONG PHIÊN này.
+   * Số lần đơn này đổi trạng thái TRONG PHIÊN mở sheet hiện tại.
    *
    * State cục bộ chứ không suy từ dữ liệu: "vừa đổi" là một sự kiện của phiên
    * làm việc này, không phải một thuộc tính của đơn. Tải lại trang thì nó biến
    * mất, và đó là đúng.
+   *
+   * ĐẾM chứ không phải cờ `boolean`, và con số đi thẳng vào `key` của chip: một
+   * cờ đã bật thì lần đổi trạng thái THỨ HAI trong cùng sheet không khởi động
+   * lại được hoạt ảnh — CSS animation chỉ chạy khi `animation-name` vừa được gắn
+   * vào một phần tử, mà class thì đã nằm sẵn ở đó. Đổi `key` là dựng lại phần
+   * tử, tức dựng lại luôn `::after`. Hôm nay chưa với tới được (nhịp đầu đóng
+   * sheet trước khi kịp bấm nút thứ hai), nhưng nó là cái bẫy chờ đúng người
+   * sau nào giữ sheet mở lâu hơn.
    */
-  const [justChanged, setJustChanged] = useState(false);
+  const [changeCount, setChangeCount] = useState(0);
 
   /**
    * Hàm đóng của `Modal`, giữ trong ref để `onSuccess` của mutation với tới
@@ -163,15 +171,21 @@ export function RentalDetailSheet({ rental, vehicle, onClose, onChanged }: Renta
       // lỗi mà nút "Đã giao xe" sinh ra để sửa.
       void queryClient.invalidateQueries({ queryKey: ["stats-summary"] });
 
-      // Chip đổi cả CHỮ lẫn cách tô khi dữ liệu vừa fetch về tới (đo trên bản
-      // build: nhãn lật ở ~35ms); vòng sáng nói CHỖ NÀO vừa đổi. Báo lên trên —
-      // tức đóng sheet — chỉ sau khi nhịp chạy xong; xem `BEAT_MS`.
-      setJustChanged(true);
+      // Chip đổi cả CHỮ lẫn cách tô ngay trong commit này (`shownStatus`); vòng
+      // sáng nói CHỖ NÀO vừa đổi. Báo lên trên — tức đóng sheet — chỉ sau khi
+      // nhịp chạy xong; xem `BEAT_MS`.
+      setChangeCount((n) => n + 1);
       const notify = () => {
         beat.current = null;
         onChanged(to);
       };
-      if (beat.current) clearTimeout(beat.current.timer);
+      if (beat.current) {
+        // Nhịp trước còn NỢ một câu xác nhận. Huỷ đồng hồ mà không trả nốt là
+        // đánh rơi `onChanged` đầu tiên trong im lặng — đúng lớp lỗi cả đợt này
+        // sinh ra để dọn.
+        clearTimeout(beat.current.timer);
+        beat.current.notify();
+      }
       const holdMs = prefersReducedMotion() ? BEAT_REDUCED_MS : BEAT_MS;
       beat.current = {
         timer: setTimeout(() => {
@@ -188,10 +202,27 @@ export function RentalDetailSheet({ rental, vehicle, onClose, onChanged }: Renta
   });
 
   const now = new Date();
+
+  /**
+   * Trạng thái để VẼ, không phải trạng thái trong prop.
+   *
+   * `change.data` là giá trị `mutationFn` trả về sau khi server xác nhận, nên nó
+   * đúng ngay từ khung hình đầu — không phải đợi vòng `invalidateQueries` →
+   * refetch → prop mới về. Hai lý do, và lý do thứ hai mới là lý do bắt buộc:
+   *
+   *   • chip lật cùng lúc với vòng sáng thay vì lệch sau nó một RTT;
+   *   • trên đường `→ CANCELLED` thì KHÔNG có prop mới nào để mà đợi:
+   *     `listRentalsInRange` lọc `status <> 'CANCELLED'`, nên đơn vừa huỷ rơi
+   *     khỏi danh sách và `rental-calendar.tsx` ghim lại bản CŨ. Thiếu dòng này,
+   *     vòng sáng chạy quanh một cái chip vẫn ghi "Đã đặt".
+   */
+  const shownStatus: RentalStatus = change.data ?? rental.status;
+  const shownRental = { ...rental, status: shownStatus };
+
   const vehicleLabel = vehicle
     ? `${vehicle.make} ${vehicle.model}${vehicle.plate ? ` · ${vehicle.plate}` : ""}`
     : "Xe không còn trong đội";
-  const nextStatuses = availableTransitions(rental.status);
+  const nextStatuses = availableTransitions(shownStatus);
 
   return (
     // `placement="adaptive"`: đáy màn trên điện thoại (mở bằng cách chạm một
@@ -221,9 +252,11 @@ export function RentalDetailSheet({ rental, vehicle, onClose, onChanged }: Renta
             trong app đọc được trạng thái mà không cần hover. */}
             <div className="flex flex-wrap items-center gap-2">
               <span
-                className={`rounded-card px-2 py-1 text-xs ${rentalChipClass(rental, now)}${justChanged ? " just-changed" : ""}`}
+                // `key` đổi theo mỗi nhịp để phần tử được dựng lại — xem `changeCount`.
+                key={changeCount}
+                className={`rounded-card px-2 py-1 text-xs ${rentalChipClass(shownRental, now)}${changeCount > 0 ? " just-changed" : ""}`}
               >
-                {STATUS_LABEL[rental.status]}
+                {STATUS_LABEL[shownStatus]}
               </span>
               <span className="text-sm text-ink">
                 {DATE_FMT.format(rental.startsAt)} – {formatLastDay(rental.endsAt)}
