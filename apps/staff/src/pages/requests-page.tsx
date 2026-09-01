@@ -187,8 +187,8 @@ export function RequestsPage() {
 
   return (
     // `<div>`, không `<main>`: `AppShell` đã bọc `children` trong CHÍNH MỘT
-    // `<main>`. Hai landmark cho cùng nội dung là lỗi mà `staff-list-page` và
-    // `health-page` đang mắc; trang mới không lặp lại.
+    // `<main>`. Hai landmark cho cùng nội dung là lỗi — lý lẽ đầy đủ, và chỗ
+    // gần nhất từng trượt, nằm ở `pages/stats-page.tsx`.
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-bold text-ink">Yêu cầu thuê</h1>
 
