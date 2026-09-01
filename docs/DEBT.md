@@ -353,10 +353,20 @@ nợ 2026-08-18, xem "Đã đóng trong Plan A" bên dưới cho cách chứng m
 
   **Đừng đọc "439 test xanh" thành "chuyển động được canh".**
 
-- **`ui/modal.tsx` không sống sót qua StrictMode** → không lớp phủ nào mở được trên `vite dev`.
-  `dialog.close()` **xếp hàng** sự kiện `close`; StrictMode chạy cleanup rồi mount lại, và sự kiện đã
-  xếp hàng rơi vào `handleClose` của lần mount thứ hai. Có **từ trước** đợt này (xác nhận ở
-  `ebbb443`), bản build không bị. Đang sửa riêng — nếu mục này còn đây thì nó chưa land.
+- ~~**`ui/modal.tsx` không sống sót qua StrictMode**~~ ✅ **đóng ở `ed9e760`.** `dialog.close()`
+  **xếp hàng** sự kiện `close`; StrictMode chạy cleanup rồi mount lại, và sự kiện đã xếp hàng rơi vào
+  `handleClose` của lần mount thứ hai, bị đọc thành "người dùng đóng". Có từ trước đợt này (xác nhận
+  ở `ebbb443`); bản build không bị, nên **CI không bao giờ kêu** — nó chặn `vite dev` thôi, tức chặn
+  đúng vòng lặp phát triển trên cả ba lớp phủ.
+
+  Sửa bằng `if (el.open) return;` ở đầu `handleClose` — đọc **số đo** của DOM thay vì giữ một cờ
+  "vừa tháo": một boolean sống qua hai lần chạy effect còn phải lo nó kẹt `true` khi sự kiện không
+  tới. Đo: lúc mount lại, sự kiện xếp hàng gặp `open === true`; mọi lần đóng thật gặp `false`, vì
+  `close()` gỡ `open` trước khi xếp hàng.
+
+  ⚠️ **Không có test nào canh.** `Modal` và ba chỗ gọi đều "no tests found within 3 caller hops"; lỗi
+  chỉ lộ dưới StrictMode trong trình duyệt thật. Hồi quy sau này vẫn phải bắt bằng tay — thuộc món nợ
+  test DOM ở trên.
 
 - **`bun run format:check` đỏ trên `main`** với 19 file, có từ trước đợt này (`819ba41`). Một trong
   số đó — `docs/plans/2026-09-01-staff-visual-system-plan.md` — **prettier không idempotent**:
