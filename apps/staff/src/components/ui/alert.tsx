@@ -2,15 +2,20 @@
  * Ba mức, ba nền — đi qua token thay vì `bg-red-100`/`bg-amber-100`/`bg-gray-100`
  * rải rác. `--color-warning` (`index.css`) được thêm sau file này ở đợt token
  * trượt AA (dùng trước cho chấm "phải trả hôm nay" ở `attention-list.tsx`) —
- * "warning" nay mượn ĐÚNG token đó, cùng khuôn `bg-X/10 text-X` với error/info,
- * thay vì viền `ink` trung tính nhìn y hệt "info" như bản cũ.
+ * "warning" nay mượn ĐÚNG token đó, thay vì viền `ink` trung tính nhìn y hệt
+ * "info" như bản cũ.
+ *
+ * ⚠️ Nền là token ĐẶC `*-soft`, KHÔNG phải `bg-X/10`. Bản pha alpha để tương
+ * phản phụ thuộc nền phía sau: tone `error` đo được 4,59:1 trên `surface` nhưng
+ * **4,38:1** trên `canvas` — trượt AA ở đúng chỗ banner lỗi hay nằm nhất, và
+ * không đo một lần cho xong được. Lý lẽ và số đo đầy đủ ở `index.css`.
  */
 type AlertTone = "error" | "warning" | "info";
 
 const TONE: Record<AlertTone, string> = {
-  error: "bg-status-overdue/10 text-status-overdue",
-  warning: "bg-warning/10 text-warning",
-  info: "bg-accent/10 text-accent",
+  error: "bg-status-overdue-soft text-status-overdue",
+  warning: "bg-warning-soft text-warning",
+  info: "bg-accent-soft text-accent",
 };
 
 export function Alert({

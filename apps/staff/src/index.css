@@ -52,6 +52,47 @@
    */
   --color-warning: oklch(52% 0.13 75);
 
+  /*
+   * ── Nền "soft": bản ĐẶC của những mảng tô nhạt, thay cho `bg-X/10` và `bg-X/15`
+   * ─────────────────────────────────────────────────────────────────────────────
+   *
+   * Trước đợt này, alert và chip tô nền bằng chính token chữ pha alpha
+   * (`bg-status-overdue/10 text-status-overdue`). Cách đó có một lỗi KIỂU, không
+   * phải một lỗi giá trị: màu cuối cùng — và do đó tương phản — phụ thuộc vào thứ
+   * nằm SAU nó, nên cùng một component đạt 4,59:1 trên `surface` và **4,38:1**
+   * trên `canvas`. Trượt AA ở đúng nơi nó hay xuất hiện nhất (banner lỗi nằm
+   * thẳng trên nền trang), và không có cách nào đo một lần cho xong.
+   *
+   * Chip "chưa xử lý" của màn Yêu cầu tệ hơn: 4,27:1 trên canvas.
+   *
+   * Token đặc thì đo một lần là biết, ở mọi nền. Đo trên chính giá trị dưới đây:
+   *
+   *   text-status-overdue   trên status-overdue-soft    4,78:1 ✅
+   *   text-warning          trên warning-soft           4,98:1 ✅
+   *   text-accent           trên accent-soft            4,95:1 ✅
+   *   text-status-booked    trên status-booked-soft     5,35:1 ✅
+   *   text-status-completed trên status-completed-soft  6,29:1 ✅
+   *
+   * L=96% là mức cao nhất còn tô THẤY được: nền nổi so với `canvas` 1,07–1,08:1,
+   * ngang hoặc hơn mấy lớp pha cũ. Chroma là mức LỚN NHẤT không tràn gamut sRGB ở
+   * L đó — cao hơn thì trình duyệt tự cắt, và token sẽ nói dối về màu nó vẽ ra
+   * (một lần quét trước đã cho ra `oklch(99.9% 0.089 0)`, khai là xám mà render
+   * ra HỒNG).
+   *
+   * `status-booked-soft` và `accent-soft` hôm nay BẰNG NHAU: cùng hue 255, và
+   * 0,02 là trần gamut ở L96% cho hue đó. Vẫn để hai token vì đó là hai VAI TRÒ
+   * ("đơn đã đặt" vs "hành động chính / yêu cầu mới"); đổi một cái không được
+   * kéo theo cái kia.
+   *
+   * `status-completed-soft` phải có chroma ĐÚNG BẰNG 0 — token chữ của nó cũng
+   * C=0, nên hue là số vô nghĩa; cho nó chroma là ra một chip xám… màu hồng.
+   */
+  --color-status-overdue-soft: oklch(96% 0.02 27);
+  --color-status-booked-soft: oklch(96% 0.02 255);
+  --color-status-completed-soft: oklch(96% 0 0);
+  --color-warning-soft: oklch(96% 0.033 75);
+  --color-accent-soft: oklch(96% 0.02 255);
+
   /* Bán kính nhỏ và thống nhất: app mật độ cao, bo nhiều làm hàng bảng rối mắt. */
   --radius-card: 0.375rem;
 }

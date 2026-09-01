@@ -22,11 +22,13 @@ const PAST = new Date("2026-08-01T00:00:00Z");
 const FUTURE = new Date("2026-10-01T00:00:00Z");
 
 const OVERDUE = "bg-status-overdue text-accent-ink";
-const PICKUP_OVERDUE = "border border-status-overdue text-status-overdue";
-const BOOKED = "border border-status-booked bg-status-booked/15 text-status-booked";
+const PICKUP_OVERDUE =
+  "border border-status-overdue bg-status-overdue-soft text-status-overdue";
+const BOOKED = "border border-status-booked bg-status-booked-soft text-status-booked";
 const ONGOING = "bg-status-ongoing text-accent-ink";
 const COMPLETED = "bg-status-completed text-accent-ink";
-const CANCELLED = "border border-status-completed bg-status-completed/15 text-status-completed";
+const CANCELLED =
+  "border border-status-completed bg-status-completed-soft text-status-completed";
 
 /** Bốn quan hệ thời gian, đặt tên theo thứ nhân viên thực sự hỏi. */
 const RELATIONS = [

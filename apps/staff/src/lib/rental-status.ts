@@ -50,14 +50,10 @@ export const TRANSITION_LABEL: Record<RentalStatus, string> = {
 const STATUS_CLASS: Record<RentalStatus, string> = {
   // "Đã đặt" tô nền NHẠT + viền (không phải nền đặc) — đúng cách `index.css`
   // ghi: phân biệt BOOKED/ONGOING bằng CÁCH TÔ, không bằng độ sáng.
-  BOOKED: "border border-status-booked bg-status-booked/15 text-status-booked",
+  BOOKED: "border border-status-booked bg-status-booked-soft text-status-booked",
   ONGOING: "bg-status-ongoing text-accent-ink",
   COMPLETED: "bg-status-completed text-accent-ink",
-  // Đo lại đúng vai trò mới (token làm CHỮ trên chính nó pha 15% trên nền
-  // trang), không chép số của vai trò cũ: 5,44:1 trên canvas · 5,70:1 trên
-  // surface — qua AA chữ thường (4,5:1) có biên. Cách đo và cách tự kiểm ở
-  // comment `PICKUP_OVERDUE_CLASS` bên dưới.
-  CANCELLED: "border border-status-completed bg-status-completed/15 text-status-completed",
+  CANCELLED: "border border-status-completed bg-status-completed-soft text-status-completed",
 };
 /** Xe đang nằm ngoài đường quá hạn trả. Nền ĐẶC — 5,41:1 với chữ trắng. */
 const OVERDUE_CLASS = "bg-status-overdue text-accent-ink";
@@ -65,14 +61,29 @@ const OVERDUE_CLASS = "bg-status-overdue text-accent-ink";
 /**
  * Chưa ai lấy xe dù đã qua giờ hẹn. Cùng HUE đỏ, khác CÁCH TÔ.
  *
- * KHÔNG có `bg-status-overdue/15` như chip BOOKED, và đây là chỗ duy nhất trong
- * bộ chip lệch khỏi khuôn "viền + nền 15%". Lý do là một PHÉP ĐO, không phải
- * thẩm mỹ: token `overdue` sáng và bão hoà hơn `booked` (L55% C0.21 vs L50%
- * C0.09), nên dùng nó làm CHỮ trên chính nó pha 15% chỉ đạt **4,03:1** — trượt
- * AA chữ thường (4,5:1). Bỏ lớp nền pha đó đưa lên **5,19:1** trên canvas và
- * 5,41:1 trên surface.
+ * ⚠️ **Chip này từng KHÔNG có nền, và lý do đó đã hết hiệu lực.** Bản trước ghi:
+ * dùng `overdue` làm chữ trên chính nó pha 15% chỉ đạt 4,03:1 nên phải bỏ lớp
+ * nền. Số đó đúng — nhưng nó là số của một cách tô ĐÃ BỊ THAY: nền pha alpha
+ * không còn tồn tại trong app, mọi mảng tô nhạt nay là token đặc `*-soft`
+ * (`index.css`). Trên `status-overdue-soft`, `text-status-overdue` đo được
+ * **4,78:1** — qua AA có biên. Ràng buộc duy nhất giữ chip này khỏi bộ khuôn
+ * chung đã biến mất, nên nó quay về đúng khuôn của BOOKED: viền + nền nhạt +
+ * chữ. Đó cũng là điều nó VỐN LÀ — một đơn `BOOKED`, chỉ là trễ.
+ *
+ * Hai chiều nghĩa vẫn nguyên vẹn, và đó mới là thứ phải giữ:
+ *   • CÁCH TÔ = xe đã rời cửa hàng chưa. Nhạt + viền (còn trong shop) vs đặc
+ *     (đang ngoài đường). Nền `soft` ở L96% vẫn nhẹ hơn nền đặc rất xa, nên thứ
+ *     tự ưu tiên khi quét mắt không đổi — và mâu thuẫn với con số "N xe quá hạn
+ *     chưa trả" ở Trang chủ vẫn được dập tắt như cũ.
+ *   • HUE = có cần người xử lý không.
+ *
+ * Cách tự kiểm: tô màu vào `<canvas>` rồi đọc pixel — đừng đọc
+ * `getComputedStyle().color`, Chromium trả nguyên chuỗi `oklch()` chứ không quy
+ * về sRGB và một parser ngây thơ cho ra 16,69:1 cho một cặp thật ra là 4,38:1.
+ * Hiệu chuẩn bằng cách tái lập các số `index.css` đã công bố trước khi tin số mới.
  */
-const PICKUP_OVERDUE_CLASS = "border border-status-overdue text-status-overdue";
+const PICKUP_OVERDUE_CLASS =
+  "border border-status-overdue bg-status-overdue-soft text-status-overdue";
 
 /**
  * Class Tailwind cho nền/chữ của một thanh/chip đơn thuê.

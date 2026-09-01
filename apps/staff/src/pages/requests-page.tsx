@@ -31,10 +31,17 @@ const ACTION_LABEL: Record<RequestStatus, string> = {
   CLOSED: "Đóng yêu cầu",
 };
 
+/**
+ * Nền ĐẶC `*-soft` (xem `index.css`). Bản cũ pha alpha, và `NEW` là chỗ trượt AA
+ * nặng nhất trong app: `bg-accent/15 text-accent` đo được **4,27:1** trên canvas
+ * và 4,46:1 trên surface — dưới ngưỡng ở CẢ HAI nền. Nó cũng dùng `/15` trong
+ * khi `Alert` dùng `/10` cho cùng một nghĩa "thông tin", nên cùng một ý nghĩa ra
+ * hai sắc độ khác nhau ở hai màn hình. Cả hai giờ dùng chung `accent-soft`.
+ */
 const STATUS_CLASS: Record<RequestStatus, string> = {
-  NEW: "bg-accent/15 text-accent",
-  CONTACTED: "bg-warning/10 text-warning",
-  CLOSED: "bg-status-completed/15 text-status-completed",
+  NEW: "bg-accent-soft text-accent",
+  CONTACTED: "bg-warning-soft text-warning",
+  CLOSED: "bg-status-completed-soft text-status-completed",
 };
 
 const SENT_FMT = new Intl.DateTimeFormat("vi-VN", {
