@@ -1,9 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { AttentionList } from "../components/stats/attention-list";
 import { RevenueCards } from "../components/stats/revenue-cards";
-import { RentalForm, type CreatedRental } from "../components/rentals/rental-form";
+import type { CreatedRental } from "../components/rentals/rental-form";
+
+/*
+ * `RentalForm` chỉ mount khi người dùng bấm "+ Lên đơn", nhưng import tĩnh thì
+ * nó vẫn nằm trong chunk vào cửa — 560 dòng cộng cả nhánh `@v9/shared/domain/money`
+ * mà trang này không cần để vẽ ba thẻ doanh thu.
+ *
+ * `type CreatedRental` import RIÊNG bằng `import type`: nó bị xoá hoàn toàn lúc
+ * biên dịch nên không kéo module về, còn trộn nó vào `lazy()` thì không khai
+ * kiểu được.
+ */
+const RentalForm = lazy(() =>
+  import("../components/rentals/rental-form").then((m) => ({ default: m.RentalForm })),
+);
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
@@ -47,8 +60,14 @@ export function StatsPage() {
         </Button>
       </div>
 
+      {/* `fallback={null}`: `RentalForm` tự dựng lớp phủ của nó, nên một
+          skeleton ở đây sẽ nằm CHÈN vào giữa trang chứ không nằm trong modal.
+          Chunk này nhỏ và chỉ tải một lần cho cả phiên; khoảng lặng ngắn hơn
+          nhịp mở modal. */}
       {formOpen && (
-        <RentalForm onClose={() => setFormOpen(false)} onCreated={setCreated} />
+        <Suspense fallback={null}>
+          <RentalForm onClose={() => setFormOpen(false)} onCreated={setCreated} />
+        </Suspense>
       )}
 
       {/*

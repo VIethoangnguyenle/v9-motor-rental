@@ -15,6 +15,7 @@ import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   redirect,
   useNavigate,
 } from "@tanstack/react-router";
@@ -23,20 +24,34 @@ import { hasSession, signOut } from "./lib/auth";
 import { LOGIN_REASONS, decideEntry, type LoginReason } from "./lib/guard-decision";
 import { ensureMe } from "./lib/me";
 import { validateCustomersSearch } from "./lib/customers-search";
-import { validateCalendarSearch } from "./components/rentals/rental-calendar";
-import { CalendarPage } from "./pages/calendar-page";
-import { ChangePasswordPage } from "./pages/change-password-page";
-import { CustomerDetailPage } from "./pages/customer-detail-page";
-import { CustomersListPage } from "./pages/customers-list-page";
+import { validateCalendarSearch } from "./lib/calendar-search";
 import { PendingApprovalPage } from "./pages/pending-approval-page";
-import { SignupPage } from "./pages/signup-page";
 import { LoginPage } from "./pages/login-page";
-import { HealthPage } from "./pages/health-page";
-import { StaffListPage } from "./pages/staff-list-page";
-import { RequestsPage } from "./pages/requests-page";
 import { StatsPage } from "./pages/stats-page";
-import { ForgotPasswordPage } from "./pages/forgot-password-page";
-import { NotFoundPage, RouteErrorPage } from "./pages/fallback-pages";
+import { NotFoundPage, RoutePendingPage, RouteErrorPage } from "./pages/fallback-pages";
+
+/*
+ * ── Chunk riêng cho từng trang ───────────────────────────────────────────────
+ *
+ * Trước đó `vite build` ra ĐÚNG MỘT file JS 553 KB (146 KB gzip) và cảnh báo
+ * "Some chunks are larger than 500 kB". Mọi trang được import tĩnh ở đây, nên
+ * màn ĐĂNG NHẬP tải kèm lịch, form lên đơn, upload ảnh và bảng nhân viên —
+ * trên 3G trong gara đó là thời gian chờ trước khi gõ được chữ đầu tiên.
+ *
+ * Ba trang CỐ Ý không tách:
+ *   • `LoginPage` — cửa vào của người chưa đăng nhập; tách nó là thêm một vòng
+ *     mạng vào đúng thứ đang chặn họ.
+ *   • `StatsPage` — trang `/`, đích đến sau khi đăng nhập và sau mọi redirect
+ *     của guard.
+ *   • `PendingApprovalPage` — nhỏ, và là đích redirect của guard.
+ *
+ * Điều kiện để việc này có tác dụng nằm ở `lib/calendar-search.ts`: chừng nào
+ * `validateCalendarSearch` còn ở chung file với `RentalCalendar`, dòng import
+ * validator ở đây vẫn kéo cả cây component của trang Lịch vào chunk chính và
+ * `lazyRouteComponent` không tiết kiệm được gì.
+ */
+const lazy = <T extends string>(load: () => Promise<Record<T, React.ComponentType>>, name: T) =>
+  lazyRouteComponent(load, name);
 
 /**
  * Hai nhánh, một hàng rào. Mọi route CẦN đăng nhập treo dưới `protectedLayoutRoute`, nên
@@ -156,13 +171,13 @@ const loginRoute = createRoute({
 const signupRoute = createRoute({
   getParentRoute: () => publicLayoutRoute,
   path: "/signup",
-  component: SignupPage,
+  component: lazy(() => import("./pages/signup-page"), "SignupPage"),
 });
 
 const forgotPasswordRoute = createRoute({
   getParentRoute: () => publicLayoutRoute,
   path: "/forgot-password",
-  component: ForgotPasswordPage,
+  component: lazy(() => import("./pages/forgot-password-page"), "ForgotPasswordPage"),
 });
 
 /**
@@ -185,7 +200,7 @@ const pendingApprovalRoute = createRoute({
 const requestsRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: "/requests",
-  component: RequestsPage,
+  component: lazy(() => import("./pages/requests-page"), "RequestsPage"),
 });
 
 const homeRoute = createRoute({
@@ -205,7 +220,7 @@ const homeRoute = createRoute({
 const healthRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: "/health",
-  component: HealthPage,
+  component: lazy(() => import("./pages/health-page"), "HealthPage"),
 });
 
 /**
@@ -222,7 +237,7 @@ const calendarRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: "/calendar",
   validateSearch: validateCalendarSearch,
-  component: CalendarPage,
+  component: lazy(() => import("./pages/calendar-page"), "CalendarPage"),
 });
 
 /**
@@ -241,7 +256,7 @@ const staffListRoute = createRoute({
   beforeLoad: ({ context }) => {
     if (context.me.role !== "OWNER") throw redirect({ to: "/" });
   },
-  component: StaffListPage,
+  component: lazy(() => import("./pages/staff-list-page"), "StaffListPage"),
 });
 
 /**
@@ -255,7 +270,7 @@ const staffListRoute = createRoute({
 const changePasswordRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: "/change-password",
-  component: ChangePasswordPage,
+  component: lazy(() => import("./pages/change-password-page"), "ChangePasswordPage"),
 });
 
 /**
@@ -271,7 +286,7 @@ const customersListRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: "/customers",
   validateSearch: validateCustomersSearch,
-  component: CustomersListPage,
+  component: lazy(() => import("./pages/customers-list-page"), "CustomersListPage"),
 });
 
 const customerDetailRoute = createRoute({
@@ -282,7 +297,7 @@ const customerDetailRoute = createRoute({
   // vào việc gì khác. Cùng khuôn `rental-form.tsx:511` mang `view`/`from` sang
   // `/calendar`.
   validateSearch: validateCustomersSearch,
-  component: CustomerDetailPage,
+  component: lazy(() => import("./pages/customer-detail-page"), "CustomerDetailPage"),
 });
 
 const routeTree = rootRoute.addChildren([
@@ -325,6 +340,13 @@ export const createAppRouter = (queryClient: QueryClient) =>
      * tiếng Anh — trên chính đường guard, tức chỗ tệ nhất để kẹt lại"). Hai
      * dòng dưới là hàng rào chung cho mọi route còn lại.
      */
+    /*
+     * Có `defaultPendingComponent` là hệ quả BẮT BUỘC của việc tách chunk: điều
+     * hướng sang một trang chưa tải xong nay có một khoảng trống thật. Mặc định
+     * `defaultPendingMs` của TanStack là 1000ms nên nó chỉ hiện khi mạng thực sự
+     * chậm — điều hướng bình thường không nháy thêm một màn hình nào.
+     */
+    defaultPendingComponent: RoutePendingPage,
     defaultNotFoundComponent: NotFoundPage,
     defaultErrorComponent: ({ error }) => <RouteErrorPage error={error} />,
   });

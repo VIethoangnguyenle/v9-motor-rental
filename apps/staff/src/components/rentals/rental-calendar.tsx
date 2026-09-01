@@ -4,6 +4,17 @@ import { useState, useSyncExternalStore } from "react";
 import { SHOP_TIMEZONE, type RentalStatus } from "@v9/shared/domain/rental";
 import { errorMessage } from "../../lib/errors";
 import type { GridWindow } from "../../lib/calendar-layout";
+// State ở URL + số học Y-M-D nay ở `lib/`, để `router.tsx` import validator mà
+// KHÔNG kéo cả cây component của trang Lịch vào chunk chính. Xem đầu file đó.
+import {
+  CALENDAR_VIEWS,
+  DEFAULT_VIEW,
+  daysInMonth,
+  parseYmd,
+  ymdToString,
+  type CalendarView,
+  type Ymd,
+} from "../../lib/calendar-search";
 import {
   fleetQuery,
   rentalsQuery,
@@ -31,58 +42,8 @@ import { STATUS_LABEL } from "../../lib/rental-status";
 
 // ── State ở URL ──────────────────────────────────────────────────────────
 
-/**
- * Danh sách RUNTIME là nguồn sự thật, kiểu `CalendarView` suy ra từ nó — CÙNG
- * KHUÔN `LOGIN_REASONS`/`LoginReason` ở `lib/guard-decision.ts` (task này được
- * yêu cầu chép nguyên khuôn đó). Thêm một chế độ mới mà quên thêm vào đây là
- * KHÔNG THỂ: `CalendarView` không tồn tại độc lập ở type-level, nên gọi
- * `switchView("week")` khi `"week"` chưa có trong mảng là lỗi biên dịch ngay
- * tại chỗ gọi, không phải một cú rơi im lặng về `DEFAULT_VIEW`.
- *
- * Đặt ở ĐÂY (component file) thay vì một file `lib/` riêng (khuôn thật của
- * `LOGIN_REASONS`) vì phạm vi Task 6 chỉ cho tạo đúng một file mới
- * (`rental-calendar.tsx`) — xem đầu bài. `router.tsx` import lại từ đây cho
- * `validateSearch`; không đặt ở `router.tsx` vì `RentalCalendar` bên dưới cũng
- * cần đọc `CalendarView`, và import ngược lại `router.tsx` từ một component
- * dựng ra chu trình module (cùng lý do `login-page.tsx` dùng `useSearch({
- * strict: false })` thay vì import route object — xem comment ở đó).
- */
-export const CALENDAR_VIEWS = ["timeline", "month"] as const;
-export type CalendarView = (typeof CALENDAR_VIEWS)[number];
-
-const DEFAULT_VIEW: CalendarView = "timeline";
-
-export interface CalendarSearch {
-  readonly view: CalendarView;
-  readonly from?: string; // YYYY-MM-DD theo giờ VN; vắng mặt = "hôm nay"
-}
-
-/**
- * `validateSearch` của route `/calendar` — ĐÚNG khuôn `loginRoute` đã dùng cho
- * `?reason=`: chỉ nhận giá trị nằm trong danh sách trắng, giá trị lạ bị lọc
- * (không throw, không crash).
- *
- * ⚠️ `?from=` là text người dùng GÕ ĐƯỢC: `2026-13-45`, `hôm nay`, chuỗi rỗng
- * đều tới đây nguyên văn. Quyết định rõ ràng (không để `Invalid Date` lọt ra
- * lưới): SAI HÌNH DẠNG hoặc SAI NGÀY LỊCH → coi như KHÔNG có `from` → component
- * tự rơi về "hôm nay". `parseYmd` xác nhận cả hai vế (đúng `\d{4}-\d{2}-\d{2}`
- * VÀ đúng ngày lịch thật — `2026-13-45` sai vì tháng 13, `2026-02-30` sai vì
- * tháng 2 không có ngày 30) trước khi tin chuỗi này.
- */
-export function validateCalendarSearch(search: Record<string, unknown>): CalendarSearch {
-  const foundView = CALENDAR_VIEWS.find((v) => v === search["view"]);
-  const rawFrom = search["from"];
-  const from = typeof rawFrom === "string" && parseYmd(rawFrom) ? rawFrom : undefined;
-  return { view: foundView ?? DEFAULT_VIEW, from };
-}
 
 // ── Y-M-D theo giờ VN — bản RIÊNG của file này, có chủ ý ───────────────────
-
-interface Ymd {
-  readonly year: number;
-  readonly month: number; // 1-based
-  readonly day: number;
-}
 
 /**
  * "Khoảng nào đang xem" là quyết định RANGE SELECTION thuộc file này (xem hợp
@@ -159,30 +120,6 @@ function addMonths(ymd: Ymd, delta: number): Ymd {
 /** 0 = Chủ Nhật … 6 = Thứ Bảy. */
 function weekdayOf(ymd: Ymd): number {
   return new Date(Date.UTC(ymd.year, ymd.month - 1, ymd.day)).getUTCDay();
-}
-
-function daysInMonth(year: number, month: number): number {
-  return new Date(Date.UTC(year, month, 0)).getUTCDate();
-}
-
-function ymdToString(ymd: Ymd): string {
-  const pad = (n: number, len: number) => String(n).padStart(len, "0");
-  return `${pad(ymd.year, 4)}-${pad(ymd.month, 2)}-${pad(ymd.day, 2)}`;
-}
-
-/** `null` khi KHÔNG phải một ngày lịch thật — sai hình dạng (`"hôm nay"`, chuỗi
- *  rỗng) hoặc đúng hình dạng nhưng sai ngày (`2026-13-45`, `2026-02-30`).
- *  `Date.UTC` tự "lăn" ngày tràn thành một ngày khác thay vì báo lỗi, nên phải
- *  tự kiểm biên tháng/ngày TRƯỚC khi tin chuỗi input. */
-function parseYmd(raw: string): Ymd | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
-  if (!m || m[1] === undefined || m[2] === undefined || m[3] === undefined) return null;
-  const year = Number(m[1]);
-  const month = Number(m[2]);
-  const day = Number(m[3]);
-  if (month < 1 || month > 12) return null;
-  if (day < 1 || day > daysInMonth(year, month)) return null;
-  return { year, month, day };
 }
 
 // ── GridWindow: hai chế độ, hai luật khác nhau ──────────────────────────────

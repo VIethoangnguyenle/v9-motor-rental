@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { PageShell } from "../components/ui/page-shell";
+import { Skeleton } from "../components/ui/skeleton";
 
 /**
  * Hai màn hình mà TanStack Router dựng khi không có gì khớp, hoặc khi một route
@@ -62,5 +63,21 @@ export function RouteErrorPage({ error }: { readonly error: Error }) {
         </Button>
       </div>
     </PageShell>
+  );
+}
+
+/**
+ * Trang đang tải chunk của chính nó (xem khai báo `lazy` ở `router.tsx`).
+ *
+ * Không dùng `PageShell`: màn này hiện BÊN TRONG `AppShell` cho mọi route được
+ * bảo vệ, nên một `min-h-screen` nữa sẽ đẩy nav ra khỏi màn hình. Chỉ là mấy
+ * khối giữ chỗ, đúng nhịp `flex flex-col gap-4` mà mọi trang nghiệp vụ dùng.
+ */
+export function RoutePendingPage() {
+  return (
+    <div className="flex flex-col gap-4">
+      <Skeleton className="h-7 w-40" />
+      <Skeleton className="h-64" />
+    </div>
   );
 }
