@@ -100,14 +100,48 @@ export function maxChroma(L: number, hDeg: number): number {
   return Math.floor(lo * 1000) / 1000;
 }
 
-function relativeLuminance(c: Color): number {
-  return 0.2126 * c.rgb[0] + 0.7152 * c.rgb[1] + 0.0722 * c.rgb[2];
+/** sRGB tuyến tính → có gamma. Nghịch đảo của `srgbToLinear` dưới. */
+function linearToSrgb(v: number): number {
+  return v <= 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - 0.055;
+}
+
+function srgbToLinear(v: number): number {
+  return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+}
+
+/**
+ * Lượng tử hoá về **8 bit mỗi kênh** trước khi đo tương phản — tức đo đúng thứ
+ * trình duyệt VẼ RA, không phải giá trị liên tục mà `oklch()` tính ra.
+ *
+ * ⚠️ Đây là bài học "công cụ đo cũng phải bị đo", lần thứ hai (lần đầu:
+ * `GAMUT_EPSILON` ở đầu file). Bản trước đo trên số thực liên tục và báo
+ * `accent-ink` trên `status-ongoing` = **4,5121:1** — qua ngưỡng AA. Nhưng
+ * Chromium vẽ `oklch(55.7% 0.094 200)` ra đúng `rgb(4,132,137)`, và cặp đó đo
+ * trên pixel THẬT là **4,4998:1** — TRƯỢT AA. Sai lệch 0,012 đủ để lật kết luận
+ * vì token đó nằm sát ngưỡng; hàng rào xanh trong khi màn hình đỏ.
+ *
+ * Cách tự kiểm (đúng cách `rental-status.ts` đã ghi): vẽ màu vào `<canvas>` rồi
+ * đọc pixel bằng `getImageData`. Con số 4,4998 dựng lại được cả ở đây lẫn ở
+ * trình duyệt, khớp tới bốn chữ số.
+ *
+ * Chỉ áp trong `contrast()`, KHÔNG áp trong `deltaE()`/`simulate()`: khoảng cách
+ * cảm nhận và mô phỏng mù màu không có ngưỡng nhị phân nào để lật, còn 4,5:1 thì
+ * có — và lượng tử hoá ở đó chỉ thêm nhiễu vào một phép đo liên tục.
+ */
+function quantize8bit(c: Color): readonly [number, number, number] {
+  return c.rgb.map((v) =>
+    srgbToLinear(Math.round(linearToSrgb(v) * 255) / 255),
+  ) as unknown as readonly [number, number, number];
+}
+
+function relativeLuminance(rgb: readonly [number, number, number]): number {
+  return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
 }
 
 /** Tỉ lệ tương phản WCAG 2.x. Đối xứng — thứ tự tham số không quan trọng. */
 export function contrast(a: Color, b: Color): number {
-  const la = relativeLuminance(a);
-  const lb = relativeLuminance(b);
+  const la = relativeLuminance(quantize8bit(a));
+  const lb = relativeLuminance(quantize8bit(b));
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 

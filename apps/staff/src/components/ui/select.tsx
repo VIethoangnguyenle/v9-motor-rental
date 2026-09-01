@@ -25,7 +25,13 @@ export function Select({ label, error, className, children, ...select }: SelectP
         {...select}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
-        className={`rounded-card border bg-surface px-3 py-2 text-ink ${
+        // `min-h-11` = 44px, cùng lý lẽ đã ghi đầy đủ ở `text-field.tsx`. File
+        // này tuyên bố mình là "cùng khuôn `text-field.tsx`" nhưng thiếu đúng
+        // dòng đó, nên nó tụt lại khi `TextField` được nâng lên 44px
+        // (`ab47702`): đo trên bản build, `<select>` cao **39px** còn `<input>`
+        // ngay dưới nó cao 44px — lệch nhau 5px trong CÙNG một form (ô "Xe" và
+        // ô "Tìm khách" của form lên đơn), và dưới ngưỡng chính app đặt ra.
+        className={`min-h-11 rounded-card border bg-surface px-3 py-2 text-ink ${
           error ? "border-status-overdue" : "border-border"
         } ${className ?? ""}`}
       >

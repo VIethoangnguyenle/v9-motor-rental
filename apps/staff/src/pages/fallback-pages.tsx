@@ -15,14 +15,32 @@ import { Skeleton } from "../components/ui/skeleton";
  * TanStack dựng màn lỗi mặc định tiếng Anh — trên chính đường guard, tức chỗ tệ
  * nhất để kẹt lại"). Cái thiếu là hàng rào CHUNG cho mọi route còn lại.
  *
- * Dùng `PageShell` chứ không tự dựng khung: hai màn này hay xuất hiện TRƯỚC khi
- * đăng nhập (gõ nhầm URL) hoặc khi `AppShell` chưa kịp dựng, nên chúng không
- * được phụ thuộc vào nav. `PageShell` là khung hẹp không biết domain, đúng thứ
- * sáu màn xác thực đang dùng.
+ * ── VÌ SAO MỖI MÀN CÓ HAI BẢN ─────────────────────────────────────────────
+ *
+ * Bản `PageShell` bên dưới đúng cho ca **chưa đăng nhập** (gõ nhầm URL trước khi
+ * vào, hoặc `AppShell` chưa kịp dựng): màn hình đó không có nav, nên nó phải tự
+ * mang nền và khung hẹp của mình. Lý lẽ đó không đổi.
+ *
+ * Nhưng gắn CHÍNH bản đó làm mặc định của router thì nó cũng render tại một
+ * route **đã nằm trong** `AppShell` — và ở đó `PageShell` là `<main>` thứ hai
+ * lồng trong `<main>`, cộng thêm `min-h-screen` và `page-gutter` thứ hai. Đo
+ * được ở `/customers/id-sai/sau`: `main = 2`, và cột nội dung tụt vào giữa với
+ * lề gấp đôi trong khi sidebar bị bóp lại. Cùng con bug đã sửa cho
+ * `/change-password` — file đó nay là `<div className="max-w-sm">`, không phải
+ * `PageShell`.
+ *
+ * Nên: giữ nguyên bản ngoài shell làm mặc định của router, và khai thêm bản
+ * trong-shell (`<div>` trần, đúng khuôn `RoutePendingPage` và
+ * `ChangePasswordPage`) ở `protectedLayoutRoute` — TanStack cho khai
+ * `notFoundComponent`/`errorComponent` theo từng route, nên route nào biết mình
+ * nằm trong shell thì tự mang bản đúng.
+ *
+ * Thân của mỗi màn nằm trong một component dùng chung: hai bản chỉ khác KHUNG,
+ * và chép nội dung ra làm hai là chép ra hai chỗ để lệch nhau.
  */
-export function NotFoundPage() {
+function NotFoundBody() {
   return (
-    <PageShell title="Không tìm thấy trang">
+    <>
       <p className="mt-3 text-sm text-muted">
         Đường dẫn này không có trong app. Có thể bạn gõ nhầm, hoặc mở một link cũ từ hồi trang đó
         còn tồn tại.
@@ -33,7 +51,25 @@ export function NotFoundPage() {
         <Icon name="arrow-left" className="mr-1" />
         Về trang Thống kê
       </Link>
+    </>
+  );
+}
+
+export function NotFoundPage() {
+  return (
+    <PageShell title="Không tìm thấy trang">
+      <NotFoundBody />
     </PageShell>
+  );
+}
+
+/** Bản 404 cho route đã nằm TRONG `AppShell` — xem chú thích khối ở trên. */
+export function NotFoundInShell() {
+  return (
+    <div className="max-w-sm">
+      <h1 className="text-xl font-bold text-ink">Không tìm thấy trang</h1>
+      <NotFoundBody />
+    </div>
   );
 }
 
@@ -46,25 +82,41 @@ export function NotFoundPage() {
  * của JS thì câu tiếng Anh vẫn tốt hơn một ô trống — người dùng đọc nó cho chủ
  * shop qua Zalo được.
  */
+function RouteErrorBody({ error }: { readonly error: Error }) {
+  return (
+    <div className="mt-3 flex flex-col items-start gap-3">
+      <Alert tone="error">{error.message}</Alert>
+      <p className="text-sm text-muted">
+        Tải lại trang thường là đủ. Nếu vẫn lỗi, chụp màn hình này gửi cho chủ shop.
+      </p>
+      {/*
+       * `window.location.reload()` chứ không phải `router.invalidate()`: tới
+       * được đây nghĩa là một thứ gì đó trong cây React đã ném, và state của
+       * cây đó không còn đáng tin. Nạp lại từ đầu là hành động DUY NHẤT chắc
+       * chắn dọn sạch, và nó cũng là thứ người dùng sẽ tự làm.
+       */}
+      <Button type="button" onClick={() => window.location.reload()}>
+        Tải lại trang
+      </Button>
+    </div>
+  );
+}
+
 export function RouteErrorPage({ error }: { readonly error: Error }) {
   return (
     <PageShell title="Có lỗi xảy ra">
-      <div className="mt-3 flex flex-col items-start gap-3">
-        <Alert tone="error">{error.message}</Alert>
-        <p className="text-sm text-muted">
-          Tải lại trang thường là đủ. Nếu vẫn lỗi, chụp màn hình này gửi cho chủ shop.
-        </p>
-        {/*
-         * `window.location.reload()` chứ không phải `router.invalidate()`: tới
-         * được đây nghĩa là một thứ gì đó trong cây React đã ném, và state của
-         * cây đó không còn đáng tin. Nạp lại từ đầu là hành động DUY NHẤT chắc
-         * chắn dọn sạch, và nó cũng là thứ người dùng sẽ tự làm.
-         */}
-        <Button type="button" onClick={() => window.location.reload()}>
-          Tải lại trang
-        </Button>
-      </div>
+      <RouteErrorBody error={error} />
     </PageShell>
+  );
+}
+
+/** Bản màn lỗi cho route đã nằm TRONG `AppShell` — xem chú thích khối ở trên. */
+export function RouteErrorInShell({ error }: { readonly error: Error }) {
+  return (
+    <div className="max-w-sm">
+      <h1 className="text-xl font-bold text-ink">Có lỗi xảy ra</h1>
+      <RouteErrorBody error={error} />
+    </div>
   );
 }
 

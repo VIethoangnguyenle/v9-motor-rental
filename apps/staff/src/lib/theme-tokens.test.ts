@@ -185,11 +185,15 @@ for (const [themeName, marker] of [
 
     it("mọi cặp §2.4 đạt ngưỡng", async () => {
       const t = await readTokens(marker);
+      // 4 chữ số, không phải 2: cặp trượt gần nhất của đợt này đo được 4,4998
+      // và `toFixed(2)` in nó ra "4.50:1 (cần 4.5)" — một dòng đỏ trông y hệt
+      // lỗi làm tròn của chính hàng rào, tức người đọc sẽ ngờ công cụ chứ không
+      // ngờ token. Số phải nói được vì sao nó đỏ.
       const failures = PAIRS.filter(
         ([fg, bg, min]) => contrast(need(t, fg), need(t, bg)) < min,
       ).map(
         ([fg, bg, min]) =>
-          `${fg}/${bg} = ${contrast(need(t, fg), need(t, bg)).toFixed(2)}:1 (cần ${String(min)})`,
+          `${fg}/${bg} = ${contrast(need(t, fg), need(t, bg)).toFixed(4)}:1 (cần ${String(min)})`,
       );
       expect(failures).toEqual([]);
     });

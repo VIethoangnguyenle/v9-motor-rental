@@ -28,7 +28,13 @@ import { validateCalendarSearch } from "./lib/calendar-search";
 import { PendingApprovalPage } from "./pages/pending-approval-page";
 import { LoginPage } from "./pages/login-page";
 import { StatsPage } from "./pages/stats-page";
-import { NotFoundPage, RoutePendingPage, RouteErrorPage } from "./pages/fallback-pages";
+import {
+  NotFoundPage,
+  NotFoundInShell,
+  RoutePendingPage,
+  RouteErrorPage,
+  RouteErrorInShell,
+} from "./pages/fallback-pages";
 
 /*
  * ── Chunk riêng cho từng trang ───────────────────────────────────────────────
@@ -114,6 +120,18 @@ const protectedLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "protected",
   component: ProtectedShell,
+  /*
+   * Hai bản fallback, không phải một. Bản mặc định của router (`NotFoundPage` /
+   * `RouteErrorPage`, khai ở `createAppRouter` bên dưới) dựng `PageShell` — khung
+   * TỰ MANG nền và `<main>` riêng, đúng cho ca chưa đăng nhập. Nhưng route treo
+   * dưới đây render BÊN TRONG `AppShell`, nên bản đó ở đây là `<main>` lồng
+   * `<main>` cộng một `min-h-screen` và một `page-gutter` thứ hai: đo được
+   * `main = 2` ở `/customers/id-sai/sau`, và cột nội dung tụt vào giữa trong khi
+   * sidebar bị bóp. Khai ở CHÍNH layout route này (không phải ở từng route con)
+   * nên mọi trang thêm sau tự hưởng, cùng khuôn với `component: ProtectedShell`.
+   */
+  notFoundComponent: NotFoundInShell,
+  errorComponent: ({ error }) => <RouteErrorInShell error={error} />,
   beforeLoad: async ({ context }) => {
     // KHÔNG gọi `ensureMe` khi chưa có session: nó sẽ bắn một request `/staff/me`
     // chắc chắn 401 trên mọi lần mở app lúc chưa đăng nhập.
