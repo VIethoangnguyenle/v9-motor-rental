@@ -46,6 +46,22 @@ export function transition(from: RentalStatus, to: RentalStatus): TransitionResu
 }
 
 /**
+ * `transition` đọc theo chiều ngược lại: "từ trạng thái này đi được những đâu".
+ *
+ * UI dựng nút bằng hàm này thay vì một mảng chép tay, và đó là toàn bộ lý do nó
+ * tồn tại: `ALLOWED` ở trên là nguồn sự thật DUY NHẤT về luật chuyển trạng thái,
+ * nên một danh sách nút chép tay ở frontend là bản sao thứ hai — nó biên dịch
+ * được cho tới ngày luật đổi ở đây, và ngày đó nút bấm vẫn mời người dùng đi một
+ * đường server đã cấm, hỏng bằng 409 chứ không bằng một nút mờ đi.
+ *
+ * Lọc theo `RENTAL_STATUSES` (không đọc `ALLOWED` trực tiếp) để thứ tự trả ra
+ * ổn định và không phụ thuộc thứ tự khai của bảng.
+ */
+export function availableTransitions(from: RentalStatus): RentalStatus[] {
+  return RENTAL_STATUSES.filter((to) => transition(from, to).ok);
+}
+
+/**
  * "Quá hạn" KHÔNG phải một trạng thái trong DB — nó suy ra lúc đọc. Nếu là trạng
  * thái thì phải có một job đi đổi nó, và trong khoảng job chưa chạy thì database
  * đang nói dối.

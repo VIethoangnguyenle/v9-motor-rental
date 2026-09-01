@@ -116,7 +116,29 @@ class RentalApiError extends Error {
   }
 }
 
-export function RentalForm({ onClose }: { readonly onClose: () => void }) {
+/** Tóm tắt đơn vừa tạo, đủ để phía gọi viết một câu xác nhận cụ thể. */
+export interface CreatedRental {
+  readonly vehicleLabel: string;
+  readonly customerName: string;
+  readonly startDate: string;
+  readonly endDate: string;
+}
+
+export function RentalForm({
+  onClose,
+  onCreated,
+}: {
+  readonly onClose: () => void;
+  /**
+   * Tạo đơn XONG. Tách khỏi `onClose` có chủ ý: trước đây cả hai đường (huỷ và
+   * tạo thành công) đều gọi đúng một hàm `onClose`, nên màn hình sau khi tạo đơn
+   * giống HỆT màn hình trước khi mở form — không toast, không dòng nào đổi. Nhân
+   * viên đứng cạnh khách không có cách nào biết đơn đã vào hệ thống ngoài việc tự
+   * mở trang Lịch, và phản xạ tự nhiên là bấm gửi lần nữa — lần đó đâm thẳng vào
+   * ràng buộc chống trùng của đơn vừa tạo thành công.
+   */
+  readonly onCreated: (rental: CreatedRental) => void;
+}) {
   const qc = useQueryClient();
 
   // Đóng bằng phím Esc — chi phí rẻ, cùng kiểu vẫn thấy ở sheet "Thêm" của
@@ -251,6 +273,13 @@ export function RentalForm({ onClose }: { readonly onClose: () => void }) {
       // biết đúng khoảng nào đang hiển thị.
       void qc.invalidateQueries({ queryKey: ["rentals"] });
       void qc.invalidateQueries({ queryKey: ["stats-summary"] });
+      // Đọc nhãn TRƯỚC khi đóng: đóng là unmount, và mọi state dưới đây biến mất.
+      onCreated({
+        vehicleLabel: selectedVehicle ? vehicleLabel(selectedVehicle) : "xe đã chọn",
+        customerName: customer?.fullName ?? "khách đã chọn",
+        startDate,
+        endDate,
+      });
       onClose();
     },
   });

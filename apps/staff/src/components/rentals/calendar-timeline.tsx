@@ -48,6 +48,9 @@ export interface CalendarTimelineProps {
   readonly vehicles: readonly FleetVehicle[];
   readonly rentals: readonly CalendarRental[];
   readonly gridWindow: GridWindow;
+  /** Chạm vào một thanh đơn — mở sheet chi tiết. `title` không bao giờ hiện
+   *  trên điện thoại, nên đây là đường DUY NHẤT đọc được trạng thái ở đó. */
+  readonly onSelect: (rental: CalendarRental) => void;
 }
 
 /**
@@ -69,7 +72,12 @@ interface Placed {
   readonly placement: BarPlacement;
 }
 
-export function CalendarTimeline({ vehicles, rentals, gridWindow }: CalendarTimelineProps) {
+export function CalendarTimeline({
+  vehicles,
+  rentals,
+  gridWindow,
+  onSelect,
+}: CalendarTimelineProps) {
   // `now` đọc một lần mỗi lần render, truyền THAM SỐ vào `isOverdue` (qua
   // `rentalChipClass`) — không gọi `Date.now()` rải rác trong JSX. Sai lệch vài
   // giây/phút do không nhớ lại giữa các lần render là chấp nhận được cho một
@@ -156,14 +164,24 @@ export function CalendarTimeline({ vehicles, rentals, gridWindow }: CalendarTime
               </div>
 
               {placed.map(({ rental, placement }) => (
-                <div
+                <button
                   key={rental.id}
+                  type="button"
+                  onClick={() => onSelect(rental)}
                   style={{
                     gridColumn: `${String(placement.startCol + 1)} / span ${String(placement.span)}`,
                     gridRow,
                   }}
-                  className={`m-0.5 flex min-h-10 items-center gap-1 rounded-card px-2 text-xs ${rentalChipClass(rental, now)}`}
+                  // `relative` KHÔNG phải trang trí: nền hàng ngay trên là
+                  // `position: relative` (nó neo nhãn "trống cả kỳ" tuyệt đối),
+                  // và một phần tử ĐƯỢC ĐỊNH VỊ luôn vẽ đè lên anh em KHÔNG được
+                  // định vị bất kể thứ tự DOM. Thanh đơn từng là `<div>` trơ nên
+                  // không ai thấy; thành `<button>` thì nền hàng nuốt hết cú
+                  // chạm và sheet không bao giờ mở. Đo bằng `elementFromPoint`
+                  // ở giữa thanh: trả về nền hàng, không phải thanh.
+                  className={`relative m-0.5 flex min-h-10 items-center gap-1 rounded-card px-2 text-left text-xs ${rentalChipClass(rental, now)}`}
                   title={`${rental.customerName ?? "—"} · ${STATUS_LABEL[rental.status]}`}
+                  aria-label={`${rental.customerName ?? "Khách chưa rõ"} · ${STATUS_LABEL[rental.status]} — xem chi tiết`}
                 >
                   {/* `‹`/`›`: đơn kéo dài ra ngoài cửa sổ đang xem — không phải
                       trang trí, mà là dấu hiệu "còn tiếp" để không đọc nhầm là
@@ -171,7 +189,7 @@ export function CalendarTimeline({ vehicles, rentals, gridWindow }: CalendarTime
                   {placement.clippedStart && <span aria-hidden>‹</span>}
                   <span className="min-w-0 truncate">{rental.customerName ?? "—"}</span>
                   {placement.clippedEnd && <span aria-hidden>›</span>}
-                </div>
+                </button>
               ))}
             </Fragment>
           );

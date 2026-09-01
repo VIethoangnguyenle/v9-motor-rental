@@ -42,6 +42,8 @@ export interface CalendarMonthProps {
   readonly vehicles: readonly FleetVehicle[];
   readonly rentals: readonly CalendarRental[];
   readonly gridWindow: GridWindow;
+  /** Chạm vào một chip đơn — mở sheet chi tiết. Xem `CalendarTimelineProps`. */
+  readonly onSelect: (rental: CalendarRental) => void;
 }
 
 const WEEKDAY_HEADER = ["Th 2", "Th 3", "Th 4", "Th 5", "Th 6", "Th 7", "CN"];
@@ -82,7 +84,12 @@ interface Chip {
   readonly placement: BarPlacement;
 }
 
-export function CalendarMonth({ vehicles, rentals, gridWindow }: CalendarMonthProps) {
+export function CalendarMonth({
+  vehicles,
+  rentals,
+  gridWindow,
+  onSelect,
+}: CalendarMonthProps) {
   const now = new Date();
   const cols = dayColumns(gridWindow);
   const vehicleById = new Map(vehicles.map((v) => [v.id, v] as const));
@@ -134,8 +141,14 @@ export function CalendarMonth({ vehicles, rentals, gridWindow }: CalendarMonthPr
                 key={col.date.toISOString()}
                 className={`min-h-24 border-r border-b border-border p-1 last:border-r-0 ${col.isWeekend ? "bg-canvas" : "bg-surface"}`}
               >
+                {/* `min-w-6` + `px-1` chứ KHÔNG `w-6` cố định: `dayLabel` trả
+                    "1 thg 9" ở ngày mùng 1 (có chủ ý, xem trên), và chuỗi đó
+                    không lọt vừa ô 24px — nó tràn ra ngoài vòng tròn, nơi
+                    `text-accent-ink` là chữ TRẮNG trên nền ô trắng, nên ở ngày
+                    hôm nay con số biến mất hẳn và badge chỉ còn chữ "thg".
+                    Badge phải co giãn theo nhãn, không bắt nhãn vừa badge. */}
                 <span
-                  className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${
+                  className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs whitespace-nowrap ${
                     isToday ? "bg-accent font-semibold text-accent-ink" : "text-muted"
                   }`}
                 >
@@ -149,15 +162,18 @@ export function CalendarMonth({ vehicles, rentals, gridWindow }: CalendarMonthPr
                       ? `${vehicle.make} ${vehicle.model}`
                       : (rental.customerName ?? "—");
                     return (
-                      <div
+                      <button
                         key={rental.id}
+                        type="button"
+                        onClick={() => onSelect(rental)}
                         title={`${vehicle ? `${vehicle.make} ${vehicle.model}` : "?"} · ${rental.customerName ?? "—"} · ${STATUS_LABEL[rental.status]}`}
-                        className={`truncate rounded-card px-1 text-xs ${rentalChipClass(rental, now)}`}
+                        aria-label={`${label} · ${rental.customerName ?? "Khách chưa rõ"} · ${STATUS_LABEL[rental.status]} — xem chi tiết`}
+                        className={`w-full truncate rounded-card px-1 text-left text-xs ${rentalChipClass(rental, now)}`}
                       >
                         {placement.clippedStart && <span aria-hidden>‹</span>}
                         {label}
                         {placement.clippedEnd && <span aria-hidden>›</span>}
-                      </div>
+                      </button>
                     );
                   })}
                   {hiddenCount > 0 && (

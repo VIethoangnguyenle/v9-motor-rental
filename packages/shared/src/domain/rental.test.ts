@@ -5,6 +5,8 @@ import {
   revenueAt,
   toInterval,
   transition,
+  availableTransitions,
+  RENTAL_STATUSES,
   SHOP_TIMEZONE,
   type RentalStatus,
 } from "./rental";
@@ -200,5 +202,38 @@ describe("revenueAt", () => {
 describe("SHOP_TIMEZONE", () => {
   it("là múi giờ của shop, không phải UTC", () => {
     expect(SHOP_TIMEZONE).toBe("Asia/Ho_Chi_Minh");
+  });
+});
+
+/**
+ * `availableTransitions` là `transition` đọc theo chiều ngược lại: thay vì hỏi
+ * "đường này có đi được không", nó hỏi "từ đây đi được những đâu". UI cần đúng
+ * câu hỏi thứ hai để dựng nút — và phải dựng từ CÙNG một bảng `ALLOWED`, không
+ * phải một danh sách chép tay ở frontend. Chép tay là cách chắc chắn nhất để
+ * một ngày nào đó luật đổi ở đây mà nút bấm vẫn mời người dùng đi đường đã cấm.
+ */
+describe("availableTransitions", () => {
+  it("BOOKED đi được hai đường: giao xe hoặc huỷ", () => {
+    expect(availableTransitions("BOOKED")).toEqual(["ONGOING", "CANCELLED"]);
+  });
+
+  it("ONGOING chỉ đi được một đường: trả xe", () => {
+    expect(availableTransitions("ONGOING")).toEqual(["COMPLETED"]);
+  });
+
+  it("trạng thái kết thúc không còn đường nào", () => {
+    expect(availableTransitions("COMPLETED")).toEqual([]);
+    expect(availableTransitions("CANCELLED")).toEqual([]);
+  });
+
+  // Hàng rào chống hai nguồn sự thật: mọi thứ `availableTransitions` trả ra phải
+  // được `transition` chấp nhận, và mọi đường `transition` chấp nhận phải có mặt.
+  it("khớp `transition` ở cả hai chiều, cho mọi cặp", () => {
+    for (const from of RENTAL_STATUSES) {
+      const available = availableTransitions(from);
+      for (const to of RENTAL_STATUSES) {
+        expect(available.includes(to)).toBe(transition(from, to).ok);
+      }
+    }
   });
 });

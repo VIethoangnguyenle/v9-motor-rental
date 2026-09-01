@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useSyncExternalStore } from "react";
-import { SHOP_TIMEZONE } from "@v9/shared/domain/rental";
+import { useState, useSyncExternalStore } from "react";
+import { SHOP_TIMEZONE, type RentalStatus } from "@v9/shared/domain/rental";
 import { errorMessage } from "../../lib/errors";
 import type { GridWindow } from "../../lib/calendar-layout";
 import {
@@ -14,6 +14,8 @@ import { Alert } from "../ui/alert";
 import { Button } from "../ui/button";
 import { CalendarMonth } from "./calendar-month";
 import { CalendarTimeline } from "./calendar-timeline";
+import { RentalDetailSheet } from "./rental-detail-sheet";
+import { STATUS_LABEL } from "../../lib/rental-status";
 
 /**
  * Vỏ của trang Lịch (Task 6, Plan C). Sở hữu: state ở URL, đo breakpoint, fetch,
@@ -277,12 +279,27 @@ function renderGrid(
   vehicles: readonly FleetVehicle[],
   rentals: readonly CalendarRental[],
   gridWindow: GridWindow,
+  onSelect: (rental: CalendarRental) => void,
 ) {
   if (view === "timeline") {
-    return <CalendarTimeline vehicles={vehicles} rentals={rentals} gridWindow={gridWindow} />;
+    return (
+      <CalendarTimeline
+        vehicles={vehicles}
+        rentals={rentals}
+        gridWindow={gridWindow}
+        onSelect={onSelect}
+      />
+    );
   }
   if (view === "month") {
-    return <CalendarMonth vehicles={vehicles} rentals={rentals} gridWindow={gridWindow} />;
+    return (
+      <CalendarMonth
+        vehicles={vehicles}
+        rentals={rentals}
+        gridWindow={gridWindow}
+        onSelect={onSelect}
+      />
+    );
   }
   const unhandled: never = view;
   throw new Error(`Chế độ lịch chưa xử lý: ${String(unhandled)}`);
@@ -313,6 +330,12 @@ export function RentalCalendar() {
   // lại `gridWindow` từ neo hiện tại, không cộng dồn.
   const fleet = useQuery(fleetQuery);
   const rentals = useQuery(rentalsQuery(gridWindow.from, gridWindow.to));
+
+  // Đơn đang mở sheet, và câu xác nhận sau khi đổi trạng thái xong. Giữ ID chứ
+  // KHÔNG giữ nguyên đối tượng rental: sau `invalidateQueries` danh sách được
+  // fetch lại, và một bản sao cũ trong state sẽ hiện trạng thái đã lỗi thời.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [changed, setChanged] = useState<string | null>(null);
 
   function updateFrom(next: Ymd): void {
     void navigate({ search: (prev) => ({ ...prev, from: ymdToString(next) }) });
@@ -349,6 +372,11 @@ export function RentalCalendar() {
   // thái khác (tải/lỗi/có dữ liệu) đều giữ toolbar, để người dùng vẫn đổi được
   // khoảng/chế độ trong lúc chờ hoặc sau khi thấy lỗi.
   const showToolbar = !(!isLoading && !fleetFailed && noFleet);
+
+  // Đọc lại từ danh sách vừa fetch, không từ state — xem chú thích `selectedId`.
+  // Đơn biến mất khỏi cửa sổ đang xem (đổi kỳ, hoặc vừa bị huỷ) thì sheet tự đóng.
+  const allRentals = rentals.data?.ok === true ? rentals.data.rentals : [];
+  const selected = selectedId === null ? null : (allRentals.find((r) => r.id === selectedId) ?? null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -387,6 +415,12 @@ export function RentalCalendar() {
             ))}
           </div>
         </div>
+      )}
+
+      {changed && (
+        <Alert tone="info" live="polite">
+          {changed}
+        </Alert>
       )}
 
       {isLoading && (
@@ -429,7 +463,22 @@ export function RentalCalendar() {
         !noFleet &&
         !rentalsFailed &&
         rentals.data?.ok === true &&
-        renderGrid(view, vehicles, rentals.data.rentals, gridWindow)}
+        renderGrid(view, vehicles, rentals.data.rentals, gridWindow, (r) => {
+          setChanged(null);
+          setSelectedId(r.id);
+        })}
+
+      {selected && (
+        <RentalDetailSheet
+          rental={selected}
+          vehicle={vehicles.find((v) => v.id === selected.vehicleId)}
+          onClose={() => setSelectedId(null)}
+          onChanged={(to: RentalStatus) => {
+            setSelectedId(null);
+            setChanged(`Đã cập nhật: ${STATUS_LABEL[to].toLowerCase()}.`);
+          }}
+        />
+      )}
     </div>
   );
 }

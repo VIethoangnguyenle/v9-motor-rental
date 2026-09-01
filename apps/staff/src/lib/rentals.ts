@@ -1,3 +1,4 @@
+import type { RentalStatus } from "@v9/shared/domain/rental";
 import type { ApiErrorCode } from "@v9/api";
 import { api } from "./api";
 import { errorCode } from "./errors";
@@ -101,3 +102,37 @@ export const customersQuery = (q: string) => ({
     return { ok: true, customers: res.data };
   },
 });
+
+/**
+ * `api.rentals` vừa có property tĩnh (`.get`, `.post`) vừa gọi được như hàm để
+ * lấy nhánh `:id` — cùng hình dạng `api.customers` ở `lib/customers.ts`, đọc
+ * comment ở đó trước. Kiểu suy ra từ chính `response` schema, không gõ tay.
+ */
+type RentalByIdRoutes = ReturnType<typeof api.rentals>;
+export type RentalDetail = NonNullable<
+  Awaited<ReturnType<RentalByIdRoutes["status"]["post"]>>["data"]
+>;
+
+export type ChangeStatusResult =
+  | { ok: true; rental: RentalDetail }
+  | { ok: false; code: ApiErrorCode | null; value: unknown };
+
+/**
+ * Đổi trạng thái một đơn — `POST /rentals/:id/status`.
+ *
+ * KHÔNG phải một query: đây là hành động người dùng chủ động bấm, nên nó sống
+ * trong `useMutation` ở phía gọi (khuôn đã có ở bảng nhân viên — xem
+ * `docs/workspaces/staff.md`, mục "Form dùng `useMutation`").
+ *
+ * Giữ CẢ `code` lẫn `value` gốc, cùng lý lẽ ba query ở trên: `apps/api` viết
+ * `message` tiếng Việt cho người đọc, và `409 INVALID_TRANSITION` cần phân biệt
+ * được với `404 NOT_FOUND` ở phía gọi để nói đúng câu.
+ */
+export async function changeRentalStatus(
+  id: string,
+  to: RentalStatus,
+): Promise<ChangeStatusResult> {
+  const res = await api.rentals({ id }).status.post({ to });
+  if (res.error) return { ok: false, code: errorCode(res.error.value), value: res.error.value };
+  return { ok: true, rental: res.data };
+}

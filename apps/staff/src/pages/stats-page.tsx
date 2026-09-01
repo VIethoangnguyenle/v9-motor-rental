@@ -1,12 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { AttentionList } from "../components/stats/attention-list";
 import { RevenueCards } from "../components/stats/revenue-cards";
-import { RentalForm } from "../components/rentals/rental-form";
+import { RentalForm, type CreatedRental } from "../components/rentals/rental-form";
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { errorMessage } from "../lib/errors";
 import { statsQuery } from "../lib/rentals";
+
+/**
+ * `YYYY-MM-DD` (giá trị thô của `<input type="date">`) → `DD/MM/YYYY`.
+ *
+ * Đổi chuỗi, KHÔNG dựng `Date` rồi format: `new Date("2026-09-20")` là nửa đêm
+ * UTC, và mọi thao tác múi giờ sau đó chỉ tạo cơ hội lệch một ngày cho một giá
+ * trị vốn đã là ngày-theo-lịch, không phải một mốc thời gian. Phần còn lại của
+ * app hiện ngày kiểu Việt Nam; ô xác nhận này không nên là chỗ duy nhất hiện ISO.
+ */
+function toVnDate(ymd: string): string {
+  const [y, m, d] = ymd.split("-");
+  return y && m && d ? `${d}/${m}/${y}` : ymd;
+}
 
 export function StatsPage() {
   const { data, isPending } = useQuery(statsQuery);
@@ -14,6 +28,9 @@ export function StatsPage() {
   // mount khi mở — đóng lại (huỷ hoặc tạo xong) là dọn sạch state của form,
   // không phải tự reset tay từng field.
   const [formOpen, setFormOpen] = useState(false);
+  // Xác nhận đơn vừa tạo. Trước đây không có gì ở đây và màn hình sau khi tạo
+  // đơn giống hệt màn hình trước đó — xem chú thích `onCreated` ở `RentalForm`.
+  const [created, setCreated] = useState<CreatedRental | null>(null);
 
   return (
     // `<div>`, không `<main>`: `AppShell` (`components/layout/app-shell.tsx`) đã
@@ -29,7 +46,27 @@ export function StatsPage() {
         </Button>
       </div>
 
-      {formOpen && <RentalForm onClose={() => setFormOpen(false)} />}
+      {formOpen && (
+        <RentalForm onClose={() => setFormOpen(false)} onCreated={setCreated} />
+      )}
+
+      {/*
+       * `live="polite"`, không `assertive`: người dùng vừa tự bấm "Tạo đơn" nên
+       * họ đang chờ tin này — không cần cắt ngang trình đọc màn hình.
+       *
+       * Câu nói ĐỦ CỤ THỂ để tự kiểm: xe nào, khách nào, từ ngày nào tới ngày
+       * nào. Một chữ "Đã lưu" trống rỗng không giúp người đứng cạnh khách xác
+       * nhận rằng mình vừa lên đúng đơn.
+       */}
+      {created && (
+        <Alert tone="info" live="polite">
+          Đã tạo đơn: {created.vehicleLabel} · {created.customerName} ·{" "}
+          {toVnDate(created.startDate)} → {toVnDate(created.endDate)}.{" "}
+          <Link to="/calendar" search={{ view: "timeline", from: created.startDate }}>
+            Xem trên lịch →
+          </Link>
+        </Alert>
+      )}
 
       {isPending && <p className="text-sm text-muted">Đang tải…</p>}
 

@@ -16,6 +16,23 @@ export const STATUS_LABEL: Record<RentalStatus, string> = {
 };
 
 /**
+ * Nhãn cho HÀNH ĐỘNG đưa đơn TỚI trạng thái đó — khác `STATUS_LABEL` ở trên, vốn
+ * là tên của chính trạng thái. "Đã trả" là một tình trạng; "Đã nhận lại xe" là
+ * việc nhân viên vừa làm xong và đang bấm để ghi nhận.
+ *
+ * `BOOKED` không có nhãn vì không đường hợp lệ nào DẪN TỚI `BOOKED`
+ * (`availableTransitions` ở `@v9/shared/domain/rental` không bao giờ trả nó ra) —
+ * nhưng `Record` vẫn bắt đủ bốn nhánh, nên thêm một trạng thái mới mà quên nhãn
+ * là lỗi biên dịch, cùng khuôn `STATUS_LABEL`.
+ */
+export const TRANSITION_LABEL: Record<RentalStatus, string> = {
+  BOOKED: "Đưa về đã đặt",
+  ONGOING: "Đã giao xe",
+  COMPLETED: "Đã nhận lại xe",
+  CANCELLED: "Huỷ đơn",
+};
+
+/**
  * `CANCELLED` KHÔNG còn là nhánh chết. Trên lịch thì đúng là nó không tới được
  * (`GET /rentals` lọc `status <> 'CANCELLED'`, xem `apps/api/src/services/rentals.ts`),
  * nhưng `customer-rental-history.tsx` cố ý hiện CẢ đơn đã huỷ — đó là một phần
