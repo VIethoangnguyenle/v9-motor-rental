@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatVnd } from "@v9/shared/domain/money";
 import { availableTransitions, SHOP_TIMEZONE, type RentalStatus } from "@v9/shared/domain/rental";
 import { errorMessage } from "../../lib/errors";
@@ -33,6 +33,33 @@ const DATE_FMT = new Intl.DateTimeFormat("vi-VN", {
  */
 function formatLastDay(endsAt: Date): string {
   return DATE_FMT.format(lastMomentOf(endsAt));
+}
+
+/**
+ * Nhịp của khoảnh khắc dàn dựng — xem `@utility just-changed` ở `index.css`.
+ *
+ * Sheet phải sống đủ lâu để vòng sáng có khung hình mà chạy. `onChanged` ở
+ * `rental-calendar.tsx` gọi `setSelectedId(null)`, tức gỡ sheet khỏi cây ngay
+ * trong cùng một commit — gọi nó thẳng trong `onSuccess` là hiệu ứng không có
+ * lấy một khung hình nào. Cùng lớp lỗi mà `ui/modal.tsx` đã ghi cho hiệu ứng ra.
+ *
+ * Hai con số vì bản reduced-motion là một dấu ĐỨNG YÊN: 600ms của một vòng đang
+ * mờ dần thì đọc được, 600ms của một vòng bất động thì gần như không. Design doc
+ * §4.6 giao 2s cho bản đó.
+ *
+ * `BEAT_MS` phải khớp thời lượng khai trong `@utility just-changed`; ngắn hơn là
+ * cắt cụt hiệu ứng, dài hơn là bắt người dùng chờ một sheet đã xong việc.
+ */
+const BEAT_MS = 600;
+const BEAT_REDUCED_MS = 2000;
+
+/**
+ * Hỏi chính trình duyệt thay vì đoán: khối `@media` trong `@utility just-changed`
+ * và nhịp ở đây phải cùng nhìn một cờ, nếu không thì một trong hai chạy bản của
+ * người kia.
+ */
+function prefersReducedMotion(): boolean {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 interface RentalDetailSheetProps {
@@ -69,6 +96,33 @@ export function RentalDetailSheet({ rental, vehicle, onClose, onChanged }: Renta
   /** Huỷ đơn là hành động không quay lại được — hỏi một nhịp trước khi gửi. */
   const [confirming, setConfirming] = useState<RentalStatus | null>(null);
 
+  /**
+   * Đơn vừa đổi trạng thái TRONG PHIÊN này.
+   *
+   * State cục bộ chứ không suy từ dữ liệu: "vừa đổi" là một sự kiện của phiên
+   * làm việc này, không phải một thuộc tính của đơn. Tải lại trang thì nó biến
+   * mất, và đó là đúng.
+   */
+  const [justChanged, setJustChanged] = useState(false);
+
+  /**
+   * Nhịp đang chạy: bộ đếm giờ, và việc nó còn nợ.
+   *
+   * Người dùng bấm ✕ hoặc Esc giữa nhịp thì `onChanged` chưa kịp chạy — mà đó
+   * chính là thứ dựng câu "Đã cập nhật…" trên lịch. Cleanup chạy nốt nó, để
+   * đóng sớm không phải đổi lấy việc app im lặng.
+   */
+  const beat = useRef<{ timer: ReturnType<typeof setTimeout>; finish: () => void } | null>(null);
+  useEffect(
+    () => () => {
+      const pending = beat.current;
+      if (!pending) return;
+      clearTimeout(pending.timer);
+      pending.finish();
+    },
+    [],
+  );
+
   // Hai effect từng nằm đây — một để trả tiêu điểm về nơi người dùng bấm, một để
   // bắt Esc — đã chuyển vào `ui/modal.tsx`, nơi `dialog.showModal()` làm cả hai
   // theo spec và thêm hai thứ bản viết tay này không có: bẫy Tab và `inert` cho
@@ -96,7 +150,18 @@ export function RentalDetailSheet({ rental, vehicle, onClose, onChanged }: Renta
       // khớp `"stats-summary"`, và sai chỗ này thì doanh thu đứng yên đúng như
       // lỗi mà nút "Đã giao xe" sinh ra để sửa.
       void queryClient.invalidateQueries({ queryKey: ["stats-summary"] });
-      onChanged(to);
+
+      // Chip đổi cả CHỮ lẫn cách tô khi dữ liệu vừa fetch về tới (đo trên bản
+      // build: nhãn lật ở ~35ms); vòng sáng nói CHỖ NÀO vừa đổi. Báo lên trên —
+      // tức đóng sheet — chỉ sau khi nhịp chạy xong; xem `BEAT_MS`.
+      setJustChanged(true);
+      const finish = () => {
+        beat.current = null;
+        onChanged(to);
+      };
+      if (beat.current) clearTimeout(beat.current.timer);
+      const holdMs = prefersReducedMotion() ? BEAT_REDUCED_MS : BEAT_MS;
+      beat.current = { timer: setTimeout(finish, holdMs), finish };
     },
   });
 
@@ -128,7 +193,9 @@ export function RentalDetailSheet({ rental, vehicle, onClose, onChanged }: Renta
           {/* Trạng thái hiện bằng CHỮ, không chỉ bằng màu — đây là chỗ duy nhất
             trong app đọc được trạng thái mà không cần hover. */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`rounded-card px-2 py-1 text-xs ${rentalChipClass(rental, now)}`}>
+            <span
+              className={`rounded-card px-2 py-1 text-xs ${rentalChipClass(rental, now)}${justChanged ? " just-changed" : ""}`}
+            >
               {STATUS_LABEL[rental.status]}
             </span>
             <span className="text-sm text-ink">
