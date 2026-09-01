@@ -20,18 +20,20 @@
 
       • Hai thẻ có `media` phục vụ trường hợp THEO HỆ ĐIỀU HÀNH — trình duyệt tự
         chọn, không cần script, nên chúng đúng ngay cả trước khi bundle tải.
-      • Thẻ KHÔNG có `media` là thứ `applyChoice()` (src/lib/theme.ts) ghi đè khi
-        người dùng ép theme bằng tay; `media` không diễn đạt được "người dùng đã
-        chọn", chỉ diễn đạt được "hệ điều hành đang ở chế độ nào".
+      • Thẻ KHÔNG có `media` là thẻ dự phòng, cho trường hợp không truy vấn nào
+        khớp; `media` không diễn đạt được "người dùng đã chọn", chỉ diễn đạt được
+        "hệ điều hành đang ở chế độ nào".
 
-      ⚠️ Khi người dùng ép theme, `applyChoice()` ghi CẢ BA thẻ chứ không riêng
-      thẻ cuối: trình duyệt chỉ dùng thẻ ĐẦU TIÊN có `media` khớp, nên máy sáng +
-      ép tối mà chỉ sửa thẻ cuối thì thanh địa chỉ ở lại màu sáng. Lý lẽ đầy đủ ở
-      `themeColorFor` (src/lib/theme.ts).
+      ⚠️ Khi người dùng ép theme, CẢ BA thẻ bị ghi cùng một màu — bởi script bên
+      dưới lúc tải trang, và bởi `applyChoice()` (src/lib/theme.ts) lúc bấm nút.
+      Ghi riêng thẻ cuối là vô tác dụng: trình duyệt chỉ dùng thẻ ĐẦU TIÊN có
+      `media` khớp, nên máy sáng + ép tối thì thẻ sáng vẫn thắng và thanh địa chỉ
+      ở lại màu sáng. Lý lẽ đầy đủ ở `themeColorFor` (src/lib/theme.ts).
 
-      Giá trị là sRGB của `--color-canvas` từng theme (src/index.css). Manifest
-      trong `vite.config.ts` cũng chép tay `#f8fafc` — đổi canvas SÁNG thì phải
-      đổi cả ba chỗ; `theme.test.ts` canh cho ba chỗ khớp nhau.
+      Giá trị là sRGB của `--color-canvas` từng theme (src/index.css). Cùng một
+      con số còn chép tay ở `CANVAS_HEX` (src/lib/theme.ts) và ở `background_color`
+      + `theme_color` của manifest (vite.config.ts) — NĂM chỗ, kể cả ba thẻ dưới
+      đây. `theme.test.ts` đối chiếu cả năm với chính `index.css`.
     -->
     <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0a111a" media="(prefers-color-scheme: dark)" />
@@ -46,25 +48,34 @@
       về theo hệ điều hành trong khi app theo lựa chọn đã lưu — và trang đăng nhập
       thì không có nút gạt để mà bấm.
 
-      Màu lấy từ chính hai thẻ media ở trên, KHÔNG viết lại hằng số: đây đã là chỗ
-      thứ ba chép tay `--color-canvas` rồi.
+      Màu lấy từ chính hai thẻ media ở trên, KHÔNG viết lại hằng số — đủ nhiều bản
+      chép rồi. Nghĩa là nó PHẢI đứng SAU ba thẻ đó: script đồng bộ chạy ngay lúc
+      parse, nên thẻ nằm dưới nó chưa vào cây DOM và `querySelectorAll` trả về
+      rỗng. Dời lên trên thì không ném gì, chỉ lặng lẽ thôi đổi màu; `theme.test.ts`
+      canh đúng thứ tự này.
 
       Chép tay khoá "v9-theme" vì script này chạy TRƯỚC khi bundle tải nên không
       import được. `theme.test.ts` là sợi dây giữ hai chỗ bằng nhau, và nó CHẠY
       đoạn dưới đây chứ không chỉ đọc.
     -->
     <script>
-      try {
-        var c = localStorage.getItem("v9-theme");
-        if (c === "light" || c === "dark") {
-          document.documentElement.setAttribute("data-theme", c);
-          var src = document.querySelector('meta[name="theme-color"][media*="' + c + '"]');
-          var all = document.querySelectorAll('meta[name="theme-color"]');
-          for (var i = 0; i < all.length; i++) all[i].content = src.content;
+      (function () {
+        var choice;
+        try {
+          choice = localStorage.getItem("v9-theme");
+        } catch (e) {
+          /* Safari chế độ riêng tư ném khi ĐỌC localStorage — đi theo hệ điều hành.
+             `try` bọc ĐÚNG lời gọi này, không bọc phần DOM bên dưới: bọc rộng thì
+             markup hỏng (đổi tên thẻ, xoá một thẻ) thành một trang im lặng sai màu,
+             console trống, không có đường nào lần ra. */
+          return;
         }
-      } catch (e) {
-        /* Safari riêng tư ném khi đọc localStorage — đi theo hệ điều hành */
-      }
+        if (choice !== "light" && choice !== "dark") return;
+        document.documentElement.setAttribute("data-theme", choice);
+        var source = document.querySelector('meta[name="theme-color"][media*="' + choice + '"]');
+        var tags = document.querySelectorAll('meta[name="theme-color"]');
+        if (source) for (var i = 0; i < tags.length; i++) tags[i].content = source.content;
+      })();
     </script>
   </head>
   <body>

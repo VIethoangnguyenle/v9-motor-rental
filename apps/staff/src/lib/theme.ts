@@ -29,7 +29,13 @@ export function nextChoice(current: ThemeChoice): ThemeChoice {
   return "system";
 }
 
-/** sRGB của `--color-canvas` từng theme. Manifest và thẻ meta không đọc được biến CSS. */
+/**
+ * sRGB của `--color-canvas` từng theme. Manifest và thẻ meta không đọc được biến
+ * CSS, nên đây là bản chép tay — `theme.test.ts` đối chiếu nó với chính
+ * `index.css`, và với bốn bản chép còn lại.
+ *
+ * @internal export chỉ để test đọc được; app dùng nó qua `themeColorFor`.
+ */
 export const CANVAS_HEX: Record<EffectiveTheme, string> = { light: "#f8fafc", dark: "#0a111a" };
 
 /**
@@ -43,6 +49,8 @@ export const CANVAS_HEX: Record<EffectiveTheme, string> = { light: "#f8fafc", da
  *
  * Cách chữa ở đây không dựa vào luật chọn thẻ: hễ người dùng ép theme thì CẢ BA
  * thẻ mang cùng một màu, nên thẻ nào thắng cũng cho ra màu đúng.
+ *
+ * @internal export chỉ để test đọc được; app gọi nó qua `applyChoice`.
  */
 export function themeColorFor(
   media: EffectiveTheme | null,
@@ -58,10 +66,22 @@ export function themeColorFor(
  * đoán nghĩa chuỗi: thẻ nào phục vụ theme nào là chuyện của MARKUP, và selector
  * nói thẳng điều đó. Thẻ vắng mặt thì bỏ qua — thiếu thẻ meta không được phép
  * làm hỏng việc đổi theme.
+ *
+ * Cặp có `media` dựng BẰNG CẤU TẠO từ chính tên theme, không gõ tay hai dòng
+ * song song: `themeColorFor` được tách ra để test được QUYẾT ĐỊNH, nhưng vòng
+ * lặp ÁP quyết định đó thì không hàng rào nào chạm tới. Hoán đổi hai cặp bằng
+ * tay qua được cả typecheck lẫn cả bộ test, và hậu quả là sau khi người dùng
+ * quay về "Theo máy" thì thẻ sáng mang màu tối và ngược lại. Viết như dưới đây
+ * thì cái sai đó không biểu diễn được — nhưng ai đó gõ lại hai dòng bằng tay
+ * thì nó biểu diễn được trở lại, nên vẫn có một test đọc thẳng bảng này.
+ *
+ * @internal export chỉ để test đọc được, cùng khuôn `isPublicRoute` ở
+ * `apps/api/src/plugins/staff-guard.ts`.
  */
-const THEME_COLOR_TAGS: readonly (readonly [string, EffectiveTheme | null])[] = [
-  ['meta[name="theme-color"][media*="light"]', "light"],
-  ['meta[name="theme-color"][media*="dark"]', "dark"],
+export const THEME_COLOR_TAGS: readonly (readonly [string, EffectiveTheme | null])[] = [
+  ...(["light", "dark"] as const).map(
+    (theme) => [`meta[name="theme-color"][media*="${theme}"]`, theme] as const,
+  ),
   ['meta[name="theme-color"]:not([media])', null],
 ];
 
