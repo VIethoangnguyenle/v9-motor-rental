@@ -61,6 +61,25 @@ function visibleFor(item: NavItem, me: Me | null): boolean {
 const TOUCH = "flex min-h-11 min-w-11 items-center";
 
 /**
+ * Hàng bấm được: nền chạy tới `canvas` trong 120ms thay vì nhảy, cùng token với
+ * `Button` và `stats/attention-list.tsx` — hai thứ bấm được thì phản hồi phải
+ * giống nhau (design doc §4.4 mục 1).
+ *
+ * Khai một chỗ vì `hover:bg-canvas` đứng ở TÁM chỗ trong file này (mục sidebar,
+ * mục sheet "Thêm", nút gạt theme, đổi mật khẩu, đăng xuất — mỗi thứ hai bản,
+ * sidebar và sheet): tám bản chép tay là tám chỗ để lệch nhau.
+ *
+ * KHÔNG gộp vào `TOUCH`: ba mục bottom nav cũng dùng `TOUCH` mà không có nền
+ * hover nào — thêm transition ở đó là một khai báo không animate gì.
+ *
+ * Cú pháp `duration-(--duration-instant)` chứ không `duration-instant`, và
+ * `transition-[background-color]` chứ không `transition-colors`: lý lẽ đầy đủ ở
+ * `index.css` (chỗ khai token) và `stats/attention-list.tsx` (vòng tiêu điểm).
+ */
+const HOVER_ROW =
+  "transition-[background-color] duration-(--duration-instant) ease-standard hover:bg-canvas";
+
+/**
  * Thanh điều hướng, hai biến thể. `AppShell` (Task 5) gọi component này HAI
  * LẦN — một lần trong `<aside>` với `variant="sidebar"`, một lần trong vùng
  * cuộn với `variant="bottom"` — vì hai biến thể nằm ở hai vị trí khác nhau
@@ -121,7 +140,7 @@ function SidebarNav({ me, onSignOut }: { readonly me: Me | null; readonly onSign
             {item.kind === "link" ? (
               <Link
                 to={item.to}
-                className={`${TOUCH} rounded-card px-3 text-ink hover:bg-canvas`}
+                className={`${TOUCH} rounded-card px-3 text-ink ${HOVER_ROW}`}
                 activeProps={{ className: "bg-canvas font-semibold" }}
               >
                 <span className="flex w-full items-center gap-2">
@@ -153,10 +172,10 @@ function SidebarNav({ me, onSignOut }: { readonly me: Me | null; readonly onSign
           {me?.fullName} · {me?.role}
         </p>
         <BuildStamp />
-        <ThemeToggle className={`${TOUCH} gap-2 rounded-card px-3 text-ink hover:bg-canvas`} />
+        <ThemeToggle className={`${TOUCH} gap-2 rounded-card px-3 text-ink ${HOVER_ROW}`} />
         <Link
           to="/change-password"
-          className={`${TOUCH} gap-2 rounded-card px-3 text-ink hover:bg-canvas`}
+          className={`${TOUCH} gap-2 rounded-card px-3 text-ink ${HOVER_ROW}`}
         >
           <Icon name="key" />
           Đổi mật khẩu
@@ -164,7 +183,7 @@ function SidebarNav({ me, onSignOut }: { readonly me: Me | null; readonly onSign
         <button
           type="button"
           onClick={onSignOut}
-          className={`${TOUCH} gap-2 rounded-card px-3 text-left text-ink hover:bg-canvas`}
+          className={`${TOUCH} gap-2 rounded-card px-3 text-left text-ink ${HOVER_ROW}`}
         >
           <Icon name="log-out" />
           Đăng xuất
@@ -266,65 +285,65 @@ function BottomNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignO
        */}
       {moreOpen && (
         <Modal label="Thêm" placement="bottom" onClose={closeMore}>
-          <div>
-            <ul className="flex flex-col gap-1 p-3">
-              {moreItems.map((item) => (
-                <li key={item.label}>
-                  {item.kind === "link" ? (
-                    <Link
-                      to={item.to}
-                      onClick={closeMore}
-                      className={`${TOUCH} gap-2 rounded-card px-3 text-ink hover:bg-canvas`}
-                    >
-                      <Icon name={item.icon} />
-                      {item.label}
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled
-                      className={`${TOUCH} w-full gap-2 rounded-card px-3 text-muted`}
-                    >
-                      <Icon name={item.icon} />
-                      <span className="flex-1 truncate text-left">{item.label}</span>
-                      <span className="rounded-card bg-canvas px-2 py-0.5 text-xs text-muted">
-                        sắp có
-                      </span>
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
+          {(close) => (
+            <div>
+              <ul className="flex flex-col gap-1 p-3">
+                {moreItems.map((item) => (
+                  <li key={item.label}>
+                    {item.kind === "link" ? (
+                      <Link
+                        to={item.to}
+                        onClick={close}
+                        className={`${TOUCH} gap-2 rounded-card px-3 text-ink ${HOVER_ROW}`}
+                      >
+                        <Icon name={item.icon} />
+                        {item.label}
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className={`${TOUCH} w-full gap-2 rounded-card px-3 text-muted`}
+                      >
+                        <Icon name={item.icon} />
+                        <span className="flex-1 truncate text-left">{item.label}</span>
+                        <span className="rounded-card bg-canvas px-2 py-0.5 text-xs text-muted">
+                          sắp có
+                        </span>
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
 
-            <div className="flex flex-col gap-1 border-t border-border p-3">
-              <p className="truncate px-3 text-xs text-muted">
-                {me?.fullName} · {me?.role}
-              </p>
-              <BuildStamp />
-              <ThemeToggle
-                className={`${TOUCH} gap-2 rounded-card px-3 text-ink hover:bg-canvas`}
-              />
-              <Link
-                to="/change-password"
-                onClick={closeMore}
-                className={`${TOUCH} gap-2 rounded-card px-3 text-ink hover:bg-canvas`}
-              >
-                <Icon name="key" />
-                Đổi mật khẩu
-              </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  closeMore();
-                  onSignOut();
-                }}
-                className={`${TOUCH} gap-2 rounded-card px-3 text-left text-ink hover:bg-canvas`}
-              >
-                <Icon name="log-out" />
-                Đăng xuất
-              </button>
+              <div className="flex flex-col gap-1 border-t border-border p-3">
+                <p className="truncate px-3 text-xs text-muted">
+                  {me?.fullName} · {me?.role}
+                </p>
+                <BuildStamp />
+                <ThemeToggle className={`${TOUCH} gap-2 rounded-card px-3 text-ink ${HOVER_ROW}`} />
+                <Link
+                  to="/change-password"
+                  onClick={close}
+                  className={`${TOUCH} gap-2 rounded-card px-3 text-ink ${HOVER_ROW}`}
+                >
+                  <Icon name="key" />
+                  Đổi mật khẩu
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    close();
+                    onSignOut();
+                  }}
+                  className={`${TOUCH} gap-2 rounded-card px-3 text-left text-ink ${HOVER_ROW}`}
+                >
+                  <Icon name="log-out" />
+                  Đăng xuất
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </Modal>
       )}
     </>
