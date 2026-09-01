@@ -2,24 +2,28 @@ import {
   ArrowLeft,
   ArrowRight,
   Bike,
+  CalendarCheck,
   CalendarDays,
   Camera,
   ChartColumnBig,
   Check,
   ChevronLeft,
   ChevronRight,
-  Circle,
+  Clock,
   Inbox,
+  Info,
   KeyRound,
   LogOut,
   Monitor,
   Moon,
+  OctagonAlert,
   Phone,
   Plus,
   ReceiptText,
   Search,
   Sun,
   Trash2,
+  TriangleAlert,
   UserCog,
   Users,
   X,
@@ -116,6 +120,39 @@ const ICONS = {
   key: KeyRound,
   /** Đăng xuất. */
   "log-out": LogOut,
+
+  // ── Kênh hình dạng ────────────────────────────────────────────────────────
+  //
+  // Năm hình dưới đây KHÔNG phải trang trí: chúng là kênh thông tin thứ hai
+  // bên cạnh màu. Design doc §2.5 đo được sáu màu trạng thái không phân biệt
+  // nổi dưới deuteranopia và không giá trị màu nào sửa được — lý lẽ đầy đủ ở
+  // `lib/rental-status.ts` (`STATUS_ICON`) và `ui/alert.tsx` (`TONE_ICON`).
+  //
+  // Vì vậy tiêu chí chọn ở đây là SILHOUETTE, không phải mức dễ thương của
+  // biểu tượng: dưới mù màu nặng thì đường bao là thứ còn lại. Hai chỗ dùng
+  // chúng còn mượn lại `check`, `close`, `nav-calendar` và `nav-handover` ở
+  // trên — bốn hình đó đã đủ khác nhau, vẽ thêm hình mới cho chúng chỉ làm bộ
+  // icon phình ra mà không phân biệt thêm gì.
+
+  /** Quá hạn trả — xe đang ngoài đường. Tam giác: hình cảnh báo mạnh nhất. */
+  "alert-triangle": TriangleAlert,
+  /**
+   * Cảnh báo chung của `Alert`. Bát giác — silhouette THỨ BA, tách khỏi cả tam
+   * giác (`error`) lẫn tròn (`info`).
+   *
+   * `clock` và `circle-alert` bị loại: cả hai đều là đường bao TRÒN, tức trùng
+   * silhouette với `info` và tone `warning` lại chỉ còn phân biệt bằng màu —
+   * đúng lỗi một-kênh mà cả mục này sinh ra để chữa. `clock` còn sai nghĩa:
+   * không call site `tone="warning"` nào trong app nói về thời gian.
+   */
+  "octagon-alert": OctagonAlert,
+  /** Chưa ai lấy xe. Tròn — khác hẳn tam giác kể cả khi mất màu. */
+  clock: Clock,
+  /** Phải trả hôm nay. */
+  "calendar-check": CalendarCheck,
+  /** Tone `info` của Alert. */
+  info: Info,
+
   /** Nút gạt theme — trạng thái "theo hệ điều hành". */
   monitor: Monitor,
   /** Nút gạt theme — ép sáng. */
@@ -153,7 +190,10 @@ export function Icon({
 }: {
   readonly name: IconName;
   readonly size?: keyof typeof SIZE;
-  /** Chỉ để đổi MÀU (`text-*`). Cỡ đi qua `size`, xem lý lẽ ở `SIZE`. */
+  /**
+   * MÀU (`text-*`) và căn quang học (`mt-*`) — không phải CỠ. Cỡ đi qua `size`,
+   * xem lý lẽ ở `SIZE`: một `size-*` truyền qua đây hỏng im lặng.
+   */
   readonly className?: string;
 }) {
   const Glyph = ICONS[name];
@@ -166,25 +206,6 @@ export function Icon({
       focusable="false"
       strokeWidth={2.5}
       className={`${SIZE[size]} shrink-0 ${className}`}
-    />
-  );
-}
-
-/**
- * Chấm trạng thái. Tách khỏi `Icon` vì nó là hình ĐẶC chứ không phải nét: dùng
- * `Circle` của Lucide nhưng tô đầy, nên `strokeWidth` ghim ở `Icon` không có
- * nghĩa gì với nó.
- *
- * Thay `●`, ký tự mà cỡ và vị trí đường cơ sở đổi theo từng font.
- */
-export function StatusDot({ className = "" }: { readonly className?: string }) {
-  return (
-    <Circle
-      aria-hidden
-      focusable="false"
-      fill="currentColor"
-      stroke="none"
-      className={`size-2.5 shrink-0 ${className}`}
     />
   );
 }

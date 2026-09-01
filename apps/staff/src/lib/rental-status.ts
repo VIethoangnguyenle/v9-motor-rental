@@ -1,4 +1,5 @@
 import { isOverdue, isPickupOverdue, type RentalStatus } from "@v9/shared/domain/rental";
+import type { IconName } from "../components/ui/icon";
 
 /**
  * Nhãn + màu hiển thị cho một đơn thuê — DÙNG CHUNG giữa `calendar-timeline.tsx`,
@@ -135,6 +136,46 @@ export function rentalChipClass(
   if (isPickupOverdue(rental, now)) return PICKUP_OVERDUE_CLASS;
   return STATUS_CLASS[rental.status];
 }
+
+/**
+ * Kênh thông tin THỨ HAI, bên cạnh màu. Không phải trang trí.
+ *
+ * `docs/plans/2026-09-01-staff-visual-system-design.md` §2.5 đo được: dưới
+ * deuteranopia (~6% nam giới), `status-overdue` và `warning` chỉ cách nhau
+ * ΔE≈0,040 — coi như cùng một màu. Một cuộc quét vét cạn L∈[0,50;0,80] ×
+ * hue∈[60;105] cho kết quả RỖNG: không giá trị nào thoả đồng thời "chữ trắng
+ * ≥4,5:1" và "phân biệt được ở cả bốn kiểu nhìn". Hai ràng buộc chọi nhau.
+ *
+ * §2.5b còn cho thấy đây không phải một cặp cá biệt: cả sáu trạng thái đều tô
+ * nền đặc + chữ trắng, nên ràng buộc tương phản ghim chúng vào dải L rộng ~0,14
+ * đơn vị, và mù màu xoá hue thì chỉ còn đúng độ sáng đó để chia cho sáu màu.
+ * Hình dạng vì vậy gánh cho MỌI cặp cùng lúc, không riêng cặp nào.
+ *
+ * Chọn theo ĐỘ KHÁC NHAU CỦA HÌNH (tam giác / tròn / vuông / dấu kiểm / chữ
+ * thập / khung xe), không theo mức dễ thương của biểu tượng — chúng phải phân
+ * biệt được khi màu biến mất hoàn toàn.
+ *
+ * `status-icon.test.ts` canh tính duy nhất: hai trạng thái dùng chung một hình
+ * là test ĐỎ. Đừng gộp, kể cả khi hai hình đó "gần nghĩa".
+ */
+export const STATUS_ICON = {
+  /** Lịch — đơn còn nằm trên giấy, xe chưa rời shop. Khung vuông có lưới. */
+  BOOKED: "nav-calendar",
+  /**
+   * Khung xe — xe đã rời shop. Khác `COMPLETED` tới mức không thể lẫn, và đó là
+   * cặp §2.5b gọi là nguy hiểm nhất trong bảng: `ONGOING` với `COMPLETED` đều
+   * tô nền ĐẶC và đứng CẠNH NHAU trong bảng lịch sử thuê của một khách quen.
+   */
+  ONGOING: "nav-handover",
+  /** Dấu kiểm — nét hở, đối cực hình học của tam giác KÍN `OVERDUE` (§2.5c). */
+  COMPLETED: "check",
+  /** Chữ thập — không cong, không kín, không lẫn với năm hình còn lại. */
+  CANCELLED: "close",
+  /** ONGOING quá `endsAt` — xe đang ngoài đường, quá hạn trả. Tam giác. */
+  OVERDUE: "alert-triangle",
+  /** BOOKED quá `startsAt` — chưa ai lấy xe. Tròn. */
+  PICKUP_OVERDUE: "clock",
+} as const satisfies Record<string, IconName>;
 
 /**
  * Mốc CUỐI CÙNG còn nằm trong đơn, suy ra từ `endsAt` — vốn là biên MỞ.

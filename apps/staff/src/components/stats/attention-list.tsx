@@ -1,12 +1,21 @@
 import { Link } from "@tanstack/react-router";
+import { STATUS_ICON } from "../../lib/rental-status";
 import type { StatsSummary } from "../../lib/rentals";
-import { Icon, StatusDot } from "../ui/icon";
+import { Icon, type IconName } from "../ui/icon";
 
+/**
+ * `icon` chứ không phải một chấm tô màu: ba dòng này trước đây dùng CÙNG một
+ * hình tròn và chỉ khác nhau ở màu, mà hai dòng đầu đúng là cặp `status-overdue`
+ * ↔ `warning` — ΔE≈0,040 dưới deuteranopia (design doc §2.5), tức cùng một màu
+ * với ~6% nam giới. Và chúng nằm CẠNH NHAU, nên đây là chỗ tệ nhất trong app để
+ * thông tin chỉ đi bằng một kênh.
+ */
 interface Row {
   readonly key: string;
   readonly label: string;
   readonly to: "/calendar" | "/staff";
-  readonly dotClassName: string;
+  readonly icon: IconName;
+  readonly className: string;
 }
 
 /**
@@ -31,7 +40,12 @@ export function AttentionList({ attention }: { readonly attention: StatsSummary[
       key: "overdue",
       label: `${String(attention.overdue)} xe quá hạn chưa trả`,
       to: "/calendar",
-      dotClassName: "text-status-overdue",
+      // Đọc TỪ `STATUS_ICON` chứ không gõ lại `"alert-triangle"`: dòng này đếm
+      // đúng tập đơn mà `isOverdue` chọn (`services/stats.ts` lọc
+      // `ONGOING AND ends_at < now`), nên hai chỗ phải mang cùng một hình. Gõ
+      // tay là mở đường cho chúng lệch nhau mà không có gì nổ.
+      icon: STATUS_ICON.OVERDUE,
+      className: "text-status-overdue",
     });
   }
   if (attention.dueToday > 0) {
@@ -39,7 +53,10 @@ export function AttentionList({ attention }: { readonly attention: StatsSummary[
       key: "dueToday",
       label: `${String(attention.dueToday)} xe phải trả hôm nay`,
       to: "/calendar",
-      dotClassName: "text-warning",
+      // Lịch có dấu kiểm — việc gắn với NGÀY, và đường bao vuông tách hẳn
+      // khỏi tam giác của dòng ngay phía trên.
+      icon: "calendar-check",
+      className: "text-warning",
     });
   }
   if (attention.pendingStaff !== undefined && attention.pendingStaff > 0) {
@@ -47,7 +64,8 @@ export function AttentionList({ attention }: { readonly attention: StatsSummary[
       key: "pendingStaff",
       label: `${String(attention.pendingStaff)} nhân viên chờ duyệt`,
       to: "/staff",
-      dotClassName: "text-accent",
+      icon: "nav-staff",
+      className: "text-accent",
     });
   }
 
@@ -64,7 +82,7 @@ export function AttentionList({ attention }: { readonly attention: StatsSummary[
             <li key={row.key}>
               <Link to={row.to} className={ROW}>
                 <span className="flex items-center gap-2">
-                  <StatusDot className={row.dotClassName} />
+                  <Icon name={row.icon} className={row.className} />
                   {row.label}
                 </span>
                 <Icon name="chevron-right" className="text-muted" />
