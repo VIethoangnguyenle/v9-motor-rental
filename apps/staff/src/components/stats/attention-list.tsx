@@ -4,11 +4,11 @@ import type { StatsSummary } from "../../lib/rentals";
 import { Icon, type IconName } from "../ui/icon";
 
 /**
- * `icon` chứ không phải một chấm tô màu: ba dòng này trước đây dùng CÙNG một
- * hình tròn và chỉ khác nhau ở màu, mà hai dòng đầu đúng là cặp `status-overdue`
- * ↔ `warning` — ΔE≈0,040 dưới deuteranopia (design doc §2.5), tức cùng một màu
- * với ~6% nam giới. Và chúng nằm CẠNH NHAU, nên đây là chỗ tệ nhất trong app để
- * thông tin chỉ đi bằng một kênh.
+ * `icon` chứ không phải một chấm tô màu. Ba dòng này nằm CẠNH NHAU, và hai dòng
+ * đầu mang cặp `status-overdue` ↔ `warning` — ΔE≈0,040 dưới deuteranopia (design
+ * doc §2.5), tức cùng MỘT màu với ~6% nam giới. Ba chấm tròn cùng hình khác màu
+ * ở đây là thông tin đi bằng đúng một kênh, tại đúng chỗ tệ nhất trong app để
+ * làm vậy; hình dạng mới là thứ tách được ba dòng.
  */
 interface Row {
   readonly key: string;

@@ -169,7 +169,17 @@ export const STATUS_ICON = {
   ONGOING: "nav-handover",
   /** Dấu kiểm — nét hở, đối cực hình học của tam giác KÍN `OVERDUE` (§2.5c). */
   COMPLETED: "check",
-  /** Chữ thập — không cong, không kín, không lẫn với năm hình còn lại. */
+  /**
+   * Chữ thập, và đây là hình YẾU NHẤT trong bảng — nói ra thay vì khai là nó
+   * tách bạch. `check` với `close` là hai hình DUY NHẤT ở đây không có đường
+   * bao (một nét gấp, hai nét chéo), nên khi màu biến mất chúng chỉ còn khác
+   * nhau ở hướng nét, chứ không khác ở silhouette như bốn hình còn lại.
+   *
+   * Chưa phải vấn đề đang sống: `CANCELLED` không lên lịch (xem `STATUS_CLASS`
+   * ở trên), mà lịch là mặt DUY NHẤT vẽ hình trạng thái, nên hôm nay hai hình
+   * này chưa từng đứng cùng một danh sách. Ngày `CANCELLED` lên lịch thì đây là
+   * ô phải xem lại trước tiên.
+   */
   CANCELLED: "close",
   /** ONGOING quá `endsAt` — xe đang ngoài đường, quá hạn trả. Tam giác. */
   OVERDUE: "alert-triangle",
@@ -182,11 +192,18 @@ export const STATUS_ICON = {
  * theo khoá. Hai trạng thái phái sinh (`OVERDUE`, `PICKUP_OVERDUE`) không nằm
  * trong `rental.status`; chúng suy ra từ `now`, nên phải có một hàm suy.
  *
- * Nhận CÙNG hình dạng tham số và chạy CÙNG thứ tự vị từ với `rentalChipClass`
- * ngay trên. Đó không phải trùng lặp mà là ràng buộc: hai hàm này quyết định
- * HÌNH và MÀU cho cùng một thanh đơn, nên chúng phải đồng ý với nhau về "quá
- * hạn là gì". Lệch nhau cho ra thanh đỏ mang hình xanh — hai kênh mâu thuẫn,
- * tệ hơn hẳn một kênh thiếu.
+ * Nhận CÙNG hình dạng tham số và gọi CÙNG hai vị từ với `rentalChipClass` ngay
+ * trên. Đó không phải trùng lặp mà là ràng buộc: hai hàm quyết định HÌNH và MÀU
+ * cho cùng một thanh đơn, nên chúng phải đồng ý về "quá hạn là gì". Lệch nhau
+ * cho ra thanh đỏ mang hình xanh — hai kênh mâu thuẫn, tệ hơn hẳn một kênh
+ * thiếu.
+ *
+ * Thứ tự hai `if` KHÔNG phải thứ đang giữ an toàn, đừng đọc nó như vậy: hai vị
+ * từ lọc hai `status` RỜI NHAU (`ONGOING` và `BOOKED`) nên đảo thứ tự là no-op
+ * — cùng điều `rentalChipClass` ngay trên đã ghi. Thứ giữ an toàn là dùng chung
+ * hai vị từ đó và chung một `now`, và nó được ÉP chứ không phải hứa: test song
+ * ánh ở `status-icon.test.ts` đỏ khi thêm một nhánh màu phái sinh mà quên thêm
+ * nhánh hình tương ứng.
  *
  * Gọi lại `isOverdue`/`isPickupOverdue` của domain thay vì tự so `endsAt < now`
  * cũng vì thế, và nó chặn luôn cái bẫy `COMPLETED`: một đơn đã trả gần như luôn
