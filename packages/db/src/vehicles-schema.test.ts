@@ -45,6 +45,7 @@ describe("schema vehicles", () => {
   /**
    * Đối trọng của test trên. Trước đây KHÔNG hàng nào trong cả bộ test có
    * `status = 'published'`, nên một lỗi gõ trong danh sách IN (`'publised'`) vẫn
+   * cspell:ignore publised
    * làm mọi test cũ xanh, và mệnh đề `WHERE status = 'published'` của partial
    * index `vehicles_published_idx` không được câu nào chạm tới. Nó sẽ lộ lần đầu
    * lúc shop bấm Publish trong Directus — tức là ngoài đời.

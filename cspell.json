@@ -1,54 +1,211 @@
 {
+  // Kiểm chính tả cho repo này. Sinh ra vì bộ kiểm mặc định gắn cờ ~150 chỗ chỉ
+  // riêng trong mấy file đang mở, và gần như toàn bộ là TIẾNG VIỆT — tức là
+  // nhiễu, không phải lỗi. Ở mức nhiễu đó thì người ta thôi đọc cảnh báo, và
+  // cảnh báo THẬT chết chìm theo. Sau file này: 0 cảnh báo trên toàn repo.
+  //
+  // ⚠️ Đây là bản VIẾT LẠI của file đã có, không phải file mới. Bản trước tránh
+  // nhiễu bằng hai cách, và cả hai đều đánh đổi bằng vùng phủ:
+  //   • regex bỏ qua MỌI từ chứa dấu tiếng Việt → `mộtt` (gõ nhầm) cũng lọt;
+  //   • `ignorePaths` gạt cả `docs/**`, `**/*.test.ts`, `**/*.sql`, `CLAUDE.md`,
+  //     `DESIGN.md`, `PRODUCT.md` → những chỗ viết nhiều chữ nhất thì không kiểm.
+  // Có từ điển thật thì không cần đánh đổi đó nữa: nay quét 239 file, 0 issue,
+  // và một lỗi gõ trong docs hay trong tên test sẽ bị bắt. Toàn bộ `words` của
+  // bản cũ được giữ lại.
+  //
+  // ⚠️ Đây KHÔNG phải cấu hình của editor. `.vscode/` bị gitignore (trừ
+  // `extensions.json`), nên file ở gốc repo là chỗ DUY NHẤT cả đội dùng chung
+  // được; extension Code Spell Checker tự đọc nó.
+  // Mấy từ dưới đây chỉ xuất hiện trong chính các comment của file này, nơi
+  // chúng được TRÍCH DẪN làm ví dụ. Khai tại chỗ thay vì bỏ vào `words`: đưa
+  // chúng vào `words` là dạy cspell rằng chúng hợp lệ ở MỌI nơi trong repo.
+  // cspell:ignore Baction Bpolicy Postg shinobi mộtt
   "version": "0.2",
-  "language": "en",
+
+  // `vi` PHẢI có mặt, và đây là chỗ dễ sai nhất trong file này.
+  //
+  // `@cspell/dict-vi-vn` khai từ điển dưới `languageSettings` với `locale: "vi"`
+  // (xem `cspell-ext.json` của nó), nên `import` chỉ ĐỊNH NGHĨA từ điển — thứ
+  // BẬT nó là dòng dưới đây. Đo được: với `"language": "en"`, số từ lạ nhảy từ
+  // 78 lên **912**, vì nạp ext làm cspell bắt đầu tách cả chữ CÓ DẤU thành từ
+  // rồi đem đi tra một từ điển chưa được bật. Thêm `vi` đưa nó về 0.
+  "language": "en,vi",
+
+  // Từ điển tiếng Việt THẬT, thay cho một mảng `words` chép tay.
+  //
+  // Vì sao không chép tay: mặc định chỉ những âm tiết KHÔNG DẤU bị gắn cờ
+  // (`trong`, `nhau`, `theo`…), nên danh sách trông có vẻ hữu hạn — nhưng nó
+  // phình thêm một dòng mỗi lần ai đó viết một comment tiếng Việt mới, và không
+  // có gì nhắc họ. Luật của repo là "tài liệu tiếng Việt, định danh tiếng Anh"
+  // (`docs/ARCHITECTURE.md`), tức tiếng Việt nằm trong comment và chuỗi — đúng
+  // chỗ từ điển này phủ.
+  "import": ["@cspell/dict-vi-vn/cspell-ext.json"],
+
   "words": [
+    // ── Nghiệp vụ của shop ────────────────────────────────────────────────
+    "CCCD", // căn cước công dân
+    "CSKH", // chăm sóc khách hàng
+    "Zalo",
+    "Fanpage",
+    "checkins", // tên bucket MinIO
+    "moto",
+    "motorsport",
+    "wordmark",
+    "Archivo", // font của apps/web
+
+    // ── Tiếng Việt ngoài từ điển: từ mượn, tiếng lóng, tên riêng ───────────
+    "cược",
+    "gara",
+    "mili",
+    "phượt",
+    "Mĩnh", // tên trong fixture test
+
+    // ── Định danh tiếng Việt còn sót trong code và fixture ─────────────────
+    // Không phải để cổ vũ: luật đặt tên là định danh tiếng Anh. Bốn cái này là
+    // hợp đồng API và tiền tố dữ liệu test đã tồn tại, đổi tên nằm ngoài phạm
+    // vi một file cấu hình chính tả.
+    "matkhau",
+    "matkhaumoi",
+    "thuhoi", // tiền tố `ztest-thuhoi-`
+    "yeucau",
+    "ztest", // tiền tố dữ liệu test
+    "cust", // viết tắt trong `scripts/seed-dev.ts`
+
+    // ── Postgres ──────────────────────────────────────────────────────────
+    "bigserial",
+    "btree",
+    "btrim",
+    "bytea",
+    "conname",
+    "gist",
+    "nspname",
+    "pgcrypto",
+    "psql",
+    "constraintdef", // pg_get_constraintdef()
+    "ILIKE",
+    "nonneg", // tên CHECK, vd `vehicles_money_nonneg`
+    "pkey",
+    "provolatile",
+    "regclass",
+    "regdictionary",
+    "rolsuper",
+    "savepoint",
+    "schemaname",
+    "seqscan",
+    "sqlstate",
+    "tablename",
+    "timestamptz",
+    "trgm", // pg_trgm
+    "lastmod", // sitemap
+    "plpgsql",
+    "rolname",
+    "trunc",
+    "tstzrange",
+    "unaccent",
+    "varchar",
+
+    // ── Dịch vụ và thư viện bên ngoài ─────────────────────────────────────
+    "directus",
+    "drizzle",
+    "ECONNREFUSED",
+    "errno",
     "elysia",
     "elysiajs",
-    "drizzle",
-    "tstzrange",
-    "gist",
-    "btree",
+    "emaildelivery",
+    "emailpassword", // recipe của SuperTokens
     "minio",
+    "neondatabase",
+    "PostgREST", // không có nó, cspell cắt ra mảnh "Postg"
+    "presign", // presigned URL của MinIO
+    "Supabase",
+    "SMTPS",
+    "STARTTLS",
+    "supertokens",
+    "TOTP",
+    "tanstack",
+    "treaty", // Eden Treaty
+    "typebox",
+    "usermetadata",
+
+    // Chính tả Anh-Anh, KHÔNG phải lỗi gõ: hằng số do SuperTokens phát ra, chép
+    // sang en-US là chép sai giá trị thật.
+    "Initialisation",
+    "UNAUTHORISED",
+
+    // ── Công cụ, hạ tầng, chuẩn ───────────────────────────────────────────
+    "agentmemory",
+    "buildx",
     "caddy",
     "ghcr",
-    "treaty",
-    "typebox",
-    "bunfig",
     "impeccable",
-    "tanstack",
-    "vite",
-    "errno",
-    "savepoint",
-    "directus",
-    "supertokens",
-    "psql",
-    "varchar",
-    "sqlstate",
-    "pgcrypto",
-    "nspname",
-    "rolname",
-    "schemaname",
-    "tablename",
+    "bunfig",
+    "bunx",
+    "codegen",
+    "codegraph",
+    "extname",
+    "Frontends",
+    "Googlebot",
     "healthcheck",
     "isready",
-    "checkins"
+    "nosniff", // X-Content-Type-Options
+    "oklch", // hàm màu CSS
+    "oneline", // `git log --oneline`
+    "prerender",
+    "readlink",
+    "Turbopack",
+    "vite",
+    "webp",
+    "WCAG",
+
+    // ── Tham số ffmpeg (`scripts/seed-dev-images.sh`) ──────────────────────
+    "boxborderw",
+    "boxcolor",
+    "drawtext",
+    "fontcolor",
+    "fontsize",
+    "lavfi",
+    "loglevel",
+
+    // ── Chính tả Anh-Anh trong văn bản của repo ───────────────────────────
+    "behaviour", // eslint.config.js
+    "serialise", // comment của migration 0012
+
+    // ── Tên người / tài khoản xuất hiện trong tài liệu ─────────────────────
+    "appleboy", // appleboy/ssh-action trong workflow
+    "pbakaus",
+    "Iethoangnguyenle",
+    "viethoangnguyenle"
   ],
-  "ignoreRegExpList": ["/[A-Za-zÀ-ỹ]*[À-ỹ][A-Za-zÀ-ỹ]*/gu"],
+
+  "ignoreRegExpList": [
+    // `%5Baction%5D`, `%5Bpolicy%5D`… trong `scripts/directus-setup.ts` là
+    // percent-encoding của `[` và `]`. Bộ tách từ dính `%5B` vào từ đứng sau và
+    // cho ra "Baction"/"Bpolicy" — không phải TỪ, nên bỏ theo KHUÔN DẠNG thay
+    // vì nhét một danh sách mảnh vụn vào `words`.
+    "%[0-9A-Fa-f]{2}",
+
+    // Tên hiệu migration do Drizzle tự sinh (`0009_watery_shinobi_shaw`) được
+    // TRÍCH DẪN trong `docs/workspaces/db.md` và các design doc, tức nằm ngoài
+    // `packages/db/migrations/meta/**` đã bỏ qua bên dưới. Bắt theo khuôn dạng:
+    // whitelist từng cái là ký hợp đồng sửa file này mỗi lần thêm migration.
+    "\\b\\d{4}_[a-z][a-z0-9_]*\\b"
+  ],
+
   "ignorePaths": [
-    "**/*.sql",
-    "**/*.test.ts",
-    "**/AGENTS.md",
-    "**/CLAUDE.md",
-    "**/Caddyfile",
-    "**/messages/*.json",
-    ".next/**",
-    "Caddyfile",
-    "DESIGN.md",
-    "PRODUCT.md",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.next/**",
+    "**/build/**",
+    "**/.impeccable/**",
+    "**/.codegraph/**",
+    "**/.serena/**",
+    // Drizzle tự sinh tên hiệu cho từng migration (`0009_watery_shinobi_shaw`).
+    // Whitelist từng cái là ký một hợp đồng phải sửa file này mỗi lần thêm
+    // migration — bỏ qua cả thư mục metadata mới là thứ đứng vững.
+    "packages/db/migrations/meta/**",
     "bun.lock",
-    "compose*.yaml",
-    "dist/**",
-    "docs/**",
-    "node_modules/**"
+    "*.png",
+    "*.svg",
+    "*.webmanifest"
   ]
 }
