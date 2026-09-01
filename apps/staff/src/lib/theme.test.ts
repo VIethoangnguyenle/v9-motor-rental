@@ -271,6 +271,7 @@ describe("script chống nháy trắng trong index.html", () => {
   });
 
   it("selector trong script trỏ đúng tên thẻ đang có trong HTML", async () => {
+    // cspell:ignore colour -- chính tả Anh-Anh CỐ Ý SAI, trích làm ví dụ đột biến
     // `theme-colour` thay vì `theme-color` là một chữ, không lỗi ở đâu, và mọi
     // thẻ giữ nguyên màu theo hệ điều hành.
     const html = await readIndexHtml();
