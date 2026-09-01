@@ -150,6 +150,14 @@
     "isready",
     "nosniff", // X-Content-Type-Options
     "oklch", // hàm màu CSS
+    "animationend", // sự kiện DOM kết thúc animation
+    "Machado", // ma trận mô phỏng mù màu Machado, Oliveira & Fernandes 2009
+    "Oliveira",
+    "Fernandes",
+    "Oklab", // không gian màu, cơ sở của oklch
+    "cbrt", // Math.cbrt
+    "hypot", // Math.hypot
+    "transitionend", // sự kiện DOM kết thúc transition
     "oneline", // `git log --oneline`
     "prerender",
     "readlink",
