@@ -327,3 +327,39 @@ nợ 2026-08-18, xem "Đã đóng trong Plan A" bên dưới cho cách chứng m
   đừng đẩy vào `.gitignore`** — có track thì lần `codegraph install --refresh` sau hiện ra thành
   diff review được. Hiện nó là untracked, tức mọi lần upgrade lại mọc ra một file lạ. Ngoài phạm vi
   đợt này nên **không tự commit**; nêu để người quyết.
+
+---
+
+## Nợ sinh ra từ đợt hệ thị giác (2026-09-01/02)
+
+- ⛔ **`apps/staff` không có một test component nào**, và repo không cài `happy-dom`/`jsdom`/
+  `@testing-library`. Nghĩa là toàn bộ logic **đóng lớp phủ, nhịp hoạt ảnh, và chuyển động** của đợt
+  này nằm ngoài mọi hàng rào tự động.
+
+  Đây không phải suy đoán. Vòng review gộp chạy **bảy đột biến, cả bảy đều xanh** trên `bun test` +
+  `typecheck` + `lint`:
+
+  | Đột biến                                                | Hỏng gì thật                                                             |
+  | ------------------------------------------------------- | ------------------------------------------------------------------------ |
+  | xoá `closeRef.current = close`                          | **sheet không bao giờ tự đóng** sau khi đổi trạng thái                   |
+  | bỏ `pointer-events: none` ở `dialog`                    | cú bấm 180ms sau khi đóng rơi vào lớp mờ đang tan                        |
+  | lọc `transitionend` theo `"transform"` thay `"opacity"` | mọi lần đóng trễ 400ms                                                   |
+  | cleanup không `clearTimeout`                            | timer nổ sau unmount: `onChanged` hai lần + `close()` vào dialog đã chết |
+  | xoá hẳn `transition: transform` của panel               | mất hiệu ứng ra, **không gì bắt được**                                   |
+
+  Hai đột biến còn lại (`--duration-panel` 900ms phá trần 400ms · `BEAT_MS` lệch `@utility`) **đã
+  được đóng** bằng `lib/motion-budget.test.ts` — hàng rào đọc-file kiểu `spacing-fence`, ~40 dòng.
+  Năm cái trên thì cần hạ tầng test DOM, đó là món nợ này.
+
+  **Đừng đọc "439 test xanh" thành "chuyển động được canh".**
+
+- **`ui/modal.tsx` không sống sót qua StrictMode** → không lớp phủ nào mở được trên `vite dev`.
+  `dialog.close()` **xếp hàng** sự kiện `close`; StrictMode chạy cleanup rồi mount lại, và sự kiện đã
+  xếp hàng rơi vào `handleClose` của lần mount thứ hai. Có **từ trước** đợt này (xác nhận ở
+  `ebbb443`), bản build không bị. Đang sửa riêng — nếu mục này còn đây thì nó chưa land.
+
+- **`bun run format:check` đỏ trên `main`** với 19 file, có từ trước đợt này (`819ba41`). Một trong
+  số đó — `docs/plans/2026-09-01-staff-visual-system-plan.md` — **prettier không idempotent**:
+  `--check` đỏ ngay sau `--write`, mỗi lần thêm 4 dấu cách vào một khối danh sách lồng sâu quanh
+  dòng 1329. Chạy `bun run format` lên file đó làm nó tệ hơn, không tốt hơn. CI không xanh được
+  chừng nào chưa xử lý.
