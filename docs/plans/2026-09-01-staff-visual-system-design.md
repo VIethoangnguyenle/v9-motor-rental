@@ -506,8 +506,15 @@ Dàn dựng, 600ms, một chuỗi chứ không phải một hiệu ứng:
 1. Nút `Đã giao xe` xác nhận cú bấm (120ms).
 2. Chip trạng thái **đổi cả hình lẫn màu** — `calendar-days` → `bike`, viền nhạt → nền đặc. Đổi
    hình là phần bắt buộc, không phải phần trang trí: xem §2.5.
-3. Sheet đóng, và **hàng vừa đổi sáng lên một nhịp** ở màn phía sau — người dùng nhìn thấy đúng chỗ
-   mình vừa tác động, không phải đi tìm.
+3. **Vòng sáng chạy hết một nhịp trên chính chip đó, rồi sheet mới bắt đầu đóng.** Thứ tự này là
+   phần dàn dựng: vòng sáng → hiệu ứng ra → gỡ. Đóng ngay là mất khoảnh khắc.
+
+> ⚠️ **Bản đầu của mục 3 hứa thứ khác**, và lời hứa đó bị bỏ có chủ ý: _"sheet đóng, và hàng vừa đổi
+> sáng lên một nhịp **ở màn phía sau**"_. Hai lý do. Thứ nhất, nó **không thuộc sở hữu của task nào**
+> trong plan — Task 7 chưa bao giờ được cấp `rental-calendar.tsx`, nên nó là một lời hứa không có
+> người thực hiện. Thứ hai, và quan trọng hơn: nó **thừa**. Mắt người dùng đang ở đúng chỗ đó suốt
+> 600ms vòng sáng chạy trong sheet; sheet đóng xong thì thanh bên dưới đã đổi **cả màu lẫn hình**
+> (`calendar-days` → `bike`, viền nhạt → nền đặc). Một vòng sáng thứ hai là lặp lại điều vừa nói.
 
 Ba mục còn lại của §4.4 (hover, nút, focus) là **trạng thái nền**, cố ý yên tĩnh. Một khoảnh khắc
 được dàn dựng chỉ nổi lên được khi xung quanh nó im.
@@ -530,7 +537,7 @@ nào chạy lặp vô hạn, không có hiệu ứng nào gắn vào cuộn.
 ```
 
 **Trần cứng 400ms.** App này được dùng hàng trăm lần mỗi ca; hoạt ảnh dài là thuế thu ở mỗi lần dùng.
-Vào nhanh hơn ra (`enter` 280ms / `exit` 180ms): thứ người dùng vừa gọi ra phải tới nhanh, thứ họ vừa
+Ra nhanh hơn vào (`enter` 280ms / `exit` 180ms): thứ người dùng vừa gọi ra phải tới nhanh, thứ họ vừa
 bỏ đi phải biến mất nhanh hơn nữa.
 
 ### 4.3 Ngân sách theo **số lần lặp**, không phải một danh sách cấm phẳng
@@ -566,7 +573,7 @@ nên nó dùng một `::after` phủ lên animate `transform: scale()` + `opacit
 | #   | Chỗ                       | File                                                | Animate                        | Thời lượng | Easing     | Nói điều gì                             |
 | --- | ------------------------- | --------------------------------------------------- | ------------------------------ | ---------- | ---------- | --------------------------------------- |
 | 1   | hàng bấm được             | `stats/attention-list.tsx`, `layout/app-nav.tsx`, `rentals/rental-form.tsx` | `background-color` | 120ms | standard | hàng này bấm được                       |
-| 2   | nút                       | `ui/button.tsx`                                     | `background-color`             | 120ms      | standard   | nút nhận được cú bấm                    |
+| 2   | nút                       | `ui/button.tsx`, `ui/toggle-group.tsx`              | `background-color`, `border-color` | 120ms  | standard   | nút nhận được cú bấm                    |
 | 3   | vòng tiêu điểm            | `index.css :focus-visible`                          | **không animate**              | 0          | —          | vòng focus trễ là lỗi, không phải hiệu ứng |
 | 4   | modal / sheet vào–ra      | `ui/modal.tsx`                                      | `transform`, `opacity`, nền mờ | 280 / 180ms | enter / exit | lớp phủ tới từ đâu, đi về đâu           |
 | 5   | skeleton → nội dung       | `ui/skeleton.tsx` + trang gọi                       | `opacity`, `transform`         | 180ms      | enter      | nối "đang tải" với "đã có"              |
@@ -644,6 +651,19 @@ riêng:
 
 Mục 6 là chỗ **bắt buộc** phải có bản thay thế: nếu reduced-motion làm nó biến mất hoàn toàn thì
 người bật cờ đó quay lại đúng lỗi P0 ban đầu — app làm xong việc mà không nói gì.
+
+### 4.6b Ba mục của §4.4 **chưa** có bản chạy nào
+
+Ghi ra để không ai đọc §4.4 là "đã xong":
+
+| # | Mục | Trạng thái |
+| - | --- | ---------- |
+| 5 | skeleton → nội dung | **chưa làm** |
+| 7 | badge số yêu cầu đổi | **chưa làm** |
+| 8 | alert xuất hiện | **chưa làm** |
+
+Cả ba rẻ và không phải điều kiện để §4.1 đứng — khoảnh khắc dàn dựng (mục 6) và trạng thái nền
+(mục 1–3) mới là thứ luận điểm dựa vào. Đưa vào đợt sau, hoặc vào đợt sửa gộp của gate nếu còn chỗ.
 
 ### 4.7 Không làm
 
