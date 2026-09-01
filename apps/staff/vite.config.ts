@@ -1,9 +1,44 @@
+import { execSync } from "node:child_process";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
+import pkg from "./package.json" with { type: "json" };
+
+/**
+ * Nhãn nhận dạng bản dựng, hiện ở chân thanh điều hướng.
+ *
+ * Sinh ra từ một ca thật: `vite preview` từng chạy ở ĐÚNG cổng của dev server,
+ * nên service worker của bản build đăng ký vào origin đó và tiếp tục phục vụ
+ * bản đã cache kể cả sau khi dev server quay lại. Trình duyệt hiện một app
+ * trông đúng nhưng là bản CŨ, và không có cách nào nhìn ra — chỉ mở DevTools
+ * đọc `navigator.serviceWorker.controller` mới biết.
+ *
+ * Ba mẩu dưới đây trả lời đúng câu "tôi đang xem bản nào":
+ *   • version — nhảy khi phát hành
+ *   • commit  — nhảy theo từng lần sửa, kể cả chưa bump version
+ *   • giờ dựng — nhảy mỗi lần build, nên bản cache đứng yên là thấy ngay
+ *
+ * `git` có thể vắng mặt (build trong Docker chỉ COPY mã nguồn), nên hỏng thì
+ * rơi về "nogit" chứ KHÔNG làm vỡ build.
+ */
+function gitCommit(): string {
+  try {
+    return execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
+  } catch {
+    return "nogit";
+  }
+}
 
 export default defineConfig({
+  // `define` thay thế bằng HẰNG CHUỖI lúc build — cùng cơ chế `VITE_API_URL`
+  // (`docs/workspaces/staff.md`): đổi giá trị thì phải dựng lại, đặt lúc chạy
+  // không có tác dụng gì.
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __APP_COMMIT__: JSON.stringify(gitCommit()),
+    __APP_BUILT_AT__: JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     react(),
     // Tailwind v4 cho Vite dùng plugin riêng, KHÔNG qua PostCSS như apps/web.

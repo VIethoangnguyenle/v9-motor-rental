@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { Me } from "../../lib/me";
 import { Modal } from "../ui/modal";
 import { newRequestCountQuery } from "../../lib/requests";
+import { BuildStamp } from "./build-stamp";
 
 /**
  * Bảy điểm đến, hai hình dạng. `NAV_ITEMS` là danh sách duy nhất — sidebar
@@ -144,6 +145,7 @@ function SidebarNav({ me, onSignOut }: { readonly me: Me | null; readonly onSign
         <p className="truncate px-3 text-xs text-muted">
           {me?.fullName} · {me?.role}
         </p>
+        <BuildStamp />
         <Link
           to="/change-password"
           className={`${TOUCH} rounded-card px-3 text-ink hover:bg-canvas`}
@@ -283,6 +285,7 @@ function BottomNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignO
               <p className="truncate px-3 text-xs text-muted">
                 {me?.fullName} · {me?.role}
               </p>
+              <BuildStamp />
               <Link
                 to="/change-password"
                 onClick={closeMore}
