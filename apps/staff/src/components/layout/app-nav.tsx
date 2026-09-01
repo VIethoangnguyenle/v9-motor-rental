@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Me } from "../../lib/me";
+import { Modal } from "../ui/modal";
 import { newRequestCountQuery } from "../../lib/requests";
 
 /**
@@ -169,6 +170,33 @@ function BottomNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignO
   const [moreOpen, setMoreOpen] = useState(false);
   const closeMore = () => setMoreOpen(false);
 
+  /*
+   * Đóng sheet khi cửa sổ vượt qua 768px — cùng ngưỡng `md` mà `AppShell` dùng
+   * để đổi bottom nav ↔ sidebar.
+   *
+   * Cần thiết vì `<dialog>` nằm ở TOP LAYER: bản `<div>` cũ mang `md:hidden` nên
+   * xoay ngang điện thoại hay kéo rộng cửa sổ là sheet tự biến mất theo CSS,
+   * nhưng một phần tử top layer vẽ trên mọi thứ và `md:hidden` của thanh nav cha
+   * không còn che nó giúp. Không có effect này thì mở sheet ở 400px rồi xoay
+   * ngang sẽ để lại một sheet điện thoại nằm giữa layout desktop.
+   *
+   * Kiểm `mq.matches` NGAY chứ không chỉ nghe `change`: `AppNav` được `AppShell`
+   * dựng ở cả hai biến thể cùng lúc, nên `BottomNav` vẫn mount ở ≥768px.
+   */
+  useEffect(() => {
+    if (!moreOpen) return;
+    const mq = window.matchMedia("(min-width: 768px)");
+    if (mq.matches) {
+      setMoreOpen(false);
+      return;
+    }
+    const onChange = () => {
+      if (mq.matches) setMoreOpen(false);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [moreOpen]);
+
   const [home, lich, ...rest] = NAV_ITEMS;
   const moreItems = rest.filter((item) => visibleFor(item, me));
 
@@ -207,26 +235,18 @@ function BottomNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignO
 
       {/*
        * "Thêm" mở SHEET, không phải trang riêng — chọn sheet vì nó không đòi
-       * thêm route: mọi trang mới đều phải khai trong `router.tsx`, mà Task 6
-       * này bị cấm sửa file ngoài `components/layout/`. Sheet là state cục bộ
-       * trong component, dựng bằng `fixed` (không phải `sticky`) vì đây là lớp
-       * phủ TẠM THỜI đứng trên toàn trang, khác hẳn bài toán "nav luôn ở đáy"
-       * mà `BottomNav` giải bằng sticky.
+       * thêm route: mọi trang mới đều phải khai trong `router.tsx`. Sheet là
+       * state cục bộ trong component.
+       *
+       * Trước đây đây là lớp phủ DỞ NHẤT trong ba lớp phủ của app: không đóng
+       * được bằng Esc, không đưa tiêu điểm vào, không trả tiêu điểm về, không
+       * bẫy Tab — mà nó lại là ĐIỀU HƯỚNG CHÍNH trên điện thoại, tức người dùng
+       * bàn phím mở nó ra là không có đường ra. `ui/modal.tsx` (`showModal()`)
+       * cho cả bốn thứ đó.
        */}
       {moreOpen && (
-        <div className="fixed inset-0 z-20 md:hidden">
-          <button
-            type="button"
-            aria-label="Đóng"
-            onClick={closeMore}
-            className="absolute inset-0 bg-ink/40"
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Thêm"
-            className="absolute inset-x-0 bottom-0 rounded-t-card border-t border-border bg-surface pb-safe"
-          >
+        <Modal label="Thêm" placement="bottom" onClose={closeMore}>
+          <div>
             <ul className="flex flex-col gap-1 p-3">
               {moreItems.map((item) => (
                 <li key={item.label}>
@@ -277,7 +297,7 @@ function BottomNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignO
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </>
   );

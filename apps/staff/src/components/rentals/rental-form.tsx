@@ -9,6 +9,7 @@ import { errorCode, errorMessage } from "../../lib/errors";
 import { customersQuery, fleetQuery, type Customer, type FleetVehicle } from "../../lib/rentals";
 import { Alert } from "../ui/alert";
 import { Button } from "../ui/button";
+import { Modal } from "../ui/modal";
 import { Select } from "../ui/select";
 import { SubmitButton } from "../ui/submit-button";
 import { TextField } from "../ui/text-field";
@@ -141,17 +142,10 @@ export function RentalForm({
 }) {
   const qc = useQueryClient();
 
-  // Đóng bằng phím Esc — chi phí rẻ, cùng kiểu vẫn thấy ở sheet "Thêm" của
-  // `app-nav.tsx` (đóng bằng nút nền `absolute inset-0`); Esc là lối tắt thêm,
-  // không thay thế nút đó.
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent): void {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
-
+  // Esc, bẫy Tab, `inert` cho phần còn lại của trang và trả tiêu điểm về nút đã
+  // mở form: tất cả đã thuộc `ui/modal.tsx` (`dialog.showModal()`). Chỗ này từng
+  // tự gắn một listener `keydown` lên `window` cho riêng Esc — ba thứ còn lại
+  // thì không có.
   const fleet = useQuery(fleetQuery);
 
   const [vehicleId, setVehicleId] = useState("");
@@ -299,19 +293,10 @@ export function RentalForm({
   }
 
   return (
-    <div className="fixed inset-0 z-30">
-      <button
-        type="button"
-        aria-label="Đóng"
-        onClick={onClose}
-        className="absolute inset-0 bg-ink/40"
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Lên đơn thuê xe"
-        className="absolute inset-x-0 top-0 mx-auto mt-6 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-card border border-border bg-surface card-pad"
-      >
+    // `placement="top"`: form dài và người dùng đang GÕ, nên bàn phím ảo đẩy từ
+    // dưới lên — neo đáy thì các ô nhập cuối bị đẩy khỏi màn hình.
+    <Modal label="Lên đơn thuê xe" placement="top" onClose={onClose}>
+      <div className="card-pad">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-ink">Lên đơn thuê xe</h2>
           <Button type="button" variant="ghost" onClick={onClose} aria-label="Đóng">
@@ -555,6 +540,6 @@ export function RentalForm({
           </SubmitButton>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

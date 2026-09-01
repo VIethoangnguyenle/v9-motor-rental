@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { RentalStatus } from "@v9/shared/domain/rental";
-import { STATUS_LABEL, rentalChipClass } from "./rental-status";
+import { STATUS_LABEL, lastMomentOf, rentalChipClass } from "./rental-status";
 
 /**
  * `rentalChipClass` là chỗ DUY NHẤT hai vị từ domain (`isOverdue`,
@@ -141,5 +141,36 @@ describe("STATUS_LABEL", () => {
     const labels = ALL_STATUSES.map((s) => STATUS_LABEL[s]);
     expect(labels).toEqual(["Đã đặt", "Đang thuê", "Đã trả", "Đã huỷ"]);
     expect(new Set(labels).size).toBe(4);
+  });
+});
+
+describe("lastMomentOf", () => {
+  /**
+   * Bug thật, đo được trước khi sửa: `customer-table.tsx` in "Trả 00:00 29-08"
+   * cho một đơn mà ngày cuối khách còn giữ xe là 28-08, và
+   * `customer-rental-history.tsx` in "20/08/2026 – 29/08/2026" cho cùng đơn đó.
+   * Nguyên nhân là hiển thị thẳng `endsAt`, vốn là biên MỞ.
+   */
+  it("đưa nửa đêm-biên-mở về cuối ngày TRƯỚC đó", () => {
+    // Đúng khuôn `toApiRange` sinh ra: đơn "20/08 → 22/08" lưu endsAt = 23/08 00:00 giờ VN.
+    const endsAt = new Date("2026-08-22T17:00:00.000Z"); // = 23/08 00:00 +07
+    expect(lastMomentOf(endsAt).toISOString()).toBe("2026-08-22T16:59:59.999Z"); // = 22/08 23:59:59.999 +07
+  });
+
+  /**
+   * `endsAt` KHÔNG phải lúc nào cũng là nửa đêm — `scripts/seed-dev.ts` cố ý tạo
+   * một đơn quá hạn với `ends_at` lệch 2 giờ để thanh đỏ còn giao với cửa sổ
+   * lịch. Trừ nguyên 24 giờ (cách sửa hiển nhiên nhưng sai) sẽ lùi những đơn đó
+   * về sai hẳn một ngày; lùi một mili-giây thì đúng ở mọi giờ.
+   */
+  it("giữ nguyên ngày khi endsAt KHÔNG rơi vào nửa đêm", () => {
+    const endsAt = new Date("2026-08-22T19:00:00.000Z"); // = 23/08 02:00 +07
+    expect(lastMomentOf(endsAt).toISOString()).toBe("2026-08-22T18:59:59.999Z"); // = 23/08 01:59:59.999 +07
+  });
+
+  it("không đụng vào đối tượng gốc", () => {
+    const endsAt = new Date("2026-08-22T17:00:00.000Z");
+    lastMomentOf(endsAt);
+    expect(endsAt.toISOString()).toBe("2026-08-22T17:00:00.000Z");
   });
 });

@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { SHOP_TIMEZONE } from "@v9/shared/domain/rental";
 import type { CustomerListRow } from "../../lib/customers";
 import type { CustomersSearch } from "../../lib/customers-search";
-import { STATUS_LABEL, rentalChipClass } from "../../lib/rental-status";
+import { STATUS_LABEL, lastMomentOf, rentalChipClass } from "../../lib/rental-status";
 
 interface CustomerTableProps {
   readonly rows: readonly CustomerListRow[];
@@ -35,8 +35,18 @@ const WHEN_LABEL: Record<ActiveRental["status"], string> = {
   BOOKED: "Lấy",
 };
 
+/**
+ * `ONGOING` đi qua `lastMomentOf`: `endsAt` là biên MỞ, nên đơn phải trả ngày
+ * 28-08 lưu `endsAt = 29/08 00:00` và cột này từng in "Trả 00:00 29-08" — sai
+ * một ngày, ở đúng cột mà `CustomerTable` tồn tại để trả lời. `startsAt` là biên
+ * ĐÓNG nên `BOOKED` dùng thẳng, không lùi gì cả.
+ *
+ * Giờ vẫn hiện (xem `WHEN_FMT`) và vẫn là thông tin thật: `endsAt` không phải
+ * lúc nào cũng nửa đêm, nên "Trả 23:59 28-08" và "Trả 01:59 29-08" là hai đơn
+ * khác nhau, không phải cùng một đơn hiển thị hai kiểu.
+ */
 function whenOf(rental: ActiveRental): Date {
-  return rental.status === "ONGOING" ? rental.endsAt : rental.startsAt;
+  return rental.status === "ONGOING" ? lastMomentOf(rental.endsAt) : rental.startsAt;
 }
 
 /**

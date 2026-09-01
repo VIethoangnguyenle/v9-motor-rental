@@ -1,7 +1,7 @@
 import { formatVnd } from "@v9/shared/domain/money";
 import { SHOP_TIMEZONE } from "@v9/shared/domain/rental";
 import type { CustomerRental } from "../../lib/customers";
-import { STATUS_LABEL, rentalChipClass } from "../../lib/rental-status";
+import { STATUS_LABEL, lastMomentOf, rentalChipClass } from "../../lib/rental-status";
 
 interface CustomerRentalHistoryProps {
   readonly rentals: readonly CustomerRental[];
@@ -75,8 +75,12 @@ export function CustomerRentalHistory({ rentals }: CustomerRentalHistoryProps) {
                   và `tabular-nums` thành vô nghĩa vì hai đầu mút không còn nằm
                   cùng dòng để so. Cột "Xe" thì cứ để xuống dòng: ở đó là hai
                   mẩu tin (tên xe · biển số), gãy giữa chúng là đúng chỗ. */}
+              {/* `lastMomentOf(r.endsAt)`, KHÔNG phải `r.endsAt`: biên là nửa mở, nên
+                  in thẳng nó ra cho đơn "24/08 → 28/08" thành "24/08 – 29/08" —
+                  sai một ngày ở đúng cột mà nhân viên đọc để đối chiếu với khách.
+                  Lý lẽ ở `lib/rental-status.ts`. */}
               <td className="card-pad whitespace-nowrap tabular-nums">
-                {DATE_FMT.format(r.startsAt)} – {DATE_FMT.format(r.endsAt)}
+                {DATE_FMT.format(r.startsAt)} – {DATE_FMT.format(lastMomentOf(r.endsAt))}
               </td>
               <td className="card-pad">
                 <span

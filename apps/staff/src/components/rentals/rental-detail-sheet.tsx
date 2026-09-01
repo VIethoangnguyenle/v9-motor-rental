@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { formatVnd } from "@v9/shared/domain/money";
 import {
   availableTransitions,
@@ -8,11 +8,17 @@ import {
 } from "@v9/shared/domain/rental";
 import { errorMessage } from "../../lib/errors";
 import { changeRentalStatus, type CalendarRental, type FleetVehicle } from "../../lib/rentals";
-import { STATUS_LABEL, TRANSITION_LABEL, rentalChipClass } from "../../lib/rental-status";
+import {
+  STATUS_LABEL,
+  TRANSITION_LABEL,
+  lastMomentOf,
+  rentalChipClass,
+} from "../../lib/rental-status";
 import { Alert } from "../ui/alert";
 import { HandoverDetails } from "./handover-details";
 import { HandoverPhotos } from "./handover-photos";
 import { Button } from "../ui/button";
+import { Modal } from "../ui/modal";
 
 const DATE_FMT = new Intl.DateTimeFormat("vi-VN", {
   timeZone: SHOP_TIMEZONE,
@@ -22,15 +28,14 @@ const DATE_FMT = new Intl.DateTimeFormat("vi-VN", {
 });
 
 /**
- * `endsAt` là biên MỞ (khớp `tstzrange '[)'` và `toApiRange` ở `rental-form.tsx`):
- * đơn "10/09 → 12/09" lưu `endsAt = 13/09 00:00`. Hiện thẳng `endsAt` ra màn hình
- * là hiện sai một ngày — đúng lỗi còn tồn tại ở `customer-rental-history.tsx` và
- * `customer-table.tsx`. Lùi một mili-giây đưa mốc về trong ngày cuối THẬT rồi mới
- * format, thay vì trừ 24 giờ (trừ giờ sẽ lệch vào ngày đổi giờ ở múi có DST —
- * `SHOP_TIMEZONE` hôm nay không có, nhưng hàm này không nên phụ thuộc điều đó).
+ * `endsAt` là biên MỞ, nên phải qua `lastMomentOf` trước khi format — lý lẽ đầy
+ * đủ ở `lib/rental-status.ts`. Hàm này từng là bản RIÊNG của file này
+ * (`formatLastDay`) kèm ghi chú "đúng lỗi còn tồn tại ở `customer-rental-history.tsx`
+ * và `customer-table.tsx`"; nay phần khó đã nằm ở chỗ dùng chung và hai file kia
+ * gọi cùng một hàm, nên ghi chú đó không còn đúng nữa.
  */
 function formatLastDay(endsAt: Date): string {
-  return DATE_FMT.format(new Date(endsAt.getTime() - 1));
+  return DATE_FMT.format(lastMomentOf(endsAt));
 }
 
 interface RentalDetailSheetProps {
@@ -69,28 +74,13 @@ export function RentalDetailSheet({
   onChanged,
 }: RentalDetailSheetProps) {
   const queryClient = useQueryClient();
-  const panelRef = useRef<HTMLDivElement>(null);
   /** Huỷ đơn là hành động không quay lại được — hỏi một nhịp trước khi gửi. */
   const [confirming, setConfirming] = useState<RentalStatus | null>(null);
 
-  // Trả tiêu điểm về nơi người dùng bấm khi sheet đóng. `rental-form.tsx` chưa
-  // làm việc này (nợ đã biết); trang mới thì không lặp lại.
-  useEffect(() => {
-    const opener = document.activeElement;
-    panelRef.current?.focus();
-    return () => {
-      if (opener instanceof HTMLElement) opener.focus();
-    };
-  }, []);
-
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent): void {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
-
+  // Hai effect từng nằm đây — một để trả tiêu điểm về nơi người dùng bấm, một để
+  // bắt Esc — đã chuyển vào `ui/modal.tsx`, nơi `dialog.showModal()` làm cả hai
+  // theo spec và thêm hai thứ bản viết tay này không có: bẫy Tab và `inert` cho
+  // phần còn lại của trang. Ba lớp phủ của app giờ dùng chung đúng một cơ chế.
   const change = useMutation({
     mutationFn: async (to: RentalStatus) => {
       const r = await changeRentalStatus(rental.id, to);
@@ -125,21 +115,10 @@ export function RentalDetailSheet({
   const nextStatuses = availableTransitions(rental.status);
 
   return (
-    <div className="fixed inset-0 z-30">
-      <button
-        type="button"
-        aria-label="Đóng"
-        onClick={onClose}
-        className="absolute inset-0 bg-ink/40"
-      />
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Đơn thuê ${vehicleLabel}`}
-        tabIndex={-1}
-        className="absolute inset-x-0 bottom-0 mx-auto flex max-h-[90vh] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-t-card bg-surface p-4 sm:inset-y-auto sm:top-1/2 sm:-translate-y-1/2 sm:rounded-card"
-      >
+    // `placement="adaptive"`: đáy màn trên điện thoại (mở bằng cách chạm một
+    // thanh trên lịch, ngón cái ở đó), giữa màn từ ≥640px.
+    <Modal label={`Đơn thuê ${vehicleLabel}`} placement="adaptive" onClose={onClose}>
+      <div className="flex flex-col gap-4 card-pad">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="truncate text-base font-bold text-ink">{vehicleLabel}</h2>
@@ -242,6 +221,6 @@ export function RentalDetailSheet({
           </div>
         )}
       </div>
-    </div>
+    </Modal>
   );
 }

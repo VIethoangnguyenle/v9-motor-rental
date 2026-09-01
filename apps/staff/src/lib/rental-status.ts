@@ -70,15 +70,7 @@ const OVERDUE_CLASS = "bg-status-overdue text-accent-ink";
  * thẩm mỹ: token `overdue` sáng và bão hoà hơn `booked` (L55% C0.21 vs L50%
  * C0.09), nên dùng nó làm CHỮ trên chính nó pha 15% chỉ đạt **4,03:1** — trượt
  * AA chữ thường (4,5:1). Bỏ lớp nền pha đó đưa lên **5,19:1** trên canvas và
- * 5,41:1 trên surface. Ở cỡ chip lớp nền 15% gần như không nhìn thấy, nên đây
- * là 1,16 điểm tương phản đổi lấy gần như không gì.
- *
- * Chép công thức tô của một token sang token khác mà không đo lại chính là lỗi
- * mà đầu `index.css` cảnh báo. Tự kiểm lại được: tô màu vào `<canvas>` rồi đọc
- * pixel (đừng đọc `getComputedStyle().color` — Chromium trả lại nguyên chuỗi
- * `oklch()` chứ không quy về sRGB, và một parser ngây thơ sẽ ra 1,00:1 cho mọi
- * cặp màu). Hiệu chuẩn bằng cách tái lập ba số `index.css` đã công bố —
- * 3,95 · 3,66 · 3,49 — trước khi tin số mới.
+ * 5,41:1 trên surface.
  */
 const PICKUP_OVERDUE_CLASS = "border border-status-overdue text-status-overdue";
 
@@ -131,4 +123,29 @@ export function rentalChipClass(
   if (isOverdue(rental, now)) return OVERDUE_CLASS;
   if (isPickupOverdue(rental, now)) return PICKUP_OVERDUE_CLASS;
   return STATUS_CLASS[rental.status];
+}
+
+/**
+ * Mốc CUỐI CÙNG còn nằm trong đơn, suy ra từ `endsAt` — vốn là biên MỞ.
+ *
+ * `[startsAt, endsAt)` là hợp đồng của cả DB (`tstzrange '[)'`), domain
+ * (`packages/shared/src/domain/interval.ts`) lẫn form lên đơn (`toApiRange` ở
+ * `rental-form.tsx` lưu `endsAt` = nửa đêm giờ VN của ngày SAU ngày cuối). Hiện
+ * thẳng `endsAt` ra màn hình vì vậy là hiện SAI MỘT NGÀY: đơn "20/08 → 22/08"
+ * đọc thành "Trả 00:00 23-08", và bảng lịch sử in "20/08/2026 – 23/08/2026".
+ *
+ * Lùi một mili-giây, **không** trừ 24 giờ: `endsAt` không phải lúc nào cũng rơi
+ * vào nửa đêm — `scripts/seed-dev.ts:328` cố ý tạo một đơn quá hạn với
+ * `ends_at` lệch 2 giờ để thanh đỏ còn giao với cửa sổ lịch đang xem, và API
+ * nhận instant bất kỳ. Trừ theo NGÀY sẽ lùi đúng những đơn đó sai hẳn một ngày;
+ * lùi một mili-giây đúng ở mọi giờ, và không phụ thuộc việc múi giờ shop có DST
+ * hay không.
+ *
+ * Trả `Date` chứ không phải chuỗi đã format: ba chỗ gọi cần ba khuôn khác nhau —
+ * `rental-detail-sheet.tsx` và `customer-rental-history.tsx` hiện `dd/MM/yyyy`,
+ * `customer-table.tsx` hiện `HH:mm dd-MM` vì ở đó GIỜ là thông tin thật (đơn quá
+ * hạn lệch giờ ở trên chính là ca đó). Trả chuỗi là ép cả ba dùng chung một khuôn.
+ */
+export function lastMomentOf(endsAt: Date): Date {
+  return new Date(endsAt.getTime() - 1);
 }

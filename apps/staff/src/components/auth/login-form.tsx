@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { signIn } from "../../lib/auth";
+import { Alert } from "../ui/alert";
 import { SubmitButton } from "../ui/submit-button";
 import { TextField } from "../ui/text-field";
 
@@ -52,7 +53,16 @@ export function LoginForm() {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
-      {login.error && <p className="text-sm text-red-600">{login.error.message}</p>}
+      {/* `Alert`, KHÔNG phải `<p className="text-sm text-red-600">`. Ba lý do,
+          lý do đầu là lỗi thật: `<p>` trần không mang `role`/`aria-live` nào, nên
+          câu này hiện lên màn hình mà trình đọc màn hình KHÔNG đọc ra — người
+          dùng bấm nút rồi nghe thấy đúng con số không. `ui/alert.tsx` đã sửa đúng
+          con bug đó cho phần còn lại của app và ghi lại nguyên văn trong comment
+          của nó; ba form xác thực là chỗ cuối cùng còn sót. Hai lý do còn lại:
+          `text-red-600` là palette thô, đi vòng qua token `status-overdue`; và
+          `assertive` mặc định của tone `error` đúng ở đây — người dùng vừa bấm
+          gửi và đang đứng chờ chính câu trả lời này. */}
+      {login.error && <Alert tone="error">{login.error.message}</Alert>}
       <SubmitButton pending={login.isPending} pendingLabel="Đang đăng nhập…">
         Đăng nhập
       </SubmitButton>

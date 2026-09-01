@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api } from "../../lib/api";
 import { signOut } from "../../lib/auth";
 import { errorMessage } from "../../lib/errors";
+import { Alert } from "../ui/alert";
 import { SubmitButton } from "../ui/submit-button";
 import { TextField } from "../ui/text-field";
 
@@ -65,8 +66,17 @@ export function ChangePasswordForm() {
         value={newPassword}
         onChange={(e) => setNewPassword(e.target.value)}
       />
+      {/* `Alert`, KHÔNG phải `<p className="text-sm text-red-600">`. Ba lý do,
+          lý do đầu là lỗi thật: `<p>` trần không mang `role`/`aria-live` nào, nên
+          câu này hiện lên màn hình mà trình đọc màn hình KHÔNG đọc ra — người
+          dùng bấm nút rồi nghe thấy đúng con số không. `ui/alert.tsx` đã sửa đúng
+          con bug đó cho phần còn lại của app và ghi lại nguyên văn trong comment
+          của nó; ba form xác thực là chỗ cuối cùng còn sót. Hai lý do còn lại:
+          `text-red-600` là palette thô, đi vòng qua token `status-overdue`; và
+          `assertive` mặc định của tone `error` đúng ở đây — người dùng vừa bấm
+          gửi và đang đứng chờ chính câu trả lời này. */}
       {changePassword.error && (
-        <p className="text-sm text-red-600">{changePassword.error.message}</p>
+        <Alert tone="error">{changePassword.error.message}</Alert>
       )}
       <SubmitButton pending={changePassword.isPending} pendingLabel="Đang đổi…">
         Đổi mật khẩu
