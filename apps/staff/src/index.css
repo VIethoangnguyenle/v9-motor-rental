@@ -349,6 +349,89 @@
   }
 
   /*
+   * ── Hiệu ứng vào/ra của `<dialog>` ───────────────────────────────────────
+   *
+   * BA thứ, thiếu một là hỏng theo ba kiểu khác nhau — và cả ba đều hỏng ÂM
+   * THẦM, CSS vẫn build:
+   *
+   *   • `@starting-style` — thiếu thì KHÔNG CÓ hiệu ứng vào. Phần tử vừa được
+   *     tạo không có giá trị cũ để nội suy từ đó; khối này cấp giá trị đó.
+   *   • `display … allow-discrete` — thiếu thì `display: none` áp ngay lập tức
+   *     và hiệu ứng RA bị cắt cụt, không thấy gì.
+   *   • `overlay … allow-discrete` — thiếu thì dialog rơi khỏi top layer trước
+   *     khi chạy xong hiệu ứng ra, và panel NHẢY XUỐNG dưới lớp mờ một khung hình.
+   *
+   * ⚠️ Thứ tư, không có trong danh sách trên và cũng hỏng âm thầm: `transition`
+   * phải khai ở trạng thái ĐI TỚI, không phải trạng thái đi khỏi. Trình duyệt
+   * đọc `transition-*` từ style SAU khi đổi, nên khai cả ba dòng trong
+   * `dialog[open]` là chỉ trang bị cho lượt VÀO — lúc ra, `[open]` đã rụng,
+   * `transition-property` rơi về `all` mặc định với `transition-behavior:
+   * normal`, và `display: none` lại áp tức thì đúng như khi quên
+   * `allow-discrete`. Vì vậy danh sách thuộc tính nằm ở `dialog` trần (trạng
+   * thái đóng = trạng thái đi tới khi ra), còn `dialog[open]` chỉ ghi đè thời
+   * lượng và easing cho lượt vào: vào 280ms, ra 180ms.
+   *
+   * `pointer-events: none` lúc ra: suốt 180ms đó dialog vẫn nằm trong top layer
+   * nhưng KHÔNG còn modal (`inert` của phần còn lại đã gỡ, tiêu điểm đã trả về).
+   * Không có dòng này thì cú bấm ngay sau khi đóng rơi vào lớp mờ đang tan chứ
+   * không vào thứ người dùng nhắm.
+   */
+  dialog {
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity var(--duration-quick) var(--ease-exit),
+      display var(--duration-quick) allow-discrete,
+      overlay var(--duration-quick) allow-discrete;
+  }
+  dialog[open] {
+    opacity: 1;
+    pointer-events: auto;
+    transition-duration: var(--duration-panel);
+    transition-timing-function: var(--ease-enter);
+  }
+  @starting-style {
+    dialog[open] {
+      opacity: 0;
+    }
+  }
+
+  /*
+   * Ba hướng vào khác nhau theo `data-placement`, vì hướng phải khớp nơi panel
+   * neo: sheet trượt lên từ đáy là quy ước gốc của điện thoại; hộp thoại giữa
+   * màn thì phóng nhẹ. Dùng chung một hướng cho cả ba là chỗ dễ làm ẩu nhất.
+   *
+   * ⚠️ `transform: none` ở đây KHÔNG dẫm lên việc căn giữa của `adaptive` từ
+   * 640px, và đó là một sự phụ thuộc chứ không phải may: Tailwind v4 dịch
+   * `sm:-translate-y-1/2` ra thuộc tính `translate`, không ra `transform` (đọc
+   * trong CSS đã build). Hai thuộc tính khác nhau nên chúng cộng lại, panel giữ
+   * nguyên vị trí giữa màn trong khi vẫn phóng được. Ngày Tailwind đổi lại về
+   * `transform` thì dòng này im lặng kéo panel xuống nửa chiều cao của chính nó.
+   */
+  dialog[open] > [data-panel] {
+    transition: transform var(--duration-panel) var(--ease-enter);
+    transform: none;
+  }
+  @starting-style {
+    dialog[open] > [data-panel][data-placement="bottom"],
+    dialog[open] > [data-panel][data-placement="adaptive"] {
+      transform: translateY(100%);
+    }
+    dialog[open] > [data-panel][data-placement="top"] {
+      transform: translateY(-12px);
+    }
+  }
+  /* Từ 640px, `adaptive` chuyển sang hộp thoại giữa màn — vào bằng phóng nhẹ,
+     không trượt: nó không neo vào cạnh nào để mà trượt tới. */
+  @media (width >= 40rem) {
+    @starting-style {
+      dialog[open] > [data-panel][data-placement="adaptive"] {
+        transform: scale(0.98);
+      }
+    }
+  }
+
+  /*
    * ── Theme tối ────────────────────────────────────────────────────────────
    *
    * Ba trạng thái, không phải hai: `data-theme="light"` (ép sáng) ·
