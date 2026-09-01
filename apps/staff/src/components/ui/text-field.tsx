@@ -15,7 +15,11 @@ export function TextField({ label, className, ...input }: TextFieldProps) {
           `tracking-widest` và sẽ mất nó mà không có lỗi ở đâu cả. */}
       <input
         {...input}
-        className={`rounded-card border border-border bg-surface px-3 py-2 text-ink ${className ?? ""}`}
+        // `min-h-11` = 44px, khớp ngưỡng vùng chạm `ui/button.tsx` đã tuyên bố
+        // áp ở MỌI breakpoint. Không có nó, chiều cao thực chỉ ~38px (line-height
+        // 20 + py-2 8+8 + border 2) — dưới chuẩn chính app đặt ra, và PWA này
+        // dùng một tay trong garage.
+        className={`min-h-11 rounded-card border border-border bg-surface px-3 py-2 text-ink ${className ?? ""}`}
       />
     </label>
   );
