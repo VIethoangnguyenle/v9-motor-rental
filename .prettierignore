@@ -4,3 +4,8 @@ dist/
 build/
 bun.lock
 packages/db/migrations/
+
+# Serena sở hữu thư mục này — mỗi `write_memory` ghi lại file, nên prettier
+# format nó là tạo churn vĩnh viễn: người sau chạy `bun run format` sẽ luôn
+# thấy diff không phải của mình.
+.serena/memories/

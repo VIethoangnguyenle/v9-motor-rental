@@ -6,6 +6,7 @@ description: Luật viết code trong apps/api (Bun + Elysia + TypeBox): ranh gi
 # apps/api
 
 Kiến trúc chung: [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) · Quy trình: [`CLAUDE.md`](../../../CLAUDE.md) · ADR: Serena memory `architecture/*`.
+
 ## Luồng bắt buộc: `routes → services → infra`
 
 ```
