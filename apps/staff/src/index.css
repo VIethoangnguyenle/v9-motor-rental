@@ -10,12 +10,41 @@
  */
 @theme {
   /* Bề mặt và chữ. Sáng, không phải nền đen của apps/web: đây là công cụ đọc
-     nhiều giờ dưới ánh sáng gara, không phải trang bán hàng. */
-  --color-canvas: oklch(98.4% 0 0);
-  --color-surface: oklch(100% 0 0);
-  --color-border: oklch(90% 0 0);
-  --color-ink: oklch(20% 0 0);
-  --color-muted: oklch(52% 0 0);
+     nhiều giờ dưới ánh sáng gara, không phải trang bán hàng.
+
+     Chroma 0.003–0.02 ở hue 255 (KHÔNG phải 0): sắc xanh của logo. Xám tuyệt
+     đối làm accent đứng như vật thể lạ dán lên nền; nhuốm nhẹ cùng hue thì cả
+     màn hình đọc ra một hệ. Nhìn từng ô riêng gần như không phân biệt được. */
+  --color-canvas: oklch(98.4% 0.003 255);
+  --color-surface: oklch(100% 0 255);
+  --color-surface-sunken: oklch(96.2% 0.005 255);
+
+  /* HAI token viền, không phải một.
+
+     SC 1.4.11 đòi 3:1 cho ranh giới CẦN THIẾT để nhận ra một control — nó KHÔNG
+     đòi vậy cho đường chia trang trí. Làm đậm mọi viền lên 3:1 biến bảng dữ liệu
+     thành lưới kẻ ô nặng trịch, tức chữa một lỗi bằng cách gây một lỗi khác.
+
+     `border` (1,44:1) cho đường chia; `border-strong` (đo được ĐÚNG 3,00:1, giải
+     ngược từ ngưỡng) cho viền ô nhập và nút ghost. */
+  --color-border: oklch(87.8% 0.008 255);
+  --color-border-strong: oklch(66.9% 0.012 255);
+
+  --color-ink: oklch(22% 0.02 255);
+  --color-ink-soft: oklch(40% 0.016 255);
+  --color-muted: oklch(52% 0.014 255);
+
+  /*
+   * ⚠️ `border-strong` · `ink-soft` · `surface-sunken` chưa có chỗ dùng nào, và
+   * Tailwind v4 RỤNG biến của `@theme` nếu không utility nào tham chiếu tới nó.
+   * Đo trên bản build hôm nay: `:root` ra 23 biến màu, thiếu đúng ba cái này —
+   * 19 token cũ (đều có chỗ dùng) đều còn.
+   *
+   * Bất đối xứng đáng chú ý: hai khối theme tối bên dưới là CSS viết tay nên
+   * KHÔNG bị rụng — chúng khai đủ 22 biến. Nên tới lúc Task 3/4 gõ
+   * `border-border-strong` lần đầu, biến bản sáng sẽ tự xuất hiện trở lại và
+   * mọi thứ khớp. Đừng đọc "không thấy trong dist" thành "token khai sai".
+   */
 
   /*
    * ⛔ KHÔNG PHẢI MÀU THƯƠNG HIỆU. docs/ROADMAP.md chặn cứng việc bịa màu accent
@@ -25,8 +54,15 @@
    *
    * Khi có logo: đổi đúng --color-accent, đừng đụng bốn màu trạng thái.
    */
-  --color-accent: oklch(52% 0.19 255);
-  --color-accent-ink: oklch(100% 0 0);
+  /* ⚠️ Chroma 0.171, KHÔNG phải 0.19.
+   *
+   * Trần gamut sRGB ở L=52%, hue=255 đo được là 0,17124. Ở 0.19 kênh đỏ tuyến tính
+   * rơi xuống âm và trình duyệt KẸP nó về 0 — token khai một màu, vẽ ra một màu
+   * khác. Đây đúng là lớp lỗi mà chú thích của nhóm `*-soft` bên dưới đã cảnh
+   * báo; luật đã có, chỉ là chưa được áp cho token này.
+   */
+  --color-accent: oklch(52% 0.171 255);
+  --color-accent-ink: oklch(100% 0 255);
 
   /*
    * Hai bậc tối hơn của accent cho hover/active của nút chính. KHÔNG dùng
@@ -35,11 +71,16 @@
    * hơn", và tương phản với chữ trắng thì phụ thuộc nền phía sau — đúng lớp
    * lỗi mà token `*-soft` sinh ra để diệt.
    *
-   * Đo với chữ trắng: hover 7,15:1 · active 9,23:1 (nền thường 5,56:1). Cả hai
+   * Đo với chữ trắng: hover 7,23:1 · active 9,32:1 (nền thường 5,59:1). Cả hai
    * đều ĐẬM hơn trạng thái thường, nên tương phản chỉ tăng.
+   *
+   * ⚠️ Ba số trên vừa được ĐO LẠI. Bộ cũ (7,15 · 9,23 · 5,56) đo trên chroma
+   * 0.19, tức trên ba màu trình duyệt đã kẹp — số đúng của màu sai. Chroma nay
+   * bám trần gamut ở từng mức L (0.171 → 0.151 → 0.132), giảm dần vì trần gamut
+   * giảm khi L giảm, không phải vì thẩm mỹ. Kết luận không đổi.
    */
-  --color-accent-hover: oklch(46% 0.19 255);
-  --color-accent-active: oklch(40% 0.19 255);
+  --color-accent-hover: oklch(46% 0.151 255);
+  --color-accent-active: oklch(40% 0.132 255);
 
   /* Bốn trạng thái đơn thuê. Khớp `RentalStatus` ở @v9/shared/domain/rental —
      đổi tên một trạng thái ở đó thì phải đổi ở đây, không có gì ép. */
@@ -48,12 +89,21 @@
      Phân biệt "đã đặt" với "đang thuê" bằng CÁCH TÔ (nền nhạt + viền vs nền đặc),
      không bằng độ sáng — đó cũng là cách mockup của design doc vẽ. */
   --color-status-booked: oklch(50% 0.09 255);
-  --color-status-ongoing: oklch(52% 0.19 255);
+  /* ⚠️ ĐÃ ĐỔI HUE: 255 → 200.
+   *
+   * Trước đợt này token này là oklch(52% 0.19 255) — TRÙNG KHÍT `--color-accent`.
+   * Tức "đơn đang thuê" và "hành động chính của app" tô cùng một màu, trong một
+   * app dạy người dùng rằng màu có nghĩa.
+   *
+   * L=55,7% là mức sáng nhất còn đạt 4,5:1 với chữ trắng — giải ngược từ ngưỡng,
+   * nên nó KHÔNG có biên (đo được 4,51:1). Đổi L là trượt AA.
+   */
+  --color-status-ongoing: oklch(55.7% 0.094 200);
   --color-status-overdue: oklch(55% 0.21 27);
   /* L46% chứ không phải 60%: badge trạng thái dùng chữ TRẮNG, và ở 60% cặp đó
      chỉ đạt ~3,95:1 — dưới ngưỡng AA cho chữ thường. Đo lúc khai token, trước khi
      có badge nào tồn tại, nên đây là chỗ rẻ nhất để sửa. */
-  --color-status-completed: oklch(46% 0 0);
+  --color-status-completed: oklch(46% 0 255);
 
   /*
    * Cảnh báo — KHÔNG phải một trạng thái đơn thuê, nên không nằm trong nhóm
@@ -61,9 +111,11 @@
    * và không có token nào diễn đạt được tone giữa: nó phải mượn viền trung tính,
    * làm "cảnh báo" nhìn y hệt "thông tin".
    *
-   * L52% để khớp ngưỡng AA của các token còn lại (~5,4:1 với chữ trắng).
+   * L52% để khớp ngưỡng AA của các token còn lại (đo được 5,62:1 với chữ trắng).
+   *
+   * Chroma 0.109 chứ không 0.13: trần gamut ở L=52%, hue=75. Cùng lý do accent.
    */
-  --color-warning: oklch(52% 0.13 75);
+  --color-warning: oklch(52% 0.109 75);
 
   /*
    * ── Nền "soft": bản ĐẶC của những mảng tô nhạt, thay cho `bg-X/10` và `bg-X/15`
@@ -81,10 +133,10 @@
    * Token đặc thì đo một lần là biết, ở mọi nền. Đo trên chính giá trị dưới đây:
    *
    *   text-status-overdue   trên status-overdue-soft    4,78:1 ✅
-   *   text-warning          trên warning-soft           4,98:1 ✅
-   *   text-accent           trên accent-soft            4,95:1 ✅
+   *   text-warning          trên warning-soft           4,99:1 ✅
+   *   text-accent           trên accent-soft            4,99:1 ✅
    *   text-status-booked    trên status-booked-soft     5,35:1 ✅
-   *   text-status-completed trên status-completed-soft  6,29:1 ✅
+   *   text-status-completed trên status-completed-soft  6,34:1 ✅
    *
    * L=96% là mức cao nhất còn tô THẤY được: nền nổi so với `canvas` 1,07–1,08:1,
    * ngang hoặc hơn mấy lớp pha cũ. Chroma là mức LỚN NHẤT không tràn gamut sRGB ở
@@ -92,19 +144,25 @@
    * (một lần quét trước đã cho ra `oklch(99.9% 0.089 0)`, khai là xám mà render
    * ra HỒNG).
    *
+   * ⚠️ Chính nhóm này đã cắn cái bẫy nó vừa cảnh báo: bộ cũ để 0.02 và 0.033,
+   * trong khi trần thật ở L=96% là **0,019** (hue 27 và 255) và **0,032**
+   * (hue 75) — cả bốn token có chroma đều tràn. Con số cũ sinh ra từ một hàm đo
+   * mang dung sai gamut hỏng; xem `GAMUT_EPSILON` trong `lib/color-math.ts`.
+   * Bài học: luật đúng không tự bảo vệ được nếu công cụ đo nó cũng sai.
+   *
    * `status-booked-soft` và `accent-soft` hôm nay BẰNG NHAU: cùng hue 255, và
-   * 0,02 là trần gamut ở L96% cho hue đó. Vẫn để hai token vì đó là hai VAI TRÒ
+   * 0,019 là trần gamut ở L96% cho hue đó. Vẫn để hai token vì đó là hai VAI TRÒ
    * ("đơn đã đặt" vs "hành động chính / yêu cầu mới"); đổi một cái không được
    * kéo theo cái kia.
    *
    * `status-completed-soft` phải có chroma ĐÚNG BẰNG 0 — token chữ của nó cũng
    * C=0, nên hue là số vô nghĩa; cho nó chroma là ra một chip xám… màu hồng.
    */
-  --color-status-overdue-soft: oklch(96% 0.02 27);
-  --color-status-booked-soft: oklch(96% 0.02 255);
-  --color-status-completed-soft: oklch(96% 0 0);
-  --color-warning-soft: oklch(96% 0.033 75);
-  --color-accent-soft: oklch(96% 0.02 255);
+  --color-status-overdue-soft: oklch(96% 0.019 27);
+  --color-status-booked-soft: oklch(96% 0.019 255);
+  --color-status-completed-soft: oklch(96% 0 255);
+  --color-warning-soft: oklch(96% 0.032 75);
+  --color-accent-soft: oklch(96% 0.019 255);
 
   /* Bán kính nhỏ và thống nhất: app mật độ cao, bo nhiều làm hàng bảng rối mắt. */
   --radius-card: 0.375rem;
@@ -160,9 +218,13 @@
  * (không đẩy hàng bảng), và tự bám theo `border-radius` của phần tử.
  *
  * `outline-offset: 2px` là điều kiện để nó đọc được TRÊN NÚT ĐẶC: khe 2px để lộ
- * nền trang, nên hai mép của vòng đều tựa vào nền sáng — accent/canvas 5,31:1 và
- * accent/surface 5,56:1, đều qua ngưỡng 3:1 của SC 2.4.11. Không có khe thì vòng
- * accent nằm ngay cạnh nút accent và biến mất (1,03:1 trên chip đỏ đặc).
+ * nền trang, nên hai mép của vòng đều tựa vào nền sáng — accent/canvas 5,34:1 và
+ * accent/surface 5,59:1, đều qua ngưỡng 3:1 của SC 2.4.11. Không có khe thì vòng
+ * accent nằm ngay cạnh nút accent và biến mất (1,04:1 trên chip đỏ đặc).
+ *
+ * Vì `outline` trỏ vào `var(--color-accent)` chứ vào một giá trị cứng, khe 2px
+ * vẫn đọc được ở theme tối mà không cần khai lại: accent/canvas 7,07:1 và
+ * accent/surface 6,37:1 trên bảng tối bên dưới.
  */
 @layer base {
   /*
@@ -170,14 +232,17 @@
    *
    * Không khai thì preflight Tailwind v4 để nguyên mặc định của nó:
    * `color-mix(in oklab, currentcolor 50%, transparent)`. Trong ô nhập
-   * `currentcolor` là `--color-ink`, nên placeholder render ra `rgb(138,138,138)`
-   * trên `bg-surface` = **3,45:1**, dưới ngưỡng AA 4,5:1 cho chữ. Ba ô có
+   * `currentcolor` là `--color-ink`, nên placeholder render ra `rgb(138,141,145)`
+   * trên `bg-surface` = **3,33:1**, dưới ngưỡng AA 4,5:1 cho chữ. Ba ô có
    * placeholder: tìm khách hàng, tìm khách ở form lên đơn, địa chỉ giao xe.
    *
    * Đây là điểm mù của đợt đo token trước: mọi cặp màu app TỰ KHAI đều được đo,
    * nhưng placeholder không nằm trong `@theme` — nó là mặc định kế thừa, tức
-   * không có gì để đem ra đo. `--color-muted` cho 5,49:1 trên surface và 5,26:1
+   * không có gì để đem ra đo. `--color-muted` cho 5,50:1 trên surface và 5,26:1
    * trên canvas, và nó vốn đã là token dành cho chữ phụ.
+   *
+   * Ở theme tối, `--color-muted` cho 6,41:1 trên surface — khai một lần là đủ
+   * cho cả hai theme, vì nó trỏ biến chứ không trỏ giá trị.
    *
    * ⚠️ Tự kiểm bằng `getComputedStyle(input, '::placeholder').color` sẽ RA SAI:
    * Chromium trả về màu KẾ THỪA (`oklch(0.2 0 0)`), cho ra 18,10:1. Phải tự tính
@@ -190,5 +255,103 @@
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
+  }
+
+  /*
+   * ── Theme tối ────────────────────────────────────────────────────────────
+   *
+   * Ba trạng thái, không phải hai: `data-theme="light"` (ép sáng) ·
+   * `data-theme="dark"` (ép tối) · KHÔNG có thuộc tính (theo hệ điều hành).
+   *
+   * Bảng tối khai HAI LẦN — một trong `@media`, một trong `:root[data-theme=dark]`
+   * — để nút gạt thắng ở CẢ HAI CHIỀU: máy đang tối mà người dùng chọn sáng thì
+   * phải ra sáng, nên khối `@media` phải tự loại mình bằng `:not([data-theme=light])`.
+   *
+   * Nền lấy từ chính logo (`public/icon-512.png`: đen–navy cắt chéo), không phải
+   * từ một thang xám bất kỳ.
+   *
+   * ⚠️ Đây KHÔNG phải bản đảo ngược của bảng sáng. Ba chỗ khác về BẢN CHẤT:
+   *   • `accent-ink` là màu NỀN, không phải trắng — chữ trắng trên #53a0ff chỉ
+   *     đạt 2,68:1.
+   *   • nhóm `*-soft` ở L=30%, không phải L=96%.
+   *   • `accent-hover`/`active` SÁNG dần chứ không tối dần — xem chú thích riêng
+   *     bên dưới.
+   *
+   * ⚠️ Hàng rào mù màu của `theme-tokens.test.ts` chỉ chạy trên bảng SÁNG. Đo
+   * riêng bảng tối: ngoài cặp `quá hạn ↔ cảnh báo` đã biết (ΔE 0,091 dưới
+   * deuteranopia), còn `đang thuê ↔ accent` tụt xuống ΔE 0,055 dưới tritanopia.
+   * Cả hai vẫn phải dựa vào KÊNH HÌNH DẠNG, y như bảng sáng — nên đây không mở
+   * ra một lớp lỗi mới, nhưng đừng đọc "hàng rào xanh" thành "bảng tối miễn
+   * nhiễm mù màu".
+   */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --color-canvas: oklch(17.5% 0.022 255);
+      --color-surface: oklch(22.5% 0.024 255);
+      --color-surface-sunken: oklch(14% 0.02 255);
+      --color-border: oklch(32% 0.026 255);
+      --color-border-strong: oklch(51.2% 0.03 255);
+      --color-ink: oklch(96.5% 0.006 255);
+      --color-ink-soft: oklch(82% 0.012 255);
+      --color-muted: oklch(70% 0.018 255);
+      --color-accent: oklch(70% 0.159 255);
+      --color-accent-ink: oklch(17.5% 0.022 255);
+      --color-accent-hover: oklch(76% 0.124 255);
+      --color-accent-active: oklch(82% 0.091 255);
+      --color-status-booked: oklch(68% 0.08 255);
+      --color-status-ongoing: oklch(74% 0.12 200);
+      --color-status-overdue: oklch(70% 0.17 27);
+      --color-status-completed: oklch(66% 0 255);
+      --color-warning: oklch(78% 0.14 75);
+      --color-status-overdue-soft: oklch(30% 0.05 27);
+      --color-status-booked-soft: oklch(30% 0.05 255);
+      --color-status-completed-soft: oklch(30% 0 255);
+      --color-warning-soft: oklch(30% 0.05 75);
+      --color-accent-soft: oklch(30% 0.05 255);
+    }
+  }
+
+  /*
+   * `accent-hover`/`accent-active` ở theme tối SÁNG dần, không tối dần.
+   *
+   * Luật cũ trong file này vẫn đúng nguyên văn — "cả hai đều ĐẬM hơn trạng thái
+   * thường, nên tương phản chỉ tăng". Điều bất biến thật nằm ở vế cuối: TƯƠNG
+   * PHẢN CHỈ ĐƯỢC TĂNG. "Đậm hơn" chỉ là cách vế đó biểu hiện trên nền sáng.
+   *
+   * Trên nền tối, accent SÁNG hơn nền, nên đậm đi là đi về phía nền. Đo được:
+   * làm tối theo đúng bản sáng thì `active` rơi xuống 4,39:1 với chính chữ của
+   * nó — TRƯỢT AA. Làm sáng lên: 10,89:1.
+   *
+   * Chroma giảm dần khi L tăng (0.159 → 0.124 → 0.091) là trần gamut ở từng mức
+   * L, không phải lựa chọn thẩm mỹ.
+   */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    /* ⚠️ Chép Y HỆT khối `@media` ở trên. Hai khối phải giữ bằng nhau —
+       `theme-tokens.test.ts` đọc khối NÀY, nên khối kia lệch đi sẽ không bị bắt.
+       Có một test riêng trong file đó canh đúng chuyện chép lệch. */
+    --color-canvas: oklch(17.5% 0.022 255);
+    --color-surface: oklch(22.5% 0.024 255);
+    --color-surface-sunken: oklch(14% 0.02 255);
+    --color-border: oklch(32% 0.026 255);
+    --color-border-strong: oklch(51.2% 0.03 255);
+    --color-ink: oklch(96.5% 0.006 255);
+    --color-ink-soft: oklch(82% 0.012 255);
+    --color-muted: oklch(70% 0.018 255);
+    --color-accent: oklch(70% 0.159 255);
+    --color-accent-ink: oklch(17.5% 0.022 255);
+    --color-accent-hover: oklch(76% 0.124 255);
+    --color-accent-active: oklch(82% 0.091 255);
+    --color-status-booked: oklch(68% 0.08 255);
+    --color-status-ongoing: oklch(74% 0.12 200);
+    --color-status-overdue: oklch(70% 0.17 27);
+    --color-status-completed: oklch(66% 0 255);
+    --color-warning: oklch(78% 0.14 75);
+    --color-status-overdue-soft: oklch(30% 0.05 27);
+    --color-status-booked-soft: oklch(30% 0.05 255);
+    --color-status-completed-soft: oklch(30% 0 255);
+    --color-warning-soft: oklch(30% 0.05 75);
+    --color-accent-soft: oklch(30% 0.05 255);
   }
 }
