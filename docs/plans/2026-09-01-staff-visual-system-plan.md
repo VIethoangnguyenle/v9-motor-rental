@@ -1767,7 +1767,10 @@ một quyết định nên để lại cho đợt sửa gộp của gate:
 
    `RoutePendingPage` đã là `<div>` trần — không đụng.
 
-2. **`BEAT_MS = 600` (TSX) và `600ms` (`@utility` trong `index.css`) khớp nhau bằng tay.** Lệch một
+2. ✅ **ĐÃ XONG** (`69702e3`) — `BEAT_MS = 600` (TSX) và `600ms` (`@utility`) nay có hàng rào
+   `motion-budget.test.ts` canh, cùng với trần 400ms. Giữ mục này để gate biết là đã đóng.
+
+   ~~**`BEAT_MS = 600` (TSX) và `600ms` (`@utility` trong `index.css`) khớp nhau bằng tay.**~~ Lệch một
    trong hai thì vòng sáng hoặc bị cắt giữa chừng, hoặc sheet đóng trước khi nó chạy xong. Chú thích
    đã nói ra, nhưng **không có gì ép**. Cân nhắc một test đọc cả hai chỗ — cùng khuôn
    `theme.test.ts` đang giữ khoá `localStorage` khớp giữa `theme.ts` và `index.html`.
