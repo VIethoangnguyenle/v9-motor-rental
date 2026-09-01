@@ -24,12 +24,16 @@ export function StaffTable({ rows, me, busy, onApprove, onDisable, onIssueCode }
     <div className="mt-4 overflow-x-auto">
       <table className="w-full min-w-[640px] text-left text-sm">
         <thead>
+          {/* `scope="col"` ở MỌI ô tiêu đề — `customer-rental-history.tsx` và
+              `customer-table.tsx` đã có, bảng này thì chưa. Thiếu nó, trình đọc
+              màn hình không gắn được ô dữ liệu với tiêu đề cột của nó, và một
+              bảng 6 cột đọc ra thành một chuỗi giá trị không nhãn. */}
           <tr className="border-b border-border text-muted">
-            <th className="card-pad">Họ tên</th>
-            <th className="card-pad">Email</th>
-            <th className="card-pad">Điện thoại</th>
-            <th className="card-pad">Vai trò</th>
-            <th className="card-pad">Trạng thái</th>
+            <th scope="col" className="card-pad">Họ tên</th>
+            <th scope="col" className="card-pad">Email</th>
+            <th scope="col" className="card-pad">Điện thoại</th>
+            <th scope="col" className="card-pad">Vai trò</th>
+            <th scope="col" className="card-pad">Trạng thái</th>
             <th />
           </tr>
         </thead>

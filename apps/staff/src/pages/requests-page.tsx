@@ -10,6 +10,7 @@ import { SHOP_TIMEZONE } from "@v9/shared/domain/rental";
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
+import { ToggleGroup } from "../components/ui/toggle-group";
 import { errorMessage } from "../lib/errors";
 import {
   changeRequestStatus,
@@ -191,21 +192,15 @@ export function RequestsPage() {
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-bold text-ink">Yêu cầu thuê</h1>
 
-      <div role="group" aria-label="Lọc theo trạng thái" className="flex flex-wrap gap-2">
-        {[null, ...REQUEST_STATUSES].map((s) => (
-          <button
-            key={s ?? "all"}
-            type="button"
-            aria-pressed={filter === s}
-            onClick={() => setFilter(s)}
-            className={`min-h-11 rounded-card px-3 text-sm font-medium ${
-              filter === s ? "bg-accent text-accent-ink" : "border border-border text-ink"
-            }`}
-          >
-            {s === null ? "Tất cả" : STATUS_LABEL[s]}
-          </button>
-        ))}
-      </div>
+      <ToggleGroup
+        label="Lọc theo trạng thái"
+        options={[
+          { value: null, label: "Tất cả" },
+          ...REQUEST_STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] })),
+        ]}
+        value={filter}
+        onChange={setFilter}
+      />
 
       {change.error && <Alert tone="error">{change.error.message}</Alert>}
 

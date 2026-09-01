@@ -11,13 +11,14 @@ export function ResetCodeNotice({
 }) {
   if (!issuedCode) return null;
 
+  // KHÔNG mang `mt-*` của riêng mình: `staff-list-page.tsx` nay là một
+  // `flex flex-col gap-4`, nên `mt-3` cộng dồn với `gap-4` thành 28px. Nhịp dọc
+  // thuộc về container cha — cùng lý lẽ đã ghi ở `customer-rental-history.tsx`.
   return (
-    <div className="mt-3">
-      <Alert tone="info">
+    <Alert tone="info">
         Mã đặt lại mật khẩu cho <strong>{issuedCode.name}</strong>:{" "}
         <strong className="tracking-widest">{issuedCode.code}</strong> — đọc cho nhân viên qua Zalo.
-        Mã sống 10 phút và chỉ dùng được một lần.
-      </Alert>
-    </div>
+      Mã sống 10 phút và chỉ dùng được một lần.
+    </Alert>
   );
 }

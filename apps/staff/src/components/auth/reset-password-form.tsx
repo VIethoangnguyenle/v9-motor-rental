@@ -51,10 +51,19 @@ export function ResetPasswordForm({
       }}
       className="mt-4 flex flex-col gap-3"
     >
-      {notice && <p className="text-sm text-gray-600">{notice}</p>}
+      {/* `Alert` chứ không `<p>` trần: câu này là KẾT QUẢ của bước 1 mà người
+          dùng vừa bấm và đang chờ ("Nếu email tồn tại, mã 6 số đã được gửi") —
+          một `<p>` không mang `role`/`aria-live` thì nó hiện lên mà trình đọc
+          màn hình không đọc ra. Cùng con bug đã sửa ở ba form xác thực kia. */}
+      {notice && <Alert tone="info">{notice}</Alert>}
       {error && <Alert tone="warning">{error}</Alert>}
+      {/* Ghi chú chỉ có ở bản dev. Đi qua token (`border`/`canvas`/`muted`) thay
+          vì `bg-gray-100` thô — và KHÔNG dùng `Alert`: nó không phải trạng thái
+          của thao tác người dùng vừa làm, nên không đáng được đọc ra. */}
       {import.meta.env.DEV && (
-        <p className="rounded bg-gray-100 p-2 text-sm">Môi trường dev: mã luôn là 999999</p>
+        <p className="rounded-card border border-border bg-canvas p-2 text-sm text-muted">
+          Môi trường dev: mã luôn là 999999
+        </p>
       )}
 
       <TextField

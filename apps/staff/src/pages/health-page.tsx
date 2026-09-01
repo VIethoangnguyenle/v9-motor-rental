@@ -11,14 +11,29 @@ export function HealthPage() {
     },
   });
 
+  // `<div>`, không `<main>` — `AppShell` đã có một `<main>` bọc ngoài (xem
+  // comment cùng lý do ở `pages/stats-page.tsx`).
   return (
-    <main className="p-6 font-mono">
-      <h1 className="text-xl font-bold">V9 Staff — scaffold</h1>
-      <p className="mt-3">
+    <div className="flex flex-col gap-4 font-mono">
+      <h1 className="text-xl font-bold text-ink">Chẩn đoán</h1>
+      <p className="text-ink">
         API health:{" "}
         <strong>{isPending ? "đang tải…" : error ? `lỗi: ${error.message}` : data.status}</strong>
       </p>
-      <p className="mt-3 text-gray-600">Chưa có chức năng nghiệp vụ nào. Xem CLAUDE.md.</p>
-    </main>
+      {/*
+       * Câu cũ ở đây là "Chưa có chức năng nghiệp vụ nào. Xem CLAUDE.md." — nó
+       * đúng vào lúc trang này còn nằm ở `/`, và đã SAI từ khi Thống kê chiếm
+       * chỗ đó: app nay có đủ bốn tính năng `ARCHITECTURE.md` liệt kê. Một câu
+       * sai trên màn chẩn đoán là thứ tệ nhất có thể để ở màn chẩn đoán.
+       *
+       * Vai trò thật của trang, chép từ chính comment `healthRoute` ở
+       * `router.tsx`: bằng chứng end-to-end rẻ nhất rằng guard chạy VÀ `/health`
+       * phía API tới được.
+       */}
+      <p className="text-sm text-muted">
+        Trang chẩn đoán, không lên thanh điều hướng. Nó nằm dưới nhánh được bảo vệ nên hiện được
+        dòng trên nghĩa là guard đã chạy và API tới được.
+      </p>
+    </div>
   );
 }

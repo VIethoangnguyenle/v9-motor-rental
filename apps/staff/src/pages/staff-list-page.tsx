@@ -66,17 +66,17 @@ export function StaffListPage() {
     issueCodeMutation.error
   )?.message;
 
+  // `<div>`, không `<main>`: `AppShell` đã bọc `children` trong CHÍNH MỘT
+  // `<main>` — hai landmark cho cùng nội dung, và cộng dồn padding của cả hai
+  // lớp. `stats-page.tsx` đã ghi comment cảnh báo đúng chuyện này và nêu đích
+  // danh trang này; giờ thì hết.
   return (
-    <main className="p-6">
-      <h1 className="text-xl font-bold">Nhân viên</h1>
+    <div className="flex flex-col gap-4">
+      <h1 className="text-xl font-bold text-ink">Nhân viên</h1>
 
       <ResetCodeNotice issuedCode={issuedCode} />
 
-      {error && (
-        <div className="mt-3">
-          <Alert tone="error">{error}</Alert>
-        </div>
-      )}
+      {error && <Alert tone="error">{error}</Alert>}
 
       <StaffTable
         rows={staffQuery.data ?? []}
@@ -87,10 +87,10 @@ export function StaffListPage() {
         onIssueCode={issueCodeMutation.mutate}
       />
 
-      {staffQuery.isPending && <p className="mt-3 text-sm text-gray-600">Đang tải…</p>}
+      {staffQuery.isPending && <p className="text-sm text-muted">Đang tải…</p>}
       {staffQuery.data?.length === 0 && (
-        <p className="mt-3 text-sm text-gray-600">Chưa có nhân viên nào.</p>
+        <p className="text-sm text-muted">Chưa có nhân viên nào.</p>
       )}
-    </main>
+    </div>
   );
 }

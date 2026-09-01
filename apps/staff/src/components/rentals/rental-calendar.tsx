@@ -13,6 +13,7 @@ import {
 import { Alert } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
+import { ToggleGroup } from "../ui/toggle-group";
 import { CalendarMonth } from "./calendar-month";
 import { CalendarTimeline } from "./calendar-timeline";
 import { RentalDetailSheet } from "./rental-detail-sheet";
@@ -414,25 +415,15 @@ export function RentalCalendar() {
             </Button>
           </div>
 
-          <div
-            role="group"
-            aria-label="Chế độ xem"
-            className="flex items-center gap-1 rounded-card border border-border p-1"
-          >
-            {CALENDAR_VIEWS.map((v) => (
-              <button
-                key={v}
-                type="button"
-                aria-pressed={view === v}
-                onClick={() => switchView(v)}
-                className={`min-h-11 rounded-card px-3 text-sm font-medium ${
-                  view === v ? "bg-accent text-accent-ink" : "text-ink hover:bg-canvas"
-                }`}
-              >
-                {VIEW_LABEL[v]}
-              </button>
-            ))}
-          </div>
+          {/* Khung có viền bọc ngoài đã bỏ: cùng thao tác này ở `requests-page.tsx`
+              là những nút rời, và hai hình dạng cho một khuôn là drift. Xem lý
+              lẽ chọn hình dạng nào ở `ui/toggle-group.tsx`. */}
+          <ToggleGroup
+            label="Chế độ xem"
+            options={CALENDAR_VIEWS.map((v) => ({ value: v, label: VIEW_LABEL[v] }))}
+            value={view}
+            onChange={switchView}
+          />
         </div>
       )}
 

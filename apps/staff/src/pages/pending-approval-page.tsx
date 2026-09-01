@@ -1,6 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { Alert } from "../components/ui/alert";
+import { Button } from "../components/ui/button";
+import { PageShell } from "../components/ui/page-shell";
 import { useMe } from "../hooks/use-me";
 import { signOut } from "../lib/auth";
 
@@ -21,32 +24,37 @@ export function PendingApprovalPage() {
     await navigate({ to: "/login" });
   }
 
+  // `PageShell` như năm màn công khai còn lại. Trang này từng là màn công khai
+  // DUY NHẤT tự dựng khung, nên nó lệch khỏi `/login`, `/signup`,
+  // `/forgot-password` ở cả bề rộng lẫn khoảng cách hai bên.
   return (
-    <main className="mx-auto max-w-sm p-6">
-      <h1 className="text-xl font-bold">Đang chờ duyệt</h1>
+    <PageShell title="Đang chờ duyệt">
+      <div className="mt-3 flex flex-col items-start gap-4">
+        {isPending ? (
+          <p className="text-sm text-muted">Đang kiểm tra trạng thái…</p>
+        ) : me ? (
+          <p className="text-sm text-ink">
+            Tài khoản <strong>{me.email}</strong> đã tạo xong và đang chờ chủ shop duyệt. Trang này
+            tự cập nhật khi được duyệt.
+          </p>
+        ) : (
+          // `null` = 401 (chưa/hết đăng nhập) hoặc 403 (đã bị khoá). Không đoán
+          // ca nào: nói đúng những gì biết và để đường đăng nhập lại mở.
+          //
+          // `Alert tone="warning"` thay `bg-amber-100` thô: nó đi qua token, và
+          // nó mang `role="status"` nên câu này được ĐỌC RA — trước đây là một
+          // `<p>` trần, tức người dùng screen reader ngồi chờ một màn hình không
+          // bao giờ nói gì.
+          <Alert tone="warning">
+            Không đọc được trạng thái tài khoản — phiên đăng nhập có thể đã hết hạn hoặc tài khoản
+            đã bị khoá. Đăng nhập lại, hoặc liên hệ chủ shop.
+          </Alert>
+        )}
 
-      {isPending ? (
-        <p className="mt-3 text-sm text-gray-600">Đang kiểm tra trạng thái…</p>
-      ) : me ? (
-        <p className="mt-3 text-sm text-gray-700">
-          Tài khoản <strong>{me.email}</strong> đã tạo xong và đang chờ chủ shop duyệt. Trang này tự
-          cập nhật khi được duyệt.
-        </p>
-      ) : (
-        // `null` = 401 (chưa/hết đăng nhập) hoặc 403 (đã bị khoá). Không đoán ca
-        // nào: nói đúng những gì biết và để đường đăng nhập lại mở.
-        <p className="mt-3 rounded bg-amber-100 p-3 text-sm">
-          Không đọc được trạng thái tài khoản — phiên đăng nhập có thể đã hết hạn hoặc tài khoản đã
-          bị khoá. Đăng nhập lại, hoặc liên hệ chủ shop.
-        </p>
-      )}
-
-      <button
-        onClick={() => void handleSignOut()}
-        className="mt-4 rounded border px-3 py-2 text-sm"
-      >
-        Đăng xuất
-      </button>
-    </main>
+        <Button type="button" variant="ghost" onClick={() => void handleSignOut()}>
+          Đăng xuất
+        </Button>
+      </div>
+    </PageShell>
   );
 }
