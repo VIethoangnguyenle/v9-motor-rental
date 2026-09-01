@@ -197,18 +197,19 @@ dụng cho bảng `min-w-[560px]`. `stats-page.tsx:19-23` đã ghi luật này t
 ## 7. Hỏng im lặng (đóng P1) — sửa ở tầng dùng chung
 
 > **⚠️ Sửa 2026-09-01 — tiền đề gốc của mục này SAI.** Đo thật (đọc source `@elysiajs/eden@1.4.9`
-> + probe vào cổng chết): Eden bọc `fetch` trong try/catch và, vì repo không bật `throwHttpError`,
-> **nuốt rejection** rồi `return { data: null, error: EdenFetchError(503, exception) }`. Promise
-> **resolve**, `res.error` truthy, `queryFn` trả `ok: false` bình thường — `status` của TanStack
-> không bao giờ thành `"error"`, nên **`isError` là nhánh chết**.
+>
+> - probe vào cổng chết): Eden bọc `fetch` trong try/catch và, vì repo không bật `throwHttpError`,
+>   **nuốt rejection** rồi `return { data: null, error: EdenFetchError(503, exception) }`. Promise
+>   **resolve**, `res.error` truthy, `queryFn` trả `ok: false` bình thường — `status` của TanStack
+>   không bao giờ thành `"error"`, nên **`isError` là nhánh chết**.
 >
 > Nghĩa là **màn hình chưa bao giờ trắng**. Trước khi sửa, API chết cho ra câu fallback chung chung
-> *"Không tải được danh sách"* và **không có đường thử lại**. Vẫn là lỗi thật, nhưng không phải lỗi
+> _"Không tải được danh sách"_ và **không có đường thử lại**. Vẫn là lỗi thật, nhưng không phải lỗi
 > đã mô tả — và mức độ nhẹ hơn hẳn mô tả gốc.
 >
 > Lỗi thứ hai lộ ra khi đo: dưới Bun, exception mang `.code = "ConnectionRefused"`, nên
-> `parseApiError` **thành công** và `errorMessage` sẽ in *"Unable to connect. Is the computer able
-> to access the url?"* — tiếng Anh thô vào mặt nhân viên người Việt. Chrome ném `TypeError` không
+> `parseApiError` **thành công** và `errorMessage` sẽ in _"Unable to connect. Is the computer able
+> to access the url?"_ — tiếng Anh thô vào mặt nhân viên người Việt. Chrome ném `TypeError` không
 > có `.code` nên chỉ rơi về fallback.
 >
 > Cách sửa đúng: phân loại bằng `res.error.value instanceof Error` (`connectionFailed()` ở

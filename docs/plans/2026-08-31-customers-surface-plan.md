@@ -1203,8 +1203,8 @@ render gì.
 
 - [ ] **Step 2: Trả nợ `aria-live` mà Task 7 để lại — trong phạm vi màn Khách hàng**
 
-Task 7 thêm `role`/`aria-live` cho `Alert`, nhưng ánh xạ đi theo `tone` chứ không theo *"lỗi này
-có phải phản hồi một hành động người dùng đang chờ không"*. Soát cả 10 màn: **quá nửa** số
+Task 7 thêm `role`/`aria-live` cho `Alert`, nhưng ánh xạ đi theo `tone` chứ không theo _"lỗi này
+có phải phản hồi một hành động người dùng đang chờ không"_. Soát cả 10 màn: **quá nửa** số
 `tone="error"` là banner báo lỗi **tải dữ liệu**, và `assertive` cắt ngang trình đọc màn hình vô cớ
 ở nhóm đó. Comment cảnh báo nằm sẵn ở `ui/alert.tsx`.
 

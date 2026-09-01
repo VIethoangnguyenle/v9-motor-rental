@@ -13,7 +13,7 @@ Method: dual-agent (A: design review, isolated · B: detector + evidence, isolat
 
 Phạm vi: surface **Khách hàng** của `apps/staff` — `customers-list-page.tsx`, `customer-detail-page.tsx`, `components/customers/{customer-table,customer-edit-form,customer-rental-history}.tsx`, `lib/customers.ts`, `router.tsx`. Mode: **Operate**. Hệ thị giác đối chiếu là `apps/staff/src/index.css` + `components/ui/*`, KHÔNG phải `DESIGN.md` (file đó của `apps/web`).
 
-> **⚠️ Đính chính 2026-09-01, sau khi đo:** mục P1 *"Hỏng im lặng"* dưới đây mô tả sai cơ chế.
+> **⚠️ Đính chính 2026-09-01, sau khi đo:** mục P1 _"Hỏng im lặng"_ dưới đây mô tả sai cơ chế.
 > Eden Treaty nuốt rejection của `fetch` và trả `{ error: EdenFetchError(503, exception) }` thay vì
 > để promise reject, nên `isError` là nhánh chết và **màn hình chưa bao giờ trắng** — nó hiện câu
 > fallback chung chung không kèm đường thử lại. Vẫn đáng sửa, nhưng nhẹ hơn mô tả gốc. Điểm số
