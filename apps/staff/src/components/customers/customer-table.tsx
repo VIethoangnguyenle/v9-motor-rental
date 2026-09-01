@@ -63,13 +63,23 @@ const WHEN_FMT = new Intl.DateTimeFormat("vi-VN", {
  * cột đọc được mà không bóp chữ chồng nhau ở 375px — arbitrary value cho
  * WIDTH, spacing fence chỉ khoá p/m/gap nên không chặn giá trị này.
  *
- * 780px là số ĐO, không phải số đoán: ở 680px (con số bảng cũ 4 cột cộng thêm
- * một cột) trình duyệt vẫn "vừa", nhưng vừa bằng cách XUỐNG DÒNG bên trong ô —
- * "Zalo" rớt khỏi số điện thoại, "Trả 15:06 02-09" gãy làm ba. Chiều rộng tự
- * nhiên bằng đúng `min-width` là dấu hiệu bị bóp, không phải dấu hiệu vừa vặn.
- * Các ô nguyên tử bên dưới mang `whitespace-nowrap`, còn "Ghi chú" thì KHÔNG —
- * nó là văn bản tự do, phải được xuống dòng, và không được phép kéo giãn
- * `min-width` của cả bảng theo độ dài ghi chú dài nhất.
+ * 780px mua MẬT ĐỘ, không mua tính đúng đắn — đừng đọc nhầm hai thứ đó. Thứ
+ * giữ mốc thời gian không bị gãy là `whitespace-nowrap` ở ô "Tình trạng", và nó
+ * làm được việc đó ở cả 560px; còn `min-w` một mình thì KHÔNG — đo ở 780px mà
+ * bỏ `whitespace-nowrap` thì mốc thời gian vẫn gãy làm hai và dòng cao 93px.
+ * Cái 780px thực sự đổi là chiều cao dòng: 85px ở 680 xuống 73px ở 780, vì cột
+ * "Ghi chú" đủ rộng để bớt xuống dòng. Với một bảng vận hành đọc lướt thì 12px
+ * mỗi dòng là đáng, nhưng nó là mật độ chứ không phải sửa lỗi.
+ *
+ * "Ghi chú" cố ý KHÔNG `whitespace-nowrap`: nó là văn bản tự do, phải được
+ * xuống dòng, và không được phép kéo giãn `min-width` của bảng theo ghi chú dài
+ * nhất.
+ *
+ * ⚠️ ĐỪNG dùng "chiều rộng tự nhiên == `min-width`" làm dấu hiệu bị bóp — bản
+ * đầu của comment này làm vậy và nó KHÔNG phân biệt được gì cả: với `w-full` +
+ * `min-w-[N]`, dưới ngưỡng N thì bảng LUÔN render đúng N, cả khi thoải mái lẫn
+ * khi chật. Muốn biết có bị bóp không thì đo thứ cụ thể: số dòng của một ô, hay
+ * chiều cao dòng.
  *
  * Cột "Tình trạng" là lý do màn này tồn tại. Bốn cột cũ (tên · điện thoại · ghi
  * chú · số đơn) không trả lời được câu mà nhân viên mở màn này để hỏi giữa ca:
@@ -139,13 +149,19 @@ export function CustomerTable({ rows, listSearch }: CustomerTableProps) {
                     giữa lúc đang dắt xe. `min-h-11` (44px) là ngưỡng vùng chạm —
                     chữ `text-sm` một dòng chỉ cao ~20px.
 
-                    KHÔNG `flex-wrap`, và `whitespace-nowrap` trên cả cụm: ĐO ĐƯỢC ở
-                    375px với `min-w-[680px]` — cột này bị bóp tới mức "Zalo" rớt
-                    xuống dòng thứ hai, cách số điện thoại 20px khoảng trắng, trông
-                    như nó thuộc về dòng dưới. Bảng "vừa 680px" theo nghĩa nó XUỐNG
-                    DÒNG cho vừa, không phải nghĩa nó đủ chỗ — đó là lý do `min-w`
-                    bên trên là 780px chứ không phải 680px. */}
-                <div className="card-pad flex items-start gap-3 whitespace-nowrap">
+                    KHÔNG có `flex-wrap` ở đây, và đó là toàn bộ chuyện: hai `<a>`
+                    này là flex item, mà `flex-wrap` mặc định là `nowrap`, nên tự
+                    chúng không thể rớt xuống dòng thứ hai vì hẹp. Bản nháp của
+                    đợt này CÓ thêm `flex-wrap` và đo được "Zalo" rớt xuống dưới số
+                    điện thoại 56px — nguyên nhân là chính cái class đó, KHÔNG phải
+                    độ rộng cột (bỏ nó ra thì ở đúng 680px độ lệch về 0). Bản đầu
+                    của comment này quy nhầm sang độ rộng và còn gán công cho
+                    `whitespace-nowrap`, thứ ở đây hoàn toàn VÔ TÁC DỤNG: nó điều
+                    khiển ngắt dòng của TEXT bên trong một ô, không điều khiển chỗ
+                    đứng của flex item — bỏ nó ra, mọi số đo không đổi. Nên nó đã
+                    được gỡ. `whitespace-nowrap` thật sự có việc ở ô "Tình trạng"
+                    bên cạnh, nơi mốc thời gian là text nhiều token. */}
+                <div className="card-pad flex items-start gap-3">
                   <a
                     href={`tel:${row.phone}`}
                     className="flex min-h-11 items-start text-ink underline-offset-2 hover:underline"
@@ -183,9 +199,13 @@ export function CustomerTable({ rows, listSearch }: CustomerTableProps) {
                       >
                         {STATUS_LABEL[row.activeRental.status]}
                       </span>
-                      {/* `whitespace-nowrap`: "Trả 15:06 02-09" gãy thành ba dòng
-                          ở cột hẹp thì `tabular-nums` thành vô nghĩa và người đọc
-                          phải ghép lại một mốc thời gian bằng mắt. */}
+                      {/* `whitespace-nowrap` — chỗ nó THỰC SỰ có tác dụng, khác
+                          ô điện thoại bên cạnh: "Trả 15:06 02-09" là text nhiều
+                          token nên gãy được, và gãy thì `tabular-nums` thành vô
+                          nghĩa vì hai nửa một mốc thời gian không còn cùng dòng.
+                          Đo: bỏ class này ở 780px → 2 dòng, dòng cao 93px thay vì
+                          73px; giữ nó ở 560px → vẫn 1 dòng. Tức đây, không phải
+                          `min-w`, mới là thứ giữ mốc thời gian liền mạch. */}
                       <span className="whitespace-nowrap text-muted tabular-nums">
                         {WHEN_LABEL[row.activeRental.status]}{" "}
                         {WHEN_FMT.format(whenOf(row.activeRental))}

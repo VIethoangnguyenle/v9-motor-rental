@@ -21,14 +21,14 @@ export const STATUS_LABEL: Record<RentalStatus, string> = {
  * nhưng `customer-rental-history.tsx` cố ý hiện CẢ đơn đã huỷ — đó là một phần
  * thật của quan hệ với khách — nên từ đợt này nhánh đó được render thật.
  *
- * Nó dùng chung tông xám của `completed`, và đó vẫn là lựa chọn đúng: hai
- * trạng thái này là hai cách KẾT THÚC, không còn việc gì để làm với chúng, nên
- * chúng phải lùi lại phía sau. Phân biệt bằng nhãn ("Đã trả" vs "Đã huỷ"),
- * không bằng màu — bịa thêm token màu thứ năm là phá đúng thứ mà đầu
- * `index.css` mua được bằng cách đo contrast cho bốn token hiện có.
+ * Vì vậy nó KHÔNG còn được mượn nguyên màu của `COMPLETED` nữa. Trước đợt này
+ * cột trạng thái của bảng lịch sử là CHỮ TRẦN, nên người đọc buộc phải đọc chữ;
+ * giờ màn hình dạy rằng màu có nghĩa, mà lại im lặng đúng ở cặp này thì tệ hơn
+ * là không tô màu. Hai trạng thái vẫn cùng HUE xám (cả hai đều là "đã xong,
+ * không còn việc gì") nhưng khác CÁCH TÔ — đúng luật `index.css` đã tự viết cho
+ * cặp booked/ongoing: "phân biệt bằng CÁCH TÔ, không bằng độ sáng".
  *
- * Vẫn map đủ bốn nhánh để `Record<RentalStatus, string>` biên dịch: thiếu một
- * nhánh là lỗi biên dịch, không phải một status lặng lẽ không có màu.
+ * Không có token màu thứ năm nào được thêm.
  */
 const STATUS_CLASS: Record<RentalStatus, string> = {
   // "Đã đặt" tô nền NHẠT + viền (không phải nền đặc) — đúng cách `index.css`
@@ -36,8 +36,34 @@ const STATUS_CLASS: Record<RentalStatus, string> = {
   BOOKED: "border border-status-booked bg-status-booked/15 text-status-booked",
   ONGOING: "bg-status-ongoing text-accent-ink",
   COMPLETED: "bg-status-completed text-accent-ink",
-  CANCELLED: "bg-status-completed text-accent-ink",
+  // Đo lại đúng vai trò mới (token làm CHỮ trên chính nó pha 15% trên nền
+  // trang), không chép số của vai trò cũ: 5,44:1 trên canvas · 5,70:1 trên
+  // surface — qua AA chữ thường (4,5:1) có biên. Cách đo và cách tự kiểm ở
+  // comment `PICKUP_OVERDUE_CLASS` bên dưới.
+  CANCELLED: "border border-status-completed bg-status-completed/15 text-status-completed",
 };
+/** Xe đang nằm ngoài đường quá hạn trả. Nền ĐẶC — 5,41:1 với chữ trắng. */
+const OVERDUE_CLASS = "bg-status-overdue text-accent-ink";
+
+/**
+ * Chưa ai lấy xe dù đã qua giờ hẹn. Cùng HUE đỏ, khác CÁCH TÔ.
+ *
+ * KHÔNG có `bg-status-overdue/15` như chip BOOKED, và đây là chỗ duy nhất trong
+ * bộ chip lệch khỏi khuôn "viền + nền 15%". Lý do là một PHÉP ĐO, không phải
+ * thẩm mỹ: token `overdue` sáng và bão hoà hơn `booked` (L55% C0.21 vs L50%
+ * C0.09), nên dùng nó làm CHỮ trên chính nó pha 15% chỉ đạt **4,03:1** — trượt
+ * AA chữ thường (4,5:1). Bỏ lớp nền pha đó đưa lên **5,19:1** trên canvas và
+ * 5,41:1 trên surface. Ở cỡ chip lớp nền 15% gần như không nhìn thấy, nên đây
+ * là 1,16 điểm tương phản đổi lấy gần như không gì.
+ *
+ * Chép công thức tô của một token sang token khác mà không đo lại chính là lỗi
+ * mà đầu `index.css` cảnh báo. Tự kiểm lại được: tô màu vào `<canvas>` rồi đọc
+ * pixel (đừng đọc `getComputedStyle().color` — Chromium trả lại nguyên chuỗi
+ * `oklch()` chứ không quy về sRGB, và một parser ngây thơ sẽ ra 1,00:1 cho mọi
+ * cặp màu). Hiệu chuẩn bằng cách tái lập ba số `index.css` đã công bố —
+ * 3,95 · 3,66 · 3,49 — trước khi tin số mới.
+ */
+const PICKUP_OVERDUE_CLASS = "border border-status-overdue text-status-overdue";
 
 /**
  * Class Tailwind cho nền/chữ của một thanh/chip đơn thuê.
@@ -49,33 +75,43 @@ const STATUS_CLASS: Record<RentalStatus, string> = {
  * `isPickupOverdue`, nên không có định nghĩa "quá hạn" thứ hai nào sinh ra ở
  * tầng trình bày.
  *
- * Hai vị từ, MỘT màu — và đó là chủ ý, không phải lười đặt token:
+ * MỘT token đỏ, HAI cách tô — và sự khác biệt đó phải nằm ở CÁCH TÔ chứ không
+ * thể nằm ở nhãn:
  *
- * - `isOverdue` = ONGOING quá `endsAt` → xe đang nằm ngoài đường quá hạn trả.
- * - `isPickupOverdue` = BOOKED quá `startsAt` → khách chưa tới lấy, hoặc (đắt
- *   hơn nhiều) nhân viên đã giao xe mà quên bấm "đã giao".
+ * - `isOverdue` = ONGOING quá `endsAt` → xe đang ngoài đường quá hạn trả → ĐẶC.
+ * - `isPickupOverdue` = BOOKED quá `startsAt` → chưa ai lấy xe, hoặc (đắt hơn
+ *   nhiều) nhân viên đã giao mà quên bấm "đã giao" → VIỀN.
  *
- * `status-overdue` không có nghĩa "trễ hẹn trả"; nó có nghĩa "dòng này cần một
- * con người xử lý NGAY", và cả hai ca đều đúng như vậy. Phân biệt hai ca bằng
- * NHÃN chứ không bằng màu: chip đỏ ghi "Đang thuê" là xe trễ về, chip đỏ ghi
- * "Đã đặt" là chưa ai lấy xe — `STATUS_LABEL` đã nói rõ. Thêm token màu thứ
- * năm thì phải đo lại contrast (xem đầu `index.css`: bốn token hiện có đều
- * được đo trước khi dùng), mà nó chỉ mã hoá lại thứ nhãn đã nói.
+ * ⚠️ Bản đầu của đợt này tô CẢ HAI bằng nền đặc và biện hộ rằng `STATUS_LABEL`
+ * phân biệt giúp. Lập luận đó ĐÚNG trên hai màn Khách hàng và SAI trên lịch:
+ * `calendar-timeline.tsx` in `customerName` trong thanh, `calendar-month.tsx`
+ * in tên xe, còn `STATUS_LABEL` chỉ nằm trong `title=` — tức CHỈ hiện khi hover,
+ * mà `apps/staff` là PWA dùng trên điện thoại và ở đó KHÔNG có hover. Một thanh
+ * đỏ trên lịch khi đó không đọc được là "trễ trả" hay "chưa ai lấy" nếu không
+ * chạm vào nó.
+ *
+ * Nó còn mâu thuẫn với màn Trang chủ: `stats.ts` đếm `overdue` bằng đúng
+ * `status = 'ONGOING' AND ends_at < now` (tức chỉ `isOverdue`), rồi
+ * `attention-list.tsx` hiện "N xe quá hạn chưa trả" kèm chấm đỏ và LINK THẲNG
+ * sang `/calendar`. Bấm vào "3 xe quá hạn chưa trả" mà thấy năm thanh đỏ y hệt
+ * nhau là một mâu thuẫn có thật, không phải chuyện thẩm mỹ.
+ *
+ * Cách tô mang nghĩa "xe đã rời cửa hàng chưa" (BOOKED viền vs ONGOING đặc —
+ * luật `index.css` tự viết), còn hue mang nghĩa "có cần người xử lý không".
+ * Hai chiều VUÔNG GÓC nhau, và đọc được cả hai mà không cần hover. Hệ quả là
+ * đỏ-viền quét mắt thấy nhẹ hơn đỏ-đặc: đó là ĐÚNG thứ tự ưu tiên (xe ngoài
+ * đường hơn xe còn trong shop), và cũng chính là thứ dập tắt mâu thuẫn với
+ * con số ở Trang chủ.
  *
  * Thứ tự kiểm không ảnh hưởng kết quả: hai vị từ lọc hai `status` khác nhau
- * nên loại trừ nhau — tính chất đó được khoá bằng test ở `rental.test.ts`.
- *
- * Hệ quả CÓ Ý trên lịch: một `BOOKED` đã qua giờ hẹn giờ tô đỏ ở cả timeline
- * lẫn lịch tháng, không riêng màn Khách hàng. Đối xứng với hành vi sẵn có của
- * `isOverdue` (một ONGOING quá hạn cũng đỏ mãi cho tới khi ai đó đóng đơn), và
- * lịch mới là màn hình mà nhân viên nhìn nhiều nhất trong ca.
+ * nên loại trừ nhau — khoá bằng test ở `rental.test.ts`, và toàn bộ ma trận
+ * 4 status × 4 quan hệ thời gian khoá ở `rental-status.test.ts`.
  */
 export function rentalChipClass(
   rental: { status: RentalStatus; startsAt: Date; endsAt: Date },
   now: Date,
 ): string {
-  if (isOverdue(rental, now) || isPickupOverdue(rental, now)) {
-    return "bg-status-overdue text-accent-ink";
-  }
+  if (isOverdue(rental, now)) return OVERDUE_CLASS;
+  if (isPickupOverdue(rental, now)) return PICKUP_OVERDUE_CLASS;
   return STATUS_CLASS[rental.status];
 }
