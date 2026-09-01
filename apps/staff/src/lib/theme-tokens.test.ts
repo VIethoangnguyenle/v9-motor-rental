@@ -29,7 +29,17 @@ function need(tokens: Record<string, Color>, name: string): Color {
 
 /** Đọc token trong MỘT khối `{...}` — `@theme` cho sáng, `[data-theme="dark"]` cho tối. */
 async function readTokens(startMarker: string): Promise<Record<string, Color>> {
-  const css = await Bun.file(CSS_PATH).text();
+  // Bóc chú thích TRƯỚC khi làm bất cứ gì khác. Hai lý do, cả hai đã dựng lại
+  // được thành "hàng rào xanh trên file hỏng":
+  //   • `matchAll` duyệt tuần tự và ghi đè, nên một khai báo nằm trong chú thích
+  //     mà đứng SAU sẽ THẮNG khai báo thật. Một dòng vô hại kiểu
+  //     `/* Giá trị trước đợt này: --color-status-ongoing: oklch(55.7% ...) */`
+  //     đủ để che một token đang trượt AA. File này viết chú thích rất dày và
+  //     đã có sẵn hai chỗ trích giá trị token cũ — nó thoát chỉ vì tình cờ chưa
+  //     viết ở dạng `--color-x: ...`.
+  //   • bộ đếm ngoặc bên dưới không phân biệt ngoặc trong chú thích với ngoặc
+  //     thật, nên một `{` lẻ trong văn xuôi làm lệch toàn bộ phép cắt khối.
+  const css = (await Bun.file(CSS_PATH).text()).replace(/\/\*[\s\S]*?\*\//g, "");
   const start = css.indexOf(startMarker);
   if (start === -1) throw new Error(`Không tìm thấy khối "${startMarker}" trong index.css`);
 
@@ -46,6 +56,14 @@ async function readTokens(startMarker: string): Promise<Record<string, Color>> {
       }
     }
   }
+  // `end` còn -1 nghĩa là ngoặc không cân bằng. KHÔNG được bỏ qua: `slice(start, -1)`
+  // không ném lỗi, nó trả gần trọn file — khối SÁNG khi đó nuốt luôn hai khối TỐI
+  // và last-wins làm bảng sáng bị ĐO BẰNG GIÁ TRỊ TỐI. Contrast và gamut vẫn xanh
+  // (bảng tối tự nó nhất quán); chỉ CVD đỏ, và nó đỏ theo cách tệ nhất — thông báo
+  // rủ người đọc thêm ba ngoại lệ TỐI vào bảng SÁNG, tức bịt mắt hàng rào vĩnh viễn.
+  if (end === -1) {
+    throw new Error(`Khối "${startMarker}" không đóng ngoặc cân bằng trong index.css`);
+  }
   const block = css.slice(start, end);
 
   const out: Record<string, Color> = {};
@@ -61,6 +79,46 @@ async function readTokens(startMarker: string): Promise<Record<string, Color>> {
   }
   return out;
 }
+
+/**
+ * Toàn bộ 22 token màu mà MỖI khối phải khai — cả ba khối (`@theme`, `@media`,
+ * `[data-theme="dark"]`) đều phải khai đúng bộ này, không thiếu không thừa.
+ *
+ * Không có khẳng định này thì DANH SÁCH token không được canh, chỉ có GIÁ TRỊ.
+ * Dựng lại được: xoá `accent-hover` và `accent-active` khỏi `@theme` mà giữ hai
+ * khối tối → hàng rào xanh, trong khi `components/ui/button.tsx` dùng thật cả hai
+ * (`hover:bg-accent-hover active:bg-accent-active`) — nút chính mất hover/active
+ * ở theme sáng và không có gì kêu. Chỉ 12/22 token có tên trong `PAIRS`/`SEMANTIC`;
+ * mười token còn lại chỉ được test gamut chạm tới, mà test gamut chỉ thấy thứ
+ * regex đã bắt được — token biến mất thì biến mất luôn khỏi phép quét.
+ */
+const TOKENS: readonly string[] = [
+  "canvas",
+  "surface",
+  "surface-sunken",
+  "border",
+  "border-strong",
+  "ink",
+  "ink-soft",
+  "muted",
+  "accent",
+  "accent-ink",
+  "accent-hover",
+  "accent-active",
+  "status-booked",
+  "status-ongoing",
+  "status-overdue",
+  "status-completed",
+  "warning",
+  "status-overdue-soft",
+  "status-booked-soft",
+  "status-completed-soft",
+  "warning-soft",
+  "accent-soft",
+];
+
+/** Ngưỡng ΔE cho tách ngữ nghĩa ở MẮT THƯỜNG — khái niệm khác `CVD_THRESHOLD`. */
+const SEMANTIC_DELTA_E_MIN = 0.12;
 
 /** Cặp phải đạt, khớp bảng §2.4. `[chữ, nền, ngưỡng]`. */
 const PAIRS: readonly (readonly [string, string, number])[] = [
@@ -174,11 +232,9 @@ for (const [themeName, marker] of [
   ["TỐI", '[data-theme="dark"] {'],
 ] as const) {
   describe(`token ${themeName}`, () => {
-    it("khai đủ mọi token mà bảng §2.4 tham chiếu", async () => {
+    it("khai ĐÚNG bộ 22 token — không thiếu, không thừa", async () => {
       const t = await readTokens(marker);
-      const needed = new Set(PAIRS.flatMap(([a, b]) => [a, b]));
-      const missing = [...needed].filter((k) => !(k in t));
-      expect(missing).toEqual([]);
+      expect(Object.keys(t).sort()).toEqual([...TOKENS].sort());
     });
 
     it("mọi cặp §2.4 đạt ngưỡng", async () => {
@@ -202,7 +258,9 @@ for (const [themeName, marker] of [
 
     it("'đang thuê' KHÁC 'hành động chính' — hai nghĩa không dùng chung một màu", async () => {
       const t = await readTokens(marker);
-      expect(deltaE(need(t, "status-ongoing"), need(t, "accent"))).toBeGreaterThan(0.12);
+      expect(deltaE(need(t, "status-ongoing"), need(t, "accent"))).toBeGreaterThan(
+        SEMANTIC_DELTA_E_MIN,
+      );
     });
 
     it("bảng va chạm mù màu khớp ĐÚNG bảng ngoại lệ đã khai — cả hai chiều", async () => {
@@ -212,10 +270,12 @@ for (const [themeName, marker] of [
 
       const undeclared: string[] = [];
       const stale: string[] = [];
+      const seen = new Set<string>();
       for (const vision of CVD_VISIONS) {
         for (const [i, a] of SEMANTIC.entries()) {
           for (const b of SEMANTIC.slice(i + 1)) {
             const key = `${vision}|${a}|${b}`;
+            seen.add(key);
             const d = deltaE(simulate(need(t, a), vision), simulate(need(t, b), vision));
             if (d < CVD_THRESHOLD && !declared.has(key)) {
               undeclared.push(`${key} ΔE=${d.toFixed(3)} — tụt dưới ngưỡng mà chưa khai`);
@@ -228,6 +288,13 @@ for (const [themeName, marker] of [
       }
       expect(undeclared).toEqual([]);
       expect(stale).toEqual([]);
+
+      // "Canh hai chiều" chỉ đúng TRONG không gian khoá thật sự được sinh ra. Một
+      // mục khai sai — đảo thứ tự cặp, gõ nhầm tên kiểu nhìn, trỏ token không tồn
+      // tại — không khớp khoá nào, nên không bị chiều `stale` chạm tới và nằm đó im
+      // lặng như một suppression tưởng là đang có tác dụng. Đáng lo vì bảng này
+      // chính là phần bị sửa tay dưới áp lực, lúc hàng rào vừa đỏ.
+      expect([...declared.keys()].filter((k) => !seen.has(k))).toEqual([]);
     });
   });
 }
@@ -247,9 +314,10 @@ it("khối @media và khối [data-theme=dark] khai GIỐNG HỆT nhau", async (
   const viaAttr = await readTokens('[data-theme="dark"] {');
   const viaMedia = await readTokens(':root:not([data-theme="light"]) {');
 
-  // Quét không rỗng: nếu regex hay marker gãy, cả hai bên cùng rỗng và phép so
-  // sánh dưới đây xanh trên hư vô.
-  expect(Object.keys(viaAttr).length).toBeGreaterThan(15);
+  // Khối `@media` không nằm trong vòng lặp theme ở trên, nên nó cần khẳng định
+  // bộ token của riêng nó. Cũng là chỗ chặn "xanh trên hư vô": marker hay regex
+  // gãy thì cả hai bên cùng rỗng và phép so sánh dưới đây không so gì cả.
+  expect(Object.keys(viaMedia).sort()).toEqual([...TOKENS].sort());
 
   const keys = [...new Set([...Object.keys(viaAttr), ...Object.keys(viaMedia)])].sort();
   const diff = keys.filter((k) => {

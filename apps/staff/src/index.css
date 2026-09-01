@@ -14,7 +14,10 @@
 
      Chroma 0.003–0.02 ở hue 255 (KHÔNG phải 0): sắc xanh của logo. Xám tuyệt
      đối làm accent đứng như vật thể lạ dán lên nền; nhuốm nhẹ cùng hue thì cả
-     màn hình đọc ra một hệ. Nhìn từng ô riêng gần như không phân biệt được. */
+     màn hình đọc ra một hệ. Nhìn từng ô riêng gần như không phân biệt được.
+
+     `surface` là ngoại lệ BẮT BUỘC, không phải bỏ sót: trần gamut ở L=100% là
+     đúng 0 với mọi hue — trắng không nhuốm được. */
   --color-canvas: oklch(98.4% 0.003 255);
   --color-surface: oklch(100% 0 255);
   --color-surface-sunken: oklch(96.2% 0.005 255);
@@ -37,8 +40,9 @@
   /*
    * ⚠️ `border-strong` · `ink-soft` · `surface-sunken` chưa có chỗ dùng nào, và
    * Tailwind v4 RỤNG biến của `@theme` nếu không utility nào tham chiếu tới nó.
-   * Đo trên bản build hôm nay: `:root` ra 23 biến màu, thiếu đúng ba cái này —
-   * 19 token cũ (đều có chỗ dùng) đều còn.
+   * Đo trên bản build hôm nay: `:root` ra 23 biến màu — 19 token của app (đều có
+   * chỗ dùng) cộng bốn màu mặc định Tailwind còn sót từ class cũ (`amber-100`,
+   * `gray-100`, `red-100`, `red-600`). Thiếu đúng ba token nói trên.
    *
    * Bất đối xứng đáng chú ý: hai khối theme tối bên dưới là CSS viết tay nên
    * KHÔNG bị rụng — chúng khai đủ 22 biến. Nên tới lúc Task 3/4 gõ
@@ -52,7 +56,13 @@
    * tức cho apps/web. Ở đây accent là màu CHỨC NĂNG của một công cụ nội bộ, và
    * bốn màu trạng thái bên dưới là ngữ nghĩa (đỏ = quá hạn), không phải nhận diện.
    *
-   * Khi có logo: đổi đúng --color-accent, đừng đụng bốn màu trạng thái.
+   * ⚠️ Khi có logo, KHÔNG đổi mỗi `--color-accent`. Hue accent nay kéo theo:
+   *   • bốn token accent ở bảng sáng, và năm token accent × HAI khối tối;
+   *   • `status-booked` + `status-booked-soft` — chúng dùng chung hue 255, nên
+   *     đổi accent mà bỏ quên chúng là ra một bảng màu vỡ.
+   * Ba màu ngữ nghĩa còn lại (`overdue` đỏ · `warning` hổ phách · `ongoing` lam-lục)
+   * thì đừng đụng. Đổi xong chạy `theme-tokens.test.ts` — bảng ngoại lệ mù màu
+   * được giải ngược từ chính các hue này nên gần như chắc chắn phải khai lại.
    */
   /* ⚠️ Chroma 0.171, KHÔNG phải 0.19.
    *
@@ -74,26 +84,26 @@
    * Đo với chữ trắng: hover 7,23:1 · active 9,32:1 (nền thường 5,59:1). Cả hai
    * đều ĐẬM hơn trạng thái thường, nên tương phản chỉ tăng.
    *
-   * ⚠️ Ba số trên vừa được ĐO LẠI. Bộ cũ (7,15 · 9,23 · 5,56) đo trên chroma
-   * 0.19, tức trên ba màu trình duyệt đã kẹp — số đúng của màu sai. Chroma nay
-   * bám trần gamut ở từng mức L (0.171 → 0.151 → 0.132), giảm dần vì trần gamut
-   * giảm khi L giảm, không phải vì thẩm mỹ. Kết luận không đổi.
+   * Chroma bám trần gamut ở từng mức L (0.171 → 0.151 → 0.132), giảm dần vì trần
+   * gamut giảm khi L giảm — không phải lựa chọn thẩm mỹ.
    */
   --color-accent-hover: oklch(46% 0.151 255);
   --color-accent-active: oklch(40% 0.132 255);
 
-  /* Bốn trạng thái đơn thuê. Khớp `RentalStatus` ở @v9/shared/domain/rental —
-     đổi tên một trạng thái ở đó thì phải đổi ở đây, không có gì ép. */
+  /* Bốn màu trạng thái — KHÔNG ánh xạ một-một với `RentalStatus`
+     (@v9/shared/domain/rental = BOOKED · ONGOING · COMPLETED · CANCELLED):
+       • `overdue` không phải một trạng thái, nó là điều kiện dẫn xuất của ONGOING;
+       • `CANCELLED` không có token riêng — nó mượn `status-completed` và tự tách
+         bằng CÁCH TÔ (xem `lib/rental-status.ts`).
+     Không có gì ép hai danh sách khớp nhau, nên đổi tên ở đó phải tự đổi ở đây. */
   /* L50% + chroma thấp, KHÔNG phải L62%: ở 62% màu này chỉ đạt 3,66:1 với chữ
      trắng và 3,49:1 khi làm chữ trên canvas — trượt AA ở cả hai cách dùng.
      Phân biệt "đã đặt" với "đang thuê" bằng CÁCH TÔ (nền nhạt + viền vs nền đặc),
      không bằng độ sáng — đó cũng là cách mockup của design doc vẽ. */
   --color-status-booked: oklch(50% 0.09 255);
-  /* ⚠️ ĐÃ ĐỔI HUE: 255 → 200.
-   *
-   * Trước đợt này token này là oklch(52% 0.19 255) — TRÙNG KHÍT `--color-accent`.
-   * Tức "đơn đang thuê" và "hành động chính của app" tô cùng một màu, trong một
-   * app dạy người dùng rằng màu có nghĩa.
+  /* Hue 200, KHÔNG phải 255: ở hue 255 token này trùng khít `--color-accent`, tức
+   * "đơn đang thuê" và "hành động chính của app" tô cùng một màu, trong một app
+   * dạy người dùng rằng màu có nghĩa.
    *
    * L=55,7% là mức sáng nhất còn đạt 4,5:1 với chữ trắng — giải ngược từ ngưỡng,
    * nên nó KHÔNG có biên (đo được 4,51:1). Đổi L là trượt AA.
@@ -106,13 +116,11 @@
    * ~3,95:1 — dưới ngưỡng AA cho chữ thường. Đo lúc khai token, trước khi có
    * badge nào tồn tại, nên đây là chỗ rẻ nhất để sửa.
    *
-   * (2) 42% CHỨ KHÔNG PHẢI 46% — chữa một hồi quy do chính đợt này gây ra. Khi
-   * `status-ongoing` đổi sang hue 200, cặp `đang thuê ↔ đã trả` tụt từ ΔE 0,131
-   * xuống 0,100 dưới deuteranopia: đang ở TRÊN ngưỡng thì bị đẩy xuống dưới. Đây
-   * là cặp đắt nhất trong hệ — cả hai đều tô nền đặc và đứng CẠNH NHAU trong
-   * `customer-rental-history.tsx` và `customer-table.tsx`, nơi màu là kênh duy
-   * nhất. Ở 42%: ΔE 0,138 (qua ngưỡng), chữ trắng 8,46:1 (từ 7,13), trên
-   * `status-completed-soft` 7,53:1 (từ 6,34) — ba số đều tốt lên, không đánh đổi.
+   * (2) 42% CHỨ KHÔNG PHẢI 46%: ở 46% cặp `đang thuê ↔ đã trả` chỉ đạt ΔE 0,100
+   * dưới deuteranopia. Đây là cặp đắt nhất trong hệ — cả hai đều tô nền đặc và
+   * đứng CẠNH NHAU trong `customer-rental-history.tsx` và `customer-table.tsx`,
+   * nơi màu là kênh duy nhất. Ở 42%: ΔE 0,138 · chữ trắng 8,46:1 · trên
+   * `status-completed-soft` 7,53:1.
    *
    * Ngữ nghĩa cũng thuận: "đã trả, không còn việc gì" thì lùi ra sau là đúng. */
   --color-status-completed: oklch(42% 0 255);
@@ -156,11 +164,8 @@
    * (một lần quét trước đã cho ra `oklch(99.9% 0.089 0)`, khai là xám mà render
    * ra HỒNG).
    *
-   * ⚠️ Chính nhóm này đã cắn cái bẫy nó vừa cảnh báo: bộ cũ để 0.02 và 0.033,
-   * trong khi trần thật ở L=96% là **0,019** (hue 27 và 255) và **0,032**
-   * (hue 75) — cả bốn token có chroma đều tràn. Con số cũ sinh ra từ một hàm đo
-   * mang dung sai gamut hỏng; xem `GAMUT_EPSILON` trong `lib/color-math.ts`.
-   * Bài học: luật đúng không tự bảo vệ được nếu công cụ đo nó cũng sai.
+   * Trần thật ở L=96%: **0,019** (hue 27 và 255) và **0,032** (hue 75). Luật này
+   * chỉ đúng bằng công cụ đo nó — xem `GAMUT_EPSILON` trong `lib/color-math.ts`.
    *
    * `status-booked-soft` và `accent-soft` hôm nay BẰNG NHAU: cùng hue 255, và
    * 0,019 là trần gamut ở L96% cho hue đó. Vẫn để hai token vì đó là hai VAI TRÒ
