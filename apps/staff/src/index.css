@@ -183,6 +183,43 @@
 
   /* Bán kính nhỏ và thống nhất: app mật độ cao, bo nhiều làm hàng bảng rối mắt. */
   --radius-card: 0.375rem;
+
+  /*
+   * ── Chuyển động ──────────────────────────────────────────────────────────
+   *
+   * Luận điểm: chuyển động ở đây tồn tại để CHỨNG MINH CÓ CHUYỆN VỪA XẢY RA,
+   * không để trang trí. Lỗi P0 nặng nhất theo bản critique 2026-09-01 là ảnh
+   * chụp màn hình ngay sau khi tạo đơn thành công TRÙNG KHÍT TỪNG BYTE với ảnh
+   * trước đó — app làm xong việc mà không nói gì.
+   *
+   * Trần CỨNG 400ms. App này được dùng hàng trăm lần mỗi ca; hoạt ảnh dài là
+   * thuế thu ở mỗi lần dùng. Vào chậm hơn ra: thứ người dùng vừa gọi ra phải
+   * tới nhanh, thứ họ vừa bỏ đi phải biến mất nhanh hơn nữa.
+   *
+   * ⚠️ `--ease-*` và `--duration-*` KHÔNG đối xứng nhau ở phía Tailwind, dù
+   * nhìn giống nhau:
+   *   • `--ease-*` ĐÚNG là một namespace của Tailwind v4, nên `ease-standard`
+   *     là một class thật.
+   *   • `--duration-*` thì KHÔNG. Utility `duration-x` tra khoá theme
+   *     `--transition-duration-x` (kiểm được trong `tailwindcss/dist/lib.mjs`:
+   *     `themeKeys` của `duration` là `["--transition-duration"]`), nên gõ
+   *     `duration-instant` ra một class KHÔNG TỒN TẠI — Tailwind bỏ qua im
+   *     lặng, không cảnh báo, và phần tử giữ nguyên 150ms mặc định của
+   *     `--default-transition-duration`. Trong class phải viết
+   *     `duration-(--duration-instant)`; trong CSS thường thì `var(...)` như
+   *     bình thường.
+   * Giữ tên `--duration-*` thay vì đổi sang `--transition-duration-*` cho khớp
+   * namespace: hiệu ứng lớp phủ mà design doc §4.5 quy định phải viết bằng CSS
+   * thường (`<dialog>` cần `@starting-style`, một at-rule — không diễn đạt được
+   * bằng utility), và ở đó `var(--duration-panel)` mới là cái tên đọc được.
+   */
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  --duration-instant: 120ms;
+  --duration-quick: 180ms;
+  --duration-panel: 280ms;
 }
 
 /*
@@ -272,6 +309,43 @@
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
+  }
+
+  /*
+   * ── `prefers-reduced-motion` ──────────────────────────────────────────────
+   *
+   * Bỏ ĐƯỜNG ĐI, giữ ĐÍCH ĐẾN. Bỏ hẳn hiệu ứng là lấy mất thông tin của đúng
+   * người đã bật cờ này: nút vẫn phải đổi màu khi rê chuột, lớp phủ vẫn phải
+   * hiện ra — chỉ là không còn quãng chuyển.
+   *
+   * `1ms` chứ không `0s`: với `0s` một số trình duyệt KHÔNG bắn
+   * `transitionend`/`animationend`, và bất kỳ logic nào chờ sự kiện đó sẽ treo.
+   *
+   * Nằm trong `@layer base` chứ không để trần. Việc thắng utility của Tailwind
+   * KHÔNG phải công của layer — utility là khai báo THƯỜNG, mà quan trọng thắng
+   * thường trước khi cascade xét tới layer; đo trong trình duyệt: tiêm
+   * `* { transition-duration: 7s !important }` KHÔNG thuộc layer nào vào trang
+   * đã build thì nút chạy đúng 7s. Cái layer mua là thứ hạng giữa các khai báo
+   * `!important` VỚI NHAU: ở đó thứ tự layer đảo ngược (layer sớm thắng layer
+   * muộn) và khai báo không thuộc layer nào xếp cuối. Cũng đo được: với `7s`
+   * trần đó vẫn nằm nguyên trong trang, bật cờ reduced-motion lên thì nút ra
+   * 1ms — khối này thắng. Nói cách khác, để trần là tự nhận thua bất kỳ
+   * `!important` nào rơi vào app sau này.
+   *
+   * ⚠️ Quét toàn cục này KHÔNG đủ một mình. Hiệu ứng nào là KÊNH DUY NHẤT nói
+   * "vừa có chuyện xảy ra" thì phải có bản thay thế tĩnh riêng ở chính chỗ đó
+   * (design doc §4.6) — 1ms là bằng không với mắt người. Ở đây nó đủ, vì mọi
+   * hiệu ứng còn lại chỉ tô lại một trạng thái vẫn đọc được khi đứng yên.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   /*

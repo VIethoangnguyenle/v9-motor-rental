@@ -21,9 +21,21 @@ interface Row {
 /**
  * Vùng chạm tối thiểu 44px, cùng ngưỡng `Button`/`AppNav` — yêu cầu #6: mỗi dòng
  * PHẢI bấm được, không phải chỉ đọc.
+ *
+ * Chuyển động nói tiếp điều đó: nền chạy tới `canvas` trong 120ms thay vì nhảy,
+ * tức con trỏ vừa vào là hàng tự nhận mình bấm được. Cùng token với `Button`
+ * (`ui/button.tsx`) — hai thứ bấm được thì phản hồi phải giống nhau. Cú pháp
+ * `duration-(--duration-instant)`: xem `index.css`.
+ *
+ * `transition-[background-color]` chứ KHÔNG `transition-colors`: danh sách của
+ * `transition-colors` gồm cả `outline-color` (đọc trong CSS đã build), mà
+ * `:focus-visible` toàn cục tô vòng tiêu điểm bằng `outline`. Dùng nó là cho
+ * vòng focus bò từ màu chữ sang accent trong 120ms — design doc §4.4 mục 3 xếp
+ * vòng focus vào diện KHÔNG animate, vì một vòng tiêu điểm tới trễ là lỗi chứ
+ * không phải hiệu ứng. Hàng này cũng chỉ đổi đúng một màu khi rê chuột.
  */
 const ROW =
-  "flex min-h-11 items-center justify-between gap-3 rounded-card px-3 text-sm text-ink hover:bg-canvas";
+  "flex min-h-11 items-center justify-between gap-3 rounded-card px-3 text-sm text-ink transition-[background-color] duration-(--duration-instant) ease-standard hover:bg-canvas";
 
 /**
  * Ba dòng, đúng thứ tự mockup (design doc §8): quá hạn → trả hôm nay → chờ duyệt.
