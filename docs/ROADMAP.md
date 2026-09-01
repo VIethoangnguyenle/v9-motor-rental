@@ -3,6 +3,32 @@
 Tách khỏi `docs/ARCHITECTURE.md` để file đó không phình theo mỗi đợt — roadmap đổi thường xuyên, luật thì
 không. Nợ kỹ thuật ở [`DEBT.md`](DEBT.md); thiết kế của từng đợt ở [`plans/`](plans/).
 
+**Đã xong — đợt hệ thị giác `apps/staff`, 2026-09-01/02.** Thiết kế ở
+[`plans/2026-09-01-staff-visual-system-design.md`](plans/2026-09-01-staff-visual-system-design.md),
+thi công ở [`plans/2026-09-01-staff-visual-system-plan.md`](plans/2026-09-01-staff-visual-system-plan.md).
+
+Màu · theme sáng/tối theo hệ điều hành kèm nút gạt · icon thành kênh thông tin thứ hai · chuyển động.
+Bốn thứ đáng nhớ hơn danh sách tính năng:
+
+- **Va chạm mù màu là thuộc tính CẤU TRÚC, không phải lỗi chọn màu.** Sáu trạng thái đều tô nền đặc +
+  chữ trắng, nên ràng buộc `≥4,5:1` ghim cả sáu vào dải `L ∈ [0,42; 0,557]`; mù màu xoá hue, còn
+  ~0,14 đơn vị độ sáng chia cho sáu màu. Quét vét cạn: nghiệm an toàn **có** tồn tại nhưng đều đòi
+  `L ≤ 0,39`, tức bắt "đang thuê" tối hơn "đã trả". Nên **icon là điều kiện tồn tại của hệ màu**, và
+  26 ngoại lệ trong `theme-tokens.test.ts` khai thẳng rằng chúng hết hiệu lực nếu kênh hình bị cắt.
+- **Lỗi P0 của critique đã đóng, đo có đối chứng.** Ảnh `/` chụp hai lần khi không đổi gì cho cùng
+  md5; sau khi bàn giao thì khác. Trước đợt này hai ảnh trùng khít từng byte.
+- **Ba hàng rào mới** — `theme-tokens` (token + tương phản + gamut + mù màu, canh hai chiều) ·
+  `motion-budget` (trần 400ms, `BEAT_MS` khớp `@utility`) · `status-icon` (sáu trạng thái ↔ sáu
+  **hình**, và màu ↔ hình là song ánh).
+- **Công cụ đo cũng phải bị đo.** Hai lần trong đợt này, thứ nói dối là chính hàm dùng để kiểm: dung
+  sai gamut lỏng gấp ~3000 lần (9 token vượt gamut mà hàng rào xanh), và `contrast()` tính bằng float
+  trong khi trình duyệt vẽ 8-bit (một cặp trượt AA trên pixel thật mà hàng rào báo đạt).
+
+Nợ còn lại của đợt: `apps/staff` **không có test component nào** (không `happy-dom`/`jsdom`), nên
+logic đóng/nhịp/chuyển động nằm ngoài mọi hàng rào tự động — xem [`DEBT.md`](DEBT.md).
+
+---
+
 **Đã xong — đợt màn Thống kê + lịch thuê xe cho `apps/staff`.** Thiết kế ở
 [`plans/2026-08-15-staff-home-stats-calendar-design.md`](plans/2026-08-15-staff-home-stats-calendar-design.md),
 chia làm ba plan nối tiếp:
@@ -88,8 +114,8 @@ Hai việc đầu chờ **đúng một** thứ: **file logo thật của shop**.
   trống đúng một ô: màu thương hiệu. Bản gốc dùng M tricolor của BMW — ta không dùng được, và
   `PRODUCT.md` cấm vẽ lại nhận diện. **Đừng bịa màu**: dựng đơn sắc trắng-đen cho tới khi có
   asset. Xem §9 của `DESIGN.md`.
-- **Icon thật cho `apps/staff`.** `public/icon-{192,512}.png` đang là ô màu đặc. Thiếu icon thì
-  trình duyệt **im lặng** không mời cài app.
+- ~~**Icon thật cho `apps/staff`.**~~ ✅ **Xong 2026-09-01** (`3063766`) — logo mô tô thật, 1.134
+  màu, vùng an toàn maskable 102/102px.
 - ⚠️ **Ảnh xe trong Directus đang là ảnh giả, và không có nhãn nào nói ra.** Phát hiện 2026-09-01
   bằng cách nhìn trang render, không phải bằng đọc code. File `honda-cb500x-01.png` — mang đúng
   tên xe, title "Honda Cb500x 01", alt "Honda CB500X 471cc màu đỏ, nhìn nghiêng bên phải" — thực

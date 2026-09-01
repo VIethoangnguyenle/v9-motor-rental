@@ -10,8 +10,29 @@ Cắm qua **Vite plugin** (`@tailwindcss/vite` trong `vite.config.ts`), khác `a
 PostCSS. Hai cơ chế build khác nhau nên hai cách cắm; không có `tailwind.config.js` ở cả hai (v4
 khai theme trong CSS).
 
-`src/index.css` **cố ý không khai `@theme` riêng** — chưa có màn hình nghiệp vụ nào để rút token
-ra. Khi làm lịch/thống kê/bàn giao thì mới thêm.
+`src/index.css` khai **`@theme` đầy đủ**: 22 token màu cho theme sáng, hai khối theme tối
+(`@media (prefers-color-scheme: dark)` và `[data-theme="dark"]`), ba `--ease-*`, ba `--duration-*`,
+thang cách và bán kính. Bản trước của file này ghi "cố ý không khai `@theme` riêng" — đúng cho tới
+đợt Plan B, sai từ đó.
+
+⛔ **Ba hàng rào đang canh file này, đọc trước khi sửa token:**
+
+| Hàng rào                    | Canh gì                                                                                                                     |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `lib/theme-tokens.test.ts`  | 22 **tên** token ở cả ba khối · 16 cặp tương phản × 2 theme · gamut sRGB · va chạm mù màu (26 ngoại lệ, canh **hai chiều**) |
+| `lib/motion-budget.test.ts` | mọi `--duration-*` ≤ **400ms** · `BEAT_MS` trong `.tsx` khớp `600ms` trong `@utility`                                       |
+| `lib/spacing-fence.test.ts` | cấm arbitrary value cho nhóm khoảng cách trong `.tsx`                                                                       |
+
+⚠️ **KHÔNG viết `@theme inline`** — `inline` nội suy giá trị vào utility thay vì `var()`, làm mọi ghi
+đè theme tối **im lặng** không có tác dụng. CSS vẫn build, không lỗi ở đâu.
+
+⚠️ **`duration-instant` không phải một class.** Utility `duration-*` của Tailwind v4 tra
+`--transition-duration-*`, không tra `--duration-*`. Viết `duration-(--duration-instant)`.
+
+⚠️ **`transition-colors` gồm cả `outline-color`**, mà `:focus-visible` toàn cục tô vòng tiêu điểm
+bằng `outline` → vòng focus bò màu. Dùng `transition-[background-color]`.
+
+Lý lẽ đo đạc đầy đủ ở [`../plans/2026-09-01-staff-visual-system-design.md`](../plans/2026-09-01-staff-visual-system-design.md).
 
 `../../DESIGN.md` là hệ thị giác của `apps/web` (site công khai, ảnh dẫn dắt, SEO). App này ưu
 tiên **chức năng và mật độ thông tin** — đừng bê nền đen tuyền và typography 60px sang đây.
@@ -21,15 +42,15 @@ tiên **chức năng và mật độ thông tin** — đừng bê nền đen tuy
 Đây là điều duy nhất phân biệt app này với `apps/web`. Đừng "thống nhất" hai frontend về một
 framework: `apps/web` giữ Next vì SEO chính là lý do Next được chọn ở đó.
 
-|                              | `apps/staff`                                     | `apps/web`                                            |
-| ---------------------------- | ------------------------------------------------ | ----------------------------------------------------- |
-| Framework                    | Vite 8                                           | Next 16                                               |
-| Mô hình                      | client-first (SPA + TanStack Query)              | server-first (RSC)                                    |
-| Biến env                     | `import.meta.env.VITE_*`, **nướng lúc build**    | `process.env.NEXT_PUBLIC_*`, **cũng nướng lúc build** |
-| JSX                          | `jsx: "react-jsx"`                               | `jsx: "preserve"`                                     |
-| `exactOptionalPropertyTypes` | tắt                                              | tắt                                                   |
-| SEO                          | vô nghĩa                                         | quan trọng                                            |
-| impeccable                   | audit nhẹ, **không polish trừ khi được yêu cầu** | app chính                                             |
+|                              | `apps/staff`                                  | `apps/web`                                            |
+| ---------------------------- | --------------------------------------------- | ----------------------------------------------------- |
+| Framework                    | Vite 8                                        | Next 16                                               |
+| Mô hình                      | client-first (SPA + TanStack Query)           | server-first (RSC)                                    |
+| Biến env                     | `import.meta.env.VITE_*`, **nướng lúc build** | `process.env.NEXT_PUBLIC_*`, **cũng nướng lúc build** |
+| JSX                          | `jsx: "react-jsx"`                            | `jsx: "preserve"`                                     |
+| `exactOptionalPropertyTypes` | tắt                                           | tắt                                                   |
+| SEO                          | vô nghĩa                                      | quan trọng                                            |
+| impeccable                   | đã polish 2026-09-01/02 (được yêu cầu)        | app chính                                             |
 
 Dòng "biến env" **không** phải một khác biệt: Next thay `process.env.NEXT_PUBLIC_*` bằng hằng số
 lúc compile, kể cả trong chunk SSR — hai app giống hệt nhau ở điểm này. Bảng này từng ghi ngược
@@ -73,13 +94,14 @@ rào là đọc sai:
 
 Đừng dựa vào dòng đó cho ca session chết, và cũng đừng xoá nó vì "không thấy nó làm gì".
 
-## ⚠️ Icon đang là placeholder — trình duyệt **im lặng** không mời cài app
+## Icon PWA — đã có logo thật, và đây là chỗ hỏng im lặng cần biết
 
-`public/icon-192.png` (547B) và `icon-512.png` (1.8K) hiện là **ô màu đặc**, chưa phải logo thật.
-Thiếu hoặc sai file icon thì trình duyệt không hiện lời mời cài đặt — **không báo lỗi ở đâu cả**,
-không có warning trong console, manifest vẫn parse được.
+`public/icon-{192,512}.png` là **logo mô tô thật** từ 2026-09-01 (`3063766`): 1.134 màu ở 512×512,
+vùng an toàn maskable đo được 102/102px.
 
-Shop đã có logo ngoài đời. Thay hai file này trước khi ship.
+Vẫn giữ mục này vì cơ chế hỏng thì không đổi: **thiếu hoặc sai file icon thì trình duyệt không hiện
+lời mời cài đặt — không báo lỗi ở đâu cả**, không warning console, manifest vẫn parse được. Đổi hai
+file đó thì phải mở bản build ra kiểm bằng mắt, không có gì kêu hộ.
 
 ## Cấu trúc component: hai tầng, ranh giới là "có biết domain không"
 
