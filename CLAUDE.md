@@ -251,6 +251,35 @@ tồn tại **không** báo "không thấy" mà trả về symbol không liên q
 thực) · cạnh gọi hàm phân giải sai khi trùng tên. Và **index cũ không cảnh báo gì**: watcher chỉ
 chạy khi MCP server chạy, nên dùng CLI trần thì `codegraph sync -q` trước.
 
+### Quy trình chạm code: CodeGraph → Serena → sửa → ghi
+
+Bốn bước, theo thứ tự. Bảng trên nói _dùng tool nào khi nào_; đây là _chạy nó ra sao_.
+
+1. **Hỏi CodeGraph trước.** `codegraph_explore` (MCP) hoặc `codegraph explore "<câu hỏi>"` (CLI).
+   Nhận câu hỏi tiếng người (`làm sao một request tới được database?`), một túi tên symbol/file
+   (`listCustomers customer-table rentalChipClass`), hoặc hai đầu của một luồng — trả về call path
+   giữa chúng. **Coi output là ĐÃ ĐỌC**: đừng `Read` lại file nó vừa trả source.
+2. **Serena định vị.** `find_symbol` tìm theo tên, `find_declaration` nhảy từ chỗ dùng về định
+   nghĩa, `find_referencing_symbols` liệt kê mọi nơi tham chiếu.
+3. **Serena sửa.** `replace_symbol_body`, `insert_after_symbol` / `insert_before_symbol`,
+   `rename_symbol`. Sửa theo **symbol**, không theo số dòng — số dòng trôi, symbol thì không.
+4. **Ghi lại.** Quyết định + lý do vào Agent Memory.
+
+**Không bao giờ:**
+
+- Dùng `grep`/`find`/`Read` để **khám phá** khi `codegraph_explore` hoặc `find_symbol` trả lời được.
+  (Vẫn dùng chúng để **kiểm chứng** — xem probe thứ tư ở trên.)
+- `Read` lại một file mà CodeGraph vừa trả nguyên văn source.
+- Đổi tên hay đổi signature của exported function / shared type khi chưa chạy
+  `find_referencing_symbols`. Luật đã có ở bảng trên; đây là bước nó được thi hành.
+
+**Khi không chạy được:** không có `.codegraph/` thì bỏ qua CodeGraph, dùng tool thường. Index cũ —
+watcher chỉ sống khi daemon/MCP chạy — thì `codegraph sync -q` trước, và sau khi sửa xong thì đọc
+thẳng file để xác nhận thay vì tin index.
+
+⚠️ **Không máy nào ép quy trình này.** Cùng hạng với luật định danh tiếng Anh: đã commit nên sống
+sót qua `git clone`, nhưng không linter nào kiểm được "đã hỏi CodeGraph chưa". Xem mục ngay dưới.
+
 ### ⚠️ Phân biệt: ranh giới **repo ép** vs **cấu hình local**
 
 Nhầm hai loại này là cách sinh ra ảo giác "đang được bảo vệ" — dự án này đã dính bốn lần.
