@@ -1,15 +1,24 @@
 import {
   ArrowLeft,
   ArrowRight,
+  Bike,
+  CalendarDays,
   Camera,
+  ChartColumnBig,
   Check,
   ChevronLeft,
   ChevronRight,
   Circle,
+  Inbox,
+  KeyRound,
+  LogOut,
   Phone,
   Plus,
+  ReceiptText,
   Search,
   Trash2,
+  UserCog,
+  Users,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -80,6 +89,30 @@ const ICONS = {
   trash: Trash2,
   /** Xác nhận đã xong một bước. */
   check: Check,
+
+  // ── Điểm đến trên thanh điều hướng ────────────────────────────────────────
+  //
+  // Bảy mục nav trước đây là CHỮ TRẦN. Với một danh sách dọc bảy dòng chữ cùng
+  // cỡ cùng màu, mắt phải ĐỌC mới biết mình đang ở đâu — icon cho phép nhận ra
+  // bằng hình dạng, tức nhanh hơn một bậc. Trên bottom nav (<768px) nó còn quan
+  // trọng hơn: ba ô chỉ có chữ nhỏ là ba ô trông giống hệt nhau.
+  //
+  // Chọn hình theo NGHĨA của màn hình, không theo tên:
+  "nav-stats": ChartColumnBig,
+  "nav-calendar": CalendarDays,
+  /** Yêu cầu từ web — hộp thư đến, thứ chảy vào và cần xử lý. */
+  "nav-requests": Inbox,
+  /** Đơn thuê — chứng từ một lượt thuê, không phải "danh sách" chung chung. */
+  "nav-rentals": ReceiptText,
+  "nav-customers": Users,
+  /** Bàn giao — chiếc xe rời shop rồi quay về; đây là màn việc VẬT LÝ. */
+  "nav-handover": Bike,
+  /** Nhân viên — quản trị người, khác `users` của khách hàng. */
+  "nav-staff": UserCog,
+  /** Đổi mật khẩu. */
+  key: KeyRound,
+  /** Đăng xuất. */
+  "log-out": LogOut,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

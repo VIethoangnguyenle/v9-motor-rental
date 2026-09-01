@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { Me } from "../../lib/me";
 import { Modal } from "../ui/modal";
 import { newRequestCountQuery } from "../../lib/requests";
+import { Icon, type IconName } from "../ui/icon";
 import { BuildStamp } from "./build-stamp";
 
 /**
@@ -27,25 +28,28 @@ type NavItem =
   | {
       readonly kind: "link";
       readonly label: string;
+      /** Hình nhận dạng điểm đến. Bảy dòng chữ cùng cỡ cùng màu thì mắt phải
+       *  ĐỌC mới biết mình ở đâu; icon cho nhận ra bằng hình dạng. */
+      readonly icon: IconName;
       readonly to: "/" | "/staff" | "/calendar" | "/customers" | "/requests";
       /** Hiện số việc đang chờ cạnh nhãn. Chỉ `/requests` dùng, xem `AppNav`. */
       readonly badge?: "newRequests";
       readonly ownerOnly?: true;
     }
-  | { readonly kind: "soon"; readonly label: string };
+  | { readonly kind: "soon"; readonly label: string; readonly icon: IconName };
 
 const NAV_ITEMS: readonly NavItem[] = [
-  { kind: "link", label: "Thống kê", to: "/" },
-  { kind: "link", label: "Lịch", to: "/calendar" },
-  { kind: "link", label: "Yêu cầu", to: "/requests", badge: "newRequests" },
-  { kind: "soon", label: "Đơn thuê" },
-  { kind: "link", label: "Khách hàng", to: "/customers" },
-  { kind: "soon", label: "Bàn giao" },
+  { kind: "link", label: "Thống kê", to: "/", icon: "nav-stats" },
+  { kind: "link", label: "Lịch", to: "/calendar", icon: "nav-calendar" },
+  { kind: "link", label: "Yêu cầu", to: "/requests", badge: "newRequests", icon: "nav-requests" },
+  { kind: "soon", label: "Đơn thuê", icon: "nav-rentals" },
+  { kind: "link", label: "Khách hàng", to: "/customers", icon: "nav-customers" },
+  { kind: "soon", label: "Bàn giao", icon: "nav-handover" },
   // Chỉ hiện với OWNER — đây là hàng rào của TRẢI NGHIỆM, không phải của dữ
   // liệu: `beforeLoad` của route `/staff` và `/staff/users*` ở server mới là
   // hàng rào thật (403 FORBIDDEN). Bỏ điều kiện ở đây thì STAFF thấy một link
   // dẫn tới trang trống toàn lỗi 403, không phải thấy dữ liệu.
-  { kind: "link", label: "Nhân viên", to: "/staff", ownerOnly: true },
+  { kind: "link", label: "Nhân viên", to: "/staff", ownerOnly: true, icon: "nav-staff" },
 ];
 
 function visibleFor(item: NavItem, me: Me | null): boolean {
@@ -119,8 +123,9 @@ function SidebarNav({ me, onSignOut }: { readonly me: Me | null; readonly onSign
                 className={`${TOUCH} rounded-card px-3 text-ink hover:bg-canvas`}
                 activeProps={{ className: "bg-canvas font-semibold" }}
               >
-                <span className="flex w-full items-center justify-between gap-2">
-                  {item.label}
+                <span className="flex w-full items-center gap-2">
+                  <Icon name={item.icon} />
+                  <span className="flex-1 truncate">{item.label}</span>
                   {item.badge === "newRequests" && <NewRequestBadge />}
                 </span>
               </Link>
@@ -128,9 +133,10 @@ function SidebarNav({ me, onSignOut }: { readonly me: Me | null; readonly onSign
               <button
                 type="button"
                 disabled
-                className={`${TOUCH} w-full justify-between rounded-card px-3 text-muted`}
+                className={`${TOUCH} w-full gap-2 rounded-card px-3 text-muted`}
               >
-                {item.label}
+                <Icon name={item.icon} />
+                <span className="flex-1 truncate text-left">{item.label}</span>
                 <span className="rounded-card bg-canvas px-2 py-0.5 text-xs text-muted">
                   sắp có
                 </span>
@@ -148,15 +154,17 @@ function SidebarNav({ me, onSignOut }: { readonly me: Me | null; readonly onSign
         <BuildStamp />
         <Link
           to="/change-password"
-          className={`${TOUCH} rounded-card px-3 text-ink hover:bg-canvas`}
+          className={`${TOUCH} gap-2 rounded-card px-3 text-ink hover:bg-canvas`}
         >
+          <Icon name="key" />
           Đổi mật khẩu
         </Link>
         <button
           type="button"
           onClick={onSignOut}
-          className={`${TOUCH} rounded-card px-3 text-left text-ink hover:bg-canvas`}
+          className={`${TOUCH} gap-2 rounded-card px-3 text-left text-ink hover:bg-canvas`}
         >
+          <Icon name="log-out" />
           Đăng xuất
         </button>
       </div>
@@ -218,6 +226,7 @@ function BottomNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignO
           className={`${TOUCH} flex-1 flex-col justify-center gap-0.5 text-ink`}
           activeProps={{ className: "font-semibold" }}
         >
+          <Icon name="nav-stats" />
           {home?.label}
         </Link>
 
@@ -226,6 +235,7 @@ function BottomNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignO
           className={`${TOUCH} flex-1 flex-col justify-center gap-0.5 text-ink`}
           activeProps={{ className: "font-semibold" }}
         >
+          <Icon name="nav-calendar" />
           {lich?.label}
         </Link>
 
@@ -236,6 +246,7 @@ function BottomNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignO
           aria-expanded={moreOpen}
           className={`${TOUCH} flex-1 flex-col justify-center gap-0.5 text-ink`}
         >
+          <Icon name="plus" />
           Thêm
         </button>
       </nav>
@@ -261,17 +272,19 @@ function BottomNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignO
                     <Link
                       to={item.to}
                       onClick={closeMore}
-                      className={`${TOUCH} rounded-card px-3 text-ink hover:bg-canvas`}
+                      className={`${TOUCH} gap-2 rounded-card px-3 text-ink hover:bg-canvas`}
                     >
+                      <Icon name={item.icon} />
                       {item.label}
                     </Link>
                   ) : (
                     <button
                       type="button"
                       disabled
-                      className={`${TOUCH} w-full justify-between rounded-card px-3 text-muted`}
+                      className={`${TOUCH} w-full gap-2 rounded-card px-3 text-muted`}
                     >
-                      {item.label}
+                      <Icon name={item.icon} />
+                      <span className="flex-1 truncate text-left">{item.label}</span>
                       <span className="rounded-card bg-canvas px-2 py-0.5 text-xs text-muted">
                         sắp có
                       </span>
@@ -289,8 +302,9 @@ function BottomNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignO
               <Link
                 to="/change-password"
                 onClick={closeMore}
-                className={`${TOUCH} rounded-card px-3 text-ink hover:bg-canvas`}
+                className={`${TOUCH} gap-2 rounded-card px-3 text-ink hover:bg-canvas`}
               >
+                <Icon name="key" />
                 Đổi mật khẩu
               </Link>
               <button
@@ -299,8 +313,9 @@ function BottomNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignO
                   closeMore();
                   onSignOut();
                 }}
-                className={`${TOUCH} rounded-card px-3 text-left text-ink hover:bg-canvas`}
+                className={`${TOUCH} gap-2 rounded-card px-3 text-left text-ink hover:bg-canvas`}
               >
+                <Icon name="log-out" />
                 Đăng xuất
               </button>
             </div>
