@@ -271,3 +271,59 @@ nợ 2026-08-18, xem "Đã đóng trong Plan A" bên dưới cho cách chứng m
   **Không có gì trong repo ép luật này**: không migration nào chạy lại, không test nào bắt được, và
   màn hình vẫn trả về câu tự tin "Không tìm thấy khách hàng nào khớp." Cùng hạng với luật CodeGraph
   ở root [`CLAUDE.md`](../CLAUDE.md) — quy ước trong tài liệu, không phải hàng rào.
+
+- **Không có chức năng gộp hồ sơ khách trùng** — quyết định 2026-08-31, không phải bỏ sót.
+  `customers.phone` là `UNIQUE` nên hồ sơ trùng chỉ xảy ra khi MỘT người dùng hai số khác nhau; và
+  từ khi tìm kiếm bỏ dấu (migration `0012`), nhân viên tìm ra hồ sơ cũ thay vì tạo mới. Lập trường
+  đã có tiền lệ thành văn ở migration `0011`: _gộp ngầm hai hồ sơ là quyết định nghiệp vụ, không
+  phải thứ một migration tự động nên tự ý làm._
+  **Điều kiện mở lại:** xuất hiện ca trùng thật (hai hồ sơ, hai số, cùng một người).
+
+- **Ba cột `rentals.document_type` / `document_returned_at` / `delivery_address` chưa có writer** —
+  cố ý. Chúng là hợp đồng dữ liệu cho luồng bàn giao xe, sẽ được ghi khi màn bàn giao được dựng.
+  **Điều kiện đóng:** màn bàn giao land.
+
+- **Ô tìm khách không escape `%` và `_`** — gõ `%` khớp toàn bộ khách hàng. Có sẵn từ trước
+  migration `0012`, **không** phải hồi quy. Đã đo và kết luận là **nhiễu, không phải lỗ hổng**:
+  chuỗi đi qua bind parameter nên không phải injection; `OWNER`/`STAFF` vốn đã xem được toàn bộ
+  khách nên không rò gì; `searchCustomers` có `.limit(20)` và `listCustomers` chặn `pageSize ≤ 50`
+  nên không kéo sập được gì; pattern luôn kết thúc bằng `%` nên `\\` không gây 500.
+  Đường rủi ro thật duy nhất: nhân viên lỡ gõ `%` ở ô tìm của form lên đơn, thấy danh sách trông
+  hợp lý nhưng sai người, rồi gắn nhầm khách vào đơn.
+  **Nếu sửa:** `term.replace(/[\\%_]/g, "\\$&")` + `ESCAPE '\\'`, và nhớ nó đổi nhẹ cách trích trigram.
+
+- **`updateCustomer` xoá trắng `note` khi caller bỏ qua field** — `note: input.note ?? null`
+  (`services/customers.ts`) là semantic PUT, trong khi route khai `note: t.Optional(...)`
+  (`routes/rentals.ts`). Client nào gửi thiếu `note` sẽ xoá ghi chú cũ mà không định làm vậy.
+  Hôm nay `customer-edit-form.tsx` luôn gửi đủ ba field nên chưa phát tác.
+  **Điều kiện phải sửa:** ngay khi có caller thứ hai của `POST /customers/:id`.
+
+- **Không có index trên `rentals.customer_id`** — `rentals` hiện chỉ có `rentals_pkey`,
+  `rentals_no_overlap`, `rentals_revenue_idx`. Ba truy vấn của màn Khách hàng (`counts`, `actives`,
+  `listRentalsForCustomer`) đều seq scan toàn bảng. Khoanh-theo-trang giảm số hàng **trả về**,
+  không giảm số hàng **quét** — comment biện minh page-scoping bằng lý do hiệu năng đang nói quá.
+  Vô hại ở quy mô hiện tại. **Điều kiện sửa:** khi `rentals` vượt ~vài chục nghìn hàng.
+
+- **Năm file còn nguyên điểm mù "nuốt lỗi truyền tải"** — `lib/rentals.ts`, `rental-calendar.tsx`,
+  `rental-form.tsx`, `stats-page.tsx`, `staff-list-page.tsx`. Eden Treaty **nuốt** rejection của
+  `fetch` và trả `{ error: EdenFetchError(503, exception) }`, nên `isError` là nhánh chết ở khắp
+  nơi, và các màn đó hiện câu fallback chung chung không kèm đường thử lại. `connectionFailed()`
+  (`lib/customers.ts`) đã export, dùng lại được. Chúng cũng còn dùng `assertive` cho banner tải,
+  cắt ngang trình đọc màn hình vô cớ — `Alert` đã có prop `live` để sửa.
+
+- **API chết thì đăng xuất.** `protectedLayoutRoute.beforeLoad` gọi `hasSession()` vốn cần API, nên
+  nhân viên F5 đúng lúc API chớp tắt sẽ bị đá về `/login` chứ không phải màn có nút thử lại. Điều
+  này giới hạn hẳn giá trị của nhánh lỗi vừa thêm: nó chỉ cứu được ca "trang đang mở sẵn, API chết,
+  refetch nổ".
+
+- **`isPickupOverdue` nhìn thấy được nhưng không được đếm ở đâu.** `stats.ts` đếm `overdue` chỉ bằng
+  `isOverdue`, và `attention-list.tsx` render nó thành "N xe quá hạn chưa trả" rồi link sang
+  `/calendar`. Đơn quá hẹn lấy giờ hiện đỏ-viền trên lịch nhưng không nằm trong con số nào. Đã đỡ
+  hơn trước (trước là vừa vô hình vừa không đếm), và cách tô khác nhau nên hai thứ không còn mâu
+  thuẫn nhau. **Muốn xử lý thật** thì cần một dòng riêng trong `attention-list.tsx` kèm một count
+  thứ hai trong `stats.ts`.
+
+- **`.claude/CLAUDE.md` chưa được track.** Root `CLAUDE.md` nói rõ file này **phải được commit,
+  đừng đẩy vào `.gitignore`** — có track thì lần `codegraph install --refresh` sau hiện ra thành
+  diff review được. Hiện nó là untracked, tức mọi lần upgrade lại mọc ra một file lạ. Ngoài phạm vi
+  đợt này nên **không tự commit**; nêu để người quyết.

@@ -25,6 +25,13 @@ index trên `lower(email)`) · mã đặt lại mật khẩu hết hạn giờ t
 `mode: "full"` trong `eslint.config.js` được **đo lại**, không đổi được — vẫn giữ nguyên, xem mục
 "Nợ có hạn" trong `DEBT.md` cho số đo mới nhất.
 
+**Màn Khách hàng — đã land 2026-08-31**, xem
+[`plans/2026-08-31-customers-surface-design.md`](plans/2026-08-31-customers-surface-design.md).
+Chưa làm, cần brainstorm riêng: sort/lọc/nhảy trang và hành động hàng loạt (một shop 12.000 khách
+tới trang 300 là 300 cú click) · đổi thứ tự mặc định từ `asc(fullName)` sang _quá hạn → đang thuê →
+gần nhất_ (đổi nó là đổi hình dạng sản phẩm: danh sách duyệt → danh sách cần chú ý) · ảnh chụp giấy
+tờ lên MinIO cùng đợt bàn giao.
+
 **Sau đó:** `booking_requests` + form gửi yêu cầu thuê trên `apps/web`. Đó là mảnh còn thiếu để đội
 xe đang hiển thị sinh ra được việc — hiện khách xem xong không có đường nào gửi yêu cầu. Ràng buộc
 copy của form nằm ở [`../apps/web/AGENTS.md`](../apps/web/AGENTS.md) (không hứa xe còn trống).
