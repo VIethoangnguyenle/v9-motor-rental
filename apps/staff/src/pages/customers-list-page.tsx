@@ -133,27 +133,37 @@ export function CustomersListPage() {
         </p>
       )}
 
-      {query.data?.ok && total > CUSTOMERS_PAGE_SIZE && (
+      {/* Tách số tổng khỏi điều kiện phân trang: trước đây cả dòng này chỉ hiện
+          khi `total > CUSTOMERS_PAGE_SIZE`, nên shop có 18 khách (dưới một
+          trang) không bao giờ thấy mình có bao nhiêu khách. Giờ chỉ cần có ít
+          nhất một khách là thấy số tổng; hai nút Trước/Sau và tiền tố
+          "Trang X/Y ·" chỉ mọc thêm khi thật sự có hơn một trang. */}
+      {query.data?.ok && total > 0 && (
         <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={page <= 1}
-            onClick={() => void navigate({ search: { q, page: Math.max(1, page - 1) } })}
-          >
-            ← Trước
-          </Button>
+          {total > CUSTOMERS_PAGE_SIZE && (
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={page <= 1}
+              onClick={() => void navigate({ search: { q, page: Math.max(1, page - 1) } })}
+            >
+              ← Trước
+            </Button>
+          )}
           <span className="text-sm text-muted">
-            Trang {page}/{totalPages} · {total} khách hàng
+            {total > CUSTOMERS_PAGE_SIZE ? `Trang ${page}/${totalPages} · ` : ""}
+            {total} khách hàng
           </span>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={page >= totalPages}
-            onClick={() => void navigate({ search: { q, page: Math.min(totalPages, page + 1) } })}
-          >
-            Sau →
-          </Button>
+          {total > CUSTOMERS_PAGE_SIZE && (
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={page >= totalPages}
+              onClick={() => void navigate({ search: { q, page: Math.min(totalPages, page + 1) } })}
+            >
+              Sau →
+            </Button>
+          )}
         </div>
       )}
     </div>

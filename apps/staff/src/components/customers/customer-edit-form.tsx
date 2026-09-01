@@ -78,18 +78,52 @@ export function CustomerEditForm({ customer, onSaved }: CustomerEditFormProps) {
         label="Họ và tên"
         required
         value={fullName}
-        onChange={(e) => setFullName(e.target.value)}
+        onChange={(e) => {
+          setFullName(e.target.value);
+          // Gõ tiếp sau khi lưu thành công thì tắt luôn thông báo "Đã lưu thay
+          // đổi." — không thì nó nằm cạnh những trường đang bẩn, nói dối là
+          // giá trị hiện tại đã được lưu trong khi thực ra chưa. Guard trên
+          // `update.isSuccess` để không gọi `reset()` (và re-render) ở MỌI
+          // phím gõ, chỉ đúng lần gõ đầu tiên sau khi thành công.
+          if (update.isSuccess) update.reset();
+        }}
       />
       <TextField
         label="Số điện thoại"
         required
         type="tel"
         value={phone}
-        onChange={(e) => setPhone(e.target.value)}
+        onChange={(e) => {
+          setPhone(e.target.value);
+          if (update.isSuccess) update.reset();
+        }}
       />
-      <TextField label="Ghi chú" value={note} onChange={(e) => setNote(e.target.value)} />
+      <label className="flex flex-col gap-1 text-sm text-ink">
+        Ghi chú
+        {/* `ui/text-field.tsx` chỉ render `<input>` và KHÔNG được biết domain
+            (xem comment đầu file đó) — nhồi thêm nhánh textarea vào đó là ép nó
+            hiểu "ghi chú khách hàng cần nhiều dòng", một khái niệm nghiệp vụ.
+            Ghi chú là free text nhiều dòng thật (số xe mượn, thói quen thanh
+            toán, ghi chú CSKH…) nên viết markup tại chỗ, dùng lại đúng token
+            (`min-h-11 rounded-card border border-border bg-surface px-3 py-2
+            text-ink`) để không trông như một component khác trong cùng form. */}
+        <textarea
+          value={note}
+          maxLength={500}
+          rows={3}
+          onChange={(e) => {
+            setNote(e.target.value);
+            if (update.isSuccess) update.reset();
+          }}
+          className="min-h-11 rounded-card border border-border bg-surface px-3 py-2 text-ink"
+        />
+      </label>
 
       {update.error && <Alert tone="error">{update.error.message}</Alert>}
+      {/* Kết quả của một submit người dùng vừa chờ, không phải banner bật lên vì
+          query settle — giữ mặc định `assertive` của `Alert`, KHÔNG truyền
+          `live="polite"` (khác với hai banner tải dữ liệu ở
+          `customers-list-page.tsx`). */}
       {update.isSuccess && <Alert tone="info">Đã lưu thay đổi.</Alert>}
 
       <div>
