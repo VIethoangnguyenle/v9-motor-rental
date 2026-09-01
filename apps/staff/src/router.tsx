@@ -36,6 +36,7 @@ import { StaffListPage } from "./pages/staff-list-page";
 import { RequestsPage } from "./pages/requests-page";
 import { StatsPage } from "./pages/stats-page";
 import { ForgotPasswordPage } from "./pages/forgot-password-page";
+import { NotFoundPage, RouteErrorPage } from "./pages/fallback-pages";
 
 /**
  * Hai nhánh, một hàng rào. Mọi route CẦN đăng nhập treo dưới `protectedLayoutRoute`, nên
@@ -310,7 +311,23 @@ const routeTree = rootRoute.addChildren([
  * xong mà màn hình vẫn thấy trống, và không có lỗi nào ở đâu.
  */
 export const createAppRouter = (queryClient: QueryClient) =>
-  createRouter({ routeTree, context: { queryClient } });
+  createRouter({
+    routeTree,
+    context: { queryClient },
+    /*
+     * Không khai hai cái này thì router dùng bản mặc định của TanStack —
+     * **tiếng Anh**, trong một app toàn tiếng Việt, và không có đường nào đi
+     * tiếp ngoài nút Back của trình duyệt. Gõ nhầm URL hay một lỗi render bất
+     * kỳ đều rơi vào đó.
+     *
+     * File này đã lo đúng chuyện đó cho MỘT ca hẹp (xem nhánh
+     * `signOutThenRedirect` ở `beforeLoad`: "TanStack dựng màn lỗi mặc định
+     * tiếng Anh — trên chính đường guard, tức chỗ tệ nhất để kẹt lại"). Hai
+     * dòng dưới là hàng rào chung cho mọi route còn lại.
+     */
+    defaultNotFoundComponent: NotFoundPage,
+    defaultErrorComponent: ({ error }) => <RouteErrorPage error={error} />,
+  });
 
 declare module "@tanstack/react-router" {
   interface Register {

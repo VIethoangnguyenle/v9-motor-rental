@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { SHOP_TIMEZONE } from "@v9/shared/domain/rental";
 import { errorMessage } from "../../lib/errors";
 import { updateHandover } from "../../lib/photos";
 import { Alert } from "../ui/alert";
@@ -13,6 +14,22 @@ const DOC_LABEL: Record<DocumentType, string> = {
   CCCD: "CCCD",
   PASSPORT: "Hộ chiếu",
 };
+
+/**
+ * Mốc trả giấy tờ, theo giờ SHOP chứ không theo đồng hồ máy đang xem. Bản trước
+ * dùng `toLocaleString("vi-VN")` trần — đúng cái bẫy mà mọi `Intl` khác trong
+ * app đã tránh bằng cách khai `timeZone` tường minh (lý lẽ ở
+ * `calendar-timeline.tsx`). Đây là mốc nhân viên đối chiếu với khách, nên đọc
+ * theo đồng hồ của người xem là trả lời sai câu hỏi.
+ */
+const RETURNED_FMT = new Intl.DateTimeFormat("vi-VN", {
+  timeZone: SHOP_TIMEZONE,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
 
 /**
  * Giấy tờ shop đang giữ và địa chỉ giao xe — ba cột migration `0012` mở sẵn và
@@ -59,11 +76,26 @@ export function HandoverDetails({
       <h3 className="m-0 text-sm font-semibold text-ink">Giấy tờ và giao xe</h3>
 
       {save.error && <Alert tone="error">{save.error.message}</Alert>}
+      {/*
+       * Lưu xong mà màn hình KHÔNG đổi gì là con bug `rental-form.tsx` đã mô tả
+       * dài và sửa bằng `onCreated`: "nhân viên đứng cạnh khách không có cách
+       * nào biết… và phản xạ tự nhiên là bấm gửi lần nữa". `customer-edit-form.tsx`
+       * đã sửa. Đây là chỗ thứ ba, và nó nằm trong sheet chi tiết đơn nên hai ô
+       * nhập vẫn hiện đúng giá trị vừa gõ — không có một pixel nào đổi để nói
+       * rằng lần bấm vừa rồi đã tới được server.
+       */}
+      {save.isSuccess && <Alert tone="info">Đã lưu thông tin bàn giao.</Alert>}
 
       <Select
         label="Giấy tờ đang giữ"
         value={docType}
-        onChange={(e) => setDocType(e.target.value)}
+        onChange={(e) => {
+          setDocType(e.target.value);
+          // Gõ tiếp sau khi lưu xong thì tắt câu "Đã lưu" — để nguyên là nó nằm
+          // cạnh những ô đang bẩn và nói dối rằng giá trị hiện tại đã được lưu.
+          // Cùng khuôn `customer-edit-form.tsx`.
+          if (save.isSuccess) save.reset();
+        }}
       >
         <option value="">— Chưa giữ giấy tờ —</option>
         {(Object.keys(DOC_LABEL) as DocumentType[]).map((d) => (
@@ -76,7 +108,10 @@ export function HandoverDetails({
       <TextField
         label="Địa chỉ giao xe"
         value={address}
-        onChange={(e) => setAddress(e.target.value)}
+        onChange={(e) => {
+          setAddress(e.target.value);
+          if (save.isSuccess) save.reset();
+        }}
         placeholder="vd. Khách sạn Rex, 141 Nguyễn Huệ, Q1"
       />
 
@@ -114,7 +149,7 @@ export function HandoverDetails({
 
       {returned && documentReturnedAt !== null && (
         <p className="m-0 text-xs text-muted">
-          Đã trả giấy tờ lúc {documentReturnedAt.toLocaleString("vi-VN")}.
+          Đã trả giấy tờ lúc {RETURNED_FMT.format(documentReturnedAt)}.
         </p>
       )}
     </div>
