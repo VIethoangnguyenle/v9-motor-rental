@@ -1,10 +1,5 @@
 import { SHOP_TIMEZONE } from "@v9/shared/domain/rental";
-import {
-  dayColumns,
-  placeBar,
-  type BarPlacement,
-  type GridWindow,
-} from "../../lib/calendar-layout";
+import { dayColumns, gridEdgeClip, placeBar, type GridWindow } from "../../lib/calendar-layout";
 import type { CalendarRental, FleetVehicle } from "../../lib/rentals";
 import { STATUS_LABEL, rentalChipClass, statusIconOf } from "../../lib/rental-status";
 import { Icon } from "../ui/icon";
@@ -111,11 +106,6 @@ const MAX_CHIPS = 3;
 const CHIP =
   "flex min-h-6 w-full items-center gap-0.5 truncate rounded-card px-1 text-left text-xs";
 
-interface Chip {
-  readonly rental: CalendarRental;
-  readonly placement: BarPlacement;
-}
-
 export function CalendarMonth({
   vehicles,
   rentals,
@@ -159,12 +149,14 @@ export function CalendarMonth({
             // này không" — cùng ngữ nghĩa `[from, to)` đã kiểm ở Task 1, thay vì
             // viết một điều kiện overlap thứ năm (CLAUDE.md: bốn chỗ đã phải tự
             // đồng ý với nhau bằng test, không có gì ép máy).
-            const chips: Chip[] = rentals
-              .flatMap((rental) => {
-                const placement = placeBar(rental, { from: col.date, to: cellEnd });
-                return placement ? [{ rental, placement }] : [];
-              })
-              .sort((a, b) => a.rental.startsAt.getTime() - b.rental.startsAt.getTime());
+            //
+            // Chỉ lấy CÓ/KHÔNG, không giữ `BarPlacement`: `startCol` và `span`
+            // của nó là toạ độ lưới ngang của chế độ Timeline, ở đây ô ngày đã
+            // là toạ độ rồi. Chevron thì hỏi `gridEdgeClip` với cửa sổ CẢ LƯỚI,
+            // không phải cờ cắt của cửa sổ một-ngày này.
+            const chips: CalendarRental[] = rentals
+              .filter((rental) => placeBar(rental, { from: col.date, to: cellEnd }) !== null)
+              .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
             const shown = chips.slice(0, MAX_CHIPS);
             const hiddenCount = chips.length - shown.length;
@@ -192,8 +184,9 @@ export function CalendarMonth({
                     2px là mời chạm nhầm sang đơn bên cạnh — trên điện thoại,
                     một tay, trong gara. */}
                 <div className="mt-1 flex flex-col gap-1">
-                  {shown.map(({ rental, placement }) => {
+                  {shown.map((rental) => {
                     const vehicle = vehicleById.get(rental.vehicleId);
+                    const edge = gridEdgeClip(rental, gridWindow, globalIndex, cols.length);
                     const label = vehicle
                       ? `${vehicle.make} ${vehicle.model}`
                       : (rental.customerName ?? "—");
@@ -211,10 +204,13 @@ export function CalendarMonth({
                             đứng cạnh. Cỡ đi qua PROP — `className="size-3"` hỏng
                             im lặng, xem `ui/icon.tsx`.
 
-                            `‹`/`›` là dấu "đơn còn kéo dài ngoài ô ngày này",
-                            không phải nút bấm; chúng đứng sát hai mép chip vì
-                            mũi tên chỉ ra ngoài ô. */}
-                        {placement.clippedStart && <Icon name="chevron-left" size="sm" />}
+                            `‹`/`›` đọc `gridEdgeClip` chứ KHÔNG đọc `placement`:
+                            `placement` cắt theo Ô NGÀY, mà chip lặp ở mỗi ô đơn
+                            phủ, nên cờ đó bật ở mọi ô giữa và mũi tên chỉ nói
+                            lại thứ ô bên cạnh đã cho thấy. Lý lẽ ở
+                            `calendar-layout.ts`. Chúng đứng sát hai mép chip vì
+                            mũi tên chỉ ra ngoài LƯỚI. */}
+                        {edge.start && <Icon name="chevron-left" size="sm" />}
                         {/* Chữ trên chip này là TÊN XE, nên trạng thái ở đây
                             cũng đi bằng màu và CHỈ màu — lý lẽ đầy đủ ở
                             `calendar-timeline.tsx`, chỗ gọi `statusIconOf` kia.
@@ -227,7 +223,7 @@ export function CalendarMonth({
                             điểm. */}
                         <Icon name={statusIconOf(rental, now)} size="sm" />
                         <span className="min-w-0 truncate">{label}</span>
-                        {placement.clippedEnd && <Icon name="chevron-right" size="sm" />}
+                        {edge.end && <Icon name="chevron-right" size="sm" />}
                       </button>
                     );
                   })}
