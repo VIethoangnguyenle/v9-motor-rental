@@ -150,6 +150,8 @@
     "isready",
     "nosniff", // X-Content-Type-Options
     "oklch", // hàm màu CSS
+    "rrggbb", // ký hiệu chuẩn cho mã màu hex
+    "metas", // số nhiều của <meta>, dùng làm định danh
     "animationend", // sự kiện DOM kết thúc animation
     // Mô phỏng mù màu: ma trận Machado, Oliveira & Fernandes 2009, và tên ba
     // dạng mù màu dùng trong hàng rào token của apps/staff.
