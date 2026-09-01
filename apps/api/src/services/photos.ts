@@ -134,10 +134,7 @@ export type ReadPhotoResult =
  * không lấy được ảnh nếu gắn sai đơn. Rẻ, và nó biến một tham chiếu trực tiếp
  * thành một tham chiếu có ngữ cảnh.
  */
-export async function readRentalPhoto(
-  rentalId: string,
-  photoId: string,
-): Promise<ReadPhotoResult> {
+export async function readRentalPhoto(rentalId: string, photoId: string): Promise<ReadPhotoResult> {
   const [row] = await db
     .select({
       objectKey: schema.rentalPhotos.objectKey,
@@ -145,9 +142,7 @@ export async function readRentalPhoto(
       sizeBytes: schema.rentalPhotos.sizeBytes,
     })
     .from(schema.rentalPhotos)
-    .where(
-      and(eq(schema.rentalPhotos.id, photoId), eq(schema.rentalPhotos.rentalId, rentalId)),
-    )
+    .where(and(eq(schema.rentalPhotos.id, photoId), eq(schema.rentalPhotos.rentalId, rentalId)))
     .limit(1);
 
   if (!row) return { ok: false, reason: "PHOTO_NOT_FOUND" };
@@ -175,9 +170,7 @@ export async function deleteRentalPhoto(
 ): Promise<DeletePhotoResult> {
   const [row] = await db
     .delete(schema.rentalPhotos)
-    .where(
-      and(eq(schema.rentalPhotos.id, photoId), eq(schema.rentalPhotos.rentalId, rentalId)),
-    )
+    .where(and(eq(schema.rentalPhotos.id, photoId), eq(schema.rentalPhotos.rentalId, rentalId)))
     .returning({ objectKey: schema.rentalPhotos.objectKey });
 
   if (!row) return { ok: false, reason: "PHOTO_NOT_FOUND" };

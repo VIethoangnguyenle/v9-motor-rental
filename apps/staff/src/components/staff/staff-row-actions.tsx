@@ -42,12 +42,7 @@ export function StaffRowActions({
         {/* Tự khoá mình bị backend chặn (`CANNOT_DISABLE_SELF`); ẩn nút để không
             mời người ta bấm vào một lỗi đã biết trước. */}
         {row.status === "ACTIVE" && row.id !== me?.id && (
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => onDisable(row.id)}
-          >
+          <Button type="button" variant="ghost" disabled={busy} onClick={() => onDisable(row.id)}>
             Khoá
           </Button>
         )}

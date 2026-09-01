@@ -4,7 +4,6 @@ import { api } from "@/lib/api";
 import messages from "@/messages/vi.json";
 import type { RequestFormState } from "./form-state";
 
-
 /**
  * Nhận form gửi yêu cầu thuê và chuyển tiếp sang `apps/api`.
  *

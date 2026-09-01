@@ -16,8 +16,8 @@ export function ResetCodeNotice({
   // thuộc về container cha — cùng lý lẽ đã ghi ở `customer-rental-history.tsx`.
   return (
     <Alert tone="info">
-        Mã đặt lại mật khẩu cho <strong>{issuedCode.name}</strong>:{" "}
-        <strong className="tracking-widest">{issuedCode.code}</strong> — đọc cho nhân viên qua Zalo.
+      Mã đặt lại mật khẩu cho <strong>{issuedCode.name}</strong>:{" "}
+      <strong className="tracking-widest">{issuedCode.code}</strong> — đọc cho nhân viên qua Zalo.
       Mã sống 10 phút và chỉ dùng được một lần.
     </Alert>
   );

@@ -49,8 +49,7 @@ export const newRequestCountQuery = {
 };
 
 export type ChangeRequestResult =
-  | { ok: true }
-  | { ok: false; code: ApiErrorCode | null; value: unknown };
+  { ok: true } | { ok: false; code: ApiErrorCode | null; value: unknown };
 
 export async function changeRequestStatus(
   id: string,

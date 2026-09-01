@@ -81,7 +81,9 @@ export async function createRentalRequest(input: {
   const [vehicle] = await db
     .select({ id: schema.vehicles.id })
     .from(schema.vehicles)
-    .where(and(eq(schema.vehicles.slug, input.vehicleSlug), eq(schema.vehicles.status, "published")))
+    .where(
+      and(eq(schema.vehicles.slug, input.vehicleSlug), eq(schema.vehicles.status, "published")),
+    )
     .limit(1);
 
   if (!vehicle) return { ok: false, reason: "VEHICLE_NOT_AVAILABLE" };

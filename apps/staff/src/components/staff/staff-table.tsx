@@ -29,11 +29,21 @@ export function StaffTable({ rows, me, busy, onApprove, onDisable, onIssueCode }
               màn hình không gắn được ô dữ liệu với tiêu đề cột của nó, và một
               bảng 6 cột đọc ra thành một chuỗi giá trị không nhãn. */}
           <tr className="border-b border-border text-muted">
-            <th scope="col" className="card-pad">Họ tên</th>
-            <th scope="col" className="card-pad">Email</th>
-            <th scope="col" className="card-pad">Điện thoại</th>
-            <th scope="col" className="card-pad">Vai trò</th>
-            <th scope="col" className="card-pad">Trạng thái</th>
+            <th scope="col" className="card-pad">
+              Họ tên
+            </th>
+            <th scope="col" className="card-pad">
+              Email
+            </th>
+            <th scope="col" className="card-pad">
+              Điện thoại
+            </th>
+            <th scope="col" className="card-pad">
+              Vai trò
+            </th>
+            <th scope="col" className="card-pad">
+              Trạng thái
+            </th>
             <th />
           </tr>
         </thead>

@@ -75,9 +75,7 @@ export function ChangePasswordForm() {
           `text-red-600` là palette thô, đi vòng qua token `status-overdue`; và
           `assertive` mặc định của tone `error` đúng ở đây — người dùng vừa bấm
           gửi và đang đứng chờ chính câu trả lời này. */}
-      {changePassword.error && (
-        <Alert tone="error">{changePassword.error.message}</Alert>
-      )}
+      {changePassword.error && <Alert tone="error">{changePassword.error.message}</Alert>}
       <SubmitButton pending={changePassword.isPending} pendingLabel="Đang đổi…">
         Đổi mật khẩu
       </SubmitButton>
