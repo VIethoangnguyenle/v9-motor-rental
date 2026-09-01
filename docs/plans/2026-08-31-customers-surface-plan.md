@@ -1729,7 +1729,41 @@ Claude-Session: https://claude.ai/code/session_01U6R9KKD6ARRmAcm38Ph4o5"
   **Điều kiện phải sửa:** ngay khi có caller thứ hai của `POST /customers/:id`.
 ```
 
-- [ ] **Step 3: Thêm vào `docs/ROADMAP.md`, mục nghiệp vụ chưa chốt**
+- [ ] **Step 3: Năm món nợ nữa, sinh ra trong lúc làm đợt này**
+
+```markdown
+- **Không có index trên `rentals.customer_id`** — `rentals` hiện chỉ có `rentals_pkey`,
+  `rentals_no_overlap`, `rentals_revenue_idx`. Ba truy vấn của màn Khách hàng (`counts`, `actives`,
+  `listRentalsForCustomer`) đều seq scan toàn bảng. Khoanh-theo-trang giảm số hàng **trả về**,
+  không giảm số hàng **quét** — comment biện minh page-scoping bằng lý do hiệu năng đang nói quá.
+  Vô hại ở quy mô hiện tại. **Điều kiện sửa:** khi `rentals` vượt ~vài chục nghìn hàng.
+
+- **Năm file còn nguyên điểm mù "nuốt lỗi truyền tải"** — `lib/rentals.ts`, `rental-calendar.tsx`,
+  `rental-form.tsx`, `stats-page.tsx`, `staff-list-page.tsx`. Eden Treaty **nuốt** rejection của
+  `fetch` và trả `{ error: EdenFetchError(503, exception) }`, nên `isError` là nhánh chết ở khắp
+  nơi, và các màn đó hiện câu fallback chung chung không kèm đường thử lại. `connectionFailed()`
+  (`lib/customers.ts`) đã export, dùng lại được. Chúng cũng còn dùng `assertive` cho banner tải,
+  cắt ngang trình đọc màn hình vô cớ — `Alert` đã có prop `live` để sửa.
+
+- **API chết thì đăng xuất.** `protectedLayoutRoute.beforeLoad` gọi `hasSession()` vốn cần API, nên
+  nhân viên F5 đúng lúc API chớp tắt sẽ bị đá về `/login` chứ không phải màn có nút thử lại. Điều
+  này giới hạn hẳn giá trị của nhánh lỗi vừa thêm: nó chỉ cứu được ca "trang đang mở sẵn, API chết,
+  refetch nổ".
+
+- **`isPickupOverdue` nhìn thấy được nhưng không được đếm ở đâu.** `stats.ts` đếm `overdue` chỉ bằng
+  `isOverdue`, và `attention-list.tsx` render nó thành "N xe quá hạn chưa trả" rồi link sang
+  `/calendar`. Đơn quá hẹn lấy giờ hiện đỏ-viền trên lịch nhưng không nằm trong con số nào. Đã đỡ
+  hơn trước (trước là vừa vô hình vừa không đếm), và cách tô khác nhau nên hai thứ không còn mâu
+  thuẫn nhau. **Muốn xử lý thật** thì cần một dòng riêng trong `attention-list.tsx` kèm một count
+  thứ hai trong `stats.ts`.
+
+- **`.claude/CLAUDE.md` chưa được track.** Root `CLAUDE.md` nói rõ file này **phải được commit,
+  đừng đẩy vào `.gitignore`** — có track thì lần `codegraph install --refresh` sau hiện ra thành
+  diff review được. Hiện nó là untracked, tức mọi lần upgrade lại mọc ra một file lạ. Ngoài phạm vi
+  đợt này nên **không tự commit**; nêu để người quyết.
+```
+
+- [ ] **Step 4: Thêm vào `docs/ROADMAP.md`, mục nghiệp vụ chưa chốt**
 
 ```markdown
 **Màn Khách hàng — đã land 2026-08-31**, xem
@@ -1740,7 +1774,7 @@ gần nhất_ (đổi nó là đổi hình dạng sản phẩm: danh sách duy�
 tờ lên MinIO cùng đợt bàn giao.
 ```
 
-- [ ] **Step 4: Đóng số hiệu migration thật**
+- [ ] **Step 5: Đóng số hiệu migration thật**
 
 ```bash
 ls packages/db/migrations/*.sql | tail -1
@@ -1748,7 +1782,7 @@ ls packages/db/migrations/*.sql | tail -1
 
 Thay `00XX` trong `DEBT.md` bằng số thật.
 
-- [ ] **Step 5: Verify toàn repo**
+- [ ] **Step 6: Verify toàn repo**
 
 ```bash
 bun test && bun run typecheck && bun run lint && bun run format
@@ -1756,7 +1790,7 @@ bun test && bun run typecheck && bun run lint && bun run format
 
 Expected: tất cả PASS.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add docs/DEBT.md docs/ROADMAP.md
