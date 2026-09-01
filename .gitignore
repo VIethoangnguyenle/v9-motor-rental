@@ -41,6 +41,9 @@ coverage/
 # impeccable ghi hook cho Codex CLI vào đây, nội dung hard-code path máy local
 .codex/
 
+# ảnh mẫu do scripts/seed-dev-images.sh sinh — dựng lại được, không commit
+.tmp-seed-images/
+
 # artifact của skill impeccable: cache của design hook + báo cáo `critique`.
 # Không neo `/` ở đầu vì nó mọc ở nhiều cấp — `critique-storage.mjs` ghi cạnh
 # target, nên một lần chạy trên `apps/staff` tạo `apps/staff/.impeccable/`, còn

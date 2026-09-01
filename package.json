@@ -23,7 +23,8 @@
     "db:migrate": "bun --env-file=.env packages/db/scripts/migrate.ts",
     "directus:setup": "bun --env-file=.env scripts/directus-setup.ts",
     "staff:bootstrap": "bun --env-file=.env scripts/staff-bootstrap.ts",
-    "bench": "bun run apps/api/scripts/bench.ts"
+    "bench": "bun run apps/api/scripts/bench.ts",
+    "seed:dev": "bun --env-file=.env ./scripts/seed-dev.ts"
   },
   "dependencies": {
     "supertokens-node": "24.0.3"
