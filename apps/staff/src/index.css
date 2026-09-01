@@ -261,13 +261,31 @@
  * ra cùng lúc ở bốn chỗ khác nhau trên màn hình. Critique 2026-09-01 đo được
  * rằng hành động này KHÔNG sinh ra phản hồi nào.
  *
- * VÒNG VIỀN, không phải một mảng tô phủ lên chip — và đây là một phép ĐO, không
- * phải khẩu vị. Chip `ONGOING` là nền đặc + chữ `accent-ink`, đo được đúng
- * 4,51:1 ở bảng sáng, tức không có một chút biên nào. Phủ `accent-soft` @55% lên
- * nó cho 2,02:1 (bảng tối 8,62 → 3,36). Không độ mờ nào cứu được cách tô đó —
- * @10% vẫn chỉ 3,89:1, vẫn dưới AA. Vòng viền nằm ở mép, không đụng chữ:
- * accent/surface 5,59:1 ở bảng sáng và 6,37:1 ở bảng tối, đều qua ngưỡng 3:1 của
- * SC 1.4.11 cho thành phần phi văn bản.
+ * VÒNG, không phải một mảng tô phủ lên chip — và đây là một phép ĐO, không phải
+ * khẩu vị. Chip `ONGOING` là nền đặc + chữ `accent-ink`, đo được đúng 4,51:1 ở
+ * bảng sáng, tức không có một chút biên nào. Phủ `accent-soft` @55% lên nó cho
+ * 2,02:1 (bảng tối 8,62 → 3,36). Không độ mờ nào cứu được cách tô đó — @10% vẫn
+ * chỉ 3,89:1, vẫn dưới AA.
+ *
+ * `outline` + `outline-offset: 3px`, KHÔNG `border` với `inset: 0`. Khác biệt
+ * không phải thẩm mỹ: `border` vẽ BÊN TRONG hộp chip, nên mép trong của nét kề
+ * chính nền chip, và cặp đó đo được
+ *
+ *   SÁNG  accent vs status-ongoing  1,24:1  ΔE 0,145 thường · 0,040 tritanopia
+ *   TỐI   accent vs status-ongoing  1,22:1  ΔE 0,139 thường · 0,055 tritanopia
+ *
+ * — dưới ngưỡng tách 0,12 của `theme-tokens.test.ts`, và `accent ↔ status-ongoing`
+ * ĐÃ là một mục khai sẵn trong `CVD_EXCEPTIONS` ở cả hai bảng. Lối thoát mà bảng
+ * đó dựa vào ("hai kênh khác gánh: HÌNH DẠNG và CÁCH TÔ") KHÔNG tồn tại cho một
+ * cái vòng: nó không có icon riêng, không có cách tô riêng, nó là tín hiệu thuần
+ * màu. `outline-offset` đẩy CẢ nét ra ngoài hộp, nên cặp kề duy nhất là
+ * accent/surface — 5,59:1 ở bảng sáng, 6,37:1 ở bảng tối, cả hai qua ngưỡng 3:1
+ * của SC 1.4.11. ΔE của cặp đó thấp nhất là 0,465 (sáng, tritanopia) và 0,481
+ * (tối, deuteranopia), tức gấp gần bốn lần ngưỡng tách 0,12.
+ *
+ * `outline` chứ không `border` + `inset` âm còn vì hình học: outline tự bám
+ * `border-radius` của chính nó và tự nới bán kính theo offset, nên nó đúng ở mọi
+ * bán kính chip mà không phải viết `calc()` khớp tay với `--radius-card`.
  *
  * `transform` + `opacity` trên `::after`, KHÔNG `box-shadow`: design doc §4.3
  * xếp hiệu ứng này vào nhóm LẶP LẠI vì dấu này rồi sẽ chạy trên hàng lịch phía
@@ -299,8 +317,9 @@
     content: "";
     position: absolute;
     inset: 0;
-    border: 2px solid var(--color-accent);
     border-radius: inherit;
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
     pointer-events: none;
     animation: v9-just-changed 600ms var(--ease-exit) 1 both;
 
@@ -473,6 +492,24 @@
    * neo: sheet trượt lên từ đáy là quy ước gốc của điện thoại; hộp thoại giữa
    * màn thì phóng nhẹ. Dùng chung một hướng cho cả ba là chỗ dễ làm ẩu nhất.
    *
+   * ⚠️ Danh sách `transition` nằm ở `dialog > [data-panel]` TRẦN, không ở
+   * `dialog[open]`. Đây đúng là cái bẫy thứ tư mà chú thích của `<dialog>` ngay
+   * trên đã viết thành luật rồi lại không tự áp cho panel: trình duyệt đọc
+   * `transition-*` từ style SAU khi đổi, nên khai trong `dialog[open]` là chỉ
+   * trang bị cho lượt VÀO. Lúc RA, `[open]` đã rụng, panel không còn
+   * `transition-property` nào và nó NHẢY về vị trí đóng trong một khung hình —
+   * lớp phủ chỉ mờ tại chỗ chứ không trượt về nơi nó neo, đúng thứ §4.4 dòng 4
+   * cấm. `dialog[open]` giờ chỉ ghi đè thời lượng/easing cho lượt vào: vào 280ms
+   * `ease-enter`, ra 180ms `ease-exit`, cùng cặp số của chính `<dialog>`.
+   *
+   * ⚠️ HAI khối trạng-thái-đóng, và cả hai đều cần:
+   *   • `dialog:not([open]) > [data-panel]` là ĐÍCH của lượt ra. Thiếu nó thì
+   *     panel không có chỗ nào để trượt tới.
+   *   • `@starting-style` là NGUỒN của lượt vào. Không thừa: trước `showModal()`
+   *     `<dialog>` mang `display: none` của UA, nên panel chưa được render lần
+   *     nào — nó không có giá trị cũ để nội suy, và khối `:not([open])` ở trên
+   *     KHÔNG cấp được giá trị đó cho một phần tử vừa mới xuất hiện.
+   *
    * ⚠️ `transform: none` ở đây KHÔNG dẫm lên việc căn giữa của `adaptive` từ
    * 640px, và đó là một sự phụ thuộc chứ không phải may: Tailwind v4 dịch
    * `sm:-translate-y-1/2` ra thuộc tính `translate`, không ra `transform` (đọc
@@ -480,9 +517,20 @@
    * nguyên vị trí giữa màn trong khi vẫn phóng được. Ngày Tailwind đổi lại về
    * `transform` thì dòng này im lặng kéo panel xuống nửa chiều cao của chính nó.
    */
+  dialog > [data-panel] {
+    transition: transform var(--duration-quick) var(--ease-exit);
+  }
   dialog[open] > [data-panel] {
-    transition: transform var(--duration-panel) var(--ease-enter);
     transform: none;
+    transition-duration: var(--duration-panel);
+    transition-timing-function: var(--ease-enter);
+  }
+  dialog:not([open]) > [data-panel][data-placement="bottom"],
+  dialog:not([open]) > [data-panel][data-placement="adaptive"] {
+    transform: translateY(100%);
+  }
+  dialog:not([open]) > [data-panel][data-placement="top"] {
+    transform: translateY(-12px);
   }
   @starting-style {
     dialog[open] > [data-panel][data-placement="bottom"],
@@ -493,9 +541,12 @@
       transform: translateY(-12px);
     }
   }
-  /* Từ 640px, `adaptive` chuyển sang hộp thoại giữa màn — vào bằng phóng nhẹ,
-     không trượt: nó không neo vào cạnh nào để mà trượt tới. */
+  /* Từ 640px, `adaptive` chuyển sang hộp thoại giữa màn — phóng nhẹ theo cả hai
+     chiều, không trượt: nó không neo vào cạnh nào để mà trượt tới. */
   @media (width >= 40rem) {
+    dialog:not([open]) > [data-panel][data-placement="adaptive"] {
+      transform: scale(0.98);
+    }
     @starting-style {
       dialog[open] > [data-panel][data-placement="adaptive"] {
         transform: scale(0.98);

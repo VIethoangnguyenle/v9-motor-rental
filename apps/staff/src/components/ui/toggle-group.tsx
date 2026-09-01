@@ -51,7 +51,13 @@ export function ToggleGroup<T extends string | null>({
             // Nút KHÔNG chọn mang viền chứ không chỉ khác màu chữ: nếu chỉ khác
             // màu thì "đang chọn cái nào" phụ thuộc hoàn toàn vào màu, và đó là
             // thông tin chỉ-bằng-màu. Viền + nền đặc là hai tín hiệu.
-            className={`min-h-11 rounded-card px-3 text-sm font-medium ${
+            //
+            // Cùng mảnh transition từng ký tự với `ui/button.tsx`, và đó là điều
+            // kiện chứ không phải trang trí: chuỗi class của nhánh KHÔNG chọn
+            // dưới đây giống hệt biến thể `ghost` của `Button`, mà hai thứ đứng
+            // CẠNH NHAU trên toolbar lịch (‹ › Hôm nay | Timeline Tháng). Thiếu
+            // ở một bên là một nút mượt đứng cạnh một nút nhảy.
+            className={`min-h-11 rounded-card px-3 text-sm font-medium transition-[background-color,border-color] duration-(--duration-instant) ease-standard ${
               selected
                 ? "bg-accent text-accent-ink"
                 : "border border-border text-ink hover:border-muted hover:bg-canvas active:bg-border"

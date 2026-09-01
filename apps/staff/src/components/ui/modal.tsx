@@ -58,8 +58,12 @@ export type ModalPlacement = "bottom" | "adaptive" | "top";
 /**
  * Trần chờ hiệu ứng ra trước khi báo `onClose` lên trên. Lớn hơn
  * `--duration-quick` (180ms) một quãng để không cắt ngang hiệu ứng thật trên
- * máy đang tải nặng, và vẫn dưới trần cứng 400ms của design doc §4.2 — quá trần
- * đó thì cái lưới an toàn tự nó thành độ trễ người dùng cảm được.
+ * máy đang tải nặng, và ĐÚNG BẰNG trần cứng 400ms của design doc §4.2 — vượt
+ * lên thì cái lưới an toàn tự nó thành độ trễ người dùng cảm được.
+ *
+ * Con số này chỉ được dùng khi `transitionend` không bao giờ tới. Trình duyệt
+ * không hiểu `allow-discrete` không rơi vào đây nữa — `handleClose` bắt ca đó
+ * bằng feature test và về đích ngay, xem chú thích ở đó.
  */
 const EXIT_FALLBACK_MS = 400;
 
@@ -185,6 +189,24 @@ export function Modal({
     }
     const handleClose = () => {
       if (unmounting) return;
+
+      // ⚠️ `<dialog>` đã đóng nhưng còn nằm trong top layer suốt 180ms hiệu ứng
+      // ra. `pointer-events: none` ở `index.css` che được CHUỘT, không che được
+      // BÀN PHÍM: mọi nút và link bên trong vẫn ở nguyên trong thứ tự Tab, nên
+      // người dùng bàn phím Tab được vào một lớp phủ đang tan. `inert` đóng cả
+      // hai cửa. Không cần trả lại: phần tử bị gỡ ngay sau khi hiệu ứng xong.
+      el.inert = true;
+
+      // ⚠️ Không có `allow-discrete` thì `display: none` áp TỨC THÌ, transition
+      // không bao giờ khởi động, `transitionend` không bao giờ bắn — và lưới an
+      // toàn bên dưới biến mỗi lần đóng thành 400ms đứng hình. Safari <17.4 và
+      // Firefox <129 nằm đúng trong ca này. Hỏi thẳng trình duyệt rồi về đích
+      // ngay: không có hiệu ứng để chờ thì không chờ.
+      if (!CSS.supports("transition-behavior", "allow-discrete")) {
+        finish();
+        return;
+      }
+
       el.addEventListener("transitionend", onExitEnd);
       // Lưới an toàn, KHÔNG phải thời lượng: nếu `transition` bị tắt hẳn ở đâu
       // đó thì `transitionend` không bao giờ bắn và lớp phủ treo lại vĩnh viễn

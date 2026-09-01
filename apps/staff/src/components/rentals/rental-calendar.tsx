@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { SHOP_TIMEZONE, type RentalStatus } from "@v9/shared/domain/rental";
 import { errorMessage } from "../../lib/errors";
 import type { GridWindow } from "../../lib/calendar-layout";
@@ -331,10 +331,30 @@ export function RentalCalendar() {
   const showToolbar = !(!isLoading && !fleetFailed && noFleet);
 
   // Đọc lại từ danh sách vừa fetch, không từ state — xem chú thích `selectedId`.
-  // Đơn biến mất khỏi cửa sổ đang xem (đổi kỳ, hoặc vừa bị huỷ) thì sheet tự đóng.
   const allRentals = rentals.data?.ok === true ? rentals.data.rentals : [];
-  const selected =
-    selectedId === null ? null : (allRentals.find((r) => r.id === selectedId) ?? null);
+  const fresh = selectedId === null ? null : (allRentals.find((r) => r.id === selectedId) ?? null);
+
+  /*
+   * ⚠️ Bản đang mở được GHIM, không suy thẳng từ `fresh`.
+   *
+   * `listRentalsInRange` (`apps/api/src/services/rentals.ts`) lọc
+   * `status <> 'CANCELLED'`, có test canh. Nên trên đường `→ CANCELLED`:
+   * `invalidateQueries(["rentals"])` → refetch → đơn vừa huỷ RƠI KHỎI danh sách
+   * → `fresh` ra `null` → sheet bị gỡ ngay commit kế. Đo được hệ quả: vòng sáng
+   * sống đúng bằng RTT của refetch chứ không phải 600ms, và hiệu ứng ra không có
+   * lấy một khung hình — đúng lớp lỗi mà `ui/modal.tsx` đã ghi thành luật.
+   *
+   * Ghim rồi thì `RentalDetailSheet` tự sở hữu khoảnh khắc đóng của nó ở CẢ BA
+   * chuyển trạng thái: nhịp vòng sáng chạy xong, sheet gọi `close`, hiệu ứng ra
+   * chạy đủ, `onClose` mới gỡ.
+   *
+   * Ghim KHÔNG làm chip đứng yên ở trạng thái cũ: sheet vẽ chip từ kết quả
+   * mutation đã được server xác nhận, không đợi vòng refetch — xem `shownStatus`
+   * ở `rental-detail-sheet.tsx`.
+   */
+  const pinned = useRef(fresh);
+  if (fresh !== null) pinned.current = fresh;
+  const selected = selectedId === null ? null : pinned.current;
 
   return (
     <div className="flex flex-col gap-4">
