@@ -42,7 +42,7 @@ Vì vậy:
 chạy lại, exclusion constraint hoạt động.
 
 **Đếm 2026-09-01: `0000` → `0012`.** Bản ghi cũ không nói con số này. Bảng liệt kê từng migration
-sống trong skill **`v9-db`** (đã cập nhật tới `0012`); `packages/db/CLAUDE.md` nay chỉ còn là con trỏ
+sống trong `docs/workspaces/db.md` (đã cập nhật tới `0012`); `packages/db/CLAUDE.md` nay chỉ còn là con trỏ
 5 dòng vào skill đó — đừng tìm nội dung ở file cũ nữa.
 
 Ba service dùng chung một Postgres, chỉ `packages/db` được đổi schema `public` — chi tiết role và
@@ -51,4 +51,4 @@ cách ép: `mem:architecture/directus`.
 Bẫy `db:custom` ghi snapshot là bản sao của snapshot trước (nên cột viết tay vô hình với chuỗi
 snapshot): `mem:architecture/postgres-and-search`.
 
-Thủ tục hằng ngày: skill `v9-db`.
+Thủ tục hằng ngày: `docs/workspaces/db.md`.

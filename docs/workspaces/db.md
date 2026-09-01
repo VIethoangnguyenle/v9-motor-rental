@@ -1,11 +1,8 @@
----
-name: v9-db
-description: Luật viết code trong packages/db (Drizzle + migration SQL): drizzle-kit push bị cấm, db:migrate dùng migrator tự viết chứ không phải drizzle-kit migrate, mọi script phải tự mang --env-file, và ba service dùng chung Postgres nhưng chỉ packages/db được đổi schema. Dùng TRƯỚC khi đụng schema hay migration.
----
-
 # packages/db
 
-Kiến trúc chung: [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) · Quy trình: [`CLAUDE.md`](../../CLAUDE.md) · ADR: Serena memory `architecture/*`.
+Tài liệu tham chiếu cho workspace này — **đọc khi sắp sửa code ở đây**, không nạp sẵn.
+
+Kiến trúc chung: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · Quy trình: [`../../.claude/CLAUDE.md`](../../.claude/CLAUDE.md) · ADR: Serena memory `architecture/*`.
 
 ## `drizzle-kit push` bị **cấm**
 

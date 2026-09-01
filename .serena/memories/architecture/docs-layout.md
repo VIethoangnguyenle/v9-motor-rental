@@ -47,5 +47,5 @@ rằng workspace **thắng** root khi hai bên nói cùng một chuyện. Nghĩa
 thiết kế. Đã rà: không file nào hiện mâu thuẫn quy trình MCP mới.
 
 ~~**Đã biết là lỗi thời:** `packages/db/CLAUDE.md` bảng migration dừng ở `0008`.~~ **Đã sửa
-2026-09-01** — nội dung nay ở skill `v9-db`, bảng migration đủ `0009`–`0012`, mỗi dòng đối chiếu
+2026-09-01** — nội dung nay ở `docs/workspaces/db.md`, bảng migration đủ `0009`–`0012`, mỗi dòng đối chiếu
 với SQL thật. Câu `customers`/`rentals` "chưa có" thì commit tách đã bỏ sẵn, không phải sửa.

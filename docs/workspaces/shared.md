@@ -1,11 +1,8 @@
----
-name: v9-shared
-description: Luật viết code trong packages/shared — functional core: TDD NGHIÊM bắt buộc không ngoại lệ, src/domain/** không được import bất cứ gì, client.ts phải giữ generic, Vnd là số nguyên đồng, overlaps() dùng nửa khoảng. Dùng TRƯỚC khi sửa bất cứ file nào trong packages/shared.
----
-
 # packages/shared
 
-Kiến trúc chung: [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) · Quy trình: [`CLAUDE.md`](../../CLAUDE.md) · ADR: Serena memory `architecture/*`.
+Tài liệu tham chiếu cho workspace này — **đọc khi sắp sửa code ở đây**, không nạp sẵn.
+
+Kiến trúc chung: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · Quy trình: [`../../.claude/CLAUDE.md`](../../.claude/CLAUDE.md) · ADR: Serena memory `architecture/*`.
 
 ## TDD nghiêm — bắt buộc, không có ngoại lệ
 

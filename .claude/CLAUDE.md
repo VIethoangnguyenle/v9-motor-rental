@@ -86,22 +86,30 @@ bài**, kèm nội dung skill của workspace liên quan. Không chép thì suba
 
 ## Quy trình coding
 
-### 1. Nạp skill của workspace TRƯỚC khi viết code
+### 1. Đọc tài liệu của workspace TRƯỚC khi viết code
 
-| Đụng vào                                    | Nạp skill      |
-| ------------------------------------------- | -------------- |
-| `apps/api`                                  | `v9-api`       |
-| `apps/staff`                                | `v9-staff`     |
-| `apps/web`                                  | `v9-web`       |
-| `packages/db`                               | `v9-db`        |
-| `packages/shared`                           | `v9-shared`    |
-| `eslint.config.js`, thêm thư mục code       | `v9-fences`    |
-| auth, role, session                         | `v9-auth`      |
-| Directus                                    | `v9-directus`  |
-| deploy, `compose.prod.yaml`                 | `v9-deploy`    |
-| cú pháp CodeGraph/Serena, probe sau upgrade | `v9-codegraph` |
+| Đụng vào          | Đọc                                                         |
+| ----------------- | ----------------------------------------------------------- |
+| `apps/api`        | [`docs/workspaces/api.md`](../docs/workspaces/api.md)       |
+| `apps/staff`      | [`docs/workspaces/staff.md`](../docs/workspaces/staff.md)   |
+| `apps/web`        | [`docs/workspaces/web.md`](../docs/workspaces/web.md)       |
+| `packages/db`     | [`docs/workspaces/db.md`](../docs/workspaces/db.md)         |
+| `packages/shared` | [`docs/workspaces/shared.md`](../docs/workspaces/shared.md) |
 
-Mỗi skill chứa **bẫy đã cắn thật** của workspace đó. `CLAUDE.md` của workspace chỉ còn là con trỏ.
+Mỗi file chứa **bẫy đã cắn thật** của workspace đó. `CLAUDE.md` của workspace là con trỏ 6 dòng,
+tự nạp khi bạn làm ở đó — nó nhắc bạn đọc file nào.
+
+Đây **cố ý không phải skill**: skill có mô tả nạp vào mọi phiên và một mục trong menu, mà tài liệu
+theo thư mục thì không cần discovery — con trỏ tự nạp đã dẫn tới nơi. Skill để dành cho **thủ tục
+mà bạn không tự biết là mình cần**:
+
+| Việc                                                     | Skill          |
+| -------------------------------------------------------- | -------------- |
+| Probe hàng rào kiến trúc sau khi đụng `eslint.config.js` | `v9-fences`    |
+| Auth, role, session, FK tới nhân viên                    | `v9-auth`      |
+| Directus drift sau khi nâng version                      | `v9-directus`  |
+| Chuẩn bị deploy                                          | `v9-deploy`    |
+| Cú pháp CodeGraph/Serena, probe sau upgrade              | `v9-codegraph` |
 
 ### 2. Mỗi commit phải TỰ DỰNG ĐƯỢC
 

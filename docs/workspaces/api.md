@@ -1,11 +1,8 @@
----
-name: v9-api
-description: Luật viết code trong apps/api (Bun + Elysia + TypeBox): ranh giới routes→services→infra, bắt buộc khai response schema và plugin name, bẫy SQLSTATE 23P01 hai tầng bọc, SELECT FOR UPDATE, seam auth mặc-định-chặn, và hai bẫy test đã cắn thật. Dùng TRƯỚC khi sửa bất cứ file nào trong apps/api.
----
-
 # apps/api
 
-Kiến trúc chung: [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) · Quy trình: [`CLAUDE.md`](../../CLAUDE.md) · ADR: Serena memory `architecture/*`.
+Tài liệu tham chiếu cho workspace này — **đọc khi sắp sửa code ở đây**, không nạp sẵn.
+
+Kiến trúc chung: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · Quy trình: [`../../.claude/CLAUDE.md`](../../.claude/CLAUDE.md) · ADR: Serena memory `architecture/*`.
 
 ## Luồng bắt buộc: `routes → services → infra`
 

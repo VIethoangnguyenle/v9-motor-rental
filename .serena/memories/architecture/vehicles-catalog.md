@@ -90,6 +90,6 @@ tự chốt đơn**; nhân viên tiếp nhận và chốt trong `apps/staff`. `P
 đổi ý của người dùng ngay trong 2026-08-05 (xem §1.1 `docs/plans/2026-08-05-round2-directus-staff-design.md`).
 
 Hệ quả đúng: va chạm đặt trùng **vẫn xảy ra thật**, luật `23P01 → 409` **vẫn bắt buộc**, chỉ là nó
-lộ ra với **nhân viên** chứ không với khách cuối. Skill `v9-web` giữ luật này.
+lộ ra với **nhân viên** chứ không với khách cuối. `docs/workspaces/web.md` giữ luật này.
 
 Liên quan: `mem:architecture/migrations` · `mem:architecture/postgres-and-search`

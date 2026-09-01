@@ -1,11 +1,8 @@
----
-name: v9-staff
-description: Luật viết code trong apps/staff (Vite + TanStack, PWA): vì sao không dùng DESIGN.md, VITE_API_URL nướng lúc build, PWA không chạy ở dev, hai tầng component, và một hàng rào auth duy nhất ở beforeLoad. Dùng TRƯỚC khi sửa bất cứ file nào trong apps/staff.
----
-
 # apps/staff
 
-Kiến trúc chung: [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) · Quy trình: [`CLAUDE.md`](../../CLAUDE.md) · ADR: Serena memory `architecture/*`.
+Tài liệu tham chiếu cho workspace này — **đọc khi sắp sửa code ở đây**, không nạp sẵn.
+
+Kiến trúc chung: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · Quy trình: [`../../.claude/CLAUDE.md`](../../.claude/CLAUDE.md) · ADR: Serena memory `architecture/*`.
 
 ## Styling: Tailwind v4, theme mặc định — **không** dùng `DESIGN.md`
 

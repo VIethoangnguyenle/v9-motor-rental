@@ -2,7 +2,7 @@
 
 ADR 2026-08-05, đối chiếu lại 2026-09-01. **Quyết định về danh tính nhân viên** (role ở
 `public.staff_users`, tự đăng ký → PENDING → OWNER duyệt, mã 6 số) nằm ở skill `v9-auth`; chi tiết
-implement (`CollectingResponse`, `resolve` vs `.state()`, bảng mã lỗi) ở skill **`v9-api`**
+implement (`CollectingResponse`, `resolve` vs `.state()`, bảng mã lỗi) ở **`docs/workspaces/api.md`**
 (`apps/api/CLAUDE.md` nay chỉ là con trỏ vào skill đó). File
 này giữ đúng một thứ hai nơi kia không có: **vì sao ghép kiểu này và nó có chạy được không.**
 

@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # apps/web
 
-⚠️ **Trước khi viết code ở đây: nạp skill `v9-web`.**
-Luật của workspace này (bẫy đã cắn thật, ranh giới, ràng buộc build) nằm trong đó.
+⚠️ **Trước khi viết code ở đây: đọc [`../../docs/workspaces/web.md`](../../docs/workspaces/web.md).**
+Bẫy đã cắn thật, ranh giới, ràng buộc build của workspace này nằm ở đó.
 
 Kiến trúc chung: [`../../docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) · Quy trình: [`../../.claude/CLAUDE.md`](../../.claude/CLAUDE.md) · ADR: Serena memory `architecture/*`.
