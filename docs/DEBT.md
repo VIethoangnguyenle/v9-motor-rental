@@ -368,8 +368,15 @@ nợ 2026-08-18, xem "Đã đóng trong Plan A" bên dưới cho cách chứng m
   chỉ lộ dưới StrictMode trong trình duyệt thật. Hồi quy sau này vẫn phải bắt bằng tay — thuộc món nợ
   test DOM ở trên.
 
-- **`bun run format:check` đỏ trên `main`** với 19 file, có từ trước đợt này (`819ba41`). Một trong
-  số đó — `docs/plans/2026-09-01-staff-visual-system-plan.md` — **prettier không idempotent**:
-  `--check` đỏ ngay sau `--write`, mỗi lần thêm 4 dấu cách vào một khối danh sách lồng sâu quanh
-  dòng 1329. Chạy `bun run format` lên file đó làm nó tệ hơn, không tốt hơn. CI không xanh được
-  chừng nào chưa xử lý.
+- ~~**`bun run format:check` đỏ trên `main`**~~ ✅ **đóng.** `main` (`819ba41`) đỏ 19 file; đợt này
+  tình cờ chữa 2 (agent chạy prettier lên file nó đụng), rồi `820c204` chạy nốt 17 file còn lại —
+  thuần hình thức, `typecheck` + 439 test + `eslint` xanh sau khi chạy.
+
+  Một file **không** chữa được bằng `bun run format`, và đó là nợ do **chính đợt này** tạo ra:
+  `docs/plans/2026-09-01-staff-visual-system-plan.md` làm prettier chạy vòng vô tận. Nguyên nhân đo
+  được: đoạn nối tiếp dưới mục `- [ ]` của Task 4b thụt 6 dấu cách, mà prettier chuẩn hoá đoạn nối
+  tiếp của list item về cột 2 — nên mỗi lần `--write` nó thêm 4 dấu cách và `--check` đỏ ngay sau
+  đó, md5 đổi qua cả ba lần chạy liên tiếp. Chuẩn hoá 9 dòng về 2 dấu cách (`b126d23`) là hết.
+
+  ⚠️ **Bài học chung**: `bun run format` không phải lúc nào cũng chữa được `format:check`. Khi hai
+  cái bất đồng, đừng kết luận prettier hỏng — tìm cấu trúc markdown làm nó dao động.
