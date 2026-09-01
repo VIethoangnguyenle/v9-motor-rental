@@ -1750,6 +1750,28 @@ gộp, không phải vòng lặp mở.
 Nó kiểm những thứ hàng rào test **không** kiểm được: tương phản trên nội dung thật, khoảng cách đã
 tính toán, đo dòng chữ, thứ tự tiêu điểm bàn phím, hành vi responsive.
 
+- [ ] **Step 9.3b: Hai món nợ đã biết, đã định vị — xác nhận rồi sửa trong đợt gộp**
+
+Hai chỗ dưới đây được tìm ra trong Task 8b, cùng **một lớp lỗi** với thứ Task 8b vừa dọn, nhưng cần
+một quyết định nên để lại cho đợt sửa gộp của gate:
+
+1. **`pages/fallback-pages.tsx` — `<main>` lồng nhau trên đường lỗi.** `NotFoundPage` và
+   `RouteErrorPage` dùng `ui/page-shell.tsx` (khung dành cho trang đứng **ngoài** `AppShell`), mà
+   chúng được gắn làm **mặc định của router**, nên chúng render tại chính route đã hỏng. Đo được:
+   `/customers/id-sai/sau` → **`main = 2`, `nav = 2`**.
+
+   Chú thích trong chính file đó biện minh `PageShell` cho ca **chưa đăng nhập** — và biện minh đó
+   **đúng**. Nên lời giải không phải đổi `PageShell`, mà là **hai fallback**: bản đứng ngoài shell
+   giữ nguyên, cộng một bản trong-shell (`<div>`) đăng ký ở `protectedLayoutRoute`. TanStack Router
+   cho khai `notFoundComponent`/`errorComponent` theo từng route.
+
+   `RoutePendingPage` đã là `<div>` trần — không đụng.
+
+2. **`BEAT_MS = 600` (TSX) và `600ms` (`@utility` trong `index.css`) khớp nhau bằng tay.** Lệch một
+   trong hai thì vòng sáng hoặc bị cắt giữa chừng, hoặc sheet đóng trước khi nó chạy xong. Chú thích
+   đã nói ra, nhưng **không có gì ép**. Cân nhắc một test đọc cả hai chỗ — cùng khuôn
+   `theme.test.ts` đang giữ khoá `localStorage` khớp giữa `theme.ts` và `index.html`.
+
 - [ ] **Step 9.4: Bốn thứ phải tự kiểm, vì test không bắt được**
 
 1. **Theme tối trên nội dung thật** — hàng rào chỉ đo cặp token. Nó **không** biết một chuỗi class ở

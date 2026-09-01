@@ -565,7 +565,7 @@ nên nó dùng một `::after` phủ lên animate `transform: scale()` + `opacit
 
 | #   | Chỗ                       | File                                                | Animate                        | Thời lượng | Easing     | Nói điều gì                             |
 | --- | ------------------------- | --------------------------------------------------- | ------------------------------ | ---------- | ---------- | --------------------------------------- |
-| 1   | hàng bấm được             | `stats/attention-list.tsx`, `customers/customer-table.tsx`, `layout/app-nav.tsx` | `background-color`, `border-color` | 120ms | standard | hàng này bấm được                       |
+| 1   | hàng bấm được             | `stats/attention-list.tsx`, `layout/app-nav.tsx`, `rentals/rental-form.tsx` | `background-color` | 120ms | standard | hàng này bấm được                       |
 | 2   | nút                       | `ui/button.tsx`                                     | `background-color`             | 120ms      | standard   | nút nhận được cú bấm                    |
 | 3   | vòng tiêu điểm            | `index.css :focus-visible`                          | **không animate**              | 0          | —          | vòng focus trễ là lỗi, không phải hiệu ứng |
 | 4   | modal / sheet vào–ra      | `ui/modal.tsx`                                      | `transform`, `opacity`, nền mờ | 280 / 180ms | enter / exit | lớp phủ tới từ đâu, đi về đâu           |
