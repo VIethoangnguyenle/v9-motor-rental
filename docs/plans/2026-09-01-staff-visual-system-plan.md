@@ -39,8 +39,9 @@ biết domain"* ngay trên một import vi phạm luật đó.
 prop**. Cần đọc `lib/` thì hoặc đổi chỗ sang thư mục biết-domain (`layout/`, `rentals/`,
 `customers/`, `stats/`), hoặc đẩy phần biết-domain lên chỗ gọi.
 
-Vì vậy `status-chip.tsx` (Task 4) nằm ở **`components/rentals/`**, không phải `ui/` — nó cần
-`STATUS_ICON` và `getRentalClass` từ `lib/rental-status.ts`.
+Cùng luật đó áp cho mọi component đọc `lib/rental-status.ts`: chúng nằm ở `components/rentals/`,
+`components/stats/`, `components/customers/` — **không** ở `ui/`. Chiều ngược lại (`lib/` → `ui/`,
+kiểu `import type { IconName }`) thì hợp lệ.
 
 **Không được sửa `eslint.config.js` để lách.** Đụng file đó là kéo theo bốn probe của skill
 `v9-fences`, và hàng rào này là cố ý.
@@ -74,7 +75,8 @@ Vì vậy `status-chip.tsx` (Task 4) nằm ở **`components/rentals/`**, không
 | `apps/staff/src/components/ui/theme-toggle.tsx` | **Tạo.** Nút gạt ba trạng thái. | 3 |
 | `apps/staff/src/components/layout/app-nav.tsx` | **Sửa.** Gắn nút gạt vào chân sidebar và sheet Thêm. | 3 |
 | `apps/staff/src/components/ui/icon.tsx` | **Sửa.** Thêm 6 icon; `StatusDot` nhận `name`. | 4 |
-| `apps/staff/src/components/rentals/status-chip.tsx` | **Tạo.** Chip trạng thái = màu **+ hình**. | 4 |
+| `apps/staff/src/lib/rental-status.ts` | **Sửa.** `STATUS_ICON` + `statusIconOf`. | 4, 4b |
+| `apps/staff/src/components/rentals/calendar-{timeline,month}.tsx` | **Sửa.** Thanh đơn mang hình trạng thái. | 4b |
 | `apps/staff/src/lib/rental-status.ts` | **Sửa.** Thêm `STATUS_ICON`; giữ nguyên logic màu. | 4 |
 | `apps/staff/src/lib/status-icon.test.ts` | **Tạo.** Hàng rào: 6 trạng thái → 6 icon khác nhau. | 4 |
 | `apps/staff/src/components/ui/alert.tsx` | **Sửa.** Icon theo tone. | 4 |
@@ -1018,7 +1020,7 @@ git commit -m "feat(staff): theme sáng/tối theo hệ điều hành, có nút 
 sửa được. Icon là kênh duy nhất còn lại.
 
 **Files:**
-- Create: `apps/staff/src/components/rentals/status-chip.tsx`, `apps/staff/src/lib/status-icon.test.ts`
+- Create: `apps/staff/src/lib/status-icon.test.ts`
 - Modify: `apps/staff/src/lib/rental-status.ts`, `apps/staff/src/components/ui/icon.tsx`,
   `apps/staff/src/components/ui/alert.tsx`, `apps/staff/src/components/stats/attention-list.tsx`
 
@@ -1223,6 +1225,106 @@ cùng màu, và hai dòng đó nằm CẠNH NHAU trong 'Cần chú ý'. Quét v�
 quả rỗng: không giá trị màu nào thoả cả hai ràng buộc. Nên hình gánh phần màu
 không gánh nổi."
 ```
+
+---
+
+## Task 4b — Icon trạng thái trên **thanh đơn của lịch**
+
+> **Vì sao có task này:** Task 4 land xong thì `STATUS_ICON` chỉ có **một** chỗ gọi trong app
+> (`attention-list.tsx`, và chỉ khoá `.OVERDUE`). Bốn khoá còn lại chưa render ở đâu. Plan gốc định
+> đóng lỗ đó bằng `components/rentals/status-chip.tsx` cho hai bảng khách hàng — **đó là lời giải sai
+> cho vấn đề đúng.**
+
+### Đo lại chỗ nào thật sự thủng
+
+| Chỗ | Kênh đang có | Kết luận |
+| --- | --- | --- |
+| `customer-table.tsx:210` · `customer-rental-history.tsx:89` | màu + **nhãn chữ nhìn thấy được** (`STATUS_LABEL`) | **Đủ.** Chữ là kênh thứ hai hợp lệ. Icon ở đây là trang trí. |
+| `calendar-timeline.tsx:189-199` | màu + chữ, nhưng chữ là **`customerName`**; trạng thái chỉ ở `title=` + `aria-label` | ⛔ **Thủng** |
+| `calendar-month.tsx:205-207` | màu + chữ, nhưng chữ là **tên xe**; trạng thái chỉ ở `title=` + `aria-label` | ⛔ **Thủng** |
+
+`aria-label` phục vụ trình đọc màn hình — đủ. `title=` **không bao giờ bắn khi chạm**, mà đây là PWA
+dùng trên điện thoại trong gara. Nên với người dùng **nhìn thấy, dùng chạm, mù màu**, trạng thái trên
+lịch đi bằng **màu và chỉ màu**. Đây đúng là chỗ critique 2026-09-01 chấm Recognition 2/10.
+
+Cặp nguy hiểm cụ thể: `quá hạn` (đỏ **đặc**) ↔ `đã trả` (xám **đặc**) — ΔE **0,073** dưới protanopia,
+cả hai nền đặc nên **cách tô không tách được**, và cả hai đều xuất hiện trên lịch. (`đã đặt` ↔
+`đang thuê` ở 0,077 thì **không** cần lo: cách tô viền-vs-đặc sống sót qua mọi kiểu mù màu.)
+
+### Phạm vi
+
+**Files:**
+- Modify: `apps/staff/src/lib/rental-status.ts` — thêm `statusIconOf(rental, now): IconName`
+- Modify: `apps/staff/src/components/rentals/calendar-timeline.tsx`
+- Modify: `apps/staff/src/components/rentals/calendar-month.tsx`
+
+**Không đụng** hai bảng khách hàng — chúng đã có nhãn chữ. **Không tạo** `status-chip.tsx`; nó bị bỏ
+khỏi plan vì hai chỗ định dùng nó không cần nó.
+
+- [ ] **Step 4b.1: Viết test cho `statusIconOf` TRƯỚC**
+
+Nó phải suy ra hai trạng thái **phái sinh** đúng như `rentalChipClass` đang làm — dùng chung
+`isOverdue`/`isPickupOverdue` của `@v9/shared/domain/rental`, **không** định nghĩa lại:
+
+```ts
+import { describe, expect, it } from "bun:test";
+import { STATUS_ICON, statusIconOf } from "./rental-status";
+
+const NOW = new Date("2026-09-10T00:00:00+07:00");
+const at = (d: string) => new Date(`${d}T00:00:00+07:00`);
+
+describe("statusIconOf — hình phải khớp CÙNG luật với màu", () => {
+  it("ONGOING quá hạn trả → OVERDUE, không phải ONGOING", () => {
+    const r = { status: "ONGOING" as const, startsAt: at("2026-09-01"), endsAt: at("2026-09-05") };
+    expect(statusIconOf(r, NOW)).toBe(STATUS_ICON.OVERDUE);
+  });
+
+  it("BOOKED quá giờ lấy → PICKUP_OVERDUE, không phải BOOKED", () => {
+    const r = { status: "BOOKED" as const, startsAt: at("2026-09-05"), endsAt: at("2026-09-20") };
+    expect(statusIconOf(r, NOW)).toBe(STATUS_ICON.PICKUP_OVERDUE);
+  });
+
+  it("ONGOING chưa tới hạn → ONGOING", () => {
+    const r = { status: "ONGOING" as const, startsAt: at("2026-09-05"), endsAt: at("2026-09-20") };
+    expect(statusIconOf(r, NOW)).toBe(STATUS_ICON.ONGOING);
+  });
+
+  it("COMPLETED → COMPLETED, không bị luật quá hạn cướp", () => {
+    const r = { status: "COMPLETED" as const, startsAt: at("2026-09-01"), endsAt: at("2026-09-05") };
+    expect(statusIconOf(r, NOW)).toBe(STATUS_ICON.COMPLETED);
+  });
+});
+```
+
+⚠️ Ca cuối là ca dễ sai nhất: `COMPLETED` có `endsAt` trong quá khứ, nên một cách viết ngây thơ sẽ
+gán nó thành `OVERDUE`. `isOverdue` của shared đã lọc theo `status === "ONGOING"` — **dùng lại nó**.
+
+- [ ] **Step 4b.2: Chạy, xác nhận đỏ vì thiếu export** (`statusIconOf` chưa tồn tại), không phải lỗi cú pháp.
+
+- [ ] **Step 4b.3: Viết `statusIconOf`**, đặt ngay dưới `STATUS_ICON` trong `rental-status.ts`. Nhận
+      cùng hình dạng structural mà `rentalChipClass` nhận (`{ status, startsAt, endsAt }`) để hai
+      hàm không bao giờ bất đồng về "quá hạn là gì".
+
+- [ ] **Step 4b.4: Chạy, xác nhận xanh.**
+
+- [ ] **Step 4b.5: Render icon trên thanh timeline** (`calendar-timeline.tsx:188-199`).
+
+      Dùng `<Icon name={statusIconOf(rental, now)} size="sm" />` — **`size="sm"` (12px)**, cùng cỡ
+      dấu "còn tiếp" đã có trong thanh. Đặt **trước** `customerName`, trong cùng `flex gap-1`.
+
+      ⚠️ Thanh đơn hẹp và `customerName` đang `truncate`. Icon `shrink-0` (đã có sẵn trong `Icon`)
+      nên nó không bị bóp; chỗ nhường là tên khách. Đó là đánh đổi đúng: tên khách còn đọc được một
+      phần vẫn hữu ích, còn trạng thái sai màu thì vô dụng hoàn toàn.
+
+- [ ] **Step 4b.6: Render icon trên chip tháng** (`calendar-month.tsx:205-207`), cùng cách.
+
+- [ ] **Step 4b.7: Kiểm mắt trên bản BUILD**, ở 390px và 1440px, cả hai chế độ lịch:
+      1. Mỗi thanh/chip có icon, và icon **khớp màu** (thanh đỏ đặc phải mang tam giác).
+      2. DevTools → Rendering → **Achromatopsia** (phép thử nặng nhất): hai thanh `quá hạn` và
+         `đã trả` **vẫn phân biệt được**.
+      3. Tên khách vẫn đọc được ở thanh hẹp nhất — chụp màn hình chỗ hẹp nhất tìm được.
+
+- [ ] **Step 4b.8: Commit** — `feat(staff): thanh đơn trên lịch mang hình trạng thái, không chỉ màu`
 
 ---
 
