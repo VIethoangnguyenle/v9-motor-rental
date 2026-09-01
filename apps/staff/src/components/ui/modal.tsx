@@ -190,6 +190,32 @@ export function Modal({
     const handleClose = () => {
       if (unmounting) return;
 
+      // ⚠️ `dialog.close()` XẾP HÀNG sự kiện `close` chứ không bắn đồng bộ, nên
+      // một `close` do cleanup của LẦN CHẠY TRƯỚC phát ra vẫn còn đang bay khi
+      // listener này được gắn. StrictMode dựng đúng chuỗi đó trong MỘT task:
+      // mount → cleanup (`el.close()`, sự kiện xếp hàng) → mount lại
+      // (`showModal()` rồi gắn listener này) → sự kiện rơi vào ĐÂY. Thiếu dòng
+      // dưới thì nó bị đọc là "người dùng đóng", `finish()` gọi `onClose`, và
+      // phía gọi gỡ lớp phủ ngay khi vừa mở. Đo được trên `vite dev`: bấm nút
+      // mở xong `document.querySelectorAll("dialog").length === 0` ở cả ba lớp
+      // phủ; bỏ `<StrictMode>` khỏi `main.tsx` thì ra `dialogs=1, open=true`.
+      // Bản build KHÔNG dính (production không double-invoke effect) — nên đây
+      // là lỗi chỉ ở dev, và nó chặn toàn bộ vòng kiểm thị giác trên dev.
+      //
+      // Phân biệt bằng `el.open`, không bằng một cờ "vừa tháo". Đo bằng một
+      // listener `close` pha capture gắn ngay lúc `<dialog>` vào DOM: trên
+      // `vite dev` có đúng MỘT sự kiện, tới 9ms sau khi mount, và `el.open ===
+      // true` — vì lần mount sau gọi `showModal()` TRƯỚC khi gắn listener này.
+      // Trên bản build cũng một sự kiện, nhưng `el.open === false`; tức dòng
+      // dưới không bao giờ chạm đường đi của bản build.
+      //
+      // Mọi đường đóng THẬT (Esc, bấm nền, nút ✕ qua `close`) đi qua
+      // `dialog.close()`, mà `close()` gỡ `open` TRƯỚC khi xếp hàng sự kiện —
+      // nên ở đó luôn `false` và không cái nào bị nuốt. Một cờ sống qua hai lần
+      // chạy effect thì còn phải lo nó kẹt lại `true` khi sự kiện không tới;
+      // `el.open` không mang trạng thái nào nên không kẹt được.
+      if (el.open) return;
+
       // ⚠️ `<dialog>` đã đóng nhưng còn nằm trong top layer suốt 180ms hiệu ứng
       // ra. `pointer-events: none` ở `index.css` che được CHUỘT, không che được
       // BÀN PHÍM: mọi nút và link bên trong vẫn ở nguyên trong thứ tự Tab, nên
@@ -225,6 +251,10 @@ export function Modal({
       clearTimeout(exitTimer);
       el.removeEventListener("transitionend", onExitEnd);
       el.removeEventListener("close", handleClose);
+      // Gỡ listener xong mới `close()` — nhưng thế KHÔNG đủ, vì sự kiện `close`
+      // được xếp hàng chứ không bắn tại chỗ: nó tới sau, và rơi vào listener của
+      // lần chạy effect KẾ TIẾP nếu có. Chỗ bắt nó là guard `el.open` đầu
+      // `handleClose`.
       if (el.open) el.close();
     };
   }, []);
