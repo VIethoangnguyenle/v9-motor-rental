@@ -75,6 +75,15 @@ trắng phải đạt 4.5:1": `L=55.7%` là mức sáng nhất còn đạt, đo 
 Hue 200 chọn vì nó xa 255 đủ để phân biệt, nhưng vẫn nằm trong nửa lạnh — không đọc thành "cảnh
 báo" như hue vàng/đỏ vốn đã có nghĩa riêng trong hệ.
 
+⚠️ **Hue 200 không gỡ được va chạm dưới tritanopia** (ΔE 0,040 với `accent`) — tritanopia gộp trục
+lam–lục, mà `accent` là lam. Quét vét cạn cho thấy nghiệm an toàn dưới **mọi** kiểu nhìn đều đòi
+`L ≤ 0,39`, tức bắt "đang thuê" phải tối hơn "đã trả" — đảo ngược thứ bậc ngữ nghĩa của hệ. Giữ hue
+200 và để **kênh hình dạng** gánh phần còn lại; lý lẽ đầy đủ ở §2.5b.
+
+Điều này vẫn là cải thiện lớn, không phải hoà: trước đợt này ΔE là **0,000 ở cả bốn kiểu nhìn** —
+hai nghĩa dùng chung đúng một màu với **mọi** người xem. Nay chỉ còn một kiểu nhìn hiếm gặp bị ảnh
+hưởng, và ở đó hai token cũng không bao giờ đứng cạnh nhau (một là nút, một là chip).
+
 ### 1.3 `--color-border` 1,35:1 — nhưng sửa bằng cách **tách token**, không phải làm đậm
 
 Critique 2026-09-01 ghi mọi viền trong app đo được 1,35:1 trên trắng và gọi đó là lỗi. Chỉ đúng một
@@ -165,7 +174,7 @@ Chi phí: 0. Cùng số lượng token, cùng số dòng CSS.
 | `--color-warning`           | `oklch(52% 0.109 75)`    | `#8d5e02` | cảnh báo — chroma vào gamut |
 | `--color-status-ongoing`    | `oklch(55.7% 0.094 200)` | `#048489` | đang thuê — **đổi hue**     |
 | `--color-status-booked`     | `oklch(50% 0.09 255)`    | —         | đã đặt — _giữ nguyên_       |
-| `--color-status-completed`  | `oklch(46% 0 255)`       | —         | đã trả — _giữ nguyên_       |
+| `--color-status-completed`  | `oklch(42% 0 255)`       | `#4d4d4d` | đã trả — **L 46% → 42%**, xem §2.5b |
 | `--color-status-overdue-soft` | `oklch(96% 0.019 27)`   | `#ffedeb` | nền chip quá hạn            |
 | `--color-warning-soft`      | `oklch(96% 0.032 75)`    | `#ffefdb` | nền chip cảnh báo           |
 | `--color-accent-soft`       | `oklch(96% 0.019 255)`   | `#eaf3ff` | nền chip accent             |
@@ -303,12 +312,75 @@ Việc này cũng đóng luôn một phát hiện khác của critique (Recognit
 màu, không có chú giải ở đâu, và `STATUS_LABEL` chỉ tới màn hình qua `title=` — thứ **không bao giờ
 bắn khi chạm**, trên chính thiết bị mà PWA này nhắm tới.
 
-#### Hai cặp gần nhau khác — đã biết, chấp nhận
+#### 2.5b Bản chất cấu trúc — không phải một danh sách ngoại lệ lẻ
 
-`đã đặt` ↔ `hành động` đo được ΔE=0,086 ngay ở **nhìn thường**: cả hai cùng hue 255, chỉ khác chroma.
-Chấp nhận vì **cách tô đã tách chúng** — `booked` là viền + nền nhạt, `accent` là nền đặc. Đó đúng là
-luật hai chiều mà `rental-status.ts` đã dựng (hue = có cần xử lý không · cách tô = xe rời shop chưa).
-Không thêm token thứ bảy để chữa một thứ mà cách tô đã chữa.
+⚠️ Mục này viết lại sau khi thi công Task 2. Bản đầu ghi cặp `quá hạn ↔ cảnh báo` như một ca cá
+biệt. **Nó không cá biệt.** Đo cả sáu màu trạng thái × bốn kiểu nhìn cho thấy nhiều cặp dưới ngưỡng,
+và nguyên nhân chung không nằm ở chỗ chọn màu.
+
+**Sáu trạng thái đều tô nền đặc + chữ trắng.** Ràng buộc "chữ trắng ≥ 4,5:1" ghim cả sáu vào dải
+`L ∈ [0,42; 0,557]`. Mù màu xoá hue, nên thứ duy nhất còn lại để phân biệt là **độ sáng** — và chỉ
+còn ~0,14 đơn vị L chia cho sáu màu. **Không cách chọn màu nào nhét vừa sáu màu phân biệt được vào
+đó.**
+
+Quét vét cạn xác nhận: nghiệm an toàn dưới mọi kiểu nhìn **có tồn tại** (1375 nghiệm khi ràng buộc
+với cả bảng), nhưng **tất cả nằm ở `L ≤ 0,39`** — tức đòi "đang thuê" phải tối hơn "đã trả". Đó là
+đảo ngược thứ bậc ngữ nghĩa của hệ để đổi lấy một chỉ số. Không đánh đổi.
+
+**Hệ quả cho thiết kế — và đây là điều đáng giá nhất của cả §2.5:**
+
+> Đuổi theo từng cặp màu là sai hướng. Kênh **hình dạng** (§5, `STATUS_ICON`, sáu icon phân biệt)
+> mới là thứ gánh, và nó gánh cho **mọi** cặp cùng lúc chứ không riêng cặp nào.
+
+Vì vậy §5 **không phải một hạng mục có thể cắt để tiết kiệm**. Cắt nó là hệ màu mất kênh thứ hai ở
+mọi cặp, không phải ở một cặp.
+
+**Hai chỗ đã sửa được bằng màu thì vẫn phải sửa** — ngoại lệ dành cho thứ không sửa được, không dành
+cho thứ ngại sửa:
+
+| Cặp                       | Trước  | Sau    | Xử lý                                        |
+| ------------------------- | ------ | ------ | -------------------------------------------- |
+| `đang thuê` ↔ `hành động` | 0,000  | 0,040  | đổi hue 255 → 200 (§1.2). Còn dưới ngưỡng ở tritanopia; hai token này **không bao giờ đứng cạnh nhau** — một là nút, một là chip |
+| `đang thuê` ↔ `đã trả`    | 0,131  | 0,138  | **hồi quy do đợt này gây ra** (tụt còn 0,100), đã chữa bằng `status-completed` L 46% → **42%** |
+
+Cặp thứ hai là bài học riêng: nó **đang ở trên ngưỡng** và bị chính đợt này đẩy xuống dưới. Nó cũng
+là cặp nguy hiểm nhất trong bảng — `ONGOING` và `COMPLETED` **đều tô nền đặc** và **đứng cạnh nhau**
+trong `customer-rental-history.tsx` và `customer-table.tsx`, nơi màu là kênh duy nhất. Hạ `completed`
+xuống L=42% cải thiện cả ba chỉ số cùng lúc (ΔE 0,138 · chữ trắng 8,46:1 · trên `*-soft` 7,53:1),
+không đánh đổi gì.
+
+`đã đặt` ↔ `hành động` (ΔE=0,086 ngay ở nhìn thường, cùng hue 255) **giữ nguyên**: **cách tô đã tách
+chúng** — `booked` là viền + nền nhạt, `accent` là nền đặc. Đó đúng là luật hai chiều mà
+`rental-status.ts` đã dựng (hue = có cần xử lý không · cách tô = xe rời shop chưa). Không thêm token
+thứ bảy để chữa thứ mà cách tô đã chữa.
+
+**Luật cho hàng rào:** ngoại lệ ghi ở mức `kiểu nhìn | màu A | màu B`, **không** ở mức cặp. Ngoại lệ
+mức cặp tha luôn những kiểu nhìn mà cặp đó thật ra vẫn ổn — và một suppression rộng hơn mức cần là
+một suppression sẽ che mất hồi quy sau này. Nó vừa che mất đúng cặp `đang thuê ↔ đã trả` ở trên.
+
+Hàng rào cũng canh **hai chiều**: một cặp đã khai ngoại lệ mà nay qua ngưỡng thì test **cũng đỏ**,
+kèm yêu cầu xoá khỏi bảng. Một bảng suppression chỉ an toàn chừng nào nó không mục được.
+
+#### 2.5c Một cặp cố ý KHÔNG đuổi theo — `quá hạn` ↔ `đã trả` (ΔE 0,073)
+
+Cặp này **chữa được bằng màu**, và vẫn quyết định không chữa. Ghi ra vì im lặng ở đây sẽ đọc thành
+chỗ bỏ sót.
+
+Đo được: hạ `status-completed` xuống `L ≤ 0,33` là cặp này qua ngưỡng (`L=32%` → ΔE 0,136). Nhưng:
+
+- **`đã trả` là trạng thái xuất hiện nhiều nhất trong sản phẩm** — mọi đơn trong quá khứ đều mang
+  nó. Bảng lịch sử thuê của một khách quen gần như toàn chip `đã trả`.
+- Ở `L=32%` chip đó thành một mảng xám đậm. Một bảng đầy chip xám đậm nặng thị giác hơn hẳn, và nó
+  làm _lịch sử_ trông khẩn cấp hơn _hiện tại_ — ngược hẳn thứ bậc mà màn hình cần.
+- Đây đúng là ca mà §2.5b nói tới: **đổi một thứ bậc ngữ nghĩa để lấy một chỉ số.**
+
+Kênh gánh: `check` (đã trả) và `alert-triangle` (quá hạn) là **cặp hình khác nhau nhất trong bộ sáu
+icon** — dấu kiểm mảnh vs tam giác đặc. Chọn cặp icon này không phải ngẫu nhiên; nó được chọn **vì**
+cặp màu này là cặp yếu nhất còn lại.
+
+`status-completed` dừng ở **L=42%**: đó là mức chữa được `đang thuê ↔ đã trả` (hồi quy thật, §2.5b)
+và `đã trả ↔ cảnh báo`, mà chưa phải trả giá thị giác nào — nó còn cải thiện cả tương phản chữ trắng
+(7,13 → 8,46:1). Đi xa hơn mới bắt đầu phải trả giá.
 
 ---
 
