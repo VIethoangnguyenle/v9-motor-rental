@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ApiErrorCode } from "@v9/api";
 import { formatVnd, roundVnd } from "@v9/shared/domain/money";
 import { SHOP_TIMEZONE } from "@v9/shared/domain/rental";
@@ -143,6 +143,14 @@ export function RentalForm({
 }) {
   const qc = useQueryClient();
 
+  /**
+   * Hàm đóng của `Modal`, giữ trong ref để `onSuccess` của mutation với tới
+   * được — nó nằm ngoài tầm của render prop. Giá trị mặc định là no-op chứ
+   * không phải `onClose`: trước lượt vẽ đầu tiên chưa có `<dialog>` nào để mà
+   * đóng, và một mutation không thể thành công trước khi form được vẽ.
+   */
+  const closeRef = useRef<() => void>(() => undefined);
+
   // Esc, bẫy Tab, `inert` cho phần còn lại của trang và trả tiêu điểm về nút đã
   // mở form: tất cả đã thuộc `ui/modal.tsx` (`dialog.showModal()`). Chỗ này từng
   // tự gắn một listener `keydown` lên `window` cho riêng Esc — ba thứ còn lại
@@ -275,7 +283,7 @@ export function RentalForm({
         startDate,
         endDate,
       });
-      onClose();
+      closeRef.current();
     },
   });
 
@@ -297,256 +305,279 @@ export function RentalForm({
     // `placement="top"`: form dài và người dùng đang GÕ, nên bàn phím ảo đẩy từ
     // dưới lên — neo đáy thì các ô nhập cuối bị đẩy khỏi màn hình.
     <Modal label="Lên đơn thuê xe" placement="top" onClose={onClose}>
-      <div className="card-pad">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-bold text-ink">Lên đơn thuê xe</h2>
-          <Button type="button" variant="ghost" onClick={onClose} aria-label="Đóng">
-            <Icon name="close" />
-          </Button>
-        </div>
+      {(close) => {
+        // Ghi vào ref NGAY trong lượt vẽ, cùng khuôn `onCloseRef` của
+        // `ui/modal.tsx`: `onSuccess` của mutation nằm ngoài tầm của render
+        // prop, mà đó là đường đóng hay dùng thứ hai của form này. Không có
+        // dòng này thì "tạo đơn xong" lại gỡ thẳng component và mất hiệu ứng
+        // ra, đúng lỗi vừa sửa cho nút ✕. `close` ổn định (`useCallback` deps
+        // rỗng) nên gán lại là vô hại.
+        closeRef.current = close;
+        return (
+          <div className="card-pad">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-bold text-ink">Lên đơn thuê xe</h2>
+              <Button type="button" variant="ghost" onClick={close} aria-label="Đóng">
+                <Icon name="close" />
+              </Button>
+            </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <Select
-              label="Xe"
-              required
-              disabled={fleet.isPending}
-              value={vehicleId}
-              onChange={(e) => setVehicleId(e.target.value)}
-            >
-              <option value="">{fleet.isPending ? "Đang tải…" : "— Chọn xe —"}</option>
-              {fleet.data?.ok &&
-                fleet.data.vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {vehicleLabel(v)}
-                  </option>
-                ))}
-            </Select>
-            {fleet.data?.ok === false && (
-              <Alert tone="error">{errorMessage(fleet.data.value, "Không tải được đội xe")}</Alert>
-            )}
-          </div>
-
-          {/* ── Khách hàng ────────────────────────────────────────────── */}
-          <div className="flex flex-col gap-2">
-            <span className="text-sm text-ink">Khách hàng</span>
-
-            {customer ? (
+            <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
               <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between gap-3 rounded-card border border-border px-3 py-2">
-                  <span className="text-sm text-ink">
-                    {customer.fullName} · {customer.phone}
-                  </span>
-                  <Button type="button" variant="ghost" onClick={clearCustomer}>
-                    Đổi
-                  </Button>
-                </div>
-                {reusedExisting && (
-                  <p className="text-sm text-muted">
-                    Khách hàng này đã có trong hệ thống — đã dùng hồ sơ có sẵn.
-                  </p>
+                <Select
+                  label="Xe"
+                  required
+                  disabled={fleet.isPending}
+                  value={vehicleId}
+                  onChange={(e) => setVehicleId(e.target.value)}
+                >
+                  <option value="">{fleet.isPending ? "Đang tải…" : "— Chọn xe —"}</option>
+                  {fleet.data?.ok &&
+                    fleet.data.vehicles.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {vehicleLabel(v)}
+                      </option>
+                    ))}
+                </Select>
+                {fleet.data?.ok === false && (
+                  <Alert tone="error">
+                    {errorMessage(fleet.data.value, "Không tải được đội xe")}
+                  </Alert>
                 )}
               </div>
-            ) : (
-              <>
-                <p className="text-sm text-muted">Chọn hoặc tạo khách hàng trước khi lên đơn.</p>
 
-                {customerMode === "search" ? (
-                  <div className="flex flex-col gap-2">
-                    <TextField
-                      label="Tìm khách (tên hoặc số điện thoại)"
-                      value={searchText}
-                      onChange={(e) => setSearchText(e.target.value)}
-                      placeholder="vd. Trần Văn A hoặc 0912 345 678"
-                    />
+              {/* ── Khách hàng ────────────────────────────────────────────── */}
+              <div className="flex flex-col gap-2">
+                <span className="text-sm text-ink">Khách hàng</span>
 
-                    {customerResults.isFetching && <p className="text-sm text-muted">Đang tìm…</p>}
-
-                    {customerResults.data?.ok === false && (
-                      <Alert tone="error">
-                        {errorMessage(customerResults.data.value, "Không tìm được khách hàng")}
-                      </Alert>
-                    )}
-
-                    {customerResults.data?.ok &&
-                      customerResults.data.customers.length === 0 &&
-                      debouncedSearch.length > 0 &&
-                      !customerResults.isFetching && (
-                        <p className="text-sm text-muted">Không tìm thấy khách hàng nào khớp.</p>
-                      )}
-
-                    {customerResults.data?.ok && customerResults.data.customers.length > 0 && (
-                      <ul className="flex flex-col gap-1">
-                        {customerResults.data.customers.map((c) => (
-                          <li key={c.id}>
-                            <button
-                              type="button"
-                              onClick={() => selectCustomer(c, false)}
-                              className="flex min-h-11 w-full items-center justify-between gap-3 rounded-card border border-border px-3 text-left text-sm text-ink hover:bg-canvas"
-                            >
-                              <span>
-                                {c.fullName} · {c.phone}
-                              </span>
-                              <span aria-hidden className="text-muted">
-                                Chọn
-                              </span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-
-                    <Button type="button" variant="ghost" onClick={() => setCustomerMode("create")}>
-                      <Icon name="plus" className="mr-1" />
-                      Khách hàng mới
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <TextField
-                      label="Họ và tên"
-                      required
-                      value={newFullName}
-                      onChange={(e) => setNewFullName(e.target.value)}
-                    />
-                    <TextField
-                      label="Số điện thoại"
-                      required
-                      type="tel"
-                      value={newPhone}
-                      onChange={(e) => setNewPhone(e.target.value)}
-                    />
-                    {createCustomer.error && (
-                      <Alert tone="error">{createCustomer.error.message}</Alert>
-                    )}
-                    <div className="flex items-center gap-2">
-                      {/* `pending` và `disabled` tách đôi: ô trống là "chưa
-                          làm được" (mờ đi là đúng), còn đang tạo là "đang làm,
-                          đọc nhãn đi" (phải giữ tương phản). */}
-                      <Button
-                        type="button"
-                        pending={createCustomer.isPending}
-                        disabled={newFullName.trim() === "" || newPhone.trim() === ""}
-                        onClick={() => createCustomer.mutate()}
-                      >
-                        {createCustomer.isPending ? "Đang tạo…" : "Tạo & chọn khách hàng"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => setCustomerMode("search")}
-                      >
-                        <Icon name="arrow-left" className="mr-1" />
-                        Quay lại tìm
+                {customer ? (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between gap-3 rounded-card border border-border px-3 py-2">
+                      <span className="text-sm text-ink">
+                        {customer.fullName} · {customer.phone}
+                      </span>
+                      <Button type="button" variant="ghost" onClick={clearCustomer}>
+                        Đổi
                       </Button>
                     </div>
+                    {reusedExisting && (
+                      <p className="text-sm text-muted">
+                        Khách hàng này đã có trong hệ thống — đã dùng hồ sơ có sẵn.
+                      </p>
+                    )}
                   </div>
-                )}
-              </>
-            )}
-          </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted">
+                      Chọn hoặc tạo khách hàng trước khi lên đơn.
+                    </p>
 
-          {/* ── Ngày ─────────────────────────────────────────────────── */}
-          <div className="flex flex-col gap-1">
-            <div className="flex flex-wrap gap-3">
-              <TextField
-                label="Từ ngày"
-                type="date"
-                required
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-              {/* Câu này từng là một `<p>` trần đặt DƯỚI cả hai ô — đúng chữ,
+                    {customerMode === "search" ? (
+                      <div className="flex flex-col gap-2">
+                        <TextField
+                          label="Tìm khách (tên hoặc số điện thoại)"
+                          value={searchText}
+                          onChange={(e) => setSearchText(e.target.value)}
+                          placeholder="vd. Trần Văn A hoặc 0912 345 678"
+                        />
+
+                        {customerResults.isFetching && (
+                          <p className="text-sm text-muted">Đang tìm…</p>
+                        )}
+
+                        {customerResults.data?.ok === false && (
+                          <Alert tone="error">
+                            {errorMessage(customerResults.data.value, "Không tìm được khách hàng")}
+                          </Alert>
+                        )}
+
+                        {customerResults.data?.ok &&
+                          customerResults.data.customers.length === 0 &&
+                          debouncedSearch.length > 0 &&
+                          !customerResults.isFetching && (
+                            <p className="text-sm text-muted">
+                              Không tìm thấy khách hàng nào khớp.
+                            </p>
+                          )}
+
+                        {customerResults.data?.ok && customerResults.data.customers.length > 0 && (
+                          <ul className="flex flex-col gap-1">
+                            {customerResults.data.customers.map((c) => (
+                              <li key={c.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => selectCustomer(c, false)}
+                                  className="flex min-h-11 w-full items-center justify-between gap-3 rounded-card border border-border px-3 text-left text-sm text-ink transition-[background-color] duration-(--duration-instant) ease-standard hover:bg-canvas"
+                                >
+                                  <span>
+                                    {c.fullName} · {c.phone}
+                                  </span>
+                                  <span aria-hidden className="text-muted">
+                                    Chọn
+                                  </span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setCustomerMode("create")}
+                        >
+                          <Icon name="plus" className="mr-1" />
+                          Khách hàng mới
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        <TextField
+                          label="Họ và tên"
+                          required
+                          value={newFullName}
+                          onChange={(e) => setNewFullName(e.target.value)}
+                        />
+                        <TextField
+                          label="Số điện thoại"
+                          required
+                          type="tel"
+                          value={newPhone}
+                          onChange={(e) => setNewPhone(e.target.value)}
+                        />
+                        {createCustomer.error && (
+                          <Alert tone="error">{createCustomer.error.message}</Alert>
+                        )}
+                        <div className="flex items-center gap-2">
+                          {/* `pending` và `disabled` tách đôi: ô trống là "chưa
+                          làm được" (mờ đi là đúng), còn đang tạo là "đang làm,
+                          đọc nhãn đi" (phải giữ tương phản). */}
+                          <Button
+                            type="button"
+                            pending={createCustomer.isPending}
+                            disabled={newFullName.trim() === "" || newPhone.trim() === ""}
+                            onClick={() => createCustomer.mutate()}
+                          >
+                            {createCustomer.isPending ? "Đang tạo…" : "Tạo & chọn khách hàng"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setCustomerMode("search")}
+                          >
+                            <Icon name="arrow-left" className="mr-1" />
+                            Quay lại tìm
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* ── Ngày ─────────────────────────────────────────────────── */}
+              <div className="flex flex-col gap-1">
+                <div className="flex flex-wrap gap-3">
+                  <TextField
+                    label="Từ ngày"
+                    type="date"
+                    required
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                  {/* Câu này từng là một `<p>` trần đặt DƯỚI cả hai ô — đúng chữ,
                   sai chỗ: nó nói về ô "Đến ngày" mà không có gì nối nó với ô đó,
                   và trình đọc màn hình không biết ô nào đang sai. Nay đi qua
                   `error` nên ô nhận `aria-invalid` + `aria-describedby`. */}
-              <TextField
-                label="Đến ngày"
-                type="date"
-                required
-                min={startDate || undefined}
-                error={
-                  startDate !== "" && endDate !== "" && endDate < startDate
-                    ? "Ngày kết thúc phải từ ngày bắt đầu trở đi."
-                    : undefined
-                }
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-            {days > 0 && <p className="text-sm text-muted">{days} ngày thuê.</p>}
-          </div>
+                  <TextField
+                    label="Đến ngày"
+                    type="date"
+                    required
+                    min={startDate || undefined}
+                    error={
+                      startDate !== "" && endDate !== "" && endDate < startDate
+                        ? "Ngày kết thúc phải từ ngày bắt đầu trở đi."
+                        : undefined
+                    }
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+                {days > 0 && <p className="text-sm text-muted">{days} ngày thuê.</p>}
+              </div>
 
-          {/* ── Tiền ─────────────────────────────────────────────────── */}
-          <div className="flex flex-wrap gap-3">
-            <TextField
-              label="Tổng tiền (đ)"
-              type="number"
-              required
-              min="0"
-              step="1000"
-              inputMode="numeric"
-              value={totalAmount}
-              onChange={(e) => setTotalAmount(e.target.value)}
-            />
-            <TextField
-              label="Tiền cọc (đ)"
-              type="number"
-              required
-              min="0"
-              step="1000"
-              inputMode="numeric"
-              value={depositAmount}
-              onChange={(e) => setDepositAmount(e.target.value)}
-            />
-          </div>
+              {/* ── Tiền ─────────────────────────────────────────────────── */}
+              <div className="flex flex-wrap gap-3">
+                <TextField
+                  label="Tổng tiền (đ)"
+                  type="number"
+                  required
+                  min="0"
+                  step="1000"
+                  inputMode="numeric"
+                  value={totalAmount}
+                  onChange={(e) => setTotalAmount(e.target.value)}
+                />
+                <TextField
+                  label="Tiền cọc (đ)"
+                  type="number"
+                  required
+                  min="0"
+                  step="1000"
+                  inputMode="numeric"
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(e.target.value)}
+                />
+              </div>
 
-          {/* Yêu cầu #3: CẢNH BÁO, không chặn — shop có quyền tính giá đặc biệt. */}
-          {priceLooksOff && selectedVehicle && expectedTotal !== null && (
-            <Alert tone="warning">
-              Tổng tiền {formatVnd(roundVnd(totalNum))} lệch nhiều so với giá niêm yết (
-              {formatVnd(selectedVehicle.pricePerDay)}/ngày × {days} ngày ≈{" "}
-              {formatVnd(expectedTotal)}). Kiểm tra lại có gõ nhầm số 0 không — vẫn lên đơn được nếu
-              đây là giá đặc biệt.
-            </Alert>
-          )}
-
-          <TextField
-            label="Ghi chú (không bắt buộc)"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
-
-          {/*
-           * Yêu cầu #1: `409 RENTAL_OVERLAP` phải nói đúng chuyện đã xảy ra.
-           * `errorMessage()` đã đọc đúng câu tiếng Việt backend viết
-           * ("Xe này đã có đơn trong khoảng thời gian đó") — không viết lại một
-           * bản khác ở đây. Thêm đúng MỘT thứ: đường dẫn xem lịch, để chủ shop
-           * nhìn thấy đơn đang chồng thay vì chỉ đọc một câu báo lỗi.
-           */}
-          {createRental.error && (
-            <Alert tone="error">
-              {createRental.error.message}
-              {overlapError && (
-                <>
-                  {" "}
-                  <Link
-                    to="/calendar"
-                    search={{ view: "timeline", from: startDate }}
-                    className="underline"
-                  >
-                    Xem lịch xe này →
-                  </Link>
-                </>
+              {/* Yêu cầu #3: CẢNH BÁO, không chặn — shop có quyền tính giá đặc biệt. */}
+              {priceLooksOff && selectedVehicle && expectedTotal !== null && (
+                <Alert tone="warning">
+                  Tổng tiền {formatVnd(roundVnd(totalNum))} lệch nhiều so với giá niêm yết (
+                  {formatVnd(selectedVehicle.pricePerDay)}/ngày × {days} ngày ≈{" "}
+                  {formatVnd(expectedTotal)}). Kiểm tra lại có gõ nhầm số 0 không — vẫn lên đơn được
+                  nếu đây là giá đặc biệt.
+                </Alert>
               )}
-            </Alert>
-          )}
 
-          <SubmitButton pending={createRental.isPending} pendingLabel="Đang tạo đơn…">
-            Tạo đơn
-          </SubmitButton>
-        </form>
-      </div>
+              <TextField
+                label="Ghi chú (không bắt buộc)"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+
+              {/*
+               * Yêu cầu #1: `409 RENTAL_OVERLAP` phải nói đúng chuyện đã xảy ra.
+               * `errorMessage()` đã đọc đúng câu tiếng Việt backend viết
+               * ("Xe này đã có đơn trong khoảng thời gian đó") — không viết lại một
+               * bản khác ở đây. Thêm đúng MỘT thứ: đường dẫn xem lịch, để chủ shop
+               * nhìn thấy đơn đang chồng thay vì chỉ đọc một câu báo lỗi.
+               */}
+              {createRental.error && (
+                <Alert tone="error">
+                  {createRental.error.message}
+                  {overlapError && (
+                    <>
+                      {" "}
+                      <Link
+                        to="/calendar"
+                        search={{ view: "timeline", from: startDate }}
+                        className="underline"
+                      >
+                        Xem lịch xe này →
+                      </Link>
+                    </>
+                  )}
+                </Alert>
+              )}
+
+              <SubmitButton pending={createRental.isPending} pendingLabel="Đang tạo đơn…">
+                Tạo đơn
+              </SubmitButton>
+            </form>
+          </div>
+        );
+      }}
     </Modal>
   );
 }

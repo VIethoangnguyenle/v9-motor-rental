@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 /**
  * ⚠️ `ui/` KHÔNG được biết domain — không import `lib/api`, không biết `Me` hay
@@ -81,10 +81,35 @@ export function Modal({
   readonly placement: ModalPlacement;
   /** Người dùng đã đóng — phía gọi gỡ component này khỏi cây. */
   readonly onClose: () => void;
-  readonly children: React.ReactNode;
+  /**
+   * Render prop, KHÔNG phải `ReactNode` — và đó là toàn bộ điểm của nó: nhận
+   * `children` dưới dạng hàm là cách duy nhất để phía gọi KHÔNG THỂ vẽ nội dung
+   * mà không được trao sẵn hàm đóng đúng.
+   *
+   * Ba chỗ gọi trước đây nối nút ✕ thẳng vào prop `onClose` của chính chúng,
+   * tức gỡ component khỏi cây ngay lập tức — đo được: 4ms sau cú bấm là
+   * `<dialog>` đã biến mất, và hiệu ứng ra không có một khung hình nào để chạy.
+   * `close` bên dưới đi qua `dialog.close()` nên nó chạy đủ.
+   *
+   * KHÔNG dùng context cho việc này: provider sẽ nằm BÊN DƯỚI phía gọi trong
+   * cây (nó ở trong `Modal`), mà cả ba nút ✕ lại nằm trong chính component gọi
+   * `<Modal>` — muốn đọc được context thì phải tách mỗi nút ✕ ra một component
+   * con, tức ba lần tách chỉ để lấy một hàm.
+   */
+  readonly children: (close: () => void) => React.ReactNode;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Nhờ chính `<dialog>` đóng, không gọi `onClose` thẳng. `onClose` vẫn bắn
+   * ĐÚNG MỘT LẦN: `close()` trên một dialog đã đóng là no-op theo spec (không
+   * có `open` thì trả về ngay), nên bấm ✕ hai lần thật nhanh chỉ sinh một event
+   * `close`, và `finish()` bên dưới còn tự gỡ listener sau lần đầu.
+   */
+  const close = useCallback(() => {
+    dialogRef.current?.close();
+  }, []);
 
   // Giữ callback MỚI NHẤT trong ref. Listener `close` gắn đúng một lần (deps
   // rỗng — `showModal()` chỉ được gọi lúc mount), nhưng `onClose` là arrow
@@ -139,12 +164,12 @@ export function Modal({
     //
     // Nên: giữ phần tử sống cho tới khi hiệu ứng ra chạy xong rồi mới báo.
     //
-    // ⚠️ Chỉ che được đường đi QUA `dialog.close()`: Esc và bấm nền. Nút ✕ của
-    // `rental-detail-sheet.tsx` và `rental-form.tsx` gọi thẳng prop `onClose`
-    // của phía gọi, nên chúng vẫn gỡ component ngay và KHÔNG có hiệu ứng ra —
-    // đo được: 4ms sau cú bấm ✕ thì `<dialog>` đã biến khỏi cây. Bịt chỗ đó
-    // đòi đổi API (Modal phải trao hàm đóng xuống cho children thay vì để phía
-    // gọi tự quyết), tức sửa cả ba chỗ gọi; không nằm trong phạm vi file này.
+    // ⚠️ Chỉ che được đường đi QUA `dialog.close()`. Đó là lý do `children` là
+    // render prop: mọi nút đóng của phía gọi phải dùng `close` được trao xuống,
+    // chứ không nối thẳng vào prop `onClose` của chính nó. Đường nào gỡ
+    // component mà không qua `close()` thì vẫn không có hiệu ứng ra, và không
+    // có gì kêu — cleanup bên dưới là một đường như vậy, cố ý: lúc đó phần tử
+    // đang bị gỡ vì lý do khác, không phải vì người dùng đóng.
     const finish = () => {
       if (unmounting) return;
       clearTimeout(exitTimer);
@@ -241,7 +266,7 @@ export function Modal({
         data-placement={placement}
         className={`absolute mx-auto max-h-[90dvh] w-full max-w-lg overflow-y-auto overscroll-contain bg-surface ${PANEL_PLACEMENT[placement]}`}
       >
-        {children}
+        {children(close)}
       </div>
     </dialog>
   );

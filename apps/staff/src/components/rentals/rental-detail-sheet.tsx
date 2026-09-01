@@ -1,11 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { formatVnd } from "@v9/shared/domain/money";
-import {
-  availableTransitions,
-  SHOP_TIMEZONE,
-  type RentalStatus,
-} from "@v9/shared/domain/rental";
+import { availableTransitions, SHOP_TIMEZONE, type RentalStatus } from "@v9/shared/domain/rental";
 import { errorMessage } from "../../lib/errors";
 import { changeRentalStatus, type CalendarRental, type FleetVehicle } from "../../lib/rentals";
 import {
@@ -68,12 +64,7 @@ interface RentalDetailSheetProps {
  * biên dịch được cho tới ngày luật đổi, và ngày đó nút vẫn mời người dùng đi một
  * đường server trả 409.
  */
-export function RentalDetailSheet({
-  rental,
-  vehicle,
-  onClose,
-  onChanged,
-}: RentalDetailSheetProps) {
+export function RentalDetailSheet({ rental, vehicle, onClose, onChanged }: RentalDetailSheetProps) {
   const queryClient = useQueryClient();
   /** Huỷ đơn là hành động không quay lại được — hỏi một nhịp trước khi gửi. */
   const [confirming, setConfirming] = useState<RentalStatus | null>(null);
@@ -119,109 +110,111 @@ export function RentalDetailSheet({
     // `placement="adaptive"`: đáy màn trên điện thoại (mở bằng cách chạm một
     // thanh trên lịch, ngón cái ở đó), giữa màn từ ≥640px.
     <Modal label={`Đơn thuê ${vehicleLabel}`} placement="adaptive" onClose={onClose}>
-      <div className="flex flex-col gap-4 card-pad">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="truncate text-base font-bold text-ink">{vehicleLabel}</h2>
-            <p className="mt-1 text-sm text-muted">
-              {rental.customerName ?? "—"}
-              {rental.customerPhone ? ` · ${rental.customerPhone}` : ""}
-            </p>
+      {(close) => (
+        <div className="flex flex-col gap-4 card-pad">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-bold text-ink">{vehicleLabel}</h2>
+              <p className="mt-1 text-sm text-muted">
+                {rental.customerName ?? "—"}
+                {rental.customerPhone ? ` · ${rental.customerPhone}` : ""}
+              </p>
+            </div>
+            <Button type="button" variant="ghost" onClick={close} aria-label="Đóng">
+              <Icon name="close" />
+            </Button>
           </div>
-          <Button type="button" variant="ghost" onClick={onClose} aria-label="Đóng">
-            <Icon name="close" />
-          </Button>
-        </div>
 
-        {/* Trạng thái hiện bằng CHỮ, không chỉ bằng màu — đây là chỗ duy nhất
+          {/* Trạng thái hiện bằng CHỮ, không chỉ bằng màu — đây là chỗ duy nhất
             trong app đọc được trạng thái mà không cần hover. */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={`rounded-card px-2 py-1 text-xs ${rentalChipClass(rental, now)}`}>
-            {STATUS_LABEL[rental.status]}
-          </span>
-          <span className="text-sm text-ink">
-            {DATE_FMT.format(rental.startsAt)} – {formatLastDay(rental.endsAt)}
-          </span>
-        </div>
-
-        <dl className="grid grid-cols-2 gap-px rounded-card border border-border bg-border">
-          <div className="bg-surface card-pad">
-            <dt className="text-xs text-muted">Tổng tiền</dt>
-            <dd className="text-sm font-semibold text-ink tabular-nums">
-              {formatVnd(rental.totalAmount)}
-            </dd>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-card px-2 py-1 text-xs ${rentalChipClass(rental, now)}`}>
+              {STATUS_LABEL[rental.status]}
+            </span>
+            <span className="text-sm text-ink">
+              {DATE_FMT.format(rental.startsAt)} – {formatLastDay(rental.endsAt)}
+            </span>
           </div>
-          <div className="bg-surface card-pad">
-            <dt className="text-xs text-muted">Tiền cọc</dt>
-            <dd className="text-sm font-semibold text-ink tabular-nums">
-              {formatVnd(rental.depositAmount)}
-            </dd>
-          </div>
-        </dl>
 
-        {rental.note && <p className="text-sm text-ink">{rental.note}</p>}
+          <dl className="grid grid-cols-2 gap-px rounded-card border border-border bg-border">
+            <div className="bg-surface card-pad">
+              <dt className="text-xs text-muted">Tổng tiền</dt>
+              <dd className="text-sm font-semibold text-ink tabular-nums">
+                {formatVnd(rental.totalAmount)}
+              </dd>
+            </div>
+            <div className="bg-surface card-pad">
+              <dt className="text-xs text-muted">Tiền cọc</dt>
+              <dd className="text-sm font-semibold text-ink tabular-nums">
+                {formatVnd(rental.depositAmount)}
+              </dd>
+            </div>
+          </dl>
 
-        {/*
-         * Giấy tờ + ảnh đứng TRÊN nút đổi trạng thái, không phải dưới: nhân
-         * viên chụp ảnh rồi mới bấm "đã giao xe", nên thứ tự trên màn hình khớp
-         * thứ tự việc làm ngoài đời. Đặt nút trước thì luồng tự nhiên là bấm
-         * xong rồi cuộn xuống chụp — và tấm ảnh "lúc giao" chụp sau khi xe đã đi.
-         */}
-        <HandoverDetails
-          rentalId={rental.id}
-          documentType={rental.documentType}
-          documentReturnedAt={rental.documentReturnedAt}
-          deliveryAddress={rental.deliveryAddress}
-        />
+          {rental.note && <p className="text-sm text-ink">{rental.note}</p>}
 
-        <HandoverPhotos rentalId={rental.id} />
+          {/*
+           * Giấy tờ + ảnh đứng TRÊN nút đổi trạng thái, không phải dưới: nhân
+           * viên chụp ảnh rồi mới bấm "đã giao xe", nên thứ tự trên màn hình khớp
+           * thứ tự việc làm ngoài đời. Đặt nút trước thì luồng tự nhiên là bấm
+           * xong rồi cuộn xuống chụp — và tấm ảnh "lúc giao" chụp sau khi xe đã đi.
+           */}
+          <HandoverDetails
+            rentalId={rental.id}
+            documentType={rental.documentType}
+            documentReturnedAt={rental.documentReturnedAt}
+            deliveryAddress={rental.deliveryAddress}
+          />
 
-        {change.error && <Alert tone="error">{change.error.message}</Alert>}
+          <HandoverPhotos rentalId={rental.id} />
 
-        {nextStatuses.length === 0 ? (
-          // Đơn đã kết thúc. Nói ra, đừng để một vùng nút trống người dùng tự đoán.
-          <p className="text-sm text-muted">Đơn đã kết thúc, không còn thao tác nào.</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {nextStatuses.map((to) => {
-              const destructive = to === "CANCELLED";
-              if (destructive && confirming === to) {
-                return (
-                  <div key={to} className="flex flex-col gap-2">
-                    <Alert tone="warning">
-                      Huỷ đơn này? Đơn đã huỷ không mở lại được, và xe sẽ trống lại trong khoảng{" "}
-                      {DATE_FMT.format(rental.startsAt)} – {formatLastDay(rental.endsAt)}.
-                    </Alert>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        pending={change.isPending}
-                        onClick={() => change.mutate(to)}
-                      >
-                        {change.isPending ? "Đang huỷ…" : "Huỷ đơn"}
-                      </Button>
-                      <Button type="button" variant="ghost" onClick={() => setConfirming(null)}>
-                        Quay lại
-                      </Button>
+          {change.error && <Alert tone="error">{change.error.message}</Alert>}
+
+          {nextStatuses.length === 0 ? (
+            // Đơn đã kết thúc. Nói ra, đừng để một vùng nút trống người dùng tự đoán.
+            <p className="text-sm text-muted">Đơn đã kết thúc, không còn thao tác nào.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {nextStatuses.map((to) => {
+                const destructive = to === "CANCELLED";
+                if (destructive && confirming === to) {
+                  return (
+                    <div key={to} className="flex flex-col gap-2">
+                      <Alert tone="warning">
+                        Huỷ đơn này? Đơn đã huỷ không mở lại được, và xe sẽ trống lại trong khoảng{" "}
+                        {DATE_FMT.format(rental.startsAt)} – {formatLastDay(rental.endsAt)}.
+                      </Alert>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          pending={change.isPending}
+                          onClick={() => change.mutate(to)}
+                        >
+                          {change.isPending ? "Đang huỷ…" : "Huỷ đơn"}
+                        </Button>
+                        <Button type="button" variant="ghost" onClick={() => setConfirming(null)}>
+                          Quay lại
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  );
+                }
+                return (
+                  <Button
+                    key={to}
+                    type="button"
+                    variant={destructive ? "ghost" : "primary"}
+                    pending={change.isPending}
+                    onClick={() => (destructive ? setConfirming(to) : change.mutate(to))}
+                  >
+                    {change.isPending && !destructive ? "Đang lưu…" : TRANSITION_LABEL[to]}
+                  </Button>
                 );
-              }
-              return (
-                <Button
-                  key={to}
-                  type="button"
-                  variant={destructive ? "ghost" : "primary"}
-                  pending={change.isPending}
-                  onClick={() => (destructive ? setConfirming(to) : change.mutate(to))}
-                >
-                  {change.isPending && !destructive ? "Đang lưu…" : TRANSITION_LABEL[to]}
-                </Button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </Modal>
   );
 }
