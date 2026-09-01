@@ -1,6 +1,7 @@
 # apps/api — CLAUDE.md
 
-Luật chung của repo ở [`../../CLAUDE.md`](../../CLAUDE.md). Đọc file đó trước.
+Kiến trúc và ràng buộc chung của repo ở [`../../docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md).
+Quy trình làm việc (CodeGraph → Serena) ở [`../../CLAUDE.md`](../../CLAUDE.md). Đọc cả hai trước.
 
 Bun + Elysia + TypeBox. Export `type App` từ `src/index.ts` — đó là nguồn type cho Eden Treaty
 ở cả hai frontend.
@@ -382,7 +383,7 @@ lần trước bị Ctrl-C), và fixture của `routes/staff.test.ts` được v
 
 ```bash
 docker compose up -d                                  # postgres + minio
-bun --env-file=.env run --filter @v9/api dev          # cần --env-file, xem CLAUDE.md gốc
+bun --env-file=.env run --filter @v9/api dev          # cần --env-file, xem docs/ARCHITECTURE.md
 curl localhost:3001/health        # {"status":"ok"}
 curl localhost:3001/health/deep   # kiểm tra thật cả postgres lẫn minio
 ```

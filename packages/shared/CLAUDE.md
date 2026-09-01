@@ -1,6 +1,7 @@
 # packages/shared — CLAUDE.md
 
-Luật chung của repo ở [`../../CLAUDE.md`](../../CLAUDE.md). Đọc file đó trước.
+Kiến trúc và ràng buộc chung của repo ở [`../../docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md).
+Quy trình làm việc (CodeGraph → Serena) ở [`../../CLAUDE.md`](../../CLAUDE.md). Đọc cả hai trước.
 
 Đây là **functional core** của cả hệ thống. Mọi phép tính giá thuê, tiền cọc, tính khả dụng nằm
 ở đây. `apps/api` và hai frontend **không được implement lại** — ESLint chặn thật.

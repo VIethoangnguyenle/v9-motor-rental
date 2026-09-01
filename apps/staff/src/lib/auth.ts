@@ -30,7 +30,7 @@ export function initAuth() {
 
 /**
  * `signIn`/`signUp` trả discriminated union thay vì ném — cùng pattern 3 của
- * repo (xem CLAUDE.md gốc). Màn hình chỉ việc hiện `message`, không phải đọc
+ * repo (xem docs/ARCHITECTURE.md). Màn hình chỉ việc hiện `message`, không phải đọc
  * `status` của SuperTokens ở năm chỗ khác nhau.
  */
 export async function signIn(email: string, password: string) {

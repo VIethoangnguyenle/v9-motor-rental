@@ -1,10 +1,11 @@
 # packages/db — CLAUDE.md
 
-Luật chung của repo ở [`../../CLAUDE.md`](../../CLAUDE.md). Đọc file đó trước.
+Kiến trúc và ràng buộc chung của repo ở [`../../docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md).
+Quy trình làm việc (CodeGraph → Serena) ở [`../../CLAUDE.md`](../../CLAUDE.md). Đọc cả hai trước.
 
 Drizzle schema + migration SQL. Bảng nghiệp vụ đã có: `vehicles` và `vehicle_photos`
 (`src/schema/vehicles.ts`, từ migration `0002`). `customers`, `rentals` và `booking_requests`
-thì **chưa** — xem §Việc còn để lại của `../../CLAUDE.md`.
+thì **chưa** — xem `../../docs/ARCHITECTURE.md`.
 
 ## `drizzle-kit push` bị **cấm**
 
@@ -141,7 +142,7 @@ Extension `btree_gist` đã bật sẵn ở migration `0000` để dòng trên c
 từ constraint đó dùng luôn cho tra cứu availability — **không tạo index thứ hai**.
 
 Service phải bắt SQLSTATE `23P01` → HTTP 409. Nhớ: Bun.SQL để SQLSTATE ở **`.errno`**, không phải
-`.code`. Xem `../../CLAUDE.md`.
+`.code`. Xem `../../docs/ARCHITECTURE.md`.
 
 ## Test
 

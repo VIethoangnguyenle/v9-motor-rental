@@ -1,11 +1,7 @@
 import { Elysia, t } from "elysia";
 import EmailPassword from "supertokens-node/recipe/emailpassword";
 import Session from "supertokens-node/recipe/session";
-import {
-  getClientIp,
-  passwordResetLimiter,
-  type RateLimitResult,
-} from "../plugins/rate-limit";
+import { getClientIp, passwordResetLimiter, type RateLimitResult } from "../plugins/rate-limit";
 import { requireRole, staffGuard, type GuardErrorCode } from "../plugins/staff-guard";
 import { isEmailConfigured, sendResetCodeEmail } from "../services/email";
 import {
@@ -120,11 +116,7 @@ type Reason = PermissionReason | PasswordReason | ChangePasswordReason;
  * suy ra được của `ApiErrorCode`.
  */
 export type ApiErrorCode =
-  | Reason
-  | GuardErrorCode
-  | RentalErrorCode
-  | "EMAIL_NOT_CONFIGURED"
-  | "RATE_LIMITED";
+  Reason | GuardErrorCode | RentalErrorCode | "EMAIL_NOT_CONFIGURED" | "RATE_LIMITED";
 
 /**
  * Domain trả `reason` (pattern 3 của repo — discriminated union, không throw);

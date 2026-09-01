@@ -7,7 +7,7 @@
  * Luật này chặn `throw "chuỗi"`; ở đây nó bắt nhầm. Tắt trong PHẠM VI FILE NÀY
  * (file bảng route, chỗ duy nhất trong app có `throw redirect`) thay vì nới luật
  * ở `eslint.config.js` — nới ở đó là nới cho cả repo, và file đó có bộ probe
- * riêng phải chạy lại mỗi lần đụng vào (xem CLAUDE.md gốc).
+ * riêng phải chạy lại mỗi lần đụng vào (xem docs/ARCHITECTURE.md).
  */
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import {
@@ -236,7 +236,7 @@ const staffListRoute = createRoute({
  * hợp lệ + hồ sơ `ACTIVE` (guard mặc định chặn — xem `apps/api/src/routes/staff.ts`).
  * Treo nhầm sang nhánh công khai thì trang vẫn render cho người CHƯA đăng nhập,
  * và họ chỉ biết mình bị chặn khi bấm nút xong nhận 401 — đúng kiểu hàng rào
- * "trông như đang bảo vệ" mà CLAUDE.md gốc cảnh báo.
+ * "trông như đang bảo vệ" mà docs/ARCHITECTURE.md cảnh báo.
  */
 const changePasswordRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,

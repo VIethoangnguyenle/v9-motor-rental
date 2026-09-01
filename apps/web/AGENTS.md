@@ -17,7 +17,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 >
 > `CLAUDE.md` trong thư mục này chỉ là con trỏ `@AGENTS.md` — cũng do Next sinh. Nội dung thật ở đây.
 
-Luật chung của repo ở [`../../CLAUDE.md`](../../CLAUDE.md). Đọc file đó trước.
+Kiến trúc và ràng buộc chung của repo ở [`../../docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md).
+Quy trình làm việc (CodeGraph → Serena) ở [`../../CLAUDE.md`](../../CLAUDE.md). Đọc cả hai trước.
 
 Next 16 App Router, `output: "standalone"`. Site công khai cho khách thuê xe.
 

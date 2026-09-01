@@ -1,6 +1,7 @@
 # apps/staff — CLAUDE.md
 
-Luật chung của repo ở [`../../CLAUDE.md`](../../CLAUDE.md). Đọc file đó trước.
+Kiến trúc và ràng buộc chung của repo ở [`../../docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md).
+Quy trình làm việc (CodeGraph → Serena) ở [`../../CLAUDE.md`](../../CLAUDE.md). Đọc cả hai trước.
 
 Vite + TanStack Router/Query, **PWA**. App vận hành nội bộ cho chủ shop và nhân viên.
 Role `OWNER`, `STAFF`; `SALES` để dành, chưa định nghĩa làm gì.
@@ -149,7 +150,7 @@ không họ nhìn một màn hình trắng.
 
 **Trang `/` (health) nằm dưới nhánh được bảo vệ CÓ CHỦ Ý.** Nó là bằng chứng end-to-end rằng guard
 thật sự chạy. Nếu hàng rào chỉ phủ lên những trang chưa ai mở thì nó chưa được chứng minh gì —
-đúng kiểu "cơ chế trông như đang bảo vệ" mà CLAUDE.md gốc đếm được bốn lần.
+đúng kiểu "cơ chế trông như đang bảo vệ" mà `docs/ARCHITECTURE.md` đếm được bốn lần.
 
 **Hai hàng rào cho `/staff`, làm hai việc khác nhau.** `beforeLoad` kiểm `context.me.role !==
 "OWNER"` là hàng rào của **trải nghiệm**; hàng rào của **dữ liệu** nằm ở server
