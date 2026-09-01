@@ -55,6 +55,14 @@ import { useEffect, useRef } from "react";
  */
 export type ModalPlacement = "bottom" | "adaptive" | "top";
 
+/**
+ * Trần chờ hiệu ứng ra trước khi báo `onClose` lên trên. Lớn hơn
+ * `--duration-quick` (180ms) một quãng để không cắt ngang hiệu ứng thật trên
+ * máy đang tải nặng, và vẫn dưới trần cứng 400ms của design doc §4.2 — quá trần
+ * đó thì cái lưới an toàn tự nó thành độ trễ người dùng cảm được.
+ */
+const EXIT_FALLBACK_MS = 400;
+
 const PANEL_PLACEMENT: Record<ModalPlacement, string> = {
   bottom: "inset-x-0 bottom-0 rounded-t-card border-t border-border pb-safe",
   adaptive:
@@ -118,8 +126,46 @@ export function Modal({
     // gỡ. Vô hại ở cả ba chỗ gọi hôm nay (đều setState về cùng một giá trị)
     // nhưng nó là cái bẫy đang chờ chỗ gọi thứ tư.
     let unmounting = false;
+    let exitTimer: ReturnType<typeof setTimeout> | undefined;
+
+    // ⚠️ Báo lên trên NGAY trong `close` là xoá luôn hiệu ứng ra.
+    //
+    // Cả ba chỗ gọi đều render `<Modal>` có điều kiện (`{open && <Modal …>}`),
+    // nên `onClose` = gỡ phần tử khỏi cây. `close()` gỡ `[open]` — hiệu ứng ra
+    // bắt đầu — rồi bắn event `close`, và React gỡ `<dialog>` ngay sau đó. Đo
+    // trên bản build: sau `close()` một khung hình là `document.querySelector
+    // ("dialog")` đã ra `null`, `opacity` chưa kịp rời khỏi 1. Toàn bộ CSS
+    // `allow-discrete` ở `index.css` đúng mà vẫn không thấy gì.
+    //
+    // Nên: giữ phần tử sống cho tới khi hiệu ứng ra chạy xong rồi mới báo.
+    //
+    // ⚠️ Chỉ che được đường đi QUA `dialog.close()`: Esc và bấm nền. Nút ✕ của
+    // `rental-detail-sheet.tsx` và `rental-form.tsx` gọi thẳng prop `onClose`
+    // của phía gọi, nên chúng vẫn gỡ component ngay và KHÔNG có hiệu ứng ra —
+    // đo được: 4ms sau cú bấm ✕ thì `<dialog>` đã biến khỏi cây. Bịt chỗ đó
+    // đòi đổi API (Modal phải trao hàm đóng xuống cho children thay vì để phía
+    // gọi tự quyết), tức sửa cả ba chỗ gọi; không nằm trong phạm vi file này.
+    const finish = () => {
+      if (unmounting) return;
+      clearTimeout(exitTimer);
+      el.removeEventListener("transitionend", onExitEnd);
+      onCloseRef.current();
+    };
+    // Lọc theo `opacity` vì đó là thuộc tính LIÊN TỤC duy nhất trong danh sách
+    // transition của `<dialog>`; `display`/`overlay` cũng bắn `transitionend`
+    // nhưng ở mốc khác. `e.target === el` để một `transitionend` nổi lên từ nội
+    // dung của phía gọi không kết thúc hộ.
+    function onExitEnd(e: TransitionEvent) {
+      if (e.target === el && e.propertyName === "opacity") finish();
+    }
     const handleClose = () => {
-      if (!unmounting) onCloseRef.current();
+      if (unmounting) return;
+      el.addEventListener("transitionend", onExitEnd);
+      // Lưới an toàn, KHÔNG phải thời lượng: nếu `transition` bị tắt hẳn ở đâu
+      // đó thì `transitionend` không bao giờ bắn và lớp phủ treo lại vĩnh viễn
+      // ở trạng thái đã đóng. `prefers-reduced-motion` KHÔNG rơi vào đây —
+      // `index.css` để 1ms chứ không 0s, đúng để sự kiện vẫn bắn.
+      exitTimer = setTimeout(finish, EXIT_FALLBACK_MS);
     };
 
     // `addEventListener` chứ không phải prop `onClose` của JSX: React map
@@ -129,6 +175,8 @@ export function Modal({
     el.addEventListener("close", handleClose);
     return () => {
       unmounting = true;
+      clearTimeout(exitTimer);
+      el.removeEventListener("transitionend", onExitEnd);
       el.removeEventListener("close", handleClose);
       if (el.open) el.close();
     };
@@ -185,6 +233,12 @@ export function Modal({
         // `-1`: nhận được tiêu điểm bằng script (xem effect) nhưng KHÔNG chen vào
         // thứ tự Tab — người dùng Tab một cái là sang thẳng control đầu tiên.
         tabIndex={-1}
+        // Thuộc tính `data-*` chứ không class Tailwind: ba hướng vào khác nhau
+        // cần `@starting-style`, mà đó là at-rule — không diễn đạt được bằng
+        // utility. Selector thuộc tính giữ toàn bộ luật ở một chỗ trong
+        // `index.css`, cạnh chú thích giải thích ba cái bẫy của `<dialog>`.
+        data-panel=""
+        data-placement={placement}
         className={`absolute mx-auto max-h-[90dvh] w-full max-w-lg overflow-y-auto overscroll-contain bg-surface ${PANEL_PLACEMENT[placement]}`}
       >
         {children}
