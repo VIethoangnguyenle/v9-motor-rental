@@ -57,6 +57,33 @@ export function isOverdue(r: { status: RentalStatus; endsAt: Date }, now: Date):
   return r.status === "ONGOING" && r.endsAt.getTime() < now.getTime();
 }
 
+/**
+ * Đơn đã QUA giờ hẹn lấy xe mà vẫn còn `BOOKED`. Hàm RIÊNG, cố ý không nới
+ * `isOverdue` ra để nhận thêm nhánh này: hai bên trả lời hai câu khác nhau, và
+ * `isOverdue` đang là định nghĩa "xe nằm ngoài đường quá hạn" mà lịch dựa vào.
+ * Gộp lại thì một đơn chưa giao sẽ đếm vào cùng con số với xe thật sự trễ hẹn
+ * trả — xem test "BOOKED quá ngày hẹn KHÔNG phải quá hạn" ở `rental.test.ts`,
+ * nó khoá đúng chỗ đó.
+ *
+ * Vì sao đáng có một vị từ riêng thay vì để `startsAt` là một ngày trung tính:
+ * một `BOOKED` đã qua `starts_at` gần như luôn nghĩa là MỘT trong hai chuyện —
+ * khách bỏ hẹn mà không ai huỷ đơn, hoặc nhân viên đã giao xe rồi quên bấm "đã
+ * giao". Ca thứ hai đắt và im lặng: `revenueAt` đòi `handedOverAt` nên không
+ * tính tiền, trong khi ràng buộc `rentals_no_overlap` vẫn khoá xe — shop mất
+ * doanh thu ngay trên sổ của mình và không màn hình nào nói ra. Đó cũng là lý
+ * do `activeRental` (`apps/api/src/services/customers.ts`) cố ý KHÔNG lọc
+ * `BOOKED` theo `now()`: lọc đi là giấu ca này, không phải dọn nó.
+ *
+ * `now` là THAM SỐ, cùng lý do với `isOverdue` ngay trên: test không phải đóng
+ * băng đồng hồ, và frontend tô màu bằng đúng hàm này.
+ *
+ * Biên: đúng thời điểm `startsAt` thì CHƯA quá hẹn — cùng quy ước `<` với
+ * `isOverdue`, để hai hàm không lệch nhau một tick.
+ */
+export function isPickupOverdue(r: { status: RentalStatus; startsAt: Date }, now: Date): boolean {
+  return r.status === "BOOKED" && r.startsAt.getTime() < now.getTime();
+}
+
 /** Đưa về `Interval` để dùng lại `overlaps()` — biên [start, end), khớp tstzrange '[)'. */
 export function toInterval(r: { startsAt: Date; endsAt: Date }): Interval {
   return { start: r.startsAt, end: r.endsAt };

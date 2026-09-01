@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
   isOverdue,
+  isPickupOverdue,
   revenueAt,
   toInterval,
   transition,
@@ -87,6 +88,68 @@ describe("isOverdue", () => {
     const now = T("2026-08-15T03:00:00Z");
     expect(isOverdue({ status: "COMPLETED", ...past }, now)).toBe(false);
     expect(isOverdue({ status: "CANCELLED", ...past }, now)).toBe(false);
+  });
+});
+
+describe("isPickupOverdue", () => {
+  it("BOOKED và đã qua giờ hẹn lấy xe → quá hẹn lấy", () => {
+    expect(
+      isPickupOverdue(
+        { status: "BOOKED", startsAt: T("2026-08-14T10:00:00Z") },
+        T("2026-08-15T03:00:00Z"),
+      ),
+    ).toBe(true);
+  });
+
+  it("BOOKED nhưng chưa tới giờ hẹn → chưa quá hẹn", () => {
+    expect(
+      isPickupOverdue(
+        { status: "BOOKED", startsAt: T("2026-08-16T10:00:00Z") },
+        T("2026-08-15T03:00:00Z"),
+      ),
+    ).toBe(false);
+  });
+
+  // Cùng biên với `isOverdue`: đúng thời điểm thì CHƯA quá. Hai hàm phải chọn
+  // cùng một quy ước, nếu không "quá hạn" và "quá hẹn lấy" lệch nhau một tick
+  // ngay tại giây mà nhân viên đang nhìn màn hình.
+  it("đúng giờ hẹn thì CHƯA quá hẹn", () => {
+    const t = T("2026-08-15T03:00:00Z");
+    expect(isPickupOverdue({ status: "BOOKED", startsAt: t }, t)).toBe(false);
+  });
+
+  // ONGOING đã qua `startsAt` là chuyện BÌNH THƯỜNG — xe đã giao rồi, đó chính
+  // là nghĩa của ONGOING. Nếu hàm này bắt cả ONGOING thì mọi đơn đang thuê đều
+  // đỏ, và màu đỏ hết còn nghĩa gì.
+  it("ONGOING không bao giờ quá hẹn lấy — xe đã ra khỏi cửa hàng rồi", () => {
+    expect(
+      isPickupOverdue(
+        { status: "ONGOING", startsAt: T("2026-08-14T10:00:00Z") },
+        T("2026-08-15T03:00:00Z"),
+      ),
+    ).toBe(false);
+  });
+
+  it("COMPLETED và CANCELLED không bao giờ quá hẹn lấy", () => {
+    const past = { startsAt: T("2026-08-01T00:00:00Z") };
+    const now = T("2026-08-15T03:00:00Z");
+    expect(isPickupOverdue({ status: "COMPLETED", ...past }, now)).toBe(false);
+    expect(isPickupOverdue({ status: "CANCELLED", ...past }, now)).toBe(false);
+  });
+
+  // Tính chất mà `rentalChipClass` (apps/staff) DỰA VÀO khi nó tô CÙNG một màu
+  // `status-overdue` cho cả hai: hai vị từ loại trừ nhau vì lọc hai `status`
+  // khác nhau, nên không có đơn nào "vừa quá hạn trả vừa quá hẹn lấy" và thứ
+  // tự kiểm trong hàm đó không đổi kết quả. Nới một trong hai sang status của
+  // bên kia sẽ làm test này đỏ trước khi màu kịp sai trên màn hình.
+  it("không đơn nào vừa quá hạn trả vừa quá hẹn lấy", () => {
+    const now = T("2026-08-15T03:00:00Z");
+    const past = T("2026-08-01T00:00:00Z");
+    const all: RentalStatus[] = ["BOOKED", "ONGOING", "COMPLETED", "CANCELLED"];
+    for (const status of all) {
+      const r = { status, startsAt: past, endsAt: past };
+      expect(isOverdue(r, now) && isPickupOverdue(r, now)).toBe(false);
+    }
   });
 });
 

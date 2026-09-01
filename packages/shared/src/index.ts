@@ -14,6 +14,7 @@ export {
   RENTAL_STATUSES,
   SHOP_TIMEZONE,
   isOverdue,
+  isPickupOverdue,
   revenueAt,
   toInterval,
   transition,
