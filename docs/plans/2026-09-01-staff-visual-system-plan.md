@@ -539,7 +539,7 @@ ba thay đổi:
      nên nó KHÔNG có biên. Đổi L là trượt AA. */
   --color-status-ongoing: oklch(55.7% 0.094 200);
   --color-status-overdue: oklch(55% 0.21 27);
-  --color-status-completed: oklch(46% 0 255);
+  --color-status-completed: oklch(42% 0 255);
   /* Chroma 0.109 chứ không 0.13: trần gamut ở L=52%, hue=75. Cùng lý do accent. */
   --color-warning: oklch(52% 0.109 75);
 
