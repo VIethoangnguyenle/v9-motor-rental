@@ -79,5 +79,89 @@ write_memory          →  persist structural knowledge
 ### Subagent
 
 ⚠️ **Subagent không đọc file này.** Ai giao việc cho subagent phải **chép quy trình trên vào đề
-bài**. Không chép thì subagent sẽ đi thẳng vào `Grep`/`Read`, và người giao việc chịu trách nhiệm,
-không phải subagent.
+bài**, kèm nội dung skill của workspace liên quan. Không chép thì subagent sẽ đi thẳng vào
+`Grep`/`Read`, và **người giao việc chịu trách nhiệm**, không phải subagent.
+
+---
+
+## Quy trình coding
+
+### 1. Nạp skill của workspace TRƯỚC khi viết code
+
+| Đụng vào                                    | Nạp skill      |
+| ------------------------------------------- | -------------- |
+| `apps/api`                                  | `v9-api`       |
+| `apps/staff`                                | `v9-staff`     |
+| `apps/web`                                  | `v9-web`       |
+| `packages/db`                               | `v9-db`        |
+| `packages/shared`                           | `v9-shared`    |
+| `eslint.config.js`, thêm thư mục code       | `v9-fences`    |
+| auth, role, session                         | `v9-auth`      |
+| Directus                                    | `v9-directus`  |
+| deploy, `compose.prod.yaml`                 | `v9-deploy`    |
+| cú pháp CodeGraph/Serena, probe sau upgrade | `v9-codegraph` |
+
+Mỗi skill chứa **bẫy đã cắn thật** của workspace đó. `CLAUDE.md` của workspace chỉ còn là con trỏ.
+
+### 2. Mỗi commit phải TỰ DỰNG ĐƯỢC
+
+`bun test` và `bun run typecheck` chạy trên **cây làm việc**, không trên commit. Cây xanh **không**
+chứng minh commit nào dựng được. Kiểm bằng:
+
+```bash
+git stash push --include-untracked && bun run typecheck && bun test && git stash pop
+```
+
+Chỉ `git add` file thuộc phạm vi việc đang làm — **không bao giờ `git add -A`**. Nhưng nếu file bạn
+commit **import** một symbol nằm trong file chưa commit, phải kéo file đó vào cùng commit, nếu
+không `git bisect` vỡ.
+
+> Phiên 2026-09-01 dính đúng lỗi này **hai lần**: `routes/rentals.ts` commit trước
+> `services/rentals.ts` mà nó import; và `apps/staff` không dựng được suốt 8 commit vì
+> `lib/customers.ts` chưa bao giờ được track.
+
+### 3. Đo hay suy — nói rõ cái nào
+
+Khẳng định thứ gì đó render/chạy ra sao thì **hoặc đo nó, hoặc nói thẳng là suy luận**. Cả hai đều
+được. Trình bày cái thứ hai như cái thứ nhất **không được**.
+
+> Cùng phiên đó: một số đo được đóng dấu "ĐO ĐƯỢC" nhưng bất khả thi về cơ chế (`flex-wrap` mặc
+> định `nowrap` nên hai thẻ không thể xuống dòng), và một comment giải thích sai bản chất React
+> Fragment. Cả hai lọt vào commit, phải reviewer đọc lại và **đo lại** mới bắt được.
+
+### 4. Test phải đo được thứ nó tuyên bố đo
+
+Một test xanh chứng minh ít hơn vẻ ngoài của nó. Trước khi tin: **phá thứ nó canh và xem nó có đỏ
+không.**
+
+> Cùng phiên: một test parity tự nhận là "hàng rào duy nhất ép hai hàm đi chung một đường" nhưng
+> chỉ assert `length > 0` cho cả hai — vẫn xanh khi hai hàm lệch thành hai tập khác nhau. Sửa xong
+> **vẫn** xanh khi bỏ mệnh đề `where`, vì bảng chỉ có một hàng; phải thêm một hồ sơ mồi mới có răng.
+
+### 5. TDD: nghiêm ở đâu, không nghiêm ở đâu
+
+- `packages/shared/src/domain/**` — **TDD nghiêm, không ngoại lệ.** Viết test, chạy, thấy **đỏ**,
+  rồi mới implement. Đỏ vì đúng lý do, không phải đỏ vì lỗi cú pháp.
+- Còn lại — verification-before-completion: chạy lệnh thật, đọc output thật, dán vào báo cáo.
+
+### 6. Đổi tên hay signature của exported symbol
+
+Bắt buộc `find_referencing_symbols` **trước**. Blast radius của CodeGraph là để **định hướng**,
+không phải danh sách reference đủ để refactor an toàn.
+
+---
+
+## Tài liệu nằm ở đâu
+
+| Loại                                      | Ở đâu                                          |
+| ----------------------------------------- | ---------------------------------------------- |
+| Quy trình làm việc                        | file này                                       |
+| Kiến trúc, ràng buộc version, perf budget | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| Luật từng workspace                       | skill `v9-*`                                   |
+| **Quyết định kiến trúc (ADR) + lý do**    | **Serena memory** `architecture/*`             |
+| Nợ đã biết                                | [`docs/DEBT.md`](docs/DEBT.md)                 |
+| Đợt kế tiếp                               | [`docs/ROADMAP.md`](docs/ROADMAP.md)           |
+| Design doc từng đợt                       | [`docs/plans/`](docs/plans/)                   |
+
+Mục **MCP Tools** ở trên giữ nguyên văn tiếng Anh như bản được cung cấp; phần còn lại theo luật của
+repo — tài liệu viết tiếng Việt, định danh tiếng Anh.

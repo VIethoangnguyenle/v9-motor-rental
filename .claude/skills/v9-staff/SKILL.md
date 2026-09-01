@@ -1,0 +1,193 @@
+---
+name: v9-staff
+description: Luật viết code trong apps/staff (Vite + TanStack, PWA): vì sao không dùng DESIGN.md, VITE_API_URL nướng lúc build, PWA không chạy ở dev, hai tầng component, và một hàng rào auth duy nhất ở beforeLoad. Dùng TRƯỚC khi sửa bất cứ file nào trong apps/staff.
+---
+
+# apps/staff
+
+Kiến trúc chung: [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) · Quy trình: [`CLAUDE.md`](../../../CLAUDE.md) · ADR: Serena memory `architecture/*`.
+
+## Styling: Tailwind v4, theme mặc định — **không** dùng `DESIGN.md`
+
+Cắm qua **Vite plugin** (`@tailwindcss/vite` trong `vite.config.ts`), khác `apps/web` vốn đi qua
+PostCSS. Hai cơ chế build khác nhau nên hai cách cắm; không có `tailwind.config.js` ở cả hai (v4
+khai theme trong CSS).
+
+`src/index.css` **cố ý không khai `@theme` riêng** — chưa có màn hình nghiệp vụ nào để rút token
+ra. Khi làm lịch/thống kê/bàn giao thì mới thêm.
+
+`../../DESIGN.md` là hệ thị giác của `apps/web` (site công khai, ảnh dẫn dắt, SEO). App này ưu
+tiên **chức năng và mật độ thông tin** — đừng bê nền đen tuyền và typography 60px sang đây.
+
+## SEO vô nghĩa ở đây — đó là lý do không dùng Next
+
+Đây là điều duy nhất phân biệt app này với `apps/web`. Đừng "thống nhất" hai frontend về một
+framework: `apps/web` giữ Next vì SEO chính là lý do Next được chọn ở đó.
+
+|                              | `apps/staff`                                     | `apps/web`                                            |
+| ---------------------------- | ------------------------------------------------ | ----------------------------------------------------- |
+| Framework                    | Vite 8                                           | Next 16                                               |
+| Mô hình                      | client-first (SPA + TanStack Query)              | server-first (RSC)                                    |
+| Biến env                     | `import.meta.env.VITE_*`, **nướng lúc build**    | `process.env.NEXT_PUBLIC_*`, **cũng nướng lúc build** |
+| JSX                          | `jsx: "react-jsx"`                               | `jsx: "preserve"`                                     |
+| `exactOptionalPropertyTypes` | tắt                                              | tắt                                                   |
+| SEO                          | vô nghĩa                                         | quan trọng                                            |
+| impeccable                   | audit nhẹ, **không polish trừ khi được yêu cầu** | app chính                                             |
+
+Dòng "biến env" **không** phải một khác biệt: Next thay `process.env.NEXT_PUBLIC_*` bằng hằng số
+lúc compile, kể cả trong chunk SSR — hai app giống hệt nhau ở điểm này. Bảng này từng ghi ngược
+(cùng lỗi đã sửa ở `.env.example`, `apps/web/AGENTS.md`, `compose.prod.yaml`); bằng chứng đo được ở
+`../web/AGENTS.md`, mục `NEXT_PUBLIC_*`.
+
+## ⚠️ `VITE_API_URL` bị nướng vào bundle **lúc build**
+
+`src/lib/api.ts` đọc `import.meta.env.VITE_API_URL` — Vite thay thế nó bằng **hằng chuỗi** lúc
+build. Đặt biến đó lúc chạy trong compose **không có tác dụng gì**.
+
+Đổi API URL của staff ⇒ **bắt buộc build lại image**. `deploy.yml` truyền nó qua `--build-arg`.
+
+Có fallback `?? "http://localhost:3001"` nên quên set biến thì app vẫn build và vẫn chạy — rồi
+gọi vào localhost của **máy người dùng**. Hỏng im lặng, không có lỗi ở đâu cả.
+
+## ⚠️ PWA **không** chạy ở chế độ dev
+
+`vite-plugin-pwa` không chèn link manifest và không đăng ký service worker ở `vite dev`, trừ khi
+bật `devOptions.enabled` (hiện **không** bật). Nghĩa là **mọi hành vi PWA chỉ quan sát được trên
+bản build**:
+
+```bash
+bun run --filter @v9/staff build
+bun run --filter @v9/staff preview
+```
+
+Kiểm ở dev rồi kết luận "PWA hỏng" là kết luận sai. Đây là lỗi dễ mắc nhất với app này.
+
+### `navigateFallbackDenylist` **hôm nay không chặn gì** — và vẫn nên giữ
+
+`vite.config.ts` khai `navigateFallbackDenylist: [/^\/auth\//, /^\/staff\//]`. Đọc nó như một hàng
+rào là đọc sai:
+
+| Điều                                                          | Thực tế                                                                                                                                                                                          |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Nó áp cho request nào?                                        | chỉ request `mode: "navigate"` — tức người gõ URL / bấm link, **không** phải `fetch`                                                                                                             |
+| Hôm nay có khớp gì không?                                     | **không**. Eden và `supertokens-web-js` gọi API bằng `fetch` sang **origin khác** (`VITE_API_URL`, mặc định `:3001`); app chạy ở `:3003`                                                         |
+| Vậy giữ làm gì?                                               | bảo hiểm rẻ cho một thay đổi rất dễ xảy ra: proxy API về cùng origin (`staff.$ROOT_DOMAIN/auth/*`) để né CORS. Ngày đó tới mà thiếu dòng này thì app shell được trả cho đường API — hỏng im lặng |
+| Vậy cái gì thật sự chặn "session chết, màn hình cũ vẫn hiện"? | guard ở `beforeLoad` (mục xác thực bên trên): nó gọi `/staff/me` qua mạng và hỏng-thì-chặn                                                                                                       |
+
+Đừng dựa vào dòng đó cho ca session chết, và cũng đừng xoá nó vì "không thấy nó làm gì".
+
+## ⚠️ Icon đang là placeholder — trình duyệt **im lặng** không mời cài app
+
+`public/icon-192.png` (547B) và `icon-512.png` (1.8K) hiện là **ô màu đặc**, chưa phải logo thật.
+Thiếu hoặc sai file icon thì trình duyệt không hiện lời mời cài đặt — **không báo lỗi ở đâu cả**,
+không có warning trong console, manifest vẫn parse được.
+
+Shop đã có logo ngoài đời. Thay hai file này trước khi ship.
+
+## Cấu trúc component: hai tầng, ranh giới là "có biết domain không"
+
+```
+components/ui/      không biết domain — không import lib/api, không biết Me hay StaffRole là gì
+components/auth/    form đăng nhập · đăng ký · quên mật khẩu · đổi mật khẩu
+components/staff/   bảng nhân viên và hành động trên dòng
+components/layout/  nav dùng chung
+hooks/              use-me.ts
+pages/              lắp component lại, không tự dựng form
+```
+
+`ui/` không biết domain **là điều kiện để dùng lại được** ở bốn màn hình nghiệp vụ sắp làm (lịch ·
+thống kê · bàn giao · khách hàng). Một `TextField` biết `StaffRole` là một `TextField` chỉ dùng được
+ở màn hình nhân viên.
+
+**Form dùng `useMutation`, không cuộn tay state "đang gửi"/"lỗi".** `useMutation` đã cho sẵn hai
+thứ đó; cuộn tay là cách chúng lệch nhau giữa các form. Bảng nhân viên đã dùng `useMutation` cho
+các nút hành động — nên đây là mở rộng một pattern đã có, không phải pattern thứ hai.
+
+## Xác thực: sáu màn hình, và **một** hàng rào ở `beforeLoad`
+
+Cây route chia **hai nhánh**, và việc treo route vào nhánh nào _là_ toàn bộ cơ chế phân quyền của
+app này:
+
+| Nhánh                     | Route                                                           | Vì sao nằm ở đó                                                                                           |
+| ------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| công khai (`public`)      | `/login` · `/signup` · `/forgot-password` · `/pending-approval` | ba cái đầu hiển nhiên; `/pending-approval` thì **không** — xem ngay dưới                                  |
+| được bảo vệ (`protected`) | `/` (health) · `/staff` (chỉ OWNER) · `/change-password`        | guard chạy ở `beforeLoad` của chính layout route này, nên mọi route con được bảo vệ mà không phải khai gì |
+
+**Không kiểm quyền trong component.** Chỗ duy nhất để treo một trang mới là `getParentRoute`, và cả
+hai lựa chọn đều hiện ra trong diff. Một trang tự gọi `useQuery(meQuery)` rồi tự kiểm là một trang
+mở toang ngay lần đầu ai đó quên — và nó im lặng.
+
+Guard ở `beforeLoad` chỉ điều phối; quyết định "vào hay bị đá đi đâu" nằm trong `decideEntry`
+(`lib/guard-decision.ts`) — hàm THUẦN, tách khỏi router có chủ ý để test bằng bảy ca không cần dựng
+router thật. Theo thứ tự: không có session → `/login` · đọc `/staff/me` qua `ensureQueryData`
+(không được thì coi như không vào được) · `PENDING` → `/pending-approval` · hồ sơ báo
+`ACCOUNT_DISABLED`/`NO_PROFILE` → **`signOut()` trước** rồi mới về `/login?reason=...` — lý do lấy
+từ `LOGIN_REASONS` ở cùng file (còn có `password-changed`, dùng sau khi tự đổi mật khẩu thành công
+— nhánh đó không qua `decideEntry`, xem `components/auth/change-password-form.tsx`), không chép tay
+sang `router.tsx`.
+
+**Nhánh DISABLED từng là code chết.** Bản trước khi tách hàm này kiểm `if (!me)` đứng TRƯỚC nhánh
+DISABLED trong cùng một khối `beforeLoad` — nhánh DISABLED không bao giờ chạy tới, người bị khoá bị
+đá thẳng về `/login` không kèm lý do nào, và `apps/staff` lúc đó chưa có một test nào để bắt lỗi thứ
+tự này. `decideEntry` rút quyết định ra một hàm thuần thì thứ tự nhánh trở thành thứ test được (bảy
+ca ở `guard-decision.test.ts`), và `router.tsx` ép thêm một lớp ở phía gọi: nhánh cuối của
+`beforeLoad` gán `const unhandled: never = decision` — thêm một arm vào union `EntryDecision` mà
+quên xử lý ở `router.tsx` là **lỗi biên dịch**, không phải một cú rơi im lặng về `/login`.
+
+Thứ tự đăng xuất-trước-chuyển-hướng-sau không phải chi tiết: để nguyên session của người bị khoá
+thì họ quay lại `/`, guard chạy lại đúng vòng đó, và app kẹt trong vòng chuyển hướng vô tận.
+
+**`/pending-approval` là route công khai, dù chỉ người đã đăng nhập mới thấy nội dung thật.** Nó
+phải mở được bởi tài khoản `PENDING` — mà `PENDING` chính là thứ guard đá ra. Treo nó dưới
+`protected` là tạo một vòng lặp chuyển hướng. Cùng lý lẽ với ngoại lệ `GET /staff/me` ở
+`apps/api/src/plugins/staff-guard.ts`: người đang chờ duyệt phải đọc được **lý do** họ bị chặn, nếu
+không họ nhìn một màn hình trắng.
+
+**Trang `/` (health) nằm dưới nhánh được bảo vệ CÓ CHỦ Ý.** Nó là bằng chứng end-to-end rằng guard
+thật sự chạy. Nếu hàng rào chỉ phủ lên những trang chưa ai mở thì nó chưa được chứng minh gì —
+đúng kiểu "cơ chế trông như đang bảo vệ" mà `docs/ARCHITECTURE.md` đếm được bốn lần.
+
+**Hai hàng rào cho `/staff`, làm hai việc khác nhau.** `beforeLoad` kiểm `context.me.role !==
+"OWNER"` là hàng rào của **trải nghiệm**; hàng rào của **dữ liệu** nằm ở server
+(`/staff/users*` trả `403 FORBIDDEN`). Bỏ cái ở đây thì `STAFF` không thấy dữ liệu — họ thấy một
+trang trống toàn lỗi 403. Bỏ cái ở server thì mất thật.
+
+### `Session.init()` vá `window.fetch` — Eden ăn theo, không phải bọc lại
+
+`lib/auth.ts` gọi `SuperTokens.init()` với `apiDomain` + `apiBasePath: "/auth"`. `Session.init()`
+vá `window.fetch`: request tới `apiDomain` được thêm `credentials: "include"`, và khi access token
+hết hạn thì tự gọi `/auth/session/refresh` rồi chạy lại request.
+
+Eden Treaty tra `fetch` từ global scope ở **mỗi lần gọi** (`{ fetcher = fetch }` nằm trong thân
+proxy, không bắt tham chiếu lúc import), nên `lib/api.ts` hưởng nguyên cơ chế đó mà không phải bọc
+gì. Đây là lý do chọn `supertokens-web-js` thay vì tự `fetch` thẳng vào `/auth/*`.
+
+Ba chỗ hỏng im lặng quanh nó:
+
+- **`initAuth()` phải chạy trước lần render đầu tiên** (`main.tsx` gọi nó ở dòng đầu). Gọi sau thì
+  request bay ra trong khoảng đó đi bằng `fetch` chưa vá — không cookie, không refresh — và triệu
+  chứng là "thỉnh thoảng 401", không phải một lỗi đọc được.
+- **`apiDomain` ở `lib/auth.ts` và base URL ở `lib/api.ts` phải bằng nhau.** Hai chỗ, hai fallback
+  `http://localhost:3001` riêng. Lệch nhau thì interceptor không nhận ra request của Eden là request
+  "cùng API" và bỏ qua nó.
+- **`queryClient` truyền vào router qua tham số, không phải import một singleton.** Guard ghi
+  `/staff/me` vào cache; nếu đó không đúng cache mà `QueryClientProvider` đang phát cho cây React
+  thì guard đọc xong mà màn hình vẫn trống, và không có lỗi ở đâu cả.
+
+Kiểu `Me` **suy ra** từ `response` schema của `GET /staff/me` (`lib/me.ts`), không gõ tay lại. Gõ
+tay một `interface` nữa là dựng bản sao thứ hai của hợp đồng API: nó biên dịch được cho tới ngày
+`routes/staff.ts` đổi một field, và ngày đó chỗ sai không phải chỗ nổ. Không dùng `as` ở bất kỳ đâu
+trong app — mọi ép kiểu ở frontend là dấu hiệu đã đoán sai hình dạng API.
+
+## Bắt buộc khai `typecheck` trong `package.json`
+
+Đã khai rồi, đừng gỡ. `bun run --filter '*'` **im lặng bỏ qua** workspace thiếu script rồi vẫn
+exit 0 — gỡ nó ra thì `bun run typecheck` ở root vẫn xanh mà không kiểm package này.
+
+## Chạy
+
+```bash
+bun run --filter @v9/staff dev       # cổng ${STAFF_PORT:-3003}
+bun run --filter @v9/staff build     # tsc --noEmit rồi vite build
+bun run --filter @v9/staff preview   # bản build — CHỖ DUY NHẤT kiểm được PWA
+```
