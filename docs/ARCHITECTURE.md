@@ -14,18 +14,18 @@ deliverable ngang hàng với code, không phải phụ lục.
 
 ## Gặp việc này → mở cái này
 
-| Việc                                                            | Ở đâu                                       | Nạp thế nào        |
-| --------------------------------------------------------------- | ------------------------------------------- | ------------------ |
-| Đụng `eslint.config.js`, nâng version plugin, thêm thư mục code | skill `v9-fences`                           | theo việc          |
-| Auth, role, session, đăng ký/duyệt nhân viên, FK tới nhân viên  | skill `v9-auth`                             | theo việc          |
-| Directus: ảnh xe, quyền Public, sau khi nâng version            | skill `v9-directus`                         | theo việc          |
-| Chuẩn bị deploy, sửa `compose.prod.yaml`                        | skill `v9-deploy`                           | theo việc          |
-| Hiểu code có sẵn: ai gọi cái này, đổi nó vỡ gì                  | CodeGraph — `codegraph explore "<câu hỏi>"` | trước khi đọc file |
-| Cú pháp CodeGraph/Serena, probe sau khi nâng version            | skill `v9-codegraph`                        | theo việc          |
-| Viết code trong một workspace                                   | `CLAUDE.md` của workspace đó                | theo thư mục       |
-| Đợt kế tiếp, việc nghiệp vụ cần brainstorm                      | [`docs/ROADMAP.md`](docs/ROADMAP.md)        |                    |
-| Nợ đã biết                                                      | [`docs/DEBT.md`](docs/DEBT.md)              |                    |
-| Lý do đằng sau một quyết định cũ                                | [`docs/plans/`](docs/plans/) · Agent Memory |                    |
+| Việc                                                            | Ở đâu                                                         | Nạp thế nào        |
+| --------------------------------------------------------------- | ------------------------------------------------------------- | ------------------ |
+| Đụng `eslint.config.js`, nâng version plugin, thêm thư mục code | skill `v9-fences`                                             | theo việc          |
+| Auth, role, session, đăng ký/duyệt nhân viên, FK tới nhân viên  | skill `v9-auth`                                               | theo việc          |
+| Directus: ảnh xe, quyền Public, sau khi nâng version            | skill `v9-directus`                                           | theo việc          |
+| Chuẩn bị deploy, sửa `compose.prod.yaml`                        | skill `v9-deploy`                                             | theo việc          |
+| Hiểu code có sẵn: ai gọi cái này, đổi nó vỡ gì                  | CodeGraph — `codegraph explore "<câu hỏi>"`                   | trước khi đọc file |
+| Cú pháp CodeGraph/Serena, probe sau khi nâng version            | skill `v9-codegraph`                                          | theo việc          |
+| Viết code trong một workspace                                   | `CLAUDE.md` của workspace đó                                  | theo thư mục       |
+| Đợt kế tiếp, việc nghiệp vụ cần brainstorm                      | [`docs/ROADMAP.md`](docs/ROADMAP.md)                          |                    |
+| Nợ đã biết                                                      | [`docs/DEBT.md`](docs/DEBT.md)                                |                    |
+| Lý do đằng sau một quyết định cũ                                | [`docs/plans/`](docs/plans/) · Serena memory `architecture/*` |                    |
 
 `CLAUDE.md` của workspace **thắng** file này khi hai bên nói cùng một chuyện; design doc trong
 `docs/plans/` thắng cả hai. Thấy mâu thuẫn thì **nêu cho người**, đừng tự chọn bên.
@@ -242,14 +242,25 @@ Sau mỗi lần đụng `eslint.config.js` hoặc nâng version plugin: chạy b
 
 ## Bộ công cụ AI — dùng khi nào, **không** dùng khi nào
 
-| Tool             | Dùng khi                                                                                                                                                                | KHÔNG dùng khi                                                                                            |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| **superpowers**  | Mọi thay đổi không tầm thường: brainstorm → design doc → plan → implement → verify. Doc và plan commit vào `docs/plans/`. **TDD nghiêm bắt buộc** cho `packages/shared` | Việc infra/UI dùng verification-before-completion thay cho test-first                                     |
-| **CodeGraph**    | **Mở đầu mọi việc chạm code** — trước grep/read và trước khi sửa. Một lời gọi trả source verbatim + call path + blast radius, thay hàng chục lần đọc file               | Không thay `find_referencing_symbols` khi đổi tên/signature. Đọc cảnh báo dưới bảng trước khi tin cờ test |
-| **Serena**       | Điều hướng và sửa theo ngữ nghĩa. Bắt buộc `find_referencing_symbols` **trước khi** đổi tên hay đổi signature của exported function / shared type                       | Không đổi tên khi chưa kiểm reference                                                                     |
-| **Agent Memory** | Là **ADR, không phải cache code**. Đọc lúc mở phiên và trước **mọi** đề xuất đổi schema/API. Ghi quyết định + lý do, gotcha lúc debug                                   | Không lưu code snippet — git và Serena lo phần đó. Mâu thuẫn thì **nêu cho người**, đừng tự đè            |
-| **rtk**          | Đã hook sẵn, không cần làm gì                                                                                                                                           | Không dán output dài vào context bằng tay                                                                 |
-| **impeccable**   | `apps/web` là chính. Đọc `PRODUCT.md` + `DESIGN.md` trước khi động vào UI                                                                                               | `apps/staff` ưu tiên chức năng — không polish trừ khi được yêu cầu                                        |
+| Tool              | Dùng khi                                                                                                                                                                | KHÔNG dùng khi                                                                                            |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| **superpowers**   | Mọi thay đổi không tầm thường: brainstorm → design doc → plan → implement → verify. Doc và plan commit vào `docs/plans/`. **TDD nghiêm bắt buộc** cho `packages/shared` | Việc infra/UI dùng verification-before-completion thay cho test-first                                     |
+| **CodeGraph**     | **Mở đầu mọi việc chạm code** — trước grep/read và trước khi sửa. Một lời gọi trả source verbatim + call path + blast radius, thay hàng chục lần đọc file               | Không thay `find_referencing_symbols` khi đổi tên/signature. Đọc cảnh báo dưới bảng trước khi tin cờ test |
+| **Serena**        | Điều hướng và sửa theo ngữ nghĩa. Bắt buộc `find_referencing_symbols` **trước khi** đổi tên hay đổi signature của exported function / shared type                       | Không đổi tên khi chưa kiểm reference                                                                     |
+| **Serena memory** | Kho **ADR** của repo. Đọc lúc mở phiên (`list_memories`) và trước **mọi** đề xuất đổi schema/API. Ghi quyết định + lý do bằng `write_memory`                            | Không lưu code snippet — git và CodeGraph lo phần đó. Mâu thuẫn thì **nêu cho người**, đừng tự đè         |
+| **agentmemory**   | Log quan sát tự động theo phiên. **KHÔNG** phải kho ADR nữa — xem ghi chú dưới bảng                                                                                     | Đừng tra ADR ở đây: nó tự log mọi lệnh Bash vào cùng kho nên tìm kiếm bị chính nó lấn                     |
+| **rtk**           | Đã hook sẵn, không cần làm gì                                                                                                                                           | Không dán output dài vào context bằng tay                                                                 |
+| **impeccable**    | `apps/web` là chính. Đọc `PRODUCT.md` + `DESIGN.md` trước khi động vào UI                                                                                               | `apps/staff` ưu tiên chức năng — không polish trừ khi được yêu cầu                                        |
+
+> **Đổi 2026-09-01 — kho ADR chuyển từ `agentmemory` sang Serena.** Hai lý do đo được, không phải
+> sở thích: (1) `.serena/memories/` nằm trong repo nên **sống sót qua `git clone`** và review được
+> trong diff, còn `agentmemory` sống trong một service local ở cổng 3113 mà `git clone` không mang
+> theo; (2) `agentmemory` tự log **mọi lệnh Bash** vào cùng kho với ADR, nên `smart_search` bị
+> chính log của phiên đang chạy lấn — đo 2026-09-01: 10/12 kết quả là `command_run` của chính
+> phiên, và `expandIds` không expand. Cả hai đã được ghi nhận từ trước và tái lập chính xác.
+>
+> 21 ADR của v9 đang được di trú sang Serena. `agentmemory` **không bị xoá** — nó vẫn hữu ích như
+> log quan sát theo phiên.
 
 ### CodeGraph mở đầu, Serena chốt hạ
 
@@ -306,7 +317,7 @@ Bốn bước, theo thứ tự.
 2. **Serena định vị** — `find_symbol`, `find_declaration`, `find_referencing_symbols`.
 3. **Serena sửa** — theo **symbol**, không theo số dòng. Số dòng trôi sau mỗi lần sửa; symbol thì
    không.
-4. **Ghi lại** quyết định và lý do vào Agent Memory.
+4. **Ghi lại** quyết định và lý do vào Serena memory (`write_memory`).
 
 **Không bao giờ:** dùng grep/find/Read để _khám phá_ khi CodeGraph trả lời được (vẫn dùng chúng để
 _kiểm chứng_) · `Read` lại file CodeGraph vừa trả source · đổi tên hay đổi signature của exported
