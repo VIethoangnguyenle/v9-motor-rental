@@ -26,10 +26,10 @@ dựng, đưa ra, và **bỏ** — vì đội xe thật ≥26 chiếc, ở quy m
 Craft floor của impeccable liệt hai thứ dưới đây là mặc định nên từ chối. Đợt này **giữ cả hai**, và
 ghi ra đây để đó là một quyết định chứ không phải một chỗ bỏ sót:
 
-| Mặc định bị liệt                                  | Vì sao vẫn giữ                                                                                                            |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| _"khuôn hero-metric: số to, nhãn nhỏ, số phụ"_    | Nội dung thật của màn này **đúng là ba con số doanh thu**. Đây không phải khuôn dán lên nội dung khác — nó là chính nội dung. |
-| _"card cùng cỡ làm cấu trúc trang"_               | Người dùng yêu cầu rõ: **không đổi kiến trúc thông tin**. Bố cục card là thứ đang có và được giữ nguyên có chủ ý.           |
+| Mặc định bị liệt                               | Vì sao vẫn giữ                                                                                                                |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| _"khuôn hero-metric: số to, nhãn nhỏ, số phụ"_ | Nội dung thật của màn này **đúng là ba con số doanh thu**. Đây không phải khuôn dán lên nội dung khác — nó là chính nội dung. |
+| _"card cùng cỡ làm cấu trúc trang"_            | Người dùng yêu cầu rõ: **không đổi kiến trúc thông tin**. Bố cục card là thứ đang có và được giữ nguyên có chủ ý.             |
 
 Craft floor tự nói: _"đây là mặc định của thể loại, không phải lệnh cấm — chính lời của brief có thể
 giành lại bất cứ cái nào"_. Brief ở đây giành lại cả hai. Cái **không** được giành lại là _eyebrow /
@@ -69,8 +69,13 @@ App này dạy người dùng rằng màu có nghĩa — `rental-status.ts` xây
 xử lý không, cách tô = xe đã rời shop chưa). Để hai nghĩa khác hẳn nhau dùng chung một màu là phá
 chính hệ đó, ở chỗ đắt nhất: nút `+ Lên đơn` và thanh "đang thuê" trên lịch cạnh nhau, cùng màu.
 
-**Sửa: `--color-status-ongoing: oklch(55.7% 0.094 200)`** — teal. Giải ngược từ ràng buộc "chữ
-trắng phải đạt 4.5:1": `L=55.7%` là mức sáng nhất còn đạt, đo được **4,51:1**.
+**Sửa: `--color-status-ongoing: oklch(55.5% 0.094 200)`** — teal. Giải ngược từ ràng buộc "chữ
+trắng phải đạt 4.5:1", đo được **4,56:1**.
+
+> 🚦 **Gate sửa số này.** Bản đầu để `L=55.7%` — "mức sáng nhất còn đạt", đo được 4,51:1 trên số
+> thực liên tục. Trình duyệt lượng tử hoá về 8 bit và vẽ ra `rgb(4,132,137)`, đo trên pixel thật là
+> **4,4998:1**: trượt AA trong khi hàng rào xanh. `contrast()` ở `color-math.ts` nay lượng tử hoá
+> trước khi đo, nên lớp lỗi đó bắt được; `L=55.5%` cho 4,5550:1 trên pixel thật.
 
 Hue 200 chọn vì nó xa 255 đủ để phân biệt, nhưng vẫn nằm trong nửa lạnh — không đọc thành "cảnh
 báo" như hue vàng/đỏ vốn đã có nghĩa riêng trong hệ.
@@ -112,17 +117,17 @@ sai **±0.002**, kèm chú thích biện minh rằng đó là để chịu sai s
 
 Dung sai lỏng hơn mức cần khoảng **ba nghìn lần**. Hậu quả:
 
-| Token                       | Bảng ban đầu ghi | Trần gamut thật | Kênh tuyến tính              |
-| --------------------------- | ---------------- | --------------- | ---------------------------- |
-| `accent` sáng               | 0.174            | **0,17124**     | đỏ = **−0,001655** ⛔        |
-| `accent-hover` sáng         | 0.155            | 0,15148         | ⛔                            |
-| `accent-active` sáng        | 0.137            | 0,13172         | ⛔                            |
-| `warning` sáng              | 0.111            | 0,1098          | ⛔                            |
-| `status-ongoing` sáng       | 0.095            | 0,0948          | ⛔                            |
-| `status-overdue-soft` sáng  | 0.02             | 0,0198          | ⛔                            |
-| `status-booked-soft` sáng   | 0.02             | 0,0198          | ⛔                            |
-| `accent` tối                | 0.16             | 0,1598          | ⛔                            |
-| `accent-hover` tối          | 0.125            | 0,1249          | ⛔                            |
+| Token                      | Bảng ban đầu ghi | Trần gamut thật | Kênh tuyến tính       |
+| -------------------------- | ---------------- | --------------- | --------------------- |
+| `accent` sáng              | 0.174            | **0,17124**     | đỏ = **−0,001655** ⛔ |
+| `accent-hover` sáng        | 0.155            | 0,15148         | ⛔                    |
+| `accent-active` sáng       | 0.137            | 0,13172         | ⛔                    |
+| `warning` sáng             | 0.111            | 0,1098          | ⛔                    |
+| `status-ongoing` sáng      | 0.095            | 0,0948          | ⛔                    |
+| `status-overdue-soft` sáng | 0.02             | 0,0198          | ⛔                    |
+| `status-booked-soft` sáng  | 0.02             | 0,0198          | ⛔                    |
+| `accent` tối               | 0.16             | 0,1598          | ⛔                    |
+| `accent-hover` tối         | 0.125            | 0,1249          | ⛔                    |
 
 **Chín token.** Trong đó `accent = 0.174` là giá trị §1.1 đưa ra để _sửa_ lỗi tràn gamut — nó cũng
 tràn gamut. Và một hàng rào ở §7 với tên nguyên văn _"không token nào vượt gamut sRGB — token không
@@ -133,7 +138,8 @@ tràn gamut. Và một hàng rào ở §7 với tên nguyên văn _"không token
 ngưỡng 16 lần). Bảng §2.2/§2.3 dưới đây **đã là bảng đã sửa**.
 
 Kiểm lại sau khi hạ chín chroma: **14/14 cặp vẫn đạt ở cả hai theme**, gồm cả ba cặp không có biên
-(4,51:1 và 3,00:1 không đổi). ΔE `đang thuê` vs `hành động` = **0,145** sáng · **0,139** tối. Không
+(4,51:1 — nay 4,56:1 sau khi gate sửa L — và 3,00:1 không đổi). ΔE `đang thuê` vs `hành động` =
+**0,145** sáng · **0,139** tối. Không
 có hồi quy — độ lệch màu là ΔE 0,0013, bằng **1%** ngưỡng phân biệt.
 
 **Bài học, và lý do nó nằm trong tài liệu chứ không nằm trong một dòng commit:** chú thích ở đầu
@@ -158,52 +164,52 @@ Chi phí: 0. Cùng số lượng token, cùng số dòng CSS.
 
 ### 2.2 Bảng token — SÁNG (mặc định)
 
-| Token                       | oklch                    | sRGB      | Vai trò                     |
-| --------------------------- | ------------------------ | --------- | --------------------------- |
-| `--color-canvas`            | `oklch(98.4% 0.003 255)` | `#f8fafc` | nền trang                   |
-| `--color-surface`           | `oklch(100% 0 255)`      | `#ffffff` | card, ô nhập                |
-| `--color-surface-sunken`    | `oklch(96.2% 0.005 255)` | `#f0f3f6` | nền chìm, hover hàng        |
-| `--color-border`            | `oklch(87.8% 0.008 255)` | `#d3d7dc` | đường chia (trang trí)      |
-| `--color-border-strong`     | `oklch(66.9% 0.012 255)` | `#90959c` | viền control — **3,00:1**   |
-| `--color-ink`               | `oklch(22% 0.02 255)`    | `#141b24` | chữ chính                   |
-| `--color-ink-soft`          | `oklch(40% 0.016 255)`   | `#424850` | chữ phụ đậm                 |
-| `--color-muted`             | `oklch(52% 0.014 255)`   | `#646971` | metadata, placeholder       |
-| `--color-accent`            | `oklch(52% 0.171 255)`   | `#0067c8` | hành động chính             |
-| `--color-accent-ink`        | `oklch(100% 0 255)`      | `#ffffff` | chữ trên accent             |
-| `--color-status-overdue`    | `oklch(55% 0.21 27)`     | `#d01d21` | quá hạn — _giữ nguyên_      |
-| `--color-warning`           | `oklch(52% 0.109 75)`    | `#8d5e02` | cảnh báo — chroma vào gamut |
-| `--color-status-ongoing`    | `oklch(55.7% 0.094 200)` | `#048489` | đang thuê — **đổi hue**     |
-| `--color-status-booked`     | `oklch(50% 0.09 255)`    | —         | đã đặt — _giữ nguyên_       |
-| `--color-status-completed`  | `oklch(42% 0 255)`       | `#4d4d4d` | đã trả — **L 46% → 42%**, xem §2.5b |
-| `--color-status-overdue-soft` | `oklch(96% 0.019 27)`   | `#ffedeb` | nền chip quá hạn            |
-| `--color-warning-soft`      | `oklch(96% 0.032 75)`    | `#ffefdb` | nền chip cảnh báo           |
-| `--color-accent-soft`       | `oklch(96% 0.019 255)`   | `#eaf3ff` | nền chip accent             |
+| Token                         | oklch                    | sRGB      | Vai trò                             |
+| ----------------------------- | ------------------------ | --------- | ----------------------------------- |
+| `--color-canvas`              | `oklch(98.4% 0.003 255)` | `#f8fafc` | nền trang                           |
+| `--color-surface`             | `oklch(100% 0 255)`      | `#ffffff` | card, ô nhập                        |
+| `--color-surface-sunken`      | `oklch(96.2% 0.005 255)` | `#f0f3f6` | nền chìm, hover hàng                |
+| `--color-border`              | `oklch(87.8% 0.008 255)` | `#d3d7dc` | đường chia (trang trí)              |
+| `--color-border-strong`       | `oklch(66.9% 0.012 255)` | `#90959c` | viền control — **3,00:1**           |
+| `--color-ink`                 | `oklch(22% 0.02 255)`    | `#141b24` | chữ chính                           |
+| `--color-ink-soft`            | `oklch(40% 0.016 255)`   | `#424850` | chữ phụ đậm                         |
+| `--color-muted`               | `oklch(52% 0.014 255)`   | `#646971` | metadata, placeholder               |
+| `--color-accent`              | `oklch(52% 0.171 255)`   | `#0067c8` | hành động chính                     |
+| `--color-accent-ink`          | `oklch(100% 0 255)`      | `#ffffff` | chữ trên accent                     |
+| `--color-status-overdue`      | `oklch(55% 0.21 27)`     | `#d01d21` | quá hạn — _giữ nguyên_              |
+| `--color-warning`             | `oklch(52% 0.109 75)`    | `#8d5e02` | cảnh báo — chroma vào gamut         |
+| `--color-status-ongoing`      | `oklch(55.5% 0.094 200)` | `#028389` | đang thuê — **đổi hue**             |
+| `--color-status-booked`       | `oklch(50% 0.09 255)`    | —         | đã đặt — _giữ nguyên_               |
+| `--color-status-completed`    | `oklch(42% 0 255)`       | `#4d4d4d` | đã trả — **L 46% → 42%**, xem §2.5b |
+| `--color-status-overdue-soft` | `oklch(96% 0.019 27)`    | `#ffedeb` | nền chip quá hạn                    |
+| `--color-warning-soft`        | `oklch(96% 0.032 75)`    | `#ffefdb` | nền chip cảnh báo                   |
+| `--color-accent-soft`         | `oklch(96% 0.019 255)`   | `#eaf3ff` | nền chip accent                     |
 
 ### 2.3 Bảng token — TỐI
 
 Nền lấy **từ chính logo** (`public/icon-512.png`: nền đen–navy cắt chéo), không phải từ một thang
 xám bất kỳ.
 
-| Token                       | oklch                    | sRGB      |
-| --------------------------- | ------------------------ | --------- |
-| `--color-canvas`            | `oklch(17.5% 0.022 255)` | `#0a111a` |
-| `--color-surface`           | `oklch(22.5% 0.024 255)` | `#141c27` |
-| `--color-surface-sunken`    | `oklch(14% 0.02 255)`    | `#050911` |
-| `--color-border`            | `oklch(32% 0.026 255)`   | `#2a3440` |
-| `--color-border-strong`     | `oklch(51.2% 0.03 255)`  | `#5b6878` |
-| `--color-ink`               | `oklch(96.5% 0.006 255)` | `#f1f4f7` |
-| `--color-ink-soft`          | `oklch(82% 0.012 255)`   | `#bfc5cc` |
-| `--color-muted`             | `oklch(70% 0.018 255)`   | `#979faa` |
-| `--color-accent`            | `oklch(70% 0.159 255)`    | `#53a0ff` |
-| `--color-accent-ink`        | `oklch(17.5% 0.022 255)` | `#0a111a` |
-| `--color-status-overdue`    | `oklch(70% 0.17 27)`     | `#f66d62` |
-| `--color-warning`           | `oklch(78% 0.14 75)`     | `#eba941` |
-| `--color-status-ongoing`    | `oklch(74% 0.12 200)`    | `#24c1c9` |
-| `--color-status-booked`     | `oklch(68% 0.08 255)`    | —         |
-| `--color-status-completed`  | `oklch(66% 0 255)`       | —         |
-| `--color-status-overdue-soft` | `oklch(30% 0.05 27)`   | `#442320` |
-| `--color-warning-soft`      | `oklch(30% 0.05 75)`     | `#3c2a0e` |
-| `--color-accent-soft`       | `oklch(30% 0.05 255)`    | `#1c2f46` |
+| Token                         | oklch                    | sRGB      |
+| ----------------------------- | ------------------------ | --------- |
+| `--color-canvas`              | `oklch(17.5% 0.022 255)` | `#0a111a` |
+| `--color-surface`             | `oklch(22.5% 0.024 255)` | `#141c27` |
+| `--color-surface-sunken`      | `oklch(14% 0.02 255)`    | `#050911` |
+| `--color-border`              | `oklch(32% 0.026 255)`   | `#2a3440` |
+| `--color-border-strong`       | `oklch(51.2% 0.03 255)`  | `#5b6878` |
+| `--color-ink`                 | `oklch(96.5% 0.006 255)` | `#f1f4f7` |
+| `--color-ink-soft`            | `oklch(82% 0.012 255)`   | `#bfc5cc` |
+| `--color-muted`               | `oklch(70% 0.018 255)`   | `#979faa` |
+| `--color-accent`              | `oklch(70% 0.159 255)`   | `#53a0ff` |
+| `--color-accent-ink`          | `oklch(17.5% 0.022 255)` | `#0a111a` |
+| `--color-status-overdue`      | `oklch(70% 0.17 27)`     | `#f66d62` |
+| `--color-warning`             | `oklch(78% 0.14 75)`     | `#eba941` |
+| `--color-status-ongoing`      | `oklch(74% 0.12 200)`    | `#24c1c9` |
+| `--color-status-booked`       | `oklch(68% 0.08 255)`    | —         |
+| `--color-status-completed`    | `oklch(66% 0 255)`       | —         |
+| `--color-status-overdue-soft` | `oklch(30% 0.05 27)`     | `#442320` |
+| `--color-warning-soft`        | `oklch(30% 0.05 75)`     | `#3c2a0e` |
+| `--color-accent-soft`         | `oklch(30% 0.05 255)`    | `#1c2f46` |
 
 ⚠️ **`accent-ink` ở theme tối là màu NỀN, không phải trắng.** Chữ trắng trên `#53a0ff` chỉ đạt
 ~2,5:1. Đây là chỗ dễ sai nhất khi bê bảng sáng sang tối bằng cách đảo ngược.
@@ -222,18 +228,18 @@ mỗi cái phải đo lại. `warning` cũng đổi cả chroma (0.109 → 0.14)
 hiện _trên nền sáng_. Trên nền tối, accent **sáng hơn** nền, nên đậm đi là đi về phía nền — tương
 phản _giảm_.
 
-| Theme | accent                   | hover                    | active                   |
-| ----- | ------------------------ | ------------------------ | ------------------------ |
-| Sáng  | `oklch(52% 0.171 255)`   | `oklch(46% 0.151 255)`   | `oklch(40% 0.132 255)`   |
-| Tối   | `oklch(70% 0.160 255)`   | `oklch(76% 0.124 255)`   | `oklch(82% 0.091 255)`   |
+| Theme | accent                 | hover                  | active                 |
+| ----- | ---------------------- | ---------------------- | ---------------------- |
+| Sáng  | `oklch(52% 0.171 255)` | `oklch(46% 0.151 255)` | `oklch(40% 0.132 255)` |
+| Tối   | `oklch(70% 0.160 255)` | `oklch(76% 0.124 255)` | `oklch(82% 0.091 255)` |
 
 Số đo với chữ trên nút (sáng: trắng · tối: `accent-ink` = màu nền):
 
-| Trạng thái | Sáng    | Tối       |
-| ---------- | ------- | --------- |
-| thường     | 5,59:1  | 7,06:1    |
-| hover      | 7,22:1  | 8,83:1    |
-| active     | 9,30:1  | **10,89:1** |
+| Trạng thái | Sáng   | Tối         |
+| ---------- | ------ | ----------- |
+| thường     | 5,59:1 | 7,06:1      |
+| hover      | 7,22:1 | 8,83:1      |
+| active     | 9,30:1 | **10,89:1** |
 
 **Phản chứng, đo được:** nếu theme tối làm hover/active đậm đi theo đúng bản sáng, `active` rơi
 xuống **4,39:1** — trượt AA cho chính chữ của nó, và chỉ còn 3,95:1 với `surface`. Chép nguyên bảng
@@ -244,22 +250,22 @@ không phải lựa chọn thẩm mỹ.
 
 ### 2.4 Số đo — 14/14 cặp đạt ở cả hai theme
 
-| Cặp                          | Sáng      | Tối       | Ngưỡng |
-| ---------------------------- | --------- | --------- | ------ |
-| `ink` / `surface`            | 17,30:1   | 15,45:1   | 4.5    |
-| `ink` / `canvas`             | 16,53:1   | 17,14:1   | 4.5    |
-| `muted` / `surface`          | 5,50:1    | 6,41:1    | 4.5    |
-| `muted` / `canvas`           | 5,26:1    | 7,11:1    | 4.5    |
-| `ink-soft` / `surface`       | 9,20:1    | 9,80:1    | 4.5    |
-| `accent` / `surface`         | 5,59:1    | 6,37:1    | 4.5    |
-| `accent-ink` / `accent`      | 5,59:1    | 7,06:1    | 4.5    |
-| `accent-ink` / `overdue`     | 5,40:1    | 6,59:1    | 4.5    |
-| `accent-ink` / `warning`     | 5,62:1    | 9,29:1    | 4.5    |
-| `accent-ink` / `ongoing`     | **4,51:1**| 8,62:1    | 4.5    |
-| `border-strong` / `surface`  | **3,00:1**| **3,00:1**| 3.0    |
-| `overdue` / `overdue-soft`   | 4,78:1    | 4,83:1    | 4.5    |
-| `warning` / `warning-soft`   | 4,99:1    | 6,73:1    | 4.5    |
-| `accent` / `accent-soft`     | 4,99:1    | 5,08:1    | 4.5    |
+| Cặp                         | Sáng       | Tối        | Ngưỡng |
+| --------------------------- | ---------- | ---------- | ------ |
+| `ink` / `surface`           | 17,30:1    | 15,45:1    | 4.5    |
+| `ink` / `canvas`            | 16,53:1    | 17,14:1    | 4.5    |
+| `muted` / `surface`         | 5,50:1     | 6,41:1     | 4.5    |
+| `muted` / `canvas`          | 5,26:1     | 7,11:1     | 4.5    |
+| `ink-soft` / `surface`      | 9,20:1     | 9,80:1     | 4.5    |
+| `accent` / `surface`        | 5,59:1     | 6,37:1     | 4.5    |
+| `accent-ink` / `accent`     | 5,59:1     | 7,06:1     | 4.5    |
+| `accent-ink` / `overdue`    | 5,40:1     | 6,59:1     | 4.5    |
+| `accent-ink` / `warning`    | 5,62:1     | 9,29:1     | 4.5    |
+| `accent-ink` / `ongoing`    | **4,56:1** | 8,62:1     | 4.5    |
+| `border-strong` / `surface` | **3,00:1** | **3,00:1** | 3.0    |
+| `overdue` / `overdue-soft`  | 4,78:1     | 4,83:1     | 4.5    |
+| `warning` / `warning-soft`  | 4,99:1     | 6,73:1     | 4.5    |
+| `accent` / `accent-soft`    | 4,99:1     | 5,08:1     | 4.5    |
 
 Ba cặp in đậm là **giải ngược từ ngưỡng** — chọn L nhỏ nhất còn đạt, để màu đậm nhất có thể mà
 không trượt. Chúng không có biên; đổi L của chúng là trượt AA.
@@ -269,9 +275,9 @@ không trượt. Chúng không có biên; đổi L của chúng là trượt AA.
 Mô phỏng Machado 2009 (severity 1.0) trên linear RGB, rồi đo ΔE trong OKLab. Ngưỡng phân biệt được
 lấy ở **ΔE ≥ 0,12**.
 
-| Cặp                          | Nhìn thường | Protanopia | **Deuteranopia** | Tritanopia |
-| ---------------------------- | ----------- | ---------- | ---------------- | ---------- |
-| `quá hạn` ↔ `cảnh báo`       | 0,162       | 0,062      | **0,040**        | 0,151      |
+| Cặp                    | Nhìn thường | Protanopia | **Deuteranopia** | Tritanopia |
+| ---------------------- | ----------- | ---------- | ---------------- | ---------- |
+| `quá hạn` ↔ `cảnh báo` | 0,162       | 0,062      | **0,040**        | 0,151      |
 
 **Deuteranopia là dạng phổ biến nhất (~6% nam giới).** Ở đó hai màu này coi như **một**. Và đó đúng
 là hai màu đắt nhất trong app: `AttentionList` xếp _"N xe quá hạn chưa trả"_ ngay trên _"N xe phải
@@ -296,14 +302,14 @@ vào một dải L hẹp; điều kiện (2) đòi L phải chênh nhau nhiều.
 Đây là chỗ mục §5 (icon) **thôi là trang trí và trở thành chịu lực**. Mọi chip trạng thái và mọi chấm
 chú ý phải mang một **hình dạng riêng biệt**, không chỉ một màu riêng biệt:
 
-| Trạng thái          | Icon             | Hình dạng nền |
-| ------------------- | ---------------- | ------------- |
-| quá hạn chưa trả    | `alert-triangle` | tam giác      |
-| chưa ai lấy xe      | `clock`          | tròn          |
-| phải trả hôm nay    | `calendar-check` | vuông         |
-| đang thuê           | `bike`           | (đã có sẵn)   |
-| đã đặt              | `calendar-days`  | vuông         |
-| đã trả              | `check`          | dấu kiểm      |
+| Trạng thái       | Icon             | Hình dạng nền |
+| ---------------- | ---------------- | ------------- |
+| quá hạn chưa trả | `alert-triangle` | tam giác      |
+| chưa ai lấy xe   | `clock`          | tròn          |
+| phải trả hôm nay | `calendar-check` | vuông         |
+| đang thuê        | `bike`           | (đã có sẵn)   |
+| đã đặt           | `calendar-days`  | vuông         |
+| đã trả           | `check`          | dấu kiểm      |
 
 Chọn theo **độ khác nhau của hình**, không theo mức dễ thương của biểu tượng: tam giác / tròn /
 vuông phân biệt được kể cả khi màu biến mất hoàn toàn.
@@ -338,10 +344,10 @@ mọi cặp, không phải ở một cặp.
 **Hai chỗ đã sửa được bằng màu thì vẫn phải sửa** — ngoại lệ dành cho thứ không sửa được, không dành
 cho thứ ngại sửa:
 
-| Cặp                       | Trước  | Sau    | Xử lý                                        |
-| ------------------------- | ------ | ------ | -------------------------------------------- |
-| `đang thuê` ↔ `hành động` | 0,000  | 0,040  | đổi hue 255 → 200 (§1.2). Còn dưới ngưỡng ở tritanopia; hai token này **không bao giờ đứng cạnh nhau** — một là nút, một là chip |
-| `đang thuê` ↔ `đã trả`    | 0,131  | 0,138  | **hồi quy do đợt này gây ra** (tụt còn 0,100), đã chữa bằng `status-completed` L 46% → **42%** |
+| Cặp                       | Trước | Sau   | Xử lý                                                                                                                            |
+| ------------------------- | ----- | ----- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `đang thuê` ↔ `hành động` | 0,000 | 0,040 | đổi hue 255 → 200 (§1.2). Còn dưới ngưỡng ở tritanopia; hai token này **không bao giờ đứng cạnh nhau** — một là nút, một là chip |
+| `đang thuê` ↔ `đã trả`    | 0,131 | 0,138 | **hồi quy do đợt này gây ra** (tụt còn 0,100), đã chữa bằng `status-completed` L 46% → **42%**                                   |
 
 Cặp thứ hai là bài học riêng: nó **đang ở trên ngưỡng** và bị chính đợt này đẩy xuống dưới. Nó cũng
 là cặp nguy hiểm nhất trong bảng — `ONGOING` và `COMPLETED` **đều tô nền đặc** và **đứng cạnh nhau**
@@ -385,8 +391,8 @@ hai dòng nằm sát nhau trong `AttentionList`.
 > ⚠️ **Đính chính §2.5c:** dưới ba kiểu mù màu thông thường, cặp chặt nhất là `quá hạn ↔ đã trả`
 > (ΔE 0,073, protanopia). Dưới achromatopsia thì **ngược lại** — `đã trả` là màu **dễ** phân biệt
 > nhất, còn `quá hạn ↔ đang thuê` mới sát (12/255). Hai kết luận không mâu thuẫn: chúng đo hai thứ
-> khác nhau, và `đang thuê` sát `quá hạn` **do chính cách nó được giải ra** (L=55,7% là mức sáng nhất
-> còn đạt 4,5:1 với chữ trắng; `quá hạn` ở L=55%).
+> khác nhau, và `đang thuê` sát `quá hạn` **do chính cách nó được giải ra** (L=55,5% là mức sáng
+> nhất còn đạt 4,5:1 với chữ trắng trên pixel 8 bit; `quá hạn` ở L=55%).
 
 Đây là chỗ luận điểm §2.5b thôi là suy luận và thành phép đo: **không cách chọn màu nào cứu được**,
 vì thứ ghim độ sáng lại chính là ràng buộc tương phản. Ở chế độ Tháng 390px dưới achromatopsia, chip
@@ -420,11 +426,11 @@ và `đã trả ↔ cảnh báo`, mà chưa phải trả giá thị giác nào �
 
 Ba trạng thái, không phải hai:
 
-| Trạng thái | Đánh dấu                   | Nghĩa                      |
-| ---------- | -------------------------- | -------------------------- |
-| sáng ép    | `<html data-theme="light">`| người dùng chọn sáng       |
-| tối ép     | `<html data-theme="dark">` | người dùng chọn tối        |
-| theo hệ    | **không có thuộc tính**    | mặc định — nghe `prefers-` |
+| Trạng thái | Đánh dấu                    | Nghĩa                      |
+| ---------- | --------------------------- | -------------------------- |
+| sáng ép    | `<html data-theme="light">` | người dùng chọn sáng       |
+| tối ép     | `<html data-theme="dark">`  | người dùng chọn tối        |
+| theo hệ    | **không có thuộc tính**     | mặc định — nghe `prefers-` |
 
 ```css
 @theme {
@@ -432,13 +438,19 @@ Ba trạng thái, không phải hai:
 }
 
 @layer base {
-  :root { color-scheme: light; }
-
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { color-scheme: dark; /* bảng TỐI */ }
+  :root {
+    color-scheme: light;
   }
 
-  :root[data-theme="dark"] { color-scheme: dark; /* bảng TỐI */ }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark; /* bảng TỐI */
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark; /* bảng TỐI */
+  }
 }
 ```
 
@@ -526,13 +538,13 @@ nào chạy lặp vô hạn, không có hiệu ứng nào gắn vào cuộn.
 
 ```css
 @theme {
-  --ease-enter:    cubic-bezier(0.16, 1, 0.3, 1);   /* giảm tốc — thứ đang vào */
-  --ease-exit:     cubic-bezier(0.4, 0, 1, 1);      /* tăng tốc — thứ đang đi  */
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1);      /* đổi trạng thái tại chỗ  */
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1); /* giảm tốc — thứ đang vào */
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1); /* tăng tốc — thứ đang đi  */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* đổi trạng thái tại chỗ  */
 
-  --duration-instant: 120ms;  /* hover, focus, đổi màu     */
-  --duration-quick:   180ms;  /* chip, badge, alert vào    */
-  --duration-panel:   280ms;  /* modal / sheet             */
+  --duration-instant: 120ms; /* hover, focus, đổi màu     */
+  --duration-quick: 180ms; /* chip, badge, alert vào    */
+  --duration-panel: 280ms; /* modal / sheet             */
 }
 ```
 
@@ -545,11 +557,11 @@ bỏ đi phải biến mất nhanh hơn nữa.
 Luật không phải _"chỉ `transform` và `opacity`"_ — đó là tự trói. Luật là: **chi phí của một hiệu
 ứng nhân với số phần tử chạy nó phải nằm trong ngân sách của một điện thoại Android rẻ tiền.**
 
-| Nhóm                                                | Được dùng                                                     |
-| --------------------------------------------------- | ------------------------------------------------------------- |
-| **Phần tử lặp lại** (hàng bảng, thanh lịch, chip)   | chỉ `transform` · `opacity` · `background-color` · `border-color` |
-| **Phần tử đơn lẻ** (modal, alert, badge)            | thêm `filter`, `backdrop-filter`, `clip-path`, `mask`         |
-| **Khoảnh khắc dàn dựng** (§4.1, một phần tử, một lần) | toàn bộ bảng màu, miễn còn mượt khi đo                        |
+| Nhóm                                                  | Được dùng                                                         |
+| ----------------------------------------------------- | ----------------------------------------------------------------- |
+| **Phần tử lặp lại** (hàng bảng, thanh lịch, chip)     | chỉ `transform` · `opacity` · `background-color` · `border-color` |
+| **Phần tử đơn lẻ** (modal, alert, badge)              | thêm `filter`, `backdrop-filter`, `clip-path`, `mask`             |
+| **Khoảnh khắc dàn dựng** (§4.1, một phần tử, một lần) | toàn bộ bảng màu, miễn còn mượt khi đo                            |
 
 Cụ thể ở đây: nền mờ của `ui/modal.tsx` được phép dùng `backdrop-filter: blur(2px)` — **một** phần
 tử, mở vài chục lần mỗi ca. Cùng hiệu ứng đó rắc lên 30 hàng bảng khách hàng thì không.
@@ -570,16 +582,16 @@ nên nó dùng một `::after` phủ lên animate `transform: scale()` + `opacit
 
 ### 4.4 Bảng kê — từng chỗ, ánh xạ vào file thật
 
-| #   | Chỗ                       | File                                                | Animate                        | Thời lượng | Easing     | Nói điều gì                             |
-| --- | ------------------------- | --------------------------------------------------- | ------------------------------ | ---------- | ---------- | --------------------------------------- |
-| 1   | hàng bấm được             | `stats/attention-list.tsx`, `layout/app-nav.tsx`, `rentals/rental-form.tsx` | `background-color` | 120ms | standard | hàng này bấm được                       |
-| 2   | nút                       | `ui/button.tsx`, `ui/toggle-group.tsx`              | `background-color`, `border-color` | 120ms  | standard   | nút nhận được cú bấm                    |
-| 3   | vòng tiêu điểm            | `index.css :focus-visible`                          | **không animate**              | 0          | —          | vòng focus trễ là lỗi, không phải hiệu ứng |
-| 4   | modal / sheet vào–ra      | `ui/modal.tsx`                                      | `transform`, `opacity`, nền mờ | 280 / 180ms | enter / exit | lớp phủ tới từ đâu, đi về đâu           |
-| 5   | skeleton → nội dung       | `ui/skeleton.tsx` + trang gọi                       | `opacity`, `transform`         | 180ms      | enter      | nối "đang tải" với "đã có"              |
-| 6   | đơn vừa đổi trạng thái    | `rentals/rental-detail-sheet.tsx`, lịch             | `::after` scale + opacity      | 600ms ×1   | exit       | **hàng nào** vừa đổi                    |
-| 7   | badge số yêu cầu          | `layout/app-nav.tsx` `NewRequestBadge`              | `transform: scale`             | 180ms      | enter      | số vừa đổi khi không ai nhìn            |
-| 8   | alert xuất hiện           | `ui/alert.tsx`                                      | `opacity`, `transform`         | 180ms      | enter      | đây là thứ MỚI, không phải vốn có       |
+| #   | Chỗ                    | File                                                                        | Animate                            | Thời lượng  | Easing       | Nói điều gì                                |
+| --- | ---------------------- | --------------------------------------------------------------------------- | ---------------------------------- | ----------- | ------------ | ------------------------------------------ |
+| 1   | hàng bấm được          | `stats/attention-list.tsx`, `layout/app-nav.tsx`, `rentals/rental-form.tsx` | `background-color`                 | 120ms       | standard     | hàng này bấm được                          |
+| 2   | nút                    | `ui/button.tsx`, `ui/toggle-group.tsx`                                      | `background-color`, `border-color` | 120ms       | standard     | nút nhận được cú bấm                       |
+| 3   | vòng tiêu điểm         | `index.css :focus-visible`                                                  | **không animate**                  | 0           | —            | vòng focus trễ là lỗi, không phải hiệu ứng |
+| 4   | modal / sheet vào–ra   | `ui/modal.tsx`                                                              | `transform`, `opacity`, nền mờ     | 280 / 180ms | enter / exit | lớp phủ tới từ đâu, đi về đâu              |
+| 5   | skeleton → nội dung    | `ui/skeleton.tsx` + trang gọi                                               | `opacity`, `transform`             | 180ms       | enter        | nối "đang tải" với "đã có"                 |
+| 6   | đơn vừa đổi trạng thái | `rentals/rental-detail-sheet.tsx`, lịch                                     | `::after` scale + opacity          | 600ms ×1    | exit         | **hàng nào** vừa đổi                       |
+| 7   | badge số yêu cầu       | `layout/app-nav.tsx` `NewRequestBadge`                                      | `transform: scale`                 | 180ms       | enter        | số vừa đổi khi không ai nhìn               |
+| 8   | alert xuất hiện        | `ui/alert.tsx`                                                              | `opacity`, `transform`             | 180ms       | enter        | đây là thứ MỚI, không phải vốn có          |
 
 Mục 6 là mục quan trọng nhất của cả đợt — nó là thứ trực tiếp chữa lỗi P0 ở §4.1. Nó **không** chạy
 lặp: một nhịp rồi tắt. Vòng xung lặp mãi là một cảnh báo, không phải một lời xác nhận.
@@ -591,14 +603,20 @@ Tab, `inert`, Esc, trả tiêu điểm — bốn thứ miễn phí). Cái giá l
 `transition` thông thường không có:
 
 ```css
-dialog[open] > div { /* panel */
+dialog[open] > div {
+  /* panel */
   transition:
     transform var(--duration-panel) var(--ease-enter),
-    opacity   var(--duration-panel) var(--ease-enter),
-    display   var(--duration-panel) allow-discrete,
-    overlay   var(--duration-panel) allow-discrete;
+    opacity var(--duration-panel) var(--ease-enter),
+    display var(--duration-panel) allow-discrete,
+    overlay var(--duration-panel) allow-discrete;
 }
-@starting-style { dialog[open] > div { transform: translateY(12px); opacity: 0; } }
+@starting-style {
+  dialog[open] > div {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+}
 ```
 
 - **`@starting-style`** — thiếu nó thì không có hiệu ứng VÀO. Phần tử vừa được tạo không có giá trị
@@ -611,11 +629,11 @@ dialog[open] > div { /* panel */
 
 Ba `ModalPlacement` cần ba hướng vào khác nhau, vì hướng phải khớp nơi nó neo:
 
-| Placement  | Dùng ở                      | Vào từ                                       |
-| ---------- | --------------------------- | -------------------------------------------- |
-| `bottom`   | sheet **Thêm** (bottom nav) | `translateY(100%)` — trượt lên từ đáy         |
+| Placement  | Dùng ở                      | Vào từ                                          |
+| ---------- | --------------------------- | ----------------------------------------------- |
+| `bottom`   | sheet **Thêm** (bottom nav) | `translateY(100%)` — trượt lên từ đáy           |
 | `adaptive` | sheet chi tiết đơn          | `translateY(100%)` <640px · `scale(.98)` ≥640px |
-| `top`      | form lên đơn                | `translateY(-12px)` + fade                    |
+| `top`      | form lên đơn                | `translateY(-12px)` + fade                      |
 
 Sheet trượt lên từ đáy là quy ước gốc của điện thoại; hộp thoại giữa màn thì phóng nhẹ. Dùng chung
 một hướng cho cả ba là chỗ dễ làm ẩu nhất.
@@ -628,7 +646,9 @@ mà lớp phủ này là nơi hành vi PWA (safe-area, `dvh`, bàn phím ảo) g
 
 ```css
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
@@ -643,11 +663,11 @@ bất kỳ logic nào chờ sự kiện đó sẽ treo. Đây là bẫy đã bi�
 Nhưng quét toàn cục **không đủ** — nó xoá cả thông tin, không chỉ xoá chuyển động. Ba chỗ phải xử lý
 riêng:
 
-| Chỗ                 | Bản thường          | Bản reduced-motion                                     |
-| ------------------- | ------------------- | ------------------------------------------------------ |
+| Chỗ                 | Bản thường          | Bản reduced-motion                                      |
+| ------------------- | ------------------- | ------------------------------------------------------- |
 | xung "vừa đổi" (#6) | vòng scale + mờ dần | **nền tô nhạt giữ 2s rồi bỏ** — vẫn chỉ ra đúng hàng đó |
-| modal (#4)          | trượt + mờ          | hiện ngay, không transform                             |
-| badge (#7)          | scale pop           | đổi số ngay                                            |
+| modal (#4)          | trượt + mờ          | hiện ngay, không transform                              |
+| badge (#7)          | scale pop           | đổi số ngay                                             |
 
 Mục 6 là chỗ **bắt buộc** phải có bản thay thế: nếu reduced-motion làm nó biến mất hoàn toàn thì
 người bật cờ đó quay lại đúng lỗi P0 ban đầu — app làm xong việc mà không nói gì.
@@ -656,11 +676,11 @@ người bật cờ đó quay lại đúng lỗi P0 ban đầu — app làm xong
 
 Ghi ra để không ai đọc §4.4 là "đã xong":
 
-| # | Mục | Trạng thái |
-| - | --- | ---------- |
-| 5 | skeleton → nội dung | **chưa làm** |
-| 7 | badge số yêu cầu đổi | **chưa làm** |
-| 8 | alert xuất hiện | **chưa làm** |
+| #   | Mục                  | Trạng thái   |
+| --- | -------------------- | ------------ |
+| 5   | skeleton → nội dung  | **chưa làm** |
+| 7   | badge số yêu cầu đổi | **chưa làm** |
+| 8   | alert xuất hiện      | **chưa làm** |
 
 Cả ba rẻ và không phải điều kiện để §4.1 đứng — khoảnh khắc dàn dựng (mục 6) và trạng thái nền
 (mục 1–3) mới là thứ luận điểm dựa vào. Đưa vào đợt sau, hoặc vào đợt sửa gộp của gate nếu còn chỗ.
@@ -695,13 +715,13 @@ nhất còn lại. Cắt mục này đi thì hệ màu ở §2 mang một lỗi 
 
 Vì vậy thứ tự thi công là: **icon trước, hoặc cùng lúc với màu — không phải sau.**
 
-| Việc                     | Nội dung                                                                                    |
-| ------------------------ | ------------------------------------------------------------------------------------------- |
-| Chip trạng thái          | sáu hình dạng riêng (§2.5). Đây là phần chịu lực.                                            |
-| Chấm ở `AttentionList`   | `StatusDot` hiện là hình tròn tô màu cho **cả ba** dòng — thay bằng icon theo loại việc.     |
-| `Alert` theo tone        | `error` / `warning` / `info` hiện chỉ khác nhau bằng màu → trượt SC 1.4.1.                   |
-| Trạng thái rỗng          | mỗi màn rỗng một icon lớn nhạt. Hiện là chữ trần.                                            |
-| Nút gạt theme            | mặt trời / mặt trăng.                                                                        |
+| Việc                   | Nội dung                                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
+| Chip trạng thái        | sáu hình dạng riêng (§2.5). Đây là phần chịu lực.                                        |
+| Chấm ở `AttentionList` | `StatusDot` hiện là hình tròn tô màu cho **cả ba** dòng — thay bằng icon theo loại việc. |
+| `Alert` theo tone      | `error` / `warning` / `info` hiện chỉ khác nhau bằng màu → trượt SC 1.4.1.               |
+| Trạng thái rỗng        | mỗi màn rỗng một icon lớn nhạt. Hiện là chữ trần.                                        |
+| Nút gạt theme          | mặt trời / mặt trăng.                                                                    |
 
 Bổ sung vào `ICONS`: `alert-triangle`, `calendar-check`, `info`, `moon`, `sun`, `filter`.
 (`bike`, `calendar-days`, `check`, `clock` đã có sẵn.)
@@ -758,10 +778,10 @@ kỳ cặp nào trượt. Ba cặp không có biên (§2.4) làm hàng rào này
 
 Ba chỗ tài liệu lệch với code, phát hiện khi đọc để làm đợt này:
 
-| File                       | Ghi                                          | Thực tế                       |
-| -------------------------- | -------------------------------------------- | ----------------------------- |
-| `docs/workspaces/staff.md` | `index.css` "cố ý không khai `@theme` riêng" | khai rất nhiều từ Plan B      |
-| `docs/workspaces/staff.md` | icon "là ô màu đặc"                          | logo đã land 2026-09-01       |
-| `apps/staff/index.html`    | chú thích "vẫn là ô màu đặc, chờ logo thật"  | logo đã land                  |
+| File                       | Ghi                                          | Thực tế                  |
+| -------------------------- | -------------------------------------------- | ------------------------ |
+| `docs/workspaces/staff.md` | `index.css` "cố ý không khai `@theme` riêng" | khai rất nhiều từ Plan B |
+| `docs/workspaces/staff.md` | icon "là ô màu đặc"                          | logo đã land 2026-09-01  |
+| `apps/staff/index.html`    | chú thích "vẫn là ô màu đặc, chờ logo thật"  | logo đã land             |
 
 Sửa ba chỗ này là việc riêng, không gộp vào đợt thị giác.
