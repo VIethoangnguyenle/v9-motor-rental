@@ -105,10 +105,21 @@
    * "đơn đang thuê" và "hành động chính của app" tô cùng một màu, trong một app
    * dạy người dùng rằng màu có nghĩa.
    *
-   * L=55,7% là mức sáng nhất còn đạt 4,5:1 với chữ trắng — giải ngược từ ngưỡng,
-   * nên nó KHÔNG có biên (đo được 4,51:1). Đổi L là trượt AA.
+   * L=55,5%, KHÔNG phải 55,7% như bản trước.
+   *
+   * 55,7% được giải ngược từ ngưỡng 4,5:1 trên số thực LIÊN TỤC và đo được
+   * 4,5121:1 — qua, nhưng không có biên. Trình duyệt thì không vẽ số thực: nó
+   * lượng tử hoá về 8 bit, và `oklch(55.7% 0.094 200)` ra đúng `rgb(4,132,137)`,
+   * đo trên pixel thật (canvas + `getImageData`, cách `rental-status.ts` dặn) là
+   * **4,4998:1** — TRƯỢT AA. Hàng rào xanh trong khi màn hình đỏ, vì hàng rào đo
+   * số còn người dùng nhìn pixel.
+   *
+   * `contrast()` ở `color-math.ts` nay lượng tử hoá 8 bit trước khi đo, nên cái
+   * bẫy đó bắt được; 55,5% cho **4,5550:1** trên pixel thật (4,5498 liên tục) —
+   * lần này CÓ biên ở cả hai cách đo. Đổi L xuống nữa thì `đang thuê` tối lại và
+   * bò về phía `quá hạn`; đổi lên là trượt AA lần nữa.
    */
-  --color-status-ongoing: oklch(55.7% 0.094 200);
+  --color-status-ongoing: oklch(55.5% 0.094 200);
   --color-status-overdue: oklch(55% 0.21 27);
   /* L42%, và có HAI lý do — lý do thứ hai mới, đắt hơn lý do thứ nhất.
    *
@@ -262,8 +273,9 @@
  * rằng hành động này KHÔNG sinh ra phản hồi nào.
  *
  * VÒNG, không phải một mảng tô phủ lên chip — và đây là một phép ĐO, không phải
- * khẩu vị. Chip `ONGOING` là nền đặc + chữ `accent-ink`, đo được đúng 4,51:1 ở
- * bảng sáng, tức không có một chút biên nào. Phủ `accent-soft` @55% lên nó cho
+ * khẩu vị. Chip `ONGOING` là nền đặc + chữ `accent-ink`, đo được 4,56:1 ở bảng
+ * sáng (4,51 trước khi gate sửa L, xem chú thích ở `--color-status-ongoing`),
+ * tức gần như không có biên. Phủ `accent-soft` @55% lên nó cho
  * 2,02:1 (bảng tối 8,62 → 3,36). Không độ mờ nào cứu được cách tô đó — @10% vẫn
  * chỉ 3,89:1, vẫn dưới AA.
  *
