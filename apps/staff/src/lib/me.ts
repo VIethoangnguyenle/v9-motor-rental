@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { ApiErrorCode } from "@v9/api";
-import type { StaffRole } from "@v9/shared/domain/staff";
+import type { StaffRole, StaffStatus } from "@v9/shared/domain/staff";
 import { api } from "./api";
 import { errorCode } from "./errors";
 
@@ -29,8 +29,11 @@ export type StaffRow = NonNullable<Awaited<ReturnType<typeof api.staff.users.get
 /**
  * Vai trò hiển thị cho NGƯỜI ĐỌC. App này chỉ có tiếng Việt, nên in thẳng
  * `OWNER`/`STAFF` ra màn hình là để lọt một hằng của hệ thống vào chỗ của một
- * câu chữ — cùng loại lỗi với `row.status` trần, và người dùng không có cách nào
- * biết `SALES` nghĩa là gì.
+ * câu chữ, và người dùng không có cách nào biết `SALES` nghĩa là gì.
+ *
+ * Đi cặp với `STATUS_LABEL` bên dưới, và hai bảng phải được dùng CÙNG NHAU ở mọi
+ * chỗ hiện cả hai cột: dịch vai trò mà để nguyên trạng thái thì màn hình tự mâu
+ * thuẫn với chính nó ("Chủ shop" cạnh "ACTIVE").
  *
  * Khoá theo `StaffRole` (`@v9/shared/domain/staff`) chứ không theo `Me["role"]`:
  * đó là nơi bộ từ vựng vai trò được khai một lần cho cả API, DB check constraint
@@ -48,6 +51,25 @@ export const ROLE_LABEL: Record<StaffRole, string> = {
   OWNER: "Chủ shop",
   STAFF: "Nhân viên",
   SALES: "Kinh doanh",
+};
+
+/**
+ * Trạng thái tài khoản hiển thị cho NGƯỜI ĐỌC — cùng lý lẽ và cùng khuôn với
+ * `ROLE_LABEL` ngay trên.
+ *
+ * Chữ chọn để **khớp với nút vừa gây ra trạng thái đó**, không phải để dịch sát
+ * hằng số: nút ở `staff-row-actions.tsx` là `Khoá`, nên trạng thái sau đó đọc là
+ * "Đã khoá". Một bảng nói "DISABLED" cạnh một nút nói "Khoá" bắt người đọc tự
+ * nối hai từ vựng.
+ *
+ * `ACTIVE` là "Đang làm", không phải "Đã duyệt": duyệt là việc đã xong một lần,
+ * còn cột này trả lời "người này còn đang làm ở shop không" — đó mới là câu chủ
+ * shop hỏi khi mở màn này.
+ */
+export const STATUS_LABEL: Record<StaffStatus, string> = {
+  PENDING: "Chờ duyệt",
+  ACTIVE: "Đang làm",
+  DISABLED: "Đã khoá",
 };
 
 /**
