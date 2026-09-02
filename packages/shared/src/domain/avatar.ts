@@ -52,6 +52,17 @@ function normalizeType(raw: string): string {
   return raw.split(";")[0]?.trim().toLowerCase() ?? "";
 }
 
+/**
+ * Cùng tập với `isAllowedAvatarType`, ở dạng MẢNG — vì `t.File({ type })` của
+ * Elysia (`routes/staff.ts`) cần một danh sách, không gọi được một vị từ.
+ *
+ * Suy từ `TYPE_EXTENSION` chứ không gõ lại: `routes/handover.ts` chép tay đúng ba
+ * chuỗi này cho ảnh bàn giao, và bản chép đó là một danh sách thứ hai phải nhớ
+ * sửa cùng lúc. Ở đây thì hàng rào của Elysia và hàng rào của domain KHÔNG lệch
+ * nhau được — chúng đọc cùng một bảng.
+ */
+export const AVATAR_CONTENT_TYPES: readonly string[] = Object.keys(TYPE_EXTENSION);
+
 export function isAllowedAvatarType(contentType: string): boolean {
   return normalizeType(contentType) in TYPE_EXTENSION;
 }
@@ -90,4 +101,46 @@ export function isAvatarSizeValid(bytes: number): boolean {
  */
 export function avatarObjectKey(staffId: string, avatarId: string, extension: string): string {
   return `staff/${staffId}/avatar/${avatarId}.${extension}`;
+}
+
+/**
+ * Bảng NGƯỢC của `TYPE_EXTENSION`, dựng từ chính nó chứ không gõ lần thứ hai —
+ * hai bảng gõ tay là hai bảng sẽ lệch, đúng cái mà chú thích của `TYPE_EXTENSION`
+ * đã nêu. Nghịch đảo tồn tại được vì ba đuôi hiện tại đôi một khác nhau; thêm một
+ * định dạng dùng chung đuôi với định dạng cũ sẽ lặng lẽ mất một chiều, nên nếu
+ * ngày đó tới thì phải khai bảng ngược tường minh và có test canh cả hai chiều.
+ */
+const EXTENSION_TYPE: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.entries(TYPE_EXTENSION).map(([type, extension]) => [extension, type]),
+);
+
+/**
+ * Nghịch đảo của `avatarObjectKey`, và lý do nó cần tồn tại là chỉ có MỘT cột
+ * (`staff_users.avatar_object_key`) lưu toàn bộ thứ ta biết về ảnh — trong khi
+ * hai chỗ cần đọc lại từng mảnh:
+ *
+ *  - route stream byte cần `contentType` để đặt header. Lấy nó bằng cách `stat()`
+ *    object trên MinIO là thêm một vòng mạng vào đường NÓNG nhất (avatar hiện ở
+ *    chân thanh điều hướng, tức mọi màn hình); đuôi file trong khoá đã nói đủ.
+ *  - hồ sơ công khai cần `avatarId` làm **số hiệu bản** để client phân biệt được
+ *    ảnh cũ với ảnh mới (`avatarVersion` ở `routes/staff.ts`). Không có nó thì
+ *    "đã đổi ảnh" và "vẫn ảnh cũ" là cùng một trạng thái với client.
+ *
+ * `null` cho mọi thứ không đúng khuôn, kể cả đuôi lạ: hàng trong DB có thể được
+ * sửa tay hoặc mang khuôn của một đợt trước, và đoán bừa `contentType` từ một
+ * khoá không đọc được là cách biến dữ liệu hỏng thành ảnh hỏng ở trình duyệt.
+ */
+export function parseAvatarObjectKey(
+  objectKey: string,
+): { staffId: string; avatarId: string; contentType: string } | null {
+  // Neo hai đầu và cấm `/` bên trong từng mảnh: không có neo thì
+  // `staff/x/avatar/y.webp/thêm-gì-đó` cũng khớp, và ta trả về một `staffId`
+  // không phải của khoá đang xét.
+  const m = /^staff\/([^/]+)\/avatar\/([^/.]+)\.([^/.]+)$/.exec(objectKey);
+  if (!m) return null;
+  const [, staffId, avatarId, extension] = m;
+  if (staffId === undefined || avatarId === undefined || extension === undefined) return null;
+  const contentType = EXTENSION_TYPE[extension];
+  if (contentType === undefined) return null;
+  return { staffId, avatarId, contentType };
 }
