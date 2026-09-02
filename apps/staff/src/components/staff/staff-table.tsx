@@ -1,6 +1,26 @@
+import { useAvatarUrl } from "../../hooks/use-avatar-url";
 import { ROLE_LABEL, STATUS_LABEL, type Me, type StaffRow } from "../../lib/me";
 import { Avatar } from "../ui/avatar";
 import { StaffRowActions } from "./staff-row-actions";
+
+/**
+ * Ô "Họ tên" của một dòng, tách thành component CHỈ vì `useAvatarUrl` — hook
+ * không gọi được trong thân một `.map()`.
+ *
+ * ⚠️ Hook chỉ gửi request khi `avatarVersion !== null`, và đó là lý do trường đó
+ * phải có mặt trong `staffSchema` của API: không có nó thì bảng này bắn một
+ * request cho MỖI dòng để rồi nhận 404 ở phần lớn số dòng — sáu nhân viên, sáu
+ * lần hỏng, chỉ để biết thứ mà một `null` đã nói xong.
+ */
+function StaffNameCell({ row }: { readonly row: StaffRow }) {
+  const avatarUrl = useAvatarUrl(row.id, row.avatarVersion);
+  return (
+    <span className="flex items-center gap-2">
+      <Avatar name={row.fullName} seed={row.id} src={avatarUrl} />
+      {row.fullName}
+    </span>
+  );
+}
 
 interface StaffTableProps {
   readonly rows: readonly StaffRow[];
@@ -66,10 +86,7 @@ export function StaffTable({ rows, me, busy, onApprove, onDisable, onIssueCode }
                * dòng 20px thì thò xuống dưới đường chân chữ.
                */}
               <td className="card-pad">
-                <span className="flex items-center gap-2">
-                  <Avatar name={row.fullName} seed={row.id} />
-                  {row.fullName}
-                </span>
+                <StaffNameCell row={row} />
               </td>
               <td className="card-pad">{row.email}</td>
               <td className="card-pad">{row.phone ?? "—"}</td>

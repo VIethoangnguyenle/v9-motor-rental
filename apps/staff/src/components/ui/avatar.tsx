@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 /**
  * ⚠️ `ui/` KHÔNG được biết domain — không import `lib/api`, không biết `Me` hay
  * `StaffRole` là gì. Avatar nhận MỌI thứ qua prop.
@@ -10,12 +12,13 @@
  * ở mép mắt trước khi đọc kịp chữ, nên buộc màu vào tên nghĩa là một lần sửa
  * chính tả làm người đó "thành người khác" ở cả ba màn hình cùng lúc.
  *
- * ## Đây là BƯỚC 1 của phương án ảnh, không phải bản rút gọn của nó
+ * ## Chữ cái là ĐÍCH RƠI VỀ, không phải chỗ giữ tạm cho ảnh
  *
- * Ngày có ảnh tải lên, component này nhận thêm một prop `src?: string` và render
- * `<img>` khi có, rơi về chữ cái khi không — `name`/`seed` vẫn cần nguyên vẹn vì
- * ai chưa có ảnh thì vẫn phải rơi về đúng cái đang thấy ở đây. Không có gì trong
- * file này phải viết lại cho bước đó.
+ * Có `src` thì vẽ ảnh; không có, tải hỏng, hay chưa vẽ xong thì vẫn là ô chữ
+ * cái. Vì vậy `name`/`seed` luôn BẮT BUỘC kể cả khi truyền `src` — người có ảnh
+ * vẫn cần một thứ đúng để rơi về khi mạng rớt, và một ô rỗng thì không phải thứ
+ * đó. Đây cũng là lý do màu vẫn sinh từ `seed` cho MỌI người, kể cả người đang
+ * hiện ảnh.
  */
 
 /**
@@ -173,15 +176,46 @@ const SIZE: Record<"sm" | "md", string> = {
 export function Avatar({
   name,
   seed,
+  src,
   size = "sm",
   className = "",
 }: {
   readonly name: string;
   /** Nguồn của MÀU. Truyền `id`, đừng truyền tên — xem chú thích đầu file. */
   readonly seed: string;
+  /**
+   * Ảnh thật, nếu người này có. **Chuỗi URL do CHỖ GỌI dựng** — `ui/` không được
+   * biết API ở đâu (xem đầu file), nên `hooks/use-avatar-url.ts` là nơi lo cả
+   * việc tải lẫn việc thu hồi `blob:`.
+   *
+   * Không truyền, tải hỏng, hay chưa tải xong đều rơi về chữ cái. Ba ca đó về
+   * cùng một chỗ là CHỦ Ý: một ô trống không nói được gì cho người dùng, còn
+   * chữ cái thì vẫn là danh tính đúng của người đó.
+   */
+  readonly src?: string;
   readonly size?: "sm" | "md";
   readonly className?: string;
 }) {
+  /**
+   * `src` đã lỗi, chứ không phải một cờ `boolean`. Giữ chính chuỗi URL để trạng
+   * thái hỏng TỰ hết hạn khi đổi ảnh: một `boolean` sẽ dính lại sau khi người
+   * dùng tải ảnh mới lên, và ảnh mới không bao giờ được thử vẽ.
+   */
+  const [broken, setBroken] = useState<string | null>(null);
+  /** Cùng lý lẽ: chỉ giấu chữ cái khi ĐÚNG tấm đang hiện đã vẽ xong. */
+  const [ready, setReady] = useState<string | null>(null);
+
+  const showImage = src !== undefined && broken !== src;
+  /**
+   * ⚠️ Vế `!showImage` là bắt buộc, không thừa. Bản đầu chỉ có `ready !== src` và
+   * nó ĐÚNG cho ảnh hỏng ngay từ lần tải đầu (chưa `ready` bao giờ) — nhưng SAI
+   * cho ảnh đã hiện rồi mới hỏng (blob bị thu hồi, mạng rớt giữa chừng): lúc đó
+   * `ready === src` nên chữ cái vẫn bị giấu, `<img>` thì đã gỡ, và cái còn lại
+   * đúng là **ô tròn rỗng** mà cả cơ chế này tồn tại để tránh. Đo được ở trình
+   * duyệt 2026-09-02: gán một `blob:` không tồn tại vào `src` của ảnh đang hiện
+   * thì `<img>` biến mất và hàng nav còn lại một ô trơn không chữ.
+   */
+  const showInitials = !showImage || ready !== src;
   const { bg, ink } = avatarTintForHue(avatarHue(seed));
   return (
     <span
@@ -194,12 +228,37 @@ export function Avatar({
       // co lại — không có nó thì ô tròn bị bóp thành bầu dục thay vì để chữ cắt.
       // `leading-none`: cỡ dòng mặc định của `text-xs` là 16px trong một ô 28px,
       // đủ để hai chữ cái lệch tâm xuống dưới một hai pixel.
-      className={`inline-flex shrink-0 items-center justify-center rounded-full leading-none font-semibold select-none ${SIZE[size]} ${className}`}
+      // `relative` + `overflow-hidden`: ảnh nằm ĐÈ lên chữ cái trong cùng ô tròn
+      // này, nên nền màu vẫn là thứ hiện ra ở khoảnh khắc ảnh chưa vẽ xong và ở
+      // phần trong suốt của một PNG. Không có `overflow-hidden` thì ảnh vuông
+      // tràn ra ngoài đường bo tròn.
+      className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full leading-none font-semibold select-none ${SIZE[size]} ${className}`}
       // Màu inline, KHÔNG qua `@theme`: mỗi người một hue nên đây không phải một
       // token — nó là dữ liệu. Xem khối chú thích ở đầu file.
       style={{ backgroundColor: bg, color: ink }}
     >
-      {avatarInitials(name)}
+      {/* Chữ cái biến mất CHỈ khi ảnh đã vẽ xong. Giấu nó sớm hơn (ngay khi có
+          `src`) để lại một ô màu trơn trong suốt thời gian tải; giấu muộn hơn
+          (không bao giờ) thì chữ hiện xuyên qua phần trong suốt của ảnh. */}
+      {showInitials && avatarInitials(name)}
+      {showImage && (
+        <img
+          src={src}
+          // `alt=""` chứ không phải mô tả: cả ô này đã `aria-hidden` vì nó đứng
+          // cạnh chính cái tên nó thay mặt (xem chú thích ngay trên).
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          onLoad={() => {
+            setReady(src);
+          }}
+          // Ảnh hỏng, mạng rớt, hay `blob:` đã bị thu hồi — cả ba đều về chữ cái.
+          // Không có nhánh này thì `<img>` gãy để lại đúng thứ tệ nhất: một ô
+          // rỗng có viền tròn, trông như lỗi render chứ không như "chưa có ảnh".
+          onError={() => {
+            setBroken(src);
+          }}
+        />
+      )}
     </span>
   );
 }

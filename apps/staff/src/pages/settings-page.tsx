@@ -2,10 +2,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useSyncExternalStore } from "react";
 import { BuildStamp } from "../components/layout/build-stamp";
+import { AvatarActions } from "../components/settings/avatar-actions";
 import { Avatar } from "../components/ui/avatar";
 import { Button } from "../components/ui/button";
 import { Icon } from "../components/ui/icon";
 import { ToggleGroup } from "../components/ui/toggle-group";
+import { useAvatarUrl } from "../hooks/use-avatar-url";
 import { useMe } from "../hooks/use-me";
 import { signOut } from "../lib/auth";
 import { ROLE_LABEL } from "../lib/me";
@@ -65,6 +67,10 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { me } = useMe();
+  // Hook chạy KỂ CẢ khi `me` chưa về — hook không được gọi có điều kiện. Chưa có
+  // hồ sơ thì `version` là `null` và hook không gửi request nào, nên đây không
+  // phải một lời gọi thừa.
+  const avatarUrl = useAvatarUrl(me?.id ?? "", me?.avatarVersion ?? null);
 
   // `readChoice` chạy ngay ở khung hình ĐẦU, không đợi một `useEffect`: đặt tạm
   // "system" rồi sửa sau nghĩa là khung đầu tô sáng sai ô. App dựng bằng
@@ -106,15 +112,21 @@ export function SettingsPage() {
            * địa chỉ của chính mình; giấu nửa sau của nó để giữ một dòng gọn là
            * đổi đúng thứ trang này tồn tại để nói lấy hình thức.
            */
-          <div className="mt-2 flex items-center gap-3">
-            <Avatar name={me.fullName} seed={me.id} size="md" />
-            <div className="min-w-0">
-              <p className="text-sm text-ink">
-                {me.fullName} · {ROLE_LABEL[me.role]}
-              </p>
-              <p className="text-sm wrap-anywhere text-muted">{me.email}</p>
+          <>
+            <div className="mt-2 flex items-center gap-3">
+              <Avatar name={me.fullName} seed={me.id} src={avatarUrl} size="md" />
+              <div className="min-w-0">
+                <p className="text-sm text-ink">
+                  {me.fullName} · {ROLE_LABEL[me.role]}
+                </p>
+                <p className="text-sm wrap-anywhere text-muted">{me.email}</p>
+              </div>
             </div>
-          </div>
+            {/* Hai nút nằm DƯỚI cụm avatar + tên, không nằm cạnh avatar: ở 390px
+                thì một hàng "avatar · tên · hai nút" đẩy tên xuống còn vài ký
+                tự, mà tên mới là thứ khối này tồn tại để nói. */}
+            <AvatarActions me={me} />
+          </>
         ) : (
           <p className="mt-2 text-sm text-muted">Đang đọc hồ sơ…</p>
         )}
