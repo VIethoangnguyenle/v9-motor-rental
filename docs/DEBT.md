@@ -406,3 +406,37 @@ nợ 2026-08-18, xem "Đã đóng trong Plan A" bên dưới cho cách chứng m
   gửi đều 422) nhưng nguyên nhân sai — file thử **không có đuôi**. `handover.ts` nhận WebP bình
   thường: ảnh bàn giao đến từ `<input type="file">`, luôn mang tên thật kèm đuôi. Đừng đi tìm con bug
   đó. Hàng rào `apps/staff/src/lib/avatar-filename.test.ts` giữ đuôi tên file khỏi rơi lại.
+
+## ⛔ CI `verify` đỏ — workflow thiếu service MinIO
+
+**Có sẵn từ trước đợt này**, không phải hồi quy: `819ba41` (HEAD của `main` lúc đo) và mọi run trước
+đó đều fail ở bước `Run bun test`.
+
+Nguyên nhân: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) dựng Postgres dưới `services:`
+nhưng **không dựng MinIO**, trong khi vẫn đặt `MINIO_ENDPOINT: http://localhost:9000`. Mọi test chạm
+object storage vì thế chết ở CI trong khi xanh ở máy dev — đúng lớp "xanh ở đây, đỏ ở kia" mà không
+ai nhìn vì không ai đọc log CI của một job vốn đã đỏ.
+
+Đo 2026-09-02 bằng hai worktree, cùng một điều kiện (`MINIO_ENDPOINT` trỏ cổng không ai nghe), để
+tách bạch cái có sẵn với cái đợt này thêm vào:
+
+| cây               | pass | **fail** | những bài nào                                                                         |
+| ----------------- | ---- | -------- | ------------------------------------------------------------------------------------- |
+| `main` (819ba41)  | 372  | **6**    | `addRentalPhoto` ×2 · `readRentalPhoto` · `deleteRentalPhoto` ×2 · `listRentalPhotos` |
+| nhánh (`0befb5b`) | 472  | **12**   | 6 bài trên **+ 6 bài avatar** (`setStaffAvatar` ×4 · `deleteStaffAvatar` ×2)          |
+
+Đợt avatar **không tạo ra** món nợ này nhưng **nhân đôi** nó, vì `services/avatar.ts` dùng chung
+bucket `checkins` với ảnh bàn giao và test của nó ghi/đọc byte thật — có chủ ý: một test avatar
+không chạm MinIO thì không chứng minh được ca THAY ảnh dọn đúng object cũ, mà đó là ca dễ sai nhất
+của file đó.
+
+**Cách trả**: thêm MinIO vào `services:` của job `verify` và tạo sẵn hai bucket `vehicles`,
+`checkins` trước bước `bun test`. Ảnh `minio/minio` không chạy được thẳng dưới `services:` (khối đó
+không nhận `command`, mà entrypoint của ảnh cần `server /data`); hai đường đã biết là dùng ảnh
+`bitnami/minio` với `MINIO_DEFAULT_BUCKETS=vehicles,checkins`, hoặc `docker run -d` MinIO như một
+step thường rồi `mc mb`. **Chưa đo đường nào** — GitHub Actions không chạy thử ở máy được, nên việc
+này cần vài vòng đẩy để chỉnh.
+
+⚠️ Đến khi trả xong, **`bun test` xanh ở máy KHÔNG có nghĩa CI sẽ xanh**, và ngược lại `verify` đỏ
+không còn phân biệt được "hỏng thật" với "thiếu MinIO". Đó mới là giá đắt nhất của món nợ này: một
+cổng đỏ thường trực là một cổng không ai đọc nữa.
