@@ -5,7 +5,6 @@ import {
   CANVAS_HEX,
   THEME_COLOR_TAGS,
   THEME_STORAGE_KEY,
-  nextChoice,
   parseChoice,
   resolveTheme,
   themeColorFor,
@@ -38,14 +37,6 @@ describe("resolveTheme", () => {
   it("'system' đi theo hệ điều hành", () => {
     expect(resolveTheme("system", true)).toBe("dark");
     expect(resolveTheme("system", false)).toBe("light");
-  });
-});
-
-describe("nextChoice — vòng ba trạng thái", () => {
-  it("system → light → dark → system", () => {
-    expect(nextChoice("system")).toBe("light");
-    expect(nextChoice("light")).toBe("dark");
-    expect(nextChoice("dark")).toBe("system");
   });
 });
 

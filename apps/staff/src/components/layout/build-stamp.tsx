@@ -1,5 +1,7 @@
 /**
- * Nhãn nhận dạng bản dựng, đứng ở chân thanh điều hướng.
+ * Nhãn nhận dạng bản dựng, đứng ở chân trang `/settings`
+ * (`pages/settings-page.tsx` — đọc chú thích ở chỗ gọi để biết đánh đổi của vị
+ * trí đó: nó KHÔNG còn nằm trong tầm nhìn ngoại vi ở mọi trang).
  *
  * ## Vì sao nó tồn tại
  *
@@ -53,7 +55,11 @@ const STAMP_FMT = new Intl.DateTimeFormat("vi-VN", {
 export function BuildStamp() {
   return (
     // `title` mang bản đầy đủ cho ai cần chép lại vào báo lỗi; dòng hiển thị giữ
-    // ngắn để không chiếm chỗ của danh tính người dùng ngay trên nó.
+    // ngắn vì nó là chân trang, không phải nội dung — nó không được kéo mắt khỏi
+    // các thiết lập bên trên.
+    //
+    // `px-3` để thẳng hàng với hàng "Đổi mật khẩu" ở nhóm ngay trên: cả hai đều
+    // thụt vào đúng bằng padding ngang của một hàng bấm được.
     <p
       className="truncate px-3 text-xs text-muted tabular-nums"
       title={`v${VERSION} · ${COMMIT} · dựng lúc ${BUILT_AT.toLocaleString("vi-VN")}`}

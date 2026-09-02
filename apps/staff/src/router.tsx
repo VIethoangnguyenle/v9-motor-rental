@@ -9,7 +9,7 @@
  * ở `eslint.config.js` — nới ở đó là nới cho cả repo, và file đó có bộ probe
  * riêng phải chạy lại mỗi lần đụng vào (xem docs/ARCHITECTURE.md).
  */
-import { useQueryClient, type QueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import {
   Outlet,
   createRootRouteWithContext,
@@ -17,7 +17,6 @@ import {
   createRouter,
   lazyRouteComponent,
   redirect,
-  useNavigate,
 } from "@tanstack/react-router";
 import { AppShell } from "./components/layout/app-shell";
 import { hasSession, signOut } from "./lib/auth";
@@ -93,16 +92,9 @@ const publicLayoutRoute = createRoute({
  */
 function ProtectedShell() {
   const { me } = protectedLayoutRoute.useRouteContext();
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-
-  async function handleSignOut() {
-    await signOut(queryClient);
-    await navigate({ to: "/login" });
-  }
 
   return (
-    <AppShell me={me} onSignOut={() => void handleSignOut()}>
+    <AppShell me={me}>
       <Outlet />
     </AppShell>
   );
@@ -292,6 +284,21 @@ const changePasswordRoute = createRoute({
 });
 
 /**
+ * Cài đặt: giao diện + tài khoản. Lối vào DUY NHẤT ở chân thanh điều hướng
+ * (`components/layout/app-nav.tsx`), thay cho bốn phần tử từng nằm ở đó.
+ *
+ * Dưới `protectedLayoutRoute` như mọi trang nghiệp vụ, KHÔNG `ownerOnly`: nó chỉ
+ * hiện hồ sơ của CHÍNH người đang đăng nhập và đổi theme của máy họ — không có
+ * dữ liệu nào của người khác đi qua đây. Việc quản trị người khác (duyệt, đổi
+ * vai trò, phát mã đặt lại) ở `/staff` và vẫn chỉ OWNER.
+ */
+const settingsRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/settings",
+  component: lazy(() => import("./pages/settings-page"), "SettingsPage"),
+});
+
+/**
  * `?q=` và `?page=` sống ở URL chứ không trong `useState` của component —
  * cùng lý lẽ với `calendarRoute` ngay trên: Back từ trang chi tiết phải trả về
  * ĐÚNG trang và ĐÚNG từ khoá đang xem, F5 không mất chỗ, và link gửi cho đồng
@@ -329,6 +336,7 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     staffListRoute,
     changePasswordRoute,
+    settingsRoute,
     healthRoute,
     calendarRoute,
     customersListRoute,
