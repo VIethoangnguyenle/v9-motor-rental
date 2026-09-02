@@ -296,12 +296,20 @@ export const staff = new Elysia({ name: "staff" })
       // chứ không gõ lại — hàng rào thứ hai (`setStaffAvatar`) đọc cùng bảng đó,
       // nên hai tầng không lệch nhau được.
       //
-      // Đo 2026-09-02 với `curl`: `t.File({ type })` của Elysia so theo NỘI DUNG
-      // chứ không theo `Content-Type` người gửi khai — một PDF khai là
-      // `image/png` vẫn bị từ chối (422), và một PNG khai là `image/webp` đi vào
-      // handler với `file.type === "image/png"`. Nghĩa là đuôi trong object key
-      // luôn khớp byte thật, không khớp một lời khai. Đừng bỏ `type` ở đây với
-      // lý do "domain đã kiểm rồi": domain chỉ đọc được lời khai.
+      // ⚠️ Cả hai hàng rào thật ra đọc một giá trị do **Bun** quyết, không phải
+      // do người gửi khai: bộ phân tích multipart của Bun đặt `File.type` bằng
+      // cách đoán từ byte đầu file và bỏ qua `Content-Type` của part. Đo
+      // 2026-09-02 trên một app Elysia trần (`body.file.type` server đọc được):
+      // một PNG khai `image/webp` → `image/png`; một JPEG khai `text/plain` →
+      // `image/jpeg`; một PDF khai `image/png` → `""`. Hệ quả tốt: đuôi trong
+      // object key luôn khớp byte thật.
+      //
+      // ⛔ Hệ quả xấu, phải biết trước khi sửa dòng dưới: bảng đoán của Bun
+      // KHÔNG có WebP, nên mọi file WebP về `""` và bị từ chối 422 — dù
+      // `"image/webp"` nằm trong `AVATAR_CONTENT_TYPES`. Đó là lý do
+      // `apps/staff` encode JPEG chứ không WebP (số đo đầy đủ ở
+      // `apps/staff/src/lib/avatar.ts`). Bỏ `"image/webp"` khỏi domain KHÔNG
+      // phải cách sửa: hạn chế nằm ở tầng dưới và sẽ tự hết khi Bun thêm WebP.
       body: t.Object({
         file: t.File({ maxSize: MAX_AVATAR_BYTES, type: [...AVATAR_CONTENT_TYPES] }),
       }),
