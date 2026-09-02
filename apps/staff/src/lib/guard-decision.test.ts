@@ -3,8 +3,10 @@ import { decideEntry } from "./guard-decision";
 import type { Me } from "./me";
 
 /**
- * `Me` suy ra từ response schema của `GET /staff/me` — sáu field, không hơn.
+ * `Me` suy ra từ response schema của `GET /staff/me` — bảy field, không hơn.
  * Dựng bằng literal thay vì mock: hàm đang test là hàm thuần, không cần gì khác.
+ * Thêm field ở schema mà quên ở đây là LỖI BIÊN DỊCH, không phải một fixture âm
+ * thầm lệch khỏi hợp đồng API.
  */
 const me = (status: Me["status"]): Me => ({
   id: "u1",
@@ -13,6 +15,7 @@ const me = (status: Me["status"]): Me => ({
   phone: null,
   role: "STAFF",
   status,
+  avatarVersion: null,
 });
 
 describe("decideEntry", () => {
