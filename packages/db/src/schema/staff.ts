@@ -42,6 +42,23 @@ export const staffUsers = pgTable(
     email: text("email").notNull(),
     fullName: text("full_name").notNull(),
     phone: text("phone"),
+    /**
+     * Khoá object của ảnh đại diện trong MinIO. `NULL` = chưa có ảnh, và UI rơi
+     * về avatar chữ cái (`apps/staff/src/components/ui/avatar.tsx`) — nên cột
+     * này không cần giá trị mặc định nào, "không có ảnh" đã là một trạng thái
+     * hiển thị được đầy đủ.
+     *
+     * MỘT cột cho toàn bộ thứ ta biết về ảnh, không thêm `avatar_content_type`
+     * hay `avatar_size_bytes` như `rental_photos` có: khoá đã mang đuôi file nên
+     * `parseAvatarObjectKey` (`@v9/shared/domain/avatar`) đọc ngược ra
+     * `Content-Type`, còn kích thước thì không màn hình nào hỏi. Hai cột nữa chỉ
+     * thêm hai giá trị phải giữ đồng bộ với chính khoá này.
+     *
+     * KHÔNG có FK hay CHECK nào canh nó, và đó là giới hạn có thật: Postgres
+     * không biết MinIO tồn tại, nên "hàng trỏ vào object đã mất" chỉ chặn được
+     * bằng THỨ TỰ GHI ở `apps/api/src/services/avatar.ts` — xem lập luận ở đó.
+     */
+    avatarObjectKey: text("avatar_object_key"),
     role: text("role").notNull().default("STAFF"),
     status: text("status").notNull().default("PENDING"),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
