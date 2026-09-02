@@ -1,5 +1,5 @@
 import type { ApiErrorCode } from "@v9/api";
-import { MAX_AVATAR_BYTES } from "@v9/shared/domain/avatar";
+import { MAX_AVATAR_BYTES, extensionForAvatarType } from "@v9/shared/domain/avatar";
 import { api } from "./api";
 import { errorCode } from "./errors";
 
@@ -15,49 +15,51 @@ import { errorCode } from "./errors";
 const AVATAR_EDGE = 256;
 
 /**
- * Chất lượng encode. 0.85 là chỗ mà artifact JPEG còn nằm dưới ngưỡng nhìn thấy
+ * Chất lượng encode. 0.85 là chỗ mà artifact WebP còn nằm dưới ngưỡng nhìn thấy
  * ở một ô tròn 40px; 1.0 làm file nặng gấp đôi cho phần khác biệt không ai thấy
  * ở cỡ đó.
  */
 const AVATAR_QUALITY = 0.85;
 
 /**
- * ⛔ **JPEG, KHÔNG PHẢI WEBP — và đây là ràng buộc ĐO ĐƯỢC, không phải sở thích.**
+ * WebP — nhưng **định dạng ở đây chỉ an toàn nhờ phần đuôi tên file ở
+ * `uploadAvatar`**. Đọc hai chú thích này cùng nhau, đừng sửa một cái mà bỏ cái
+ * kia.
  *
- * `apps/api` KHÔNG nhận nổi một file WebP nào, ở bất kỳ đường nào. Nguyên nhân
- * nằm dưới Elysia: bộ phân tích multipart của Bun đặt `File.type` bằng cách ĐOÁN
- * từ byte đầu file và **bỏ qua hoàn toàn `Content-Type` người gửi khai**, mà
- * bảng đoán của nó không có WebP. Đo 2026-09-02, gửi qua một app Elysia trần
- * (Bun 1.3.10, elysia 1.4.29), cột cuối là `body.file.type` server đọc được:
+ * Nền: `apps/api` xác định kiểu file gửi lên KHÔNG bằng `Content-Type` người gửi
+ * khai — lời khai bị bỏ qua hoàn toàn. Nó dùng **đuôi tên file**, và chỉ khi tên
+ * KHÔNG có đuôi mới rơi xuống một bước đoán từ byte. Bảng đoán-từ-byte đó **không
+ * có WebP**; bảng tra-theo-đuôi thì có. Đo 2026-09-02 qua một app Elysia trần
+ * (Bun 1.3.10, elysia 1.4.29) mang đúng `t.File({ type })` của route thật, ảnh
+ * WebP thật sinh bằng PIL (cả VP8 lẫn VP8L):
  *
- *   a.png            khai `image/webp`  → `image/png`    ← lời khai bị bỏ qua
- *   anh-do.jpg       khai `text/plain`  → `image/jpeg`   ← lời khai bị bỏ qua
- *   canvas.webp      khai `image/webp`  → `""`           ← WebP không có trong bảng
- *   pil-lossy.webp   khai `image/webp`  → `""`           (VP8  — không phải lỗi của canvas)
- *   pil-lossless.webp khai `image/webp` → `""`           (VP8L)
- *   x.pdf            khai `image/png`   → `""`
+ *   byte WebP,  tên `avatar`        → 422   ← không đuôi, rơi xuống đoán byte
+ *   byte WebP,  tên `avatar.webp`   → 200   `image/webp`
+ *   byte JPEG,  tên `avatar`        → 200   `image/jpeg`  (đoán byte CÓ jpeg)
+ *   byte JPEG,  tên `x.png`         → 200   `image/png`   ← đuôi THẮNG byte
  *
- * Chuỗi rỗng đó trượt cả hai hàng rào: `t.File({ type })` của route trả 422, và
- * `isAllowedAvatarType("")` của domain trả `false`. Nên gửi WebP lên là **luôn
- * hỏng**, không phải "hỏng ở vài trình duyệt".
+ * Vì vậy WebP gửi lên được, và tiết kiệm ~30% so với JPEG q0.85 ở 256×256.
  *
- * Giá phải trả rất nhỏ: ở 256×256 thì JPEG q0.85 nặng hơn WebP cỡ vài KB. Giá
- * của việc không biết điều này thì lớn — mọi lần đổi ảnh đều 422, và câu lỗi duy
- * nhất người dùng thấy là "Không tải được ảnh lên".
+ * ⚠️ Dòng cuối của bảng là thứ đáng nhớ hơn cả: `t.File({ type })` **không kiểm
+ * nội dung file**. Có đuôi thì nó tin đuôi. Nó là hàng rào chống nhầm lẫn, không
+ * phải hàng rào chống người cố tình. Thứ thật sự chặn được đường XSS là việc
+ * `image/svg+xml` không nằm trong `TYPE_EXTENSION` của domain, nên không khoá nào
+ * mang đuôi `.svg` và `readStaffAvatar` không bao giờ trả `Content-Type` đó.
  *
- * ⚠️ Hệ quả thứ hai, KHÔNG sửa ở đợt này: `POST /rentals/:id/photos`
- * (`routes/handover.ts`) khai cùng hình dạng `t.File({ type: [... "image/webp"] })`,
- * nên nó cũng không nhận được WebP — nhân viên chụp ảnh bàn giao bằng một máy
- * xuất WebP sẽ nhận 422. Chưa ai báo vì camera điện thoại xuất JPEG/HEIC.
+ * ⚠️ Bản đầu của file này ghi "Bun đoán từ byte, bảng không có WebP nên WebP là
+ * bất khả". Quan sát có thật (mọi lần gửi đều 422), nhưng nguyên nhân sai, và cái
+ * sai đó suýt đẻ ra một mục nợ nói `routes/handover.ts` cũng không nhận WebP.
+ * Nó **có** nhận: ảnh bàn giao đến từ `<input type="file">`, luôn mang tên thật
+ * kèm đuôi. Đừng đi tìm con bug đó.
  */
-const AVATAR_ENCODE_TYPE = "image/jpeg";
+const AVATAR_ENCODE_TYPE = "image/webp";
 
 export type MutateAvatarResult =
   { ok: true } | { ok: false; code: ApiErrorCode | null; value: unknown };
 
 /**
- * Hạ ảnh người dùng chọn về một ô vuông 256×256 JPEG trước khi gửi (vì sao JPEG
- * chứ không WebP: xem `AVATAR_ENCODE_TYPE` ngay trên).
+ * Hạ ảnh người dùng chọn về một ô vuông 256×256 WebP trước khi gửi (định dạng đó
+ * đi kèm một ràng buộc về TÊN FILE: xem `AVATAR_ENCODE_TYPE` ngay trên).
  *
  * Vì sao hạ ở CLIENT chứ không ở server: ảnh điện thoại ngày nay 3–5 MB, mà chỗ
  * hiển thị lớn nhất là 40px. Gửi nguyên là bắt nhân viên ở gara chờ một upload
@@ -132,14 +134,32 @@ function toBlob(canvas: HTMLCanvasElement, type: string): Promise<Blob> {
 }
 
 /**
- * Gửi ảnh đã hạ lên. Nhận `Blob` chứ không `File` vì `shrinkAvatar` trả `Blob` —
- * và tên file không có ý nghĩa gì ở đây: object key dựng từ id, không mảnh nào
- * đến từ tên người dùng gửi (xem `avatarObjectKey` ở `@v9/shared/domain/avatar`).
+ * Gửi ảnh đã hạ lên. Nhận `Blob` chứ không `File` vì `shrinkAvatar` trả `Blob`.
+ *
+ * ⚠️ **Đuôi tên file là thứ DUY NHẤT quyết định kiểu mà server đọc được** — xem
+ * bảng đo ở `AVATAR_ENCODE_TYPE`. Không phải "tên chỉ để lấp field bắt buộc":
+ * gửi tên trần `"avatar"` thì server rơi xuống bước đoán từ byte, và bước đó
+ * không nhận WebP → mọi lần đổi ảnh trả 422.
+ *
+ * Đuôi suy từ `blob.type` chứ không gán cứng `".webp"`, vì `toBlob` **rơi về PNG**
+ * khi trình duyệt không encode được định dạng đang xin (spec, xem chú thích ở
+ * `toBlob` phía trên). Suy ra thì ca đó tự đúng: blob PNG → `avatar.png` → server
+ * nhận. Gán cứng thì nó thành một file PNG mang tên `.webp`, và server sẽ tin cái
+ * đuôi — lưu byte PNG dưới `Content-Type: image/webp`, tức một tấm ảnh hỏng mà
+ * không có tầng nào báo.
+ *
+ * Dùng chính `extensionForAvatarType` của domain, không gõ bảng thứ hai: đó là
+ * bảng mà server tra khi dựng object key, nên hai bên KHÔNG lệch nhau được.
  */
 export async function uploadAvatar(blob: Blob): Promise<MutateAvatarResult> {
+  const extension = extensionForAvatarType(blob.type);
+  // Không tới được bằng đường bình thường: `AVATAR_ENCODE_TYPE` là WebP và ca rơi
+  // duy nhất của `toBlob` là PNG — cả hai đều có trong bảng. Nhưng thà dừng ở đây
+  // với một lỗi thật còn hơn bịa một cái đuôi rồi để server tin nó.
+  if (extension === null) return { ok: false, code: null, value: blob.type };
+
   const res = await api.staff.me.avatar.post({
-    // Eden cần một `File` để dựng multipart; tên chỉ để lấp field bắt buộc.
-    file: new File([blob], "avatar", { type: blob.type }),
+    file: new File([blob], `avatar.${extension}`, { type: blob.type }),
   });
   if (res.error) return { ok: false, code: errorCode(res.error.value), value: res.error.value };
   return { ok: true };
