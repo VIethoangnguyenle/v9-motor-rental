@@ -1,0 +1,1 @@
+ALTER TABLE "staff_users" ADD COLUMN "avatar_object_key" text;
