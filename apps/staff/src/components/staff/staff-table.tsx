@@ -1,4 +1,5 @@
 import { ROLE_LABEL, STATUS_LABEL, type Me, type StaffRow } from "../../lib/me";
+import { Avatar } from "../ui/avatar";
 import { StaffRowActions } from "./staff-row-actions";
 
 interface StaffTableProps {
@@ -50,7 +51,26 @@ export function StaffTable({ rows, me, busy, onApprove, onDisable, onIssueCode }
         <tbody>
           {rows.map((row) => (
             <tr key={row.id} className="border-b border-border align-top">
-              <td className="card-pad">{row.fullName}</td>
+              {/*
+               * Avatar nằm TRONG ô "Họ tên", KHÔNG phải một cột thứ 7.
+               *
+               * Vì nó là phần tử đầu của ô đầu, mép trái của nó CHÍNH LÀ mép
+               * trái của cột — tức nó thẳng hàng y hệt như khi có cột riêng.
+               * Cột riêng thì trả thêm ba thứ mà không đổi lại được gì: ~44px
+               * bề ngang cho một bảng đã phải cuộn ở 390px, một `<th>` không có
+               * gì để đọc lên (avatar là `aria-hidden`), và một ô rỗng nữa cho
+               * người dùng bàn phím đi qua ở mỗi dòng.
+               *
+               * `items-center` chứ không theo `align-top` của `<tr>`: ô này chỉ
+               * có một dòng chữ, và một hình 28px canh theo mép trên của một
+               * dòng 20px thì thò xuống dưới đường chân chữ.
+               */}
+              <td className="card-pad">
+                <span className="flex items-center gap-2">
+                  <Avatar name={row.fullName} seed={row.id} />
+                  {row.fullName}
+                </span>
+              </td>
               <td className="card-pad">{row.email}</td>
               <td className="card-pad">{row.phone ?? "—"}</td>
               {/* Tra bảng, KHÔNG in thẳng hằng số. `/settings` đã hiện "Chủ shop";

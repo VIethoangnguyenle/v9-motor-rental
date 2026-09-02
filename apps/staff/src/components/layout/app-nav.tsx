@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ROLE_LABEL, type Me } from "../../lib/me";
 import { Modal } from "../ui/modal";
 import { newRequestCountQuery } from "../../lib/requests";
+import { Avatar } from "../ui/avatar";
 import { Icon, type IconName } from "../ui/icon";
 
 /**
@@ -141,9 +142,15 @@ function SettingsRow({
           mặc định `min-width: auto`, tức nó nở theo nội dung và đẩy chevron ra
           ngoài thay vì để chữ bị cắt. */}
       <span className="flex min-w-0 items-center gap-2">
-        <Icon name="settings" />
         {me ? (
           <>
+            {/* Avatar THAY bánh răng, không đứng cạnh nó. Hàng này đã mang danh
+                tính người dùng làm nhãn (xem chú thích của `SettingsRow`), nên
+                hình dẫn đầu phải nói cùng điều đó; hai hình trong một hàng 44px
+                bị `truncate` bóp thì cái thứ hai chỉ ăn mất chỗ của tên. Điểm
+                đến vẫn đọc được: chevron nói "dẫn đi đâu đó" và `sr-only` nói
+                thẳng "Cài đặt". */}
+            <Avatar name={me.fullName} seed={me.id} />
             <span className="sr-only">Cài đặt</span>
             <span className="truncate">
               {me.fullName} · {ROLE_LABEL[me.role]}
@@ -152,8 +159,13 @@ function SettingsRow({
         ) : (
           // `me` chưa đọc xong: hiện tên MÀN HÌNH, không phải một khuôn có chỗ
           // trống. Nội suy thẳng `me?.fullName` vào đây cho ra đúng chuỗi " · "
-          // trơ trọi ở khoảnh khắc đó — một dòng không đọc ra nghĩa gì.
-          <span className="truncate">Cài đặt</span>
+          // trơ trọi ở khoảnh khắc đó — một dòng không đọc ra nghĩa gì. Và khi
+          // chưa có tên thì cũng chưa có avatar để vẽ: bánh răng là hình đúng
+          // cho một hàng lúc này chỉ nói được "Cài đặt".
+          <>
+            <Icon name="settings" />
+            <span className="truncate">Cài đặt</span>
+          </>
         )}
       </span>
       <Icon name="chevron-right" className="text-muted" />
