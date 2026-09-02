@@ -1,4 +1,4 @@
-import type { Me, StaffRow } from "../../lib/me";
+import { ROLE_LABEL, STATUS_LABEL, type Me, type StaffRow } from "../../lib/me";
 import { StaffRowActions } from "./staff-row-actions";
 
 interface StaffTableProps {
@@ -53,8 +53,12 @@ export function StaffTable({ rows, me, busy, onApprove, onDisable, onIssueCode }
               <td className="card-pad">{row.fullName}</td>
               <td className="card-pad">{row.email}</td>
               <td className="card-pad">{row.phone ?? "—"}</td>
-              <td className="card-pad">{row.role}</td>
-              <td className="card-pad">{row.status}</td>
+              {/* Tra bảng, KHÔNG in thẳng hằng số. `/settings` đã hiện "Chủ shop";
+                  để bảng này in "OWNER" là hai từ vựng cho cùng một thứ, ở hai
+                  màn hình mà chủ shop đi qua lại giữa chúng. Hai cột sửa CÙNG
+                  LÚC: sửa một cột thì màn này tự mâu thuẫn với chính nó. */}
+              <td className="card-pad">{ROLE_LABEL[row.role]}</td>
+              <td className="card-pad">{STATUS_LABEL[row.status]}</td>
               <StaffRowActions
                 row={row}
                 me={me}
