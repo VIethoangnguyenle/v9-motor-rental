@@ -11,7 +11,8 @@
     "./domain/rental": "./src/domain/rental.ts",
     "./domain/phone": "./src/domain/phone.ts",
     "./domain/rental-request": "./src/domain/rental-request.ts",
-    "./domain/rental-photo": "./src/domain/rental-photo.ts"
+    "./domain/rental-photo": "./src/domain/rental-photo.ts",
+    "./domain/avatar": "./src/domain/avatar.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
