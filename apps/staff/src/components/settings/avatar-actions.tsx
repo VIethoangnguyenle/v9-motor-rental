@@ -84,8 +84,9 @@ export function AvatarActions({ me }: { readonly me: Me }) {
       // Hàng rào của server (`MAX_AVATAR_BYTES`) vẫn là hàng rào thật; kiểm ở
       // đây chỉ để câu trả lời đọc được, thay vì một 422 validation không mang
       // `code` nào (xem `lib/errors.ts`). Sau khi hạ về 256×256 thì ca này gần
-      // như không xảy ra — nó tồn tại cho trình duyệt không encode nổi JPEG và
-      // rơi về PNG (`toBlob` theo spec, xem `lib/avatar.ts`).
+      // như không xảy ra — nó tồn tại cho trình duyệt không encode nổi WebP và
+      // rơi về PNG (`toBlob` theo spec, xem `lib/avatar.ts`), vì PNG 256×256 của
+      // một tấm ảnh chụp nặng hơn WebP nhiều lần.
       if (!isAvatarSizeValid(blob.size)) {
         throw new Error(`Ảnh sau khi thu nhỏ vẫn lớn hơn ${String(MAX_AVATAR_MB)} MB.`);
       }

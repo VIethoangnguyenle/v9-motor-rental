@@ -380,3 +380,29 @@ nợ 2026-08-18, xem "Đã đóng trong Plan A" bên dưới cho cách chứng m
 
   ⚠️ **Bài học chung**: `bun run format` không phải lúc nào cũng chữa được `format:check`. Khi hai
   cái bất đồng, đừng kết luận prettier hỏng — tìm cấu trúc markdown làm nó dao động.
+
+- ⚠️ **`t.File({ type })` của Elysia kiểm ĐUÔI TÊN FILE, không kiểm nội dung.** Đo 2026-09-02 (Bun
+  1.3.10 / elysia 1.4.29) qua một app mang đúng schema của route thật, ảnh WebP thật sinh bằng PIL:
+
+  | byte gửi | tên file      | khai `Content-Type` | server đọc ra   | HTTP |
+  | -------- | ------------- | ------------------- | --------------- | ---- |
+  | WebP     | `avatar`      | `image/webp`        | `""`            | 422  |
+  | WebP     | `avatar.webp` | `image/webp`        | `image/webp`    | 200  |
+  | JPEG     | `avatar`      | `image/jpeg`        | `image/jpeg`    | 200  |
+  | JPEG     | `x.png`       | `image/png`         | **`image/png`** | 200  |
+
+  Ba điều đọc ra từ bảng: lời khai `Content-Type` của người gửi **bị bỏ qua hoàn toàn**; có đuôi thì
+  **đuôi thắng byte**; không đuôi mới rơi xuống một bước đoán từ byte, và bước đó **không có WebP**.
+
+  Hệ quả: hàng rào này chống nhầm lẫn, **không** chống người cố tình — gửi byte bất kỳ dưới tên
+  `x.png` là qua. Mức độ thấp và có chủ ý: bucket riêng tư, trần 1 MB, mỗi người chỉ ghi được ô của
+  chính mình, và đường XSS đóng bằng chỗ khác — `image/svg+xml` không nằm trong `TYPE_EXTENSION` của
+  `@v9/shared/domain/avatar`, nên không khoá nào mang đuôi `.svg` và `readStaffAvatar` không bao giờ
+  trả `Content-Type` đó. **Nợ ở đây là chú thích, không phải hành vi**: đừng để ai đọc `t.File({ type })`
+  rồi tưởng nội dung file đã được kiểm.
+
+  ⚠️ **Mục nợ KHÔNG được viết**: bản đầu của đợt avatar kết luận "Bun đoán kiểu từ byte, bảng đoán
+  không có WebP, nên `routes/handover.ts` cũng không nhận được ảnh WebP". Quan sát có thật (mọi lần
+  gửi đều 422) nhưng nguyên nhân sai — file thử **không có đuôi**. `handover.ts` nhận WebP bình
+  thường: ảnh bàn giao đến từ `<input type="file">`, luôn mang tên thật kèm đuôi. Đừng đi tìm con bug
+  đó. Hàng rào `apps/staff/src/lib/avatar-filename.test.ts` giữ đuôi tên file khỏi rơi lại.
