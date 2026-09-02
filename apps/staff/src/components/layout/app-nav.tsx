@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useAvatarUrl } from "../../hooks/use-avatar-url";
 import { ROLE_LABEL, type Me } from "../../lib/me";
 import { Modal } from "../ui/modal";
 import { newRequestCountQuery } from "../../lib/requests";
@@ -131,6 +132,9 @@ function SettingsRow({
   readonly me: Me | null;
   readonly onNavigate?: () => void;
 }) {
+  // Gọi vô điều kiện (luật của hook), nhưng KHÔNG tốn request nào khi chưa có hồ
+  // sơ hoặc người này chưa có ảnh — `version === null` thì hook không fetch.
+  const avatarUrl = useAvatarUrl(me?.id ?? "", me?.avatarVersion ?? null);
   return (
     <Link
       to="/settings"
@@ -150,7 +154,7 @@ function SettingsRow({
                 bị `truncate` bóp thì cái thứ hai chỉ ăn mất chỗ của tên. Điểm
                 đến vẫn đọc được: chevron nói "dẫn đi đâu đó" và `sr-only` nói
                 thẳng "Cài đặt". */}
-            <Avatar name={me.fullName} seed={me.id} />
+            <Avatar name={me.fullName} seed={me.id} src={avatarUrl} />
             <span className="sr-only">Cài đặt</span>
             <span className="truncate">
               {me.fullName} · {ROLE_LABEL[me.role]}
