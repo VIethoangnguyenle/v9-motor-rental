@@ -2,12 +2,17 @@ import type { Me } from "../../lib/me";
 import { AppNav } from "./app-nav";
 
 /**
- * Khung layout của mọi trang được bảo vệ. Nhận `me`/`onSignOut` qua prop và
- * chuyển thẳng xuống `AppNav` — shell KHÔNG tự gọi `useMe()` hay `signOut()`.
- * Nó chỉ dựng khung (sidebar ↔ bottom nav ↔ vùng nội dung cuộn), không biết gì
- * về cách lấy danh tính hay cách đăng xuất. Điều đó thuộc về nơi gọi nó
- * (`protectedLayoutRoute`, xem Task 7) — tách domain khỏi layout để cả hai test
- * và tái dùng được độc lập.
+ * Khung layout của mọi trang được bảo vệ. Nhận `me` qua prop và chuyển thẳng
+ * xuống `AppNav` — shell KHÔNG tự gọi `useMe()`. Nó chỉ dựng khung (sidebar ↔
+ * bottom nav ↔ vùng nội dung cuộn), không biết gì về cách lấy danh tính. Điều đó
+ * thuộc về nơi gọi nó (`protectedLayoutRoute`) — tách domain khỏi layout để cả
+ * hai test và tái dùng được độc lập.
+ *
+ * Đăng xuất KHÔNG đi qua đây: nó là một nút trên `/settings`
+ * (`pages/settings-page.tsx`), tự gọi `signOut` + `navigate` tại chỗ. Đừng thêm
+ * lại một prop `onSignOut` — nó phải xuyên bốn tầng (`router` → `AppShell` →
+ * `AppNav` → `SidebarNav`/`BottomNav`) để tới một chỗ vốn đã có sẵn
+ * `useNavigate` và `useQueryClient`.
  *
  * Ba breakpoint khớp thang cách đã khai ở `index.css`/Task 2:
  *   <768        không sidebar, điều hướng chuyển xuống bottom nav 56px + pb-safe
@@ -22,11 +27,9 @@ import { AppNav } from "./app-nav";
  */
 export function AppShell({
   me,
-  onSignOut,
   children,
 }: {
   readonly me: Me | null;
-  readonly onSignOut: () => void;
   readonly children: React.ReactNode;
 }) {
   return (
@@ -56,7 +59,7 @@ export function AppShell({
        * sidebar không cuộn, chỉ vùng nội dung mới cuộn.
        */}
       <aside className="hidden shrink-0 border-r border-border bg-surface md:flex md:w-[168px] xl:w-52">
-        <AppNav variant="sidebar" me={me} onSignOut={onSignOut} />
+        <AppNav variant="sidebar" me={me} />
       </aside>
 
       {/*
@@ -73,7 +76,7 @@ export function AppShell({
         <main id="main" tabIndex={-1} className="page-gutter flex-1 py-4">
           {children}
         </main>
-        <AppNav variant="bottom" me={me} onSignOut={onSignOut} />
+        <AppNav variant="bottom" me={me} />
       </div>
     </div>
   );

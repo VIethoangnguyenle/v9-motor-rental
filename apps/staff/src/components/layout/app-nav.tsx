@@ -1,12 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import type { Me } from "../../lib/me";
+import { ROLE_LABEL, type Me } from "../../lib/me";
 import { Modal } from "../ui/modal";
 import { newRequestCountQuery } from "../../lib/requests";
 import { Icon, type IconName } from "../ui/icon";
-import { ThemeToggle } from "./theme-toggle";
-import { BuildStamp } from "./build-stamp";
 
 /**
  * Bảy điểm đến, hai hình dạng. `NAV_ITEMS` là danh sách duy nhất — sidebar
@@ -65,9 +63,9 @@ const TOUCH = "flex min-h-11 min-w-11 items-center";
  * `Button` và `stats/attention-list.tsx` — hai thứ bấm được thì phản hồi phải
  * giống nhau (design doc §4.4 mục 1).
  *
- * Khai một chỗ vì `hover:bg-canvas` đứng ở TÁM chỗ trong file này (mục sidebar,
- * mục sheet "Thêm", nút gạt theme, đổi mật khẩu, đăng xuất — mỗi thứ hai bản,
- * sidebar và sheet): tám bản chép tay là tám chỗ để lệch nhau.
+ * Khai một chỗ vì file này dựng hàng bấm được ở BỐN chỗ — mục điều hướng và hàng
+ * Cài đặt, mỗi thứ hai bản (sidebar và sheet "Thêm"): bốn bản chép tay là bốn chỗ
+ * để lệch nhau.
  *
  * KHÔNG gộp vào `TOUCH`: ba mục bottom nav cũng dùng `TOUCH` mà không có nền
  * hover nào — thêm transition ở đó là một khai báo không animate gì.
@@ -96,14 +94,71 @@ export function AppNav({
   // nav lặng lẽ render sai biến thể.
   variant,
   me,
-  onSignOut,
 }: {
   readonly variant: "sidebar" | "bottom";
   readonly me: Me | null;
-  readonly onSignOut: () => void;
 }) {
-  if (variant === "sidebar") return <SidebarNav me={me} onSignOut={onSignOut} />;
-  return <BottomNav me={me} onSignOut={onSignOut} />;
+  if (variant === "sidebar") return <SidebarNav me={me} />;
+  return <BottomNav me={me} />;
+}
+
+/**
+ * ⛔ Chân thanh điều hướng giữ ĐÚNG MỘT dòng. Thiết lập tài khoản mới đi vào
+ * `/settings` (`pages/settings-page.tsx`), KHÔNG thêm hàng thứ hai ở đây: mỗi
+ * hàng thêm vào đáy nav là một thứ cạnh tranh chú ý với chính bảy điểm đến bên
+ * trên nó, và phải chép sang cả sheet "Thêm" — hai bản để lệch nhau.
+ *
+ * Dòng này là một LỐI ĐI, không phải một hành động. Đó là lý do nó là `Link` có
+ * chevron chứ không phải nút, và là lý do "Đăng xuất" không được phép quay lại
+ * đây: một nút phá huỷ phiên nằm lẫn trong danh sách điểm đến là một nút bấm
+ * nhầm.
+ *
+ * Tên người dùng làm NHÃN, không phải chữ "Cài đặt": chân nav phải hiện danh
+ * tính, nên gộp hai việc vào một hàng thay vì tiêu hai dòng cho chúng. Nhưng tên
+ * người không nói được nó dẫn đi đâu, nên có thêm `sr-only` "Cài đặt" — tên khả
+ * dụng đọc ra "Cài đặt Nguyễn Văn A · Chủ shop", tức CHỨA nguyên văn chữ đang
+ * nhìn thấy (WCAG 2.5.3 Label in Name). Một `aria-label` thì ĐÈ LÊN chữ đó và
+ * làm hỏng đúng tiêu chí ấy; đừng đổi sang cách đó.
+ *
+ * `onNavigate` chỉ bản trong sheet cần, để đóng sheet khi bấm — bản sidebar
+ * không có gì phải đóng.
+ */
+function SettingsRow({
+  me,
+  onNavigate,
+}: {
+  readonly me: Me | null;
+  readonly onNavigate?: () => void;
+}) {
+  return (
+    <Link
+      to="/settings"
+      onClick={onNavigate}
+      className={`${TOUCH} justify-between gap-2 rounded-card px-3 text-ink ${HOVER_ROW}`}
+      activeProps={{ className: "bg-canvas font-semibold" }}
+    >
+      {/* `min-w-0`: không có nó thì `truncate` của con không cắt được — mục flex
+          mặc định `min-width: auto`, tức nó nở theo nội dung và đẩy chevron ra
+          ngoài thay vì để chữ bị cắt. */}
+      <span className="flex min-w-0 items-center gap-2">
+        <Icon name="settings" />
+        {me ? (
+          <>
+            <span className="sr-only">Cài đặt</span>
+            <span className="truncate">
+              {me.fullName} · {ROLE_LABEL[me.role]}
+            </span>
+          </>
+        ) : (
+          // `me` chưa đọc xong: hiện tên MÀN HÌNH, không phải một khuôn có chỗ
+          // trống. Nội suy thẳng `me?.fullName` vào đây cho ra đúng chuỗi " · "
+          // trơ trọi ở khoảnh khắc đó — một dòng không đọc ra nghĩa gì.
+          <span className="truncate">Cài đặt</span>
+        )}
+      </span>
+      <Icon name="chevron-right" className="text-muted" />
+    </Link>
+  );
 }
 
 /**
@@ -126,7 +181,7 @@ function NewRequestBadge() {
   );
 }
 
-function SidebarNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignOut: () => void }) {
+function SidebarNav({ me }: { readonly me: Me | null }) {
   return (
     // Cùng `aria-label` với bottom nav, và điều đó ĐÚNG chứ không phải trùng
     // lặp: `AppShell` dựng cả hai biến thể, nhưng `hidden md:flex` / `md:hidden`
@@ -166,28 +221,9 @@ function SidebarNav({ me, onSignOut }: { readonly me: Me | null; readonly onSign
         ))}
       </ul>
 
-      {/* Chân sidebar: danh tính + hai hành động tài khoản, đẩy xuống đáy bằng `mt-auto`. */}
-      <div className="mt-auto flex flex-col gap-1 border-t border-border pt-3">
-        <p className="truncate px-3 text-xs text-muted">
-          {me?.fullName} · {me?.role}
-        </p>
-        <BuildStamp />
-        <ThemeToggle className={`${TOUCH} gap-2 rounded-card px-3 text-ink ${HOVER_ROW}`} />
-        <Link
-          to="/change-password"
-          className={`${TOUCH} gap-2 rounded-card px-3 text-ink ${HOVER_ROW}`}
-        >
-          <Icon name="key" />
-          Đổi mật khẩu
-        </Link>
-        <button
-          type="button"
-          onClick={onSignOut}
-          className={`${TOUCH} gap-2 rounded-card px-3 text-left text-ink ${HOVER_ROW}`}
-        >
-          <Icon name="log-out" />
-          Đăng xuất
-        </button>
+      {/* Chân sidebar: một dòng, đẩy xuống đáy bằng `mt-auto`. */}
+      <div className="mt-auto border-t border-border pt-3">
+        <SettingsRow me={me} />
       </div>
     </nav>
   );
@@ -202,7 +238,7 @@ function SidebarNav({ me, onSignOut }: { readonly me: Me | null; readonly onSign
  * nó cụ thể tới từng route — và 3 ô rộng hơn 4 ô nên vẫn thoả mọi ngưỡng vùng
  * chạm/chữ mà phần mô tả kia đang bảo vệ.
  */
-function BottomNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignOut: () => void }) {
+function BottomNav({ me }: { readonly me: Me | null }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const closeMore = () => setMoreOpen(false);
 
@@ -316,31 +352,11 @@ function BottomNav({ me, onSignOut }: { readonly me: Me | null; readonly onSignO
                 ))}
               </ul>
 
-              <div className="flex flex-col gap-1 border-t border-border p-3">
-                <p className="truncate px-3 text-xs text-muted">
-                  {me?.fullName} · {me?.role}
-                </p>
-                <BuildStamp />
-                <ThemeToggle className={`${TOUCH} gap-2 rounded-card px-3 text-ink ${HOVER_ROW}`} />
-                <Link
-                  to="/change-password"
-                  onClick={close}
-                  className={`${TOUCH} gap-2 rounded-card px-3 text-ink ${HOVER_ROW}`}
-                >
-                  <Icon name="key" />
-                  Đổi mật khẩu
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    close();
-                    onSignOut();
-                  }}
-                  className={`${TOUCH} gap-2 rounded-card px-3 text-left text-ink ${HOVER_ROW}`}
-                >
-                  <Icon name="log-out" />
-                  Đăng xuất
-                </button>
+              {/* Cùng MỘT `SettingsRow` với sidebar — chân nav ở hai hình dạng
+                  phải dẫn tới cùng một chỗ và trông như nhau. `close` để sheet
+                  không còn nằm đó sau khi đã chuyển trang. */}
+              <div className="border-t border-border p-3">
+                <SettingsRow me={me} onNavigate={close} />
               </div>
             </div>
           )}

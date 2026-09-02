@@ -14,14 +14,12 @@ import {
   Info,
   KeyRound,
   LogOut,
-  Monitor,
-  Moon,
   OctagonAlert,
   Phone,
   Plus,
   ReceiptText,
   Search,
-  Sun,
+  Settings,
   Trash2,
   TriangleAlert,
   UserCog,
@@ -123,6 +121,17 @@ export const ICONS = {
   "nav-handover": Bike,
   /** Nhân viên — quản trị người, khác `users` của khách hàng. */
   "nav-staff": UserCog,
+  /**
+   * Cài đặt — LỐI VÀO duy nhất ở chân thanh điều hướng, và cũng là hình của
+   * chính trang `/settings`.
+   *
+   * Bánh răng đứng CẠNH `nav-staff` (UserCog) trong sidebar, và UserCog là một
+   * bánh răng ghép với hình người — hai đường bao gần nhau hơn mọi cặp khác
+   * trong danh sách này. Chấp nhận được vì hàng Cài đặt không nằm trong `<ul>`
+   * bảy điểm đến: nó ở dưới đường kẻ `border-t`, mang tên người dùng thay vì một
+   * nhãn màn hình, nên hai thứ không bao giờ phải phân biệt bằng riêng hình.
+   */
+  settings: Settings,
   /** Đổi mật khẩu. */
   key: KeyRound,
   /** Đăng xuất. */
@@ -175,13 +184,6 @@ export const ICONS = {
   "calendar-check": CalendarCheck,
   /** Tone `info` của Alert. */
   info: Info,
-
-  /** Nút gạt theme — trạng thái "theo hệ điều hành". */
-  monitor: Monitor,
-  /** Nút gạt theme — ép sáng. */
-  sun: Sun,
-  /** Nút gạt theme — ép tối. */
-  moon: Moon,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

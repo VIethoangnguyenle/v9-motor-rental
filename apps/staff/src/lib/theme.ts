@@ -23,12 +23,6 @@ export function resolveTheme(choice: ThemeChoice, systemPrefersDark: boolean): E
   return choice;
 }
 
-export function nextChoice(current: ThemeChoice): ThemeChoice {
-  if (current === "system") return "light";
-  if (current === "light") return "dark";
-  return "system";
-}
-
 /**
  * sRGB của `--color-canvas` từng theme. Manifest và thẻ meta không đọc được biến
  * CSS, nên đây là bản chép tay — `theme.test.ts` đối chiếu nó với chính
@@ -116,4 +110,28 @@ export function applyChoice(choice: ThemeChoice): void {
       .querySelector(selector)
       ?.setAttribute("content", themeColorFor(media, choice, systemPrefersDark));
   }
+}
+
+/**
+ * Nguồn đăng ký cho `useSyncExternalStore`, ghép với `readChoice` làm getSnapshot.
+ *
+ * Nằm CẠNH `applyChoice` chứ không ở component đọc nó, vì hai hàm này là hai
+ * nửa của cùng một sự thật: `applyChoice` là chỗ DUY NHẤT ghi `data-theme` trên
+ * `<html>`, nên nghe đúng thuộc tính đó là biết mọi lần lựa chọn đổi — không cần
+ * event bus, không cần context, và không cần chỗ ghi phải biết ai đang nghe.
+ * Tách hai nửa sang hai file là cách chúng lệch nhau: đổi `applyChoice` sang ghi
+ * chỗ khác thì cái ở đây lặng lẽ hết nghe.
+ *
+ * ⚠️ Nghe THUỘC TÍNH, không nghe `localStorage`: `applyChoice` ghi cả hai, nhưng
+ * sự kiện `storage` của trình duyệt chỉ bắn sang TAB KHÁC, không bắn cho tab vừa
+ * ghi — nên nghe `localStorage` là không bao giờ nghe được cú bấm của chính mình.
+ *
+ * Tham chiếu hàm phải ỔN ĐỊNH giữa các lần render (`useSyncExternalStore` huỷ và
+ * đăng ký lại mỗi khi `subscribe` đổi), nên nó ở tầng module chứ không dựng trong
+ * thân component.
+ */
+export function subscribeToTheme(onChange: () => void): () => void {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributeFilter: ["data-theme"] });
+  return () => observer.disconnect();
 }
