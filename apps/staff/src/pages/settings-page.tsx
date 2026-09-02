@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useSyncExternalStore } from "react";
 import { BuildStamp } from "../components/layout/build-stamp";
+import { Avatar } from "../components/ui/avatar";
 import { Button } from "../components/ui/button";
 import { Icon } from "../components/ui/icon";
 import { ToggleGroup } from "../components/ui/toggle-group";
@@ -90,12 +91,30 @@ export function SettingsPage() {
          * phải "không có ai" — nói đúng chừng đó.
          */}
         {me ? (
-          <>
-            <p className="mt-2 text-sm text-ink">
-              {me.fullName} · {ROLE_LABEL[me.role]}
-            </p>
-            <p className="text-sm text-muted">{me.email}</p>
-          </>
+          /*
+           * Avatar `md` (40px) đứng cạnh HAI dòng chữ, không phải một — nó cao
+           * xấp xỉ đúng khối đó, nên `items-center` canh nó vào giữa cụm thay vì
+           * treo lệch trên dòng đầu.
+           *
+           * `min-w-0` ở cột chữ: email là một chuỗi KHÔNG có chỗ ngắt dòng tự
+           * nhiên, và mục flex mặc định `min-width: auto` nên cột sẽ nở theo nó
+           * và đẩy cả khối vượt `max-w-md`.
+           *
+           * `wrap-anywhere` chứ KHÔNG `truncate` — đo được ở 390px với một email
+           * dài: `truncate` cắt thành "nguyen-van-…@v9re…" và phần còn lại không
+           * có cách nào đọc ra. Đây là màn hình DUY NHẤT người dùng vào để xem
+           * địa chỉ của chính mình; giấu nửa sau của nó để giữ một dòng gọn là
+           * đổi đúng thứ trang này tồn tại để nói lấy hình thức.
+           */
+          <div className="mt-2 flex items-center gap-3">
+            <Avatar name={me.fullName} seed={me.id} size="md" />
+            <div className="min-w-0">
+              <p className="text-sm text-ink">
+                {me.fullName} · {ROLE_LABEL[me.role]}
+              </p>
+              <p className="text-sm wrap-anywhere text-muted">{me.email}</p>
+            </div>
+          </div>
         ) : (
           <p className="mt-2 text-sm text-muted">Đang đọc hồ sơ…</p>
         )}
