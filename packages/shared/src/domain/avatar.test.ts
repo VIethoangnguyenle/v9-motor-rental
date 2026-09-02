@@ -1,10 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import {
+  AVATAR_CONTENT_TYPES,
   MAX_AVATAR_BYTES,
   avatarObjectKey,
   extensionForAvatarType,
   isAllowedAvatarType,
   isAvatarSizeValid,
+  parseAvatarObjectKey,
 } from "./avatar";
 
 describe("isAllowedAvatarType", () => {
@@ -28,6 +30,20 @@ describe("isAllowedAvatarType", () => {
     expect(isAllowedAvatarType("image/gif")).toBe(false);
     expect(isAllowedAvatarType("application/pdf")).toBe(false);
     expect(isAllowedAvatarType("")).toBe(false);
+  });
+});
+
+describe("AVATAR_CONTENT_TYPES", () => {
+  it("đúng bằng tập mà `isAllowedAvatarType` nhận — route không được chép tay lần hai", () => {
+    for (const contentType of AVATAR_CONTENT_TYPES) {
+      expect(isAllowedAvatarType(contentType)).toBe(true);
+    }
+    expect(AVATAR_CONTENT_TYPES.length).toBe(3);
+  });
+
+  it("không chứa định dạng bị cấm", () => {
+    expect(AVATAR_CONTENT_TYPES.includes("image/svg+xml")).toBe(false);
+    expect(AVATAR_CONTENT_TYPES.includes("image/gif")).toBe(false);
   });
 });
 
@@ -86,5 +102,32 @@ describe("avatarObjectKey", () => {
   it("mỗi người một tiền tố riêng — xoá sạch một người là xoá một tiền tố", () => {
     expect(avatarObjectKey("A", "x", "png").startsWith("staff/A/")).toBe(true);
     expect(avatarObjectKey("B", "x", "png").startsWith("staff/B/")).toBe(true);
+  });
+});
+
+describe("parseAvatarObjectKey", () => {
+  it("đọc ngược ĐÚNG thứ `avatarObjectKey` ghi ra, cho mọi định dạng nhận được", () => {
+    for (const contentType of ["image/jpeg", "image/png", "image/webp"]) {
+      const extension = extensionForAvatarType(contentType);
+      expect(extension).not.toBeNull();
+      const key = avatarObjectKey("staff-1", "av-9", extension ?? "");
+      expect(parseAvatarObjectKey(key)).toEqual({
+        staffId: "staff-1",
+        avatarId: "av-9",
+        contentType,
+      });
+    }
+  });
+
+  it("trả null cho khoá không đúng khuôn — hàng cũ hay ai đó sửa tay DB", () => {
+    expect(parseAvatarObjectKey("")).toBeNull();
+    expect(parseAvatarObjectKey("staff/staff-1/avatar/av-9")).toBeNull();
+    expect(parseAvatarObjectKey("rentals/r-1/HANDOVER/p-1.webp")).toBeNull();
+    expect(parseAvatarObjectKey("staff/staff-1/avatar/av-9.webp/thêm")).toBeNull();
+  });
+
+  it("trả null cho đuôi file không thuộc bảng định dạng", () => {
+    expect(parseAvatarObjectKey("staff/staff-1/avatar/av-9.svg")).toBeNull();
+    expect(parseAvatarObjectKey("staff/staff-1/avatar/av-9.gif")).toBeNull();
   });
 });
