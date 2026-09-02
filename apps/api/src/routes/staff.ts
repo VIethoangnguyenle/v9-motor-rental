@@ -1,8 +1,20 @@
 import { Elysia, t } from "elysia";
 import EmailPassword from "supertokens-node/recipe/emailpassword";
 import Session from "supertokens-node/recipe/session";
+import {
+  AVATAR_CONTENT_TYPES,
+  MAX_AVATAR_BYTES,
+  parseAvatarObjectKey,
+} from "@v9/shared/domain/avatar";
 import { getClientIp, passwordResetLimiter, type RateLimitResult } from "../plugins/rate-limit";
 import { requireRole, staffGuard, type GuardErrorCode } from "../plugins/staff-guard";
+import {
+  deleteStaffAvatar,
+  readStaffAvatar,
+  setStaffAvatar,
+  type DeleteAvatarResult,
+  type SetAvatarResult,
+} from "../services/avatar";
 import { isEmailConfigured, sendResetCodeEmail } from "../services/email";
 import {
   changePassword,
@@ -78,6 +90,23 @@ const staffSchema = t.Object({
   phone: t.Nullable(t.String()),
   role: roleSchema,
   status: statusSchema,
+  /**
+   * Số hiệu bản của ảnh đại diện; `null` = chưa có ảnh, UI rơi về chữ cái.
+   *
+   * ⚠️ KHÔNG phải `object_key`, và KHÔNG phải một `hasAvatar: boolean`. Cả hai
+   * lựa chọn kia đều sai theo một chiều:
+   *
+   *  • `object_key` là chi tiết lưu trữ — cùng lý do `COLUMNS` của
+   *    `services/photos.ts` cố ý loại nó khỏi shape công khai.
+   *  • một cờ `boolean` KHÔNG phân biệt được "vẫn ảnh cũ" với "vừa đổi ảnh":
+   *    URL ảnh (`/staff/users/:id/avatar/content`) không đổi khi người ta thay
+   *    ảnh, nên client không có tín hiệu nào để tải lại — nó vẽ ảnh cũ cho tới
+   *    lần tải trang sau, và bộ nhớ đệm HTTP còn giữ lâu hơn thế.
+   *
+   * Chuỗi này đổi mỗi lần ghi ảnh mới (nó là `avatarId` trong khoá), nên nó vừa
+   * trả lời "có ảnh không", vừa làm khoá bộ nhớ đệm cho `?v=` ở client.
+   */
+  avatarVersion: t.Nullable(t.String()),
 });
 
 /** Chỗ DUY NHẤT quyết định field nào của `StaffUser` được ra khỏi API. */
@@ -88,6 +117,11 @@ const toPublicProfile = (s: StaffUser) => ({
   phone: s.phone,
   role: s.role,
   status: s.status,
+  // Khoá không đọc được → `null`, tức "coi như chưa có ảnh". Đúng chiều: hàng
+  // hỏng thì UI rơi về chữ cái, thay vì đòi một tấm ảnh không stream được.
+  avatarVersion: s.avatarObjectKey
+    ? (parseAvatarObjectKey(s.avatarObjectKey)?.avatarId ?? null)
+    : null,
 });
 
 const errorSchema = t.Object({ message: t.String(), code: t.String() });
@@ -96,7 +130,21 @@ const okSchema = t.Object({ ok: t.Boolean() });
 type PermissionReason = Extract<StaffMutationResult, { ok: false }>["reason"];
 type PasswordReason = Extract<ResetPasswordResult, { ok: false }>["reason"];
 type ChangePasswordReason = Extract<ChangePasswordResult, { ok: false }>["reason"];
-type Reason = PermissionReason | PasswordReason | ChangePasswordReason;
+/**
+ * `Exclude<…, PermissionReason>` KHÔNG phải để cho gọn: `setStaffAvatar` trả
+ * `NOT_FOUND` (tài khoản biến mất giữa chừng), mà `PermissionReason` đã mang
+ * đúng literal đó — hợp hai cái lại nguyên xi là một union có hằng lặp, và
+ * `@typescript-eslint/no-duplicate-type-constituents` bắt đúng ca này (xem
+ * `routes/handover.ts`, nơi `PHOTO_NOT_FOUND` vấp cùng luật). Trừ đi phần trùng
+ * giữ `Reason` là một tập, và giữ `MESSAGES` bên dưới chỉ có MỘT bản dịch cho
+ * "không tìm thấy nhân viên".
+ */
+type AvatarReason = Exclude<
+  | Extract<SetAvatarResult, { ok: false }>["reason"]
+  | Extract<DeleteAvatarResult, { ok: false }>["reason"],
+  PermissionReason
+>;
+type Reason = PermissionReason | PasswordReason | ChangePasswordReason | AvatarReason;
 
 /**
  * MỌI mã lỗi `apps/api` có thể trả — nguồn sự thật cho so sánh `code` ở
@@ -148,6 +196,11 @@ const MESSAGES = {
   WEAK_PASSWORD: "Mật khẩu mới chưa đạt yêu cầu",
   SAME_PASSWORD: "Mật khẩu mới trùng mật khẩu hiện tại",
   WRONG_CURRENT_PASSWORD: "Mật khẩu hiện tại không đúng",
+  AVATAR_TYPE_INVALID: "Chỉ nhận ảnh JPEG, PNG hoặc WebP",
+  // Nói ĐƠN VỊ người dùng đọc được, và suy từ chính hằng của domain — sửa trần ở
+  // `@v9/shared/domain/avatar` mà quên sửa câu này thì câu này nói dối.
+  AVATAR_SIZE_INVALID: `Ảnh phải nhỏ hơn ${String(Math.floor(MAX_AVATAR_BYTES / 1024 / 1024))} MB`,
+  AVATAR_NOT_FOUND: "Tài khoản này chưa có ảnh đại diện",
 } as const satisfies Record<Reason, string>;
 
 const toError = (reason: Reason) => ({ message: MESSAGES[reason], code: reason });
@@ -207,6 +260,96 @@ export const staff = new Elysia({ name: "staff" })
       return status(200, toPublicProfile(staff));
     },
     { response: { 200: staffSchema, 404: errorSchema } },
+  )
+
+  /**
+   * ─── Ảnh đại diện ──────────────────────────────────────────────────────────
+   *
+   * Ghi và xoá đi qua `/staff/me`, KHÔNG có `/staff/users/:id` cho hai việc đó:
+   * **mỗi người đổi ảnh của chính mình**, kể cả OWNER. Phương án "chủ shop đặt
+   * ảnh cho nhân viên" đã bị bác, và không có nó thì cũng không có luật phân
+   * quyền mới nào phải viết ở đây — `staff.id` từ guard là chủ thể duy nhất.
+   *
+   * Đường ĐỌC thì ngược lại, nhận `:id` bất kỳ: bảng nhân viên hiện avatar của
+   * người khác. Nó vẫn nằm sau `staffGuard` mặc định chặn, nên "mọi nhân viên
+   * ACTIVE" là đúng tập người được thấy — không rộng hơn cái họ đã thấy ở
+   * `GET /staff/users` (tên, email, số điện thoại).
+   */
+  .post(
+    "/staff/me/avatar",
+    async ({ body, staff, status }) => {
+      if (!staff) return status(404, toError("NOT_FOUND"));
+
+      const r = await setStaffAvatar({
+        staffId: staff.id,
+        contentType: body.file.type,
+        bytes: await body.file.arrayBuffer(),
+      });
+
+      if (r.ok) return status(200, { ok: true });
+      if (r.reason === "NOT_FOUND") return status(404, toError(r.reason));
+      return status(400, toError(r.reason));
+    },
+    {
+      // Hàng rào ĐẦU TIÊN, cùng khuôn `POST /rentals/:id/photos`: Elysia từ chối
+      // trước khi handler chạy. Hai tham số suy từ `@v9/shared/domain/avatar`
+      // chứ không gõ lại — hàng rào thứ hai (`setStaffAvatar`) đọc cùng bảng đó,
+      // nên hai tầng không lệch nhau được.
+      //
+      // Đo 2026-09-02 với `curl`: `t.File({ type })` của Elysia so theo NỘI DUNG
+      // chứ không theo `Content-Type` người gửi khai — một PDF khai là
+      // `image/png` vẫn bị từ chối (422), và một PNG khai là `image/webp` đi vào
+      // handler với `file.type === "image/png"`. Nghĩa là đuôi trong object key
+      // luôn khớp byte thật, không khớp một lời khai. Đừng bỏ `type` ở đây với
+      // lý do "domain đã kiểm rồi": domain chỉ đọc được lời khai.
+      body: t.Object({
+        file: t.File({ maxSize: MAX_AVATAR_BYTES, type: [...AVATAR_CONTENT_TYPES] }),
+      }),
+      response: { 200: okSchema, 400: errorSchema, 404: errorSchema },
+    },
+  )
+
+  .delete(
+    "/staff/me/avatar",
+    async ({ staff, status }) => {
+      if (!staff) return status(404, toError("NOT_FOUND"));
+      const r = await deleteStaffAvatar(staff.id);
+      if (r.ok) return status(200, { ok: true });
+      return status(404, toError(r.reason));
+    },
+    { response: { 200: okSchema, 404: errorSchema } },
+  )
+
+  /**
+   * Stream byte về cho `<img>` của `apps/staff` (qua `fetch` + `blob:`, xem
+   * `apps/staff/src/lib/avatar.ts`).
+   *
+   * KHÔNG khai `response` schema, khác luật chung của workspace này — cùng ngoại
+   * lệ với `GET /rentals/:id/photos/:photoId/content`: thân response là một
+   * `ReadableStream` byte, không có schema nào mô tả được nó, và khai bừa một
+   * schema sẽ bắt Elysia serialize lại thứ đang được stream.
+   */
+  .get(
+    "/staff/users/:id/avatar/content",
+    async ({ params, status, set }) => {
+      const r = await readStaffAvatar(params.id);
+      if (!r.ok) return status(404, toError(r.reason));
+
+      set.headers["content-type"] = r.contentType;
+      // ⚠️ URL này KHÔNG mang số hiệu bản, nên bộ nhớ đệm chỉ đúng chừng nào chỗ
+      // gọi còn gắn `?v=<avatarVersion>` (`fetchAvatarObjectUrl` ở
+      // `apps/staff/src/lib/avatar.ts`). Bỏ tham số đó đi thì đổi ảnh xong người
+      // dùng còn thấy ảnh cũ tới một tiếng, và không có gì kêu.
+      //
+      // `private`, KHÔNG `public`: ảnh mặt của nhân viên, proxy dùng chung không
+      // được giữ bản sao. Cùng lý lẽ ảnh bàn giao.
+      set.headers["cache-control"] = "private, max-age=3600";
+      // Chặn trình duyệt tự đoán kiểu nội dung — với file người dùng gửi lên,
+      // đoán sai kiểu là đường biến một "ảnh" thành tài liệu chạy được.
+      set.headers["x-content-type-options"] = "nosniff";
+      return r.stream;
+    },
+    { params: t.Object({ id: t.String() }) },
   )
 
   .get(

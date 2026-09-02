@@ -18,6 +18,13 @@ export interface StaffUser {
   readonly phone: string | null;
   readonly role: StaffRole;
   readonly status: StaffStatus;
+  /**
+   * Khoá object của ảnh đại diện, `null` khi chưa có. NỘI BỘ — `toPublicProfile`
+   * ở `routes/staff.ts` chỉ để lọt ra ngoài số hiệu bản suy từ nó, không để lọt
+   * chính khoá (chi tiết lưu trữ, cùng lý do `COLUMNS` của `services/photos.ts`
+   * loại `object_key`).
+   */
+  readonly avatarObjectKey: string | null;
   readonly approvedBy: string | null;
   readonly createdAt: Date;
   /** Mốc thu hồi session — xem `revokeAndStamp`. `null` = chưa từng thu hồi. */
@@ -55,6 +62,7 @@ const columns = {
   phone: schema.staffUsers.phone,
   role: schema.staffUsers.role,
   status: schema.staffUsers.status,
+  avatarObjectKey: schema.staffUsers.avatarObjectKey,
   approvedBy: schema.staffUsers.approvedBy,
   createdAt: schema.staffUsers.createdAt,
   sessionsInvalidBefore: schema.staffUsers.sessionsInvalidBefore,
@@ -72,6 +80,7 @@ function toStaffUser(row: {
   phone: string | null;
   role: string;
   status: string;
+  avatarObjectKey: string | null;
   approvedBy: string | null;
   createdAt: Date;
   sessionsInvalidBefore: Date | null;
