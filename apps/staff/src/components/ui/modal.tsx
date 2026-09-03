@@ -79,6 +79,7 @@ export function Modal({
   placement,
   onClose,
   children,
+  footer,
 }: {
   /** Tên của lớp phủ cho trình đọc màn hình (`aria-label` của `<dialog>`). */
   readonly label: string;
@@ -101,6 +102,19 @@ export function Modal({
    * con, tức ba lần tách chỉ để lấy một hàm.
    */
   readonly children: (close: () => void) => React.ReactNode;
+  /**
+   * Hành động chính, neo ở CHÂN panel và KHÔNG cuộn theo nội dung.
+   *
+   * Sinh ra từ một ca đo được: ở 390px nút `Tạo đơn` của `RentalForm` nằm ở
+   * y=705–749 trong khi thanh nav dưới bắt đầu ở 724 — chạm vào nửa dưới của nút
+   * rơi vào `<dialog>` chứ không vào nút, tức 19/44px là vùng chết. Sheet chi tiết
+   * đơn còn nặng hơn: 4/7 hành động (`Thêm ảnh` ×2, `Đã giao xe`, `Huỷ đơn`) nằm
+   * dưới nếp gấp của panel, không có gì báo rằng chúng tồn tại.
+   *
+   * KHÔNG truyền thì panel giữ nguyên hành vi cũ — sheet "Thêm" đo sạch (0/6 nút
+   * ngoài tầm) chính vì nội dung của nó ngắn hơn khung, nên nó không cần khe này.
+   */
+  readonly footer?: (close: () => void) => React.ReactNode;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -316,9 +330,26 @@ export function Modal({
         // `index.css`, cạnh chú thích giải thích ba cái bẫy của `<dialog>`.
         data-panel=""
         data-placement={placement}
-        className={`absolute mx-auto max-h-[90dvh] w-full max-w-lg overflow-y-auto overscroll-contain bg-surface ${PANEL_PLACEMENT[placement]}`}
+        className={`absolute mx-auto flex max-h-[90dvh] w-full max-w-lg flex-col overscroll-contain bg-surface ${
+          footer ? "" : "overflow-y-auto"
+        } ${PANEL_PLACEMENT[placement]}`}
       >
-        {children(close)}
+        {footer ? (
+          <>
+            {/* `min-h-0` BẮT BUỘC: một flex item mặc định không co xuống dưới nội dung
+                của nó, nên thiếu dòng này thì vùng cuộn phình bằng nội dung và đẩy chân
+                panel ra ngoài `max-h-[90dvh]` — đúng lại con bug đang sửa. */}
+            <div data-modal-scroll="" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              {children(close)}
+            </div>
+            {/* `border-t` để chân không trôi lẫn vào nội dung khi cuộn tới sát nó.
+                KHÔNG thêm padding ở đây: `PANEL_PLACEMENT` đã mang `pb-safe`, và phía
+                gọi sở hữu nhịp nội dung của chính nó (xem chú thích của panel). */}
+            <div className="shrink-0 border-t border-border">{footer(close)}</div>
+          </>
+        ) : (
+          children(close)
+        )}
       </div>
     </dialog>
   );
