@@ -52,7 +52,13 @@ _Lưu ý:_ web **không** hiển thị tình trạng còn trống theo thời gi
 
 ## Capabilities and Constraints
 
-**Đã có (hạ tầng, chưa có nghiệp vụ):** khung ba app chạy được đầu-cuối, type an toàn xuyên suốt từ API tới frontend, cơ chế migration, lưu trữ ảnh, CI.
+**Đã có — hạ tầng và phần lớn nghiệp vụ cốt lõi.** _Sửa 2026-09-03:_ bản trước ghi "chưa có nghiệp vụ", đúng ở thời điểm viết nhưng đã lạc hậu.
+
+Hạ tầng: ba app chạy được đầu-cuối, type an toàn xuyên suốt từ API tới frontend, migration, lưu trữ ảnh, CI.
+
+Nghiệp vụ đã chạy: danh mục xe và ảnh xe · tài khoản nhân viên, duyệt và đặt lại mật khẩu · khách hàng · đơn thuê kèm ràng buộc chống đặt trùng ở tầng database · yêu cầu thuê gửi từ web · ảnh bàn giao lúc giao và lúc nhận. `apps/staff` có lịch, thống kê, lên đơn, bàn giao, quản lý khách hàng và tiếp nhận yêu cầu; `apps/web` có trang chủ, danh sách xe, trang chi tiết xe và form gửi yêu cầu.
+
+Chưa làm trong luồng này: chuyển một yêu cầu thành đơn thuê bằng một cú bấm (nhân viên đang gõ lại tay) và báo cho nhân viên khi có yêu cầu mới ngoài giờ. Tình trạng từng đợt ở `docs/ROADMAP.md`.
 
 **Ràng buộc mang tính sống còn — chống đặt trùng.** Một chiếc xe không thể được đặt hai lần trong khoảng thời gian chồng nhau. Ràng buộc này đặt ở tầng database (exclusion constraint trên `(vehicle_id, tstzrange)`), không ở tầng ứng dụng.
 
@@ -75,14 +81,15 @@ Vì `apps/web` chỉ tạo _yêu cầu_, **nhân viên mới là người chạm
 
 Tên: **V9 Motor Rental**.
 
-**Đã có logo và bộ nhận diện đang dùng ngoài đời.** Đây là ràng buộc bắt buộc — thiết kế sau phải tôn trọng, **không được vẽ lại**. Cần lấy asset thật trước khi làm việc thị giác.
+**Shop CHƯA có logo và bộ nhận diện.** _Sửa 2026-09-03:_ bản trước ghi shop đã có nhận diện dùng ngoài đời và đặt "không được vẽ lại" thành ràng buộc bắt buộc. Người dùng xác nhận điều đó không đúng. Không có asset nhận diện nào để tôn trọng, nên dựng logo và hệ màu thương hiệu là việc **được phép làm** — nó thuộc bước dựng thế giới thị giác, không thuộc tài liệu này.
 
 Người dùng đặt ràng buộc thị giác rõ khi khởi tạo dự án: hướng **moto-garage** — tối, nhiều ảnh, typography đậm. **Cấm** thẩm mỹ SaaS generic: gradient tím, Inter ở mọi nơi, card lồng card. Ghi lại nguyên văn ở đây vì nó là ràng buộc do người dùng đưa ra; việc dựng thế giới thị giác cụ thể thuộc về bước sau, không thuộc tài liệu này.
 
 ## Evidence on Hand
 
-- **Ảnh xe thật của shop** — có, dùng được. Đây là điều khiến hướng thiên về ảnh khả thi thật chứ không phải mong muốn suông.
-- **Logo và nhận diện sẵn có** — có.
+- **Ảnh xe thật của shop** — **chưa có.** _Sửa 2026-09-03:_ bản trước ghi "có, dùng được". Ảnh đang nằm trong Directus là ảnh giữ chỗ. Quyết định 2026-09-03: ảnh giữ chỗ phải **tự khai là ảnh giữ chỗ** — không mang tên một chiếc xe có thật, không mang alt mô tả một chiếc xe không tồn tại. Lý do nằm ở `docs/ROADMAP.md`: `honda-cb500x-01.png` từng là một bảng màu kiểm tra mang đúng tên, title và alt của một chiếc CB500X, và nó lọt tới trang render mà không hàng rào nào chặn.
+- **Logo và nhận diện** — **chưa có**, xem §Brand Commitments.
+- ⚠️ Hướng thị giác người dùng đặt là "tối, **nhiều ảnh**", nhưng hiện **không có ảnh thật nào** đứng sau hướng đó. Đây là khoảng cách đã biết giữa ý định và bằng chứng, không phải thứ được lấp bằng ảnh sinh ra.
 - **Fanpage / Zalo đang chạy, có khách thật** — có. Web không được mâu thuẫn với nơi khách đang thực sự nhắn tin; nó là kênh thêm vào, không phải kênh thay thế.
 
 **Chưa có, không được bịa:** testimonial, con số lượng khách, đánh giá sao, giải thưởng, số năm hoạt động, danh sách đối tác. Không có tài liệu nào trong repo chứng minh những thứ đó.
