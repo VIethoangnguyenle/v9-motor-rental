@@ -51,9 +51,9 @@ for (const W of [390,360]) {
   await send('Emulation.setDeviceMetricsOverride',{width:W,height:780,deviceScaleFactor:1,mobile:true});
   await send('Page.navigate',{url:'http://localhost:3003/'});await wait(2900);
   await ev(`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Thêm')?.click()`);await wait(1600);
-  console.log(`  ${W} sheet "Thêm":`, await ev(REPORT));
+  console.warn(`  ${W} sheet "Thêm":`, await ev(REPORT));
   await send('Page.navigate',{url:'http://localhost:3003/calendar'});await wait(3200);
   await ev(`document.querySelector('.overflow-x-auto button')?.click()`);await wait(2300);
-  console.log(`  ${W} sheet chi tiết đơn:`, await ev(REPORT));
+  console.warn(`  ${W} sheet chi tiết đơn:`, await ev(REPORT));
 }
 ws.close();

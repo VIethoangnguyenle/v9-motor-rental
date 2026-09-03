@@ -31,7 +31,7 @@ const shot = async name => {
   writeFileSync(`${OUT}/${WIDTH}-${name}.png`, Buffer.from(r.result.data, 'base64'));
   const h = await evaluate('document.documentElement.scrollHeight');
   const overflow = await evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth');
-  console.log(`  ${WIDTH}-${name}.png   cao ${h}px   tràn ngang ${overflow}px ${overflow > 0 ? '⚠️' : ''}`);
+  console.warn(`  ${WIDTH}-${name}.png   cao ${h}px   tràn ngang ${overflow}px ${overflow > 0 ? '⚠️' : ''}`);
 };
 
 await go('http://localhost:3003/');
@@ -53,10 +53,10 @@ const filled = await evaluate(`(() => {
   if (!btn) return 'KHÔNG THẤY NÚT GỬI';
   btn.click(); return 'đã gửi';
 })()`);
-console.log('  đăng nhập:', filled);
+console.warn('  đăng nhập:', filled);
 await wait(3500);
 await shot('01-sau-dang-nhap');
-console.log('  url hiện tại:', await evaluate('location.pathname'));
+console.warn('  url hiện tại:', await evaluate('location.pathname'));
 
 for (const [path, name] of [['/', '02-thong-ke'], ['/calendar', '03-lich'],
      ['/requests', '04-yeu-cau'], ['/customers', '05-khach-hang'], ['/staff', '06-nhan-vien']]) {

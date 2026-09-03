@@ -358,6 +358,26 @@ export default tseslint.config(
     },
   },
 
+  // apps/staff/scripts/mobile-probe/*.mjs chạy bằng Node 22 NGOÀI trình duyệt (probe thủ công, không
+  // qua Vite/browser), nên không có `languageOptions.globals` nào ở trên phủ tới đường dẫn này —
+  // khối type-aware phía trên chỉ khai `parserOptions`, không khai globals; kết quả là `fetch`,
+  // `WebSocket`, `setTimeout`, `console`, `process`, `Buffer` đều báo `no-undef` dù đây là global
+  // Node thật, không phải lỗi code. Khai đúng môi trường thay vì `eslint-disable` rải rác từng file —
+  // đây là cấu hình thiếu, không phải code sai.
+  {
+    files: ["apps/staff/scripts/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        fetch: "readonly",
+        WebSocket: "readonly",
+        setTimeout: "readonly",
+        console: "readonly",
+        process: "readonly",
+        Buffer: "readonly",
+      },
+    },
+  },
+
   // Don't reach into another package's guts — go through its entrypoint.
   {
     files: ["apps/**/*.{ts,tsx}"],

@@ -80,15 +80,15 @@ function render(result) {
 const selfTest = process.argv.includes('--self-test');
 
 if (!selfTest) {
-  console.log(render(await ev(SCAN)));
+  console.warn(render(await ev(SCAN)));
 } else {
   // Bằng chứng phải CHẠY LẠI ĐƯỢC, không phải tường thuật một lần rồi xoá đi:
   // tự chèn một lớp che lên 30% đáy nút, khẳng định probe báo TRƯỢT ở đó, rồi
   // gỡ lớp che và khẳng định probe báo TRÚNG lại toàn bộ. Hai chiều — một
   // probe luôn báo trượt vô dụng y như một probe không bao giờ báo.
-  console.log('== --self-test bước 1/3: TRƯỚC khi che (kỳ vọng: 0 điểm trượt) ==');
+  console.warn('== --self-test bước 1/3: TRƯỚC khi che (kỳ vọng: 0 điểm trượt) ==');
   const before = await ev(SCAN);
-  console.log(render(before));
+  console.warn(render(before));
   const beforeMiss = before.points.filter((pt) => !pt.hit).length;
 
   await ev(`(()=>{
@@ -112,21 +112,21 @@ if (!selfTest) {
   })()`);
   await wait(150);
 
-  console.log('== --self-test bước 2/3: SAU khi che 30% đáy nút (kỳ vọng: các điểm fy=0.85/0.98 trượt) ==');
+  console.warn('== --self-test bước 2/3: SAU khi che 30% đáy nút (kỳ vọng: các điểm fy=0.85/0.98 trượt) ==');
   const during = await ev(SCAN);
-  console.log(render(during));
+  console.warn(render(during));
   const duringMiss = during.points.filter((pt) => !pt.hit).length;
 
   await ev(`document.getElementById('self-test-overlay')?.remove()`);
   await wait(150);
 
-  console.log('== --self-test bước 3/3: SAU khi gỡ lớp che (kỳ vọng: 0 điểm trượt trở lại) ==');
+  console.warn('== --self-test bước 3/3: SAU khi gỡ lớp che (kỳ vọng: 0 điểm trượt trở lại) ==');
   const after = await ev(SCAN);
-  console.log(render(after));
+  console.warn(render(after));
   const afterMiss = after.points.filter((pt) => !pt.hit).length;
 
   const ok = beforeMiss === 0 && duringMiss > 0 && afterMiss === 0;
-  console.log(ok
+  console.warn(ok
     ? '\n--self-test: ✅ PASS (probe phát hiện đúng cả hai chiều: che thì trượt, gỡ thì trúng lại)'
     : '\n--self-test: ❌ FAIL (before=' + beforeMiss + ' during=' + duringMiss + ' after=' + afterMiss + ')');
   if (!ok) process.exitCode = 1;

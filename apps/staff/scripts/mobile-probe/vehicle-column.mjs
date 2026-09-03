@@ -9,7 +9,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 await send('Page.enable');await send('Runtime.enable');
 await send('Emulation.setDeviceMetricsOverride',{width:390,height:780,deviceScaleFactor:1,mobile:true});
 await send('Page.navigate',{url:'http://localhost:3003/calendar'});await wait(3200);
-console.log(await ev(`(()=>{
+console.warn(await ev(`(()=>{
   const wrap=document.querySelector('.overflow-x-auto');
   const cells=[...wrap.querySelectorAll('*')].filter(e=>/sticky/.test(e.className||'')&&/z-10/.test(e.className||''));
   const rows=cells.map(c=>({t:c.textContent.trim(), need:c.scrollWidth, has:c.clientWidth}));

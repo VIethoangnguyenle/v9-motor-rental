@@ -16,7 +16,7 @@ for(const W of [390,1280]){
   // thế), và bản trả-sớm chỉ nói "không thấy bảng" thay vì đo tiếp thẻ.
   // Scope vào `#main` (landmark nội dung của `AppShell`) để không đếm nhầm
   // `<ul>`/`<button>` của nav sang cùng khối.
-  console.log(`  ${W}px:`, await ev(`(()=>{
+  console.warn(`  ${W}px:`, await ev(`(()=>{
     const main = document.querySelector('#main') ?? document;
     const wrap = main.querySelector('.overflow-x-auto');
     const fmtWrap = wrap

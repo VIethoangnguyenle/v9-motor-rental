@@ -10,7 +10,7 @@ for (const w of [390, 1280]) {
   await send('Emulation.setDeviceMetricsOverride',{width:w,height:780,deviceScaleFactor:1,mobile:w<800});
   await send('Page.navigate',{url:'http://localhost:3003/calendar'});
   await new Promise(r=>setTimeout(r,3000));
-  console.log(w+'px:', await ev(`(()=>{
+  console.warn(w+'px:', await ev(`(()=>{
     const grid=document.querySelector('.overflow-x-auto');
     const g=grid.getBoundingClientRect();
     const cols=grid.querySelectorAll('thead th, [role=columnheader]').length;
