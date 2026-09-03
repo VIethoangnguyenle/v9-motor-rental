@@ -11,7 +11,7 @@ await send('Emulation.setDeviceMetricsOverride',{width:390,height:780,deviceScal
 await send('Page.navigate',{url:'http://localhost:3003/calendar'});await wait(3200);
 console.log(await ev(`(()=>{
   const wrap=document.querySelector('.overflow-x-auto');
-  const cells=[...wrap.querySelectorAll('*')].filter(e=>/sticky/.test(e.className||'')&&/truncate/.test(e.className||''));
+  const cells=[...wrap.querySelectorAll('*')].filter(e=>/sticky/.test(e.className||'')&&/z-10/.test(e.className||''));
   const rows=cells.map(c=>({t:c.textContent.trim(), need:c.scrollWidth, has:c.clientWidth}));
   const max=Math.max(...rows.map(r=>r.need));
   const dayCol=wrap.querySelector('.grid')?.children?.[2]?.getBoundingClientRect().width;

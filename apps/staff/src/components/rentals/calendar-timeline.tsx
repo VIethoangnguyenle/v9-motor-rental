@@ -106,7 +106,7 @@ export function CalendarTimeline({
         // (`w-[${n}px]`) sẽ KHÔNG được tìm thấy và sinh ra một class rỗng,
         // hỏng im lặng. Giá trị 7/10/14 ngày (động, phụ thuộc `gridWindow`) vì
         // vậy phải đi qua `style` (raw CSS, không qua Tailwind) — xem bên dưới.
-        className="grid min-w-max [--veh-col:5.5rem] md:[--veh-col:7rem] xl:[--veh-col:8.125rem]"
+        className="grid min-w-max [--veh-col:7.5rem] md:[--veh-col:7rem] xl:[--veh-col:8.125rem]"
         style={{
           gridTemplateColumns: `var(--veh-col) repeat(${String(cols.length)}, minmax(2.75rem, 1fr))`,
         }}
@@ -141,7 +141,7 @@ export function CalendarTimeline({
             <Fragment key={vehicle.id}>
               <div
                 style={{ gridColumn: "1", gridRow }}
-                className="sticky left-0 z-10 min-h-12 truncate border-r border-b border-border bg-surface card-pad text-sm text-ink"
+                className="sticky left-0 z-10 min-h-12 border-r border-b border-border bg-surface card-pad text-sm leading-tight text-ink"
                 title={`${vehicle.make} ${vehicle.model}${vehicle.plate ? ` · ${vehicle.plate}` : ""}`}
               >
                 {vehicle.make} {vehicle.model}
