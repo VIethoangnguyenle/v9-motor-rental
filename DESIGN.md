@@ -22,7 +22,7 @@ giống BMW" — đọc cột lý do trước.
 | --- | ------------------------------------------------ | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | `BMWTypeNextLatin`; nếu thiếu thì dùng **Inter** | **Archivo**                             | Font BMW không license được. Còn Inter thì `PRODUCT.md` **cấm thẳng** ("Inter ở mọi nơi").                                                  |
 | 2   | display `line-height: 1.0`                       | **1.15 tối thiểu**                      | Đo thật: ở 1.0, dấu sắc trên **Ố** đâm vào **TÔ** dòng trên. Tiếng Việt xếp chồng dấu, không phải tiếng Anh.                                |
-| 3   | Accent = **M tricolor**                          | **Màu từ logo thật của shop**           | Tricolor là nhận diện của BMW. `PRODUCT.md`: shop đã có bộ nhận diện, **không được vẽ lại**. ⛔ **Chưa có asset → chưa chốt được, xem §9.** |
+| 3   | Accent = **M tricolor**                          | **`#f72b28`, rút từ mark V9**           | Tricolor là nhận diện của BMW. Shop **chưa** có nhận diện (`PRODUCT.md` sửa 2026-09-03), nên mark được dựng ở đợt này và màu rút ra từ nó. ✅ Chốt 2026-09-03, xem §9. |
 | 4   | "Đừng dùng màu ngoài M tricolor"                 | **Bỏ luật này**                         | Nó giả định ta là BMW. Ta có brand riêng. Giữ nguyên luật gốc = ship nhận diện của hãng khác.                                               |
 | 5   | Nhịp có băng **magazine grid**                   | **Bỏ**                                  | Ta không có bài viết, không có testimonial, không có con số. `PRODUCT.md` cấm bịa. Băng trống thà bỏ còn hơn độn nội dung giả.              |
 | 6   | CTA = "Order / Configure"                        | **"Gửi yêu cầu thuê"**                  | Web **không chốt đơn**. CTA không được ngụ ý xe còn trống hay đã giữ chỗ. Đây là luật cứng nhất của app, xem §7.                            |
@@ -72,7 +72,7 @@ body-strong     #e6e6e6   chữ nhấn
 body            #bbbbbb   thân bài mặc định
 muted           #7e7e7e   metadata, chú thích
 hairline        #3c3c3c   viền, đường chia
-accent          ⛔ CHƯA CHỐT — lấy từ logo shop (§9)
+accent          #f72b28   nền CTA chính, v9-stripe-divider, viền active (§9)
 ```
 
 **Tương phản đã đo trên `#000000`** (WCAG AA: thân bài ≥ 4.5, chữ lớn ≥ 3.0):
@@ -212,18 +212,40 @@ tiên khách thấy là **màn hình đen trống**.
 **Alt text phải mô tả thật** — loại xe, phân khối, tình trạng. Không phải tên file.
 `PRODUCT.md` §Accessibility yêu cầu điều này vì nội dung dựa nhiều vào ảnh.
 
-## 9. ⛔ Chưa chốt được — chờ asset từ shop
+## 9. ✅ Nhận diện — chốt 2026-09-03
 
-**Màu accent.** Hệ này cần đúng **một** màu thương hiệu, dùng rất dè cho CTA quan trọng nhất,
-`v9-stripe-divider`, và trạng thái active. Bản BMW dùng tricolor của BMW — ta **không** dùng được.
+**Mark:** [`apps/web/public/brand/v9-mark.svg`](apps/web/public/brand/v9-mark.svg). Nhông xích làm
+vành, số 9 âm bản khoét giữa, ba răng đỏ cách đều 120°. Dựng bằng hình học thuần — **không phụ
+thuộc font nào có mặt**, và vành dùng `fill-rule="evenodd"` thay vì `<mask>` vì mask vỡ khi SVG
+được inline vào nền khác.
 
-Shop đã có logo và bộ nhận diện ngoài đời (`PRODUCT.md` §Brand Commitments). **Cần file logo
-thật** để rút màu ra. Cho tới lúc đó:
+**Đọc được ở 32px — đã đo, không phải suy:** thu về đúng 32×32 rồi phóng lại, vành vẫn ra răng cưa
+và số 9 vẫn đọc được; ba răng đỏ thành ba chấm. Đây là điều kiện để nó làm favicon.
 
-- **Không bịa màu accent.** Chọn đại một màu rồi ship là làm ngược lại yêu cầu "không được vẽ lại
-  nhận diện".
-- Tạm thời dựng giao diện **đơn sắc trắng-đen**. Nó chạy được và trông có chủ ý, không trông như
-  thiếu sót.
-- Khi có màu: đo tương phản trên `#000000` **và** `#1a1a1a` (xem §2) trước khi dùng cho chữ.
+**Màu accent `#f72b28`.** Dùng rất dè, đúng ba chỗ: nền CTA quan trọng nhất, `v9-stripe-divider`,
+và viền trạng thái active.
 
-Cùng lúc đó, `apps/staff/public/icon-{192,512}.png` cũng đang chờ chính file logo này.
+| Đo trên          | Tỉ lệ | Ngưỡng áp dụng                | Kết luận |
+| ---------------- | ----- | ----------------------------- | -------- |
+| `#000000` canvas | 5.33  | 3.0 (đồ hoạ, WCAG 1.4.11)     | ✅       |
+| `#1a1a1a` card   | 4.42  | 3.0 (đồ hoạ)                  | ✅       |
+| `#0d0d0d` soft   | 4.93  | 3.0 (đồ hoạ)                  | ✅       |
+| chữ **trắng** trên accent | 3.94 | 4.5 (chữ thường)     | ❌       |
+| chữ **đen** trên accent   | 5.33 | 4.5 (chữ thường)     | ✅       |
+| accent làm chữ trên `#1a1a1a` | 4.42 | 4.5              | ❌       |
+
+**Hai luật rút ra từ bảng trên, không phải sở thích:**
+
+1. **Nút CTA dùng chữ ĐEN trên nền accent.** Chữ trắng trượt AA. Điều này hợp với chữ ký
+   "tương phản nặng–nhẹ" của §1 chứ không chống lại nó.
+2. **Không dùng accent làm chữ trên `surface-card`.** Trên `canvas` thì đạt, nhưng một token đổi
+   hành vi theo nền là thứ sẽ trôi — cấm hẳn cho gọn.
+
+Ba răng đỏ **không mang thông tin nào**: bỏ hết màu thì mark vẫn đọc đủ. Đây là điều kiện để nó
+sống ở chỗ in một màu và ở chế độ tương phản cao.
+
+### Còn treo
+
+`apps/staff/public/icon-{192,512}.png` **chưa** đổi sang mark này. `docs/ROADMAP.md:117` ghi icon đó
+đã xong 2026-09-01 bằng "logo mô tô thật" — nhưng shop không có logo thật, nên chưa rõ thứ đang nằm
+trong hai file kia là gì. Không đụng vào cho tới khi biết.

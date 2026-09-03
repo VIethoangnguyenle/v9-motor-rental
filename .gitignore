@@ -62,3 +62,11 @@ coverage/
 
 # superpowers brainstorm scratch (mockup HTML, server state)
 .superpowers/
+
+# skill + agent do `npx impeccable install` sinh ra. Cùng lối với .codegraph/ và
+# .gstack/ ở trên: dựng lại được bằng một lệnh nên không phải nguồn sự thật, và
+# 167 file untracked làm `git status` bẩn vĩnh viễn. Nâng bản bằng
+# `npx impeccable update`, không qua git. Chỉ chặn artifact của impeccable —
+# skill v9-* viết tay vẫn track, và .claude/agents/ còn chỗ cho agent của bạn.
+.claude/skills/impeccable/
+.claude/agents/impeccable-*.md

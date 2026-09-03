@@ -24,6 +24,18 @@
   /* 1.90:1 trên canvas — CHỈ làm viền, không bao giờ làm chữ. DESIGN.md §2 */
   --color-hairline: #3c3c3c;
 
+  /* Màu thương hiệu, rút từ mark ở public/brand/v9-mark.svg. Đo 2026-09-03:
+   *   trên canvas #000000   5.33  ·  surface-card #1a1a1a  4.42  ·  soft #0d0d0d  4.93
+   * Cả ba đều qua ngưỡng 3.0 của đồ hoạ phi văn bản (WCAG 1.4.11), nên nó hợp lệ
+   * cho ba vai §9 khai: nền CTA chính, v9-stripe-divider, viền trạng thái active.
+   *
+   * HAI LUẬT ĐI KÈM, cả hai đều đo ra chứ không phải sở thích:
+   *  1. Chữ trên nền accent phải ĐEN. Trắng trên #f72b28 chỉ được 3.94 — trượt 4.5.
+   *     Đen được 5.33.
+   *  2. KHÔNG dùng accent làm chữ trên surface-card: 4.42 < 4.5. Trên canvas thì
+   *     đạt, nhưng một token có hai hành vi tuỳ nền là thứ trôi — nên cấm hẳn. */
+  --color-accent: #f72b28;
+
   /* DESIGN.md §5: base 4px. Tailwind mặc định đã là 4px/đơn vị nên thang
    * 1/2/3/4/6/10/16 khớp sẵn 4/8/12/16/24/40/64px. Chỉ cần khai thêm bậc
    * "section" 96px vì nó là nhịp riêng của hệ này. */

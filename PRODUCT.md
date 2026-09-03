@@ -89,7 +89,7 @@ Người dùng đặt ràng buộc thị giác rõ khi khởi tạo dự án: h�
 
 - **Ảnh xe thật của shop** — **chưa có.** _Sửa 2026-09-03:_ bản trước ghi "có, dùng được". Ảnh đang nằm trong Directus là ảnh giữ chỗ. Quyết định 2026-09-03: ảnh giữ chỗ phải **tự khai là ảnh giữ chỗ** — không mang tên một chiếc xe có thật, không mang alt mô tả một chiếc xe không tồn tại. Lý do nằm ở `docs/ROADMAP.md`: `honda-cb500x-01.png` từng là một bảng màu kiểm tra mang đúng tên, title và alt của một chiếc CB500X, và nó lọt tới trang render mà không hàng rào nào chặn.
 - **Logo và nhận diện** — **chưa có**, xem §Brand Commitments.
-- ⚠️ Hướng thị giác người dùng đặt là "tối, **nhiều ảnh**", nhưng hiện **không có ảnh thật nào** đứng sau hướng đó. Đây là khoảng cách đã biết giữa ý định và bằng chứng, không phải thứ được lấp bằng ảnh sinh ra.
+- ⚠️ Hướng thị giác người dùng đặt là "tối, **nhiều ảnh**", nhưng hiện **không có ảnh thật nào** đứng sau hướng đó. Ảnh sinh bằng AI được phép dùng cho **comp thiết kế** và cho **ảnh giữ chỗ có nhãn** — không được phép đứng tên một chiếc xe có thật trong đội xe, vì như vậy nó thôi là ảnh giữ chỗ và thành lời khai sai về thứ khách sẽ nhận.
 - **Fanpage / Zalo đang chạy, có khách thật** — có. Web không được mâu thuẫn với nơi khách đang thực sự nhắn tin; nó là kênh thêm vào, không phải kênh thay thế.
 
 **Chưa có, không được bịa:** testimonial, con số lượng khách, đánh giá sao, giải thưởng, số năm hoạt động, danh sách đối tác. Không có tài liệu nào trong repo chứng minh những thứ đó.
