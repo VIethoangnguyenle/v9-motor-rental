@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { SHOP_TIMEZONE, type RentalStatus } from "@v9/shared/domain/rental";
 import { errorMessage } from "../../lib/errors";
 import type { GridWindow } from "../../lib/calendar-layout";
@@ -151,45 +151,50 @@ function monthWindow(anchor: Ymd): GridWindow {
   return { from: zonedMidnightOf(gridStart), to: zonedMidnightOf(gridEndExclusive) };
 }
 
-// ── Breakpoint: 7/10/14 ngày, đo bằng matchMedia ────────────────────────────
+// ── Breakpoint: 7/10/14 ngày, đo bằng ResizeObserver trên vùng lưới ─────────
 
-const MD_QUERY = "(min-width: 768px)";
-const XL_QUERY = "(min-width: 1280px)";
-
-/**
- * PHẢI khớp đúng hai ngưỡng `md`/`xl` mặc định của Tailwind mà
- * `calendar-timeline.tsx` dùng để đổi độ rộng cột xe (xem hợp đồng ở đầu file
- * đó) — lệch ngưỡng thì tiêu đề cột (đổi ở CSS) và số cột thật (đổi ở đây,
- * bằng JS) không khớp nhau khi bề rộng màn hình nằm giữa hai mốc.
- */
-function currentDayCount(): 7 | 10 | 14 {
-  if (typeof window === "undefined") return 7;
-  if (window.matchMedia(XL_QUERY).matches) return 14;
-  if (window.matchMedia(MD_QUERY).matches) return 10;
+/** Ba ngưỡng cũ, nhưng áp lên bề rộng VÙNG LƯỚI thay vì bề rộng cửa sổ. */
+export function dayCountForWidth(gridWidth: number): 7 | 10 | 14 {
+  if (gridWidth >= 1280) return 14;
+  if (gridWidth >= 768) return 10;
   return 7;
-}
-
-function subscribeToBreakpoint(callback: () => void): () => void {
-  const mdList = window.matchMedia(MD_QUERY);
-  const xlList = window.matchMedia(XL_QUERY);
-  mdList.addEventListener("change", callback);
-  xlList.addEventListener("change", callback);
-  return () => {
-    mdList.removeEventListener("change", callback);
-    xlList.removeEventListener("change", callback);
-  };
 }
 
 /**
  * `useSyncExternalStore`, KHÔNG `useEffect` + `useState`: effect chạy SAU lần
  * vẽ đầu tiên, nên một state khởi tạo tạm rồi effect sửa lại đúng là nhịp
- * "vẽ sai rồi vẽ lại" mà hợp đồng của `calendar-timeline.tsx` cấm — component
- * đó phải "luôn nhận đúng dữ liệu ngay lần vẽ đầu tiên". `getSnapshot` gọi
- * `matchMedia` NGAY trong lần render đầu nên `gridWindow` tính từ nó luôn đúng
- * từ đầu, không có round-trip rỗng-rồi-đầy.
+ * "vẽ sai rồi vẽ lại". `getSnapshot` đọc `gridRef.current.clientWidth` — bề
+ * rộng THẬT của vùng lưới, sau khi sidebar/layout đã ăn bớt phần của nó — chứ
+ * không phải `matchMedia` trên cửa sổ như bản cũ: đo cửa sổ từng trả 14 ngày ở
+ * 1280px trong khi sidebar ăn ~258px chỉ còn 1022px cho lưới (đóng #5, xem
+ * `dayCountForWidth`).
+ *
+ * `gridRef` trỏ vào khối bọc ngoài cùng của trang — luôn tồn tại từ lần render
+ * đầu, không đợi tải dữ liệu xong — nên `ResizeObserver` gắn được ngay ở lần
+ * mount đầu. Cái giá phải trả so với bản `matchMedia` cũ: KHÔNG còn đúng ngay
+ * từ khung hình đầu tiên (window đã tồn tại TRƯỚC khi component mount, còn nút
+ * DOM của `gridRef` thì chưa khi `getSnapshot` chạy lần đầu) — snapshot đầu
+ * trả 7 (qua `getServerSnapshot` bên dưới) cho tới khi `ResizeObserver` bắn
+ * lần đo đầu tiên. Cùng đánh đổi `ScrollHint` ở `calendar-timeline.tsx` đã
+ * chấp nhận cho `hasMore`.
  */
-function useCalendarDayCount(): 7 | 10 | 14 {
-  return useSyncExternalStore(subscribeToBreakpoint, currentDayCount, () => 7);
+function useCalendarDayCount(gridRef: RefObject<HTMLElement | null>): 7 | 10 | 14 {
+  return useSyncExternalStore(
+    (callback) => {
+      const el = gridRef.current;
+      if (!el) return () => {};
+      const observer = new ResizeObserver(callback);
+      observer.observe(el);
+      return () => {
+        observer.disconnect();
+      };
+    },
+    () => {
+      const el = gridRef.current;
+      return el ? dayCountForWidth(el.clientWidth) : 7;
+    },
+    () => 7,
+  );
 }
 
 // ── Trình bày ────────────────────────────────────────────────────────────
@@ -258,7 +263,10 @@ export function RentalCalendar() {
   const view: CalendarView = search.view ?? DEFAULT_VIEW;
   const anchor = (search.from ? parseYmd(search.from) : null) ?? zonedTodayYmd();
 
-  const dayCount = useCalendarDayCount();
+  // Bọc ngoài cùng của trang — xem `useCalendarDayCount` để biết vì sao đo ở
+  // đây, không đo `window`.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const dayCount = useCalendarDayCount(gridRef);
   const gridWindow: GridWindow =
     view === "month" ? monthWindow(anchor) : timelineWindow(anchor, dayCount);
 
@@ -357,7 +365,7 @@ export function RentalCalendar() {
   const selected = selectedId === null ? null : pinned.current;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div ref={gridRef} className="flex flex-col gap-4">
       {showToolbar && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">

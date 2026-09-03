@@ -16,34 +16,42 @@ import { Icon } from "../ui/icon";
  * "khách muốn thuê 24–27 thì còn xe nào" — vì KHOẢNG TRẮNG trong lưới CHÍNH LÀ
  * xe còn trống: không cần đọc gì, chỉ cần nhìn.
  *
- * ## Trách nhiệm responsive: PARENT đo viewport, component chỉ vẽ đúng cửa sổ nhận được
+ * ## Trách nhiệm responsive: PARENT đo VÙNG LƯỚI, component chỉ vẽ đúng khung nhận được
  *
- * Số ngày hiển thị (7/10/14, xem bảng breakpoint ở plan) đổi theo bề rộng màn
- * hình, nhưng đây KHÔNG chỉ là chuyện trình bày: nó quyết định luôn khoảng cần
+ * Số ngày hiển thị (7/10/14, xem bảng breakpoint ở plan) đổi theo bề rộng
+ * lưới, nhưng đây KHÔNG chỉ là chuyện trình bày: nó quyết định luôn khoảng cần
  * gọi `GET /rentals` (nhiều ngày hơn = phải fetch nhiều hơn). Vì fetch/range
  * selection thuộc `rental-calendar.tsx` (Task 6), quyết định "mấy ngày" phải
  * đứng CÙNG PHÍA với fetch — tức là ở component đó, không phải ở đây.
  *
- * Đã chọn: **`rental-calendar.tsx` đo viewport (vd bằng `matchMedia` ở hai
- * ngưỡng 768px/1280px) rồi truyền `gridWindow` đã đúng số ngày cho breakpoint
- * hiện tại.** Component này KHÔNG tự đoán lại số ngày — nó vẽ đúng
- * `dayColumns(gridWindow).length` cột, không hơn không kém, bất kể con số đó
- * là bao nhiêu.
+ * Đã chọn: **`rental-calendar.tsx` đo bề rộng THẬT của vùng lưới bằng
+ * `ResizeObserver` (Task 10 — không phải `matchMedia` trên cửa sổ nữa) rồi
+ * truyền `gridWindow` đã đúng số ngày cho bề rộng hiện có.** Component này
+ * KHÔNG tự đoán lại số ngày — nó vẽ đúng `dayColumns(gridWindow).length` cột,
+ * không hơn không kém, bất kể con số đó là bao nhiêu.
  *
  * Không chọn phương án "component tự báo số ngày ưa thích lên cho parent" vì
- * nó tạo một round-trip: mount lần đầu với window (tạm) sai số ngày → báo lên
- * → parent fetch lại đúng khoảng → mount lại — tức lưới TRỐNG-RỒI-ĐẦY một nhịp
- * mỗi lần đổi kích thước cửa sổ hoặc xoay màn hình. Cách đã chọn thì component
- * luôn nhận đúng dữ liệu ngay lần vẽ đầu tiên.
+ * nó tạo một round-trip: mount lần đầu sai số ngày → báo lên → parent fetch
+ * lại đúng khoảng → mount lại — tức lưới TRỐNG-RỒI-ĐẦY một nhịp mỗi lần đổi
+ * kích thước. Cách đã chọn thì `gridWindow` nhận được luôn đã đúng số ngày
+ * cho bề rộng lưới TẠI THỜI ĐIỂM component này render — parent tự chịu phần
+ * "đo trước lần vẽ đầu của chính nó ra sao" (xem đánh đổi ghi ở
+ * `useCalendarDayCount`), component ở đây không phải đoán rồi tự sửa.
  *
  * Cột xe (88/112/130px) là quyết định THUẦN TRÌNH BÀY — không ảnh hưởng gì tới
  * việc fetch — nên nó là ngoại lệ hợp lý: ba class Tailwind `md:`/`xl:` bên
- * dưới tự đổi độ rộng cột theo breakpoint CSS, ĐỘC LẬP với việc parent đổi
- * `gridWindow`. Hệ quả bắt buộc: `rental-calendar.tsx` phải dùng ĐÚNG hai
- * ngưỡng 768px/1280px (khớp `md`/`xl` mặc định của Tailwind) khi đo viewport để
- * chọn số ngày — lệch ngưỡng thì tiêu đề cột ngày (đổi ở breakpoint CSS) và số
- * cột thật (đổi ở breakpoint JS của parent) sẽ không khớp nhau đúng lúc bề rộng
- * màn hình nằm giữa hai ngưỡng.
+ * dưới tự đổi độ rộng cột theo breakpoint CSS của CỬA SỔ, ĐỘC LẬP với việc
+ * parent đổi `gridWindow`.
+ *
+ * ⚠️ Từ Task 10, đây là HAI GỐC QUY CHIẾU KHÁC NHAU dùng chung ba con số
+ * 768/1280: `rental-calendar.tsx` đo bề rộng VÙNG LƯỚI (đóng #5 — sidebar ăn
+ * mất phần cửa sổ), còn `md:`/`xl:` dưới đây vẫn đo bề rộng CỬA SỔ. Hai bên
+ * khớp nhau khi lưới chiếm gần hết cửa sổ (mobile, hoặc desktop không sidebar
+ * cạnh tranh), nhưng có thể LỆCH khi vùng lưới hẹp hơn cửa sổ đáng kể (đúng
+ * kịch bản #5): số cột đã đúng theo Task 10, nhưng cột có thể vẽ theo bề rộng
+ * `xl:` (rộng hơn) dù lưới không thật sự rộng bằng cửa sổ. Chấp nhận được vì
+ * độ rộng cột chỉ ảnh hưởng trình bày, không ảnh hưởng số cột/khoảng fetch —
+ * nhưng đừng đọc nhầm ba con số này là "cùng đo một thứ" như trước Task 10.
  */
 export interface CalendarTimelineProps {
   readonly vehicles: readonly FleetVehicle[];
