@@ -224,10 +224,72 @@ export function RentalDetailSheet({ rental, vehicle, onClose, onChanged }: Renta
     : "Xe không còn trong đội";
   const nextStatuses = availableTransitions(shownStatus);
 
+  /**
+   * Đã giao xe / Huỷ đơn là hành động của CẢ ĐƠN, không phải của một khối nội
+   * dung — neo ở khe `footer` của `Modal` (chân panel, không cuộn theo), thay
+   * vì nằm cuối content dưới ảnh giao/trả xe. Trước đây 4/7 nút của sheet này
+   * nằm dưới nếp gấp trên điện thoại; hai nút "Thêm ảnh" CỐ Ý ở lại trong nội
+   * dung — chúng thuộc về khối ảnh của chúng (giấy tờ / tình trạng xe).
+   */
+  const renderFooter = () => (
+    <div className="card-pad flex flex-col gap-2">
+      {change.error && <Alert tone="error">{change.error.message}</Alert>}
+
+      {nextStatuses.length === 0 ? (
+        // Đơn đã kết thúc. Nói ra, đừng để một vùng nút trống người dùng tự đoán.
+        <p className="text-sm text-muted">Đơn đã kết thúc, không còn thao tác nào.</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {nextStatuses.map((to) => {
+            const destructive = to === "CANCELLED";
+            if (destructive && confirming === to) {
+              return (
+                <div key={to} className="flex flex-col gap-2">
+                  <Alert tone="warning">
+                    Huỷ đơn này? Đơn đã huỷ không mở lại được, và xe sẽ trống lại trong khoảng{" "}
+                    {DATE_FMT.format(rental.startsAt)} – {formatLastDay(rental.endsAt)}.
+                  </Alert>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      pending={change.isPending}
+                      onClick={() => change.mutate(to)}
+                    >
+                      {change.isPending ? "Đang huỷ…" : "Huỷ đơn"}
+                    </Button>
+                    <Button type="button" variant="ghost" onClick={() => setConfirming(null)}>
+                      Quay lại
+                    </Button>
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <Button
+                key={to}
+                type="button"
+                variant={destructive ? "ghost" : "primary"}
+                pending={change.isPending}
+                onClick={() => (destructive ? setConfirming(to) : change.mutate(to))}
+              >
+                {change.isPending && !destructive ? "Đang lưu…" : TRANSITION_LABEL[to]}
+              </Button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     // `placement="adaptive"`: đáy màn trên điện thoại (mở bằng cách chạm một
     // thanh trên lịch, ngón cái ở đó), giữa màn từ ≥640px.
-    <Modal label={`Đơn thuê ${vehicleLabel}`} placement="adaptive" onClose={onClose}>
+    <Modal
+      label={`Đơn thuê ${vehicleLabel}`}
+      placement="adaptive"
+      onClose={onClose}
+      footer={renderFooter}
+    >
       {(close) => {
         // Ghi vào ref NGAY trong lượt vẽ, cùng khuôn `onCloseRef` của
         // `ui/modal.tsx`. `close` ổn định (`useCallback` deps rỗng) nên gán lại
@@ -294,52 +356,6 @@ export function RentalDetailSheet({ rental, vehicle, onClose, onChanged }: Renta
             />
 
             <HandoverPhotos rentalId={rental.id} />
-
-            {change.error && <Alert tone="error">{change.error.message}</Alert>}
-
-            {nextStatuses.length === 0 ? (
-              // Đơn đã kết thúc. Nói ra, đừng để một vùng nút trống người dùng tự đoán.
-              <p className="text-sm text-muted">Đơn đã kết thúc, không còn thao tác nào.</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {nextStatuses.map((to) => {
-                  const destructive = to === "CANCELLED";
-                  if (destructive && confirming === to) {
-                    return (
-                      <div key={to} className="flex flex-col gap-2">
-                        <Alert tone="warning">
-                          Huỷ đơn này? Đơn đã huỷ không mở lại được, và xe sẽ trống lại trong khoảng{" "}
-                          {DATE_FMT.format(rental.startsAt)} – {formatLastDay(rental.endsAt)}.
-                        </Alert>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            pending={change.isPending}
-                            onClick={() => change.mutate(to)}
-                          >
-                            {change.isPending ? "Đang huỷ…" : "Huỷ đơn"}
-                          </Button>
-                          <Button type="button" variant="ghost" onClick={() => setConfirming(null)}>
-                            Quay lại
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return (
-                    <Button
-                      key={to}
-                      type="button"
-                      variant={destructive ? "ghost" : "primary"}
-                      pending={change.isPending}
-                      onClick={() => (destructive ? setConfirming(to) : change.mutate(to))}
-                    >
-                      {change.isPending && !destructive ? "Đang lưu…" : TRANSITION_LABEL[to]}
-                    </Button>
-                  );
-                })}
-              </div>
-            )}
           </div>
         );
       }}
