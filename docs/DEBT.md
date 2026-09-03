@@ -332,9 +332,33 @@ nợ 2026-08-18, xem "Đã đóng trong Plan A" bên dưới cho cách chứng m
 
 ## Nợ sinh ra từ đợt hệ thị giác (2026-09-01/02)
 
-- ⛔ **`apps/staff` không có một test component nào**, và repo không cài `happy-dom`/`jsdom`/
-  `@testing-library`. Nghĩa là toàn bộ logic **đóng lớp phủ, nhịp hoạt ảnh, và chuyển động** của đợt
-  này nằm ngoài mọi hàng rào tự động.
+- ~~**`apps/staff` không có một test component nào**~~ ✅ **đóng** (đợt màn hình hẹp, 2026-09-03).
+  Đã cài `happy-dom` (`@happy-dom/global-registrator`) + `@testing-library/react`, nạp qua
+  `preload` của `bunfig.toml` → `apps/staff/test-setup.ts`, không import lẻ ở từng file test —
+  tránh đúng lớp lỗi "một file quên import thì đỏ mà không có gợi ý là do thiếu DOM giả".
+
+  **Số đo chính xác: 5 file**, không phải 6 như số đầu đợt nghiệm thu (`grep -rl
+"@testing-library" apps/staff/src --include="*.test.ts*"`): `ui/modal.test.tsx`,
+  `ui/button.test.tsx`, `rentals/calendar-timeline.test.tsx`, `staff/staff-table.test.tsx`,
+  `hooks/use-layout-variant.test.ts`.
+
+  Bộ test hết phụ thuộc thứ tự chạy: `@testing-library/react` tự móc `cleanup()` vào `afterEach`
+  của framework test tại **thời điểm module init**, mà `bun test` chỉ init module đó MỘT LẦN cho
+  cả tiến trình — hai file component chạy chung một lệnh thì panel của lần render trước còn kẹt
+  trong DOM sang test sau. Đo trực tiếp trên `modal.test.tsx`
+  (`document.querySelectorAll("[data-panel]").length` ở đầu test 2): chạy một mình → 1 panel (tự
+  dọn, ăn may); chạy chung với `use-layout-variant.test.ts`, bất kể thứ tự trước/sau → 2 panel
+  (không dọn) — triệu chứng bắt sống được: `modal.test.tsx` đỏ ở ca "footer nằm NGOÀI vùng cuộn" vì
+  `querySelector("[data-panel]")` bắt nhầm panel của lần render trước. `test-setup.ts` giờ tự gọi
+  `afterEach(cleanup)`, và nạp `@testing-library/react` bằng `import()` **động** chứ không tĩnh —
+  import tĩnh bị hoist lên trước `GlobalRegistrator.register()`, làm mọi test dùng `screen` đỏ
+  đồng loạt vì `document` chưa tồn tại lúc `@testing-library/dom` chốt singleton.
+
+  ⚠️ **Không đọc thành "đã đóng lại" bảy đột biến bên dưới.** Đây là hạ tầng mới có, không phải kết
+  quả đo lại: 5 file trên nhắm layout footer/scroll của `Modal`, ngưỡng chạm của `Button`,
+  `ScrollHint`, hình dạng bảng/thẻ của `StaffTable`, và breakpoint của `useLayoutVariant` — không
+  file nào chạm logic đóng/mở + hoạt ảnh mà bảng đột biến gốc dưới đây canh. Năm đột biến đó **vẫn
+  chưa được đo lại** với hạ tầng mới; giữ nguyên bảng làm bằng chứng vì sao hạ tầng này cần thiết.
 
   Đây không phải suy đoán. Vòng review gộp chạy **bảy đột biến, cả bảy đều xanh** trên `bun test` +
   `typecheck` + `lint`:
@@ -349,9 +373,9 @@ nợ 2026-08-18, xem "Đã đóng trong Plan A" bên dưới cho cách chứng m
 
   Hai đột biến còn lại (`--duration-panel` 900ms phá trần 400ms · `BEAT_MS` lệch `@utility`) **đã
   được đóng** bằng `lib/motion-budget.test.ts` — hàng rào đọc-file kiểu `spacing-fence`, ~40 dòng.
-  Năm cái trên thì cần hạ tầng test DOM, đó là món nợ này.
+  Năm cái trên thì cần hạ tầng test DOM — hạ tầng giờ có, phép đo lại thì chưa.
 
-  **Đừng đọc "439 test xanh" thành "chuyển động được canh".**
+  **Đừng đọc "498 test xanh" thành "chuyển động được canh".**
 
 - ~~**`ui/modal.tsx` không sống sót qua StrictMode**~~ ✅ **đóng ở `ed9e760`.** `dialog.close()`
   **xếp hàng** sự kiện `close`; StrictMode chạy cleanup rồi mount lại, và sự kiện đã xếp hàng rơi vào
@@ -440,3 +464,102 @@ này cần vài vòng đẩy để chỉnh.
 ⚠️ Đến khi trả xong, **`bun test` xanh ở máy KHÔNG có nghĩa CI sẽ xanh**, và ngược lại `verify` đỏ
 không còn phân biệt được "hỏng thật" với "thiếu MinIO". Đó mới là giá đắt nhất của món nợ này: một
 cổng đỏ thường trực là một cổng không ai đọc nữa.
+
+## Nợ sinh ra từ đợt nghiệm thu 11 task màn hình hẹp `apps/staff` (2026-09-03)
+
+Đo lại toàn bộ bằng probe vendor ở `apps/staff/scripts/mobile-probe/`, hạ tầng đang chạy sẵn
+(postgres/minio/supertokens/directus qua docker, `api` :3001, `staff` :3003, Chrome CDP :9222).
+`modal-submit-hit.mjs --self-test` chạy trước tiên và PASS (chèn lớp che 30% đáy nút bên trong
+`<dialog>` → báo trượt đúng 10/25 điểm; gỡ lớp che → 0/25 trở lại) — probe được tin trước khi dùng
+số nó trả ra.
+
+- ⚠️ Sheet chi tiết đơn còn **3/7** hành động dưới nếp gấp (`sheet-actions.mjs`, cả 390 lẫn 360px:
+  `chưa cuộn: 3/7 [Thêm ảnh(15/25),Thêm ảnh(25/25),Thêm ảnh(25/25)]`), cả ba đều là nút "Thêm ảnh"
+  của `HandoverPhotos` — có ba `PhotoKind` (DOCUMENT, HANDOVER, RETURN), không phải hai như bảng
+  đếm đầu đợt. Nút "Thêm ảnh" của bước **nhận lại xe** (RETURN, đứng cuối cùng) nằm dưới cùng — mà
+  `PRODUCT.md` (dòng 101) gọi ảnh bàn giao là "Bằng chứng bảo vệ cả hai phía." Ràng buộc cứng của
+  đợt này — hai nút trạng thái "Đã giao xe"/"Huỷ đơn" ra khỏi vùng cuộn — đã đạt (không nút trạng
+  thái nào còn trong danh sách trượt).
+
+- ⚠️ Đầu trang Lịch còn chiếm **168px/780px (22%)** chiều cao màn hình ở 390px (`calendar-
+geometry.mjs`), chưa đạt mốc 15% ban đầu. Đòn bẩy trong phạm vi đã cạn: `ToggleGroup` là flex
+  item không xẻ được, cần trọn ~150px, nên toolbar buộc phải xuống hai hàng
+  (`rental-calendar.tsx:246`). Hai lựa chọn còn lại đều là quyết định **sản phẩm**, không phải kỹ
+  thuật:
+  1. sửa `apps/staff/src/components/ui/toggle-group.tsx` — dùng chung ba trang
+     (`rental-calendar.tsx`: Timeline|Tháng, `requests-page.tsx`: bốn trạng thái), đổi ở đây ảnh
+     hưởng cả ba;
+  2. ẩn tiêu đề "Lịch" trên mobile — `app-nav.tsx` (bottom nav) đã gắn nhãn "Lịch" cho tab đang mở
+     (`{ kind: "link", label: "Lịch", to: "/calendar", ... }`) nên tiêu đề trang dư thừa ở màn hẹp.
+
+- ⚠️ `--veh-col` (`calendar-timeline.tsx:167`) **không đơn điệu** qua breakpoint: base (áp dụng ở
+  390px) `7.5rem` = 120px > `md:7rem` = 112px < `xl:8.125rem` = 130px — cột xe ở tablet (`md`) hẹp
+  hơn ở điện thoại, rồi lại rộng hơn ở desktop (`xl`). Đo trực tiếp `getBoundingClientRect().width`
+  của ô sticky ở 390px ra đúng 120px, khớp `--veh-col` base — số đo, không phải đọc CSS suy ra.
+  Không mất dữ liệu: hàng rào #7 đã bỏ `truncate` nên tên xe xuống dòng thay vì cắt (`vehicle-
+column.mjs`: cả 6 xe "cần 119px ✅", không xe nào cụt) — chỉ bất nhất **hình ảnh** giữa ba
+  breakpoint.
+
+- ⚠️ `ToggleGroup` (`ui/toggle-group.tsx`) dùng `gap-2` (8px) giữa các pill 44px của chính nó,
+  trong khi toolbar bọc ngoài ở `rental-calendar.tsx:431` dùng `gap-1` (4px) cho cùng một hàng,
+  cùng loại target chạm — hai khoảng cách khác nhau trong cùng một cụm điều khiển liền kề.
+
+- ⚠️ `ScrollHint` (`calendar-timeline.tsx`) có **vùng chết ~1px**: biên `- 1` trong phép so sánh
+  (`el.scrollLeft + el.clientWidth < el.scrollWidth - 1`) cố ý tránh nhấp nháy sub-pixel, nhưng
+  đồng thời tạo một khoảng mà hint tắt dù còn đúng 1px chưa cuộn tới. Không ca test nào exercise
+  trực tiếp biên đó: ba ca trong `calendar-timeline.test.tsx` dùng happy-dom, nơi
+  `clientWidth`/`scrollWidth` là số nguyên đặt tay (`356/942/0`, `356/942/586`, `1024/1024/0`) —
+  không ca nào đặt lệch đúng quanh biên `-1`. Xác nhận hai chiều bật/tắt vẫn đúng bằng CDP tay trên
+  trang thật: `data-more` đi từ `"true"` (chưa cuộn) xuống `"false"` (`scrollLeft = scrollWidth`).
+
+- ⚠️ Nhánh hình-dạng-thẻ của `staff-table.mjs` giả định `#main` chỉ chứa đúng **một `<ul>`**
+  (`main.querySelector('ul')`) — đúng hôm nay (`/staff` ở 390px chỉ có danh sách thẻ nhân viên,
+  probe đo ra "số thẻ: 2 · nút trong thẻ: 3 · nằm trong khung nhìn: 3"), nhưng sẽ đo nhầm nếu có
+  widget `<ul>` khác được thêm lên cùng trang sau này — probe chọn `<ul>` đầu tiên trong DOM, không
+  nhất thiết là danh sách thẻ nhân viên.
+
+- ⚠️ Bằng chứng "`MIN_EDGE_PX=3` không làm mù probe ở góc bo tròn 6px" (đo tay: cách mép 1px thỉnh
+  thoảng vẫn trượt, 2px luôn trúng) vẫn là **tường thuật** trong comment của `modal-submit-hit.mjs`
+  và `sheet-actions.mjs`, không có script tự chạy lại được đi kèm — khác hẳn `modal-submit-hit.mjs
+--self-test` (chèn/gỡ lớp che, khẳng định hai chiều, thoát mã khác 0 nếu sai). Script minh hoạ
+  riêng cho `MIN_EDGE_PX` tạm thời không commit.
+
+- ⚠️ **Phát hiện thêm ngoài danh sách trên** (không do đợt này gây ra, đo được trong lúc nghiệm
+  thu): dòng tổng kết của `vehicle-column.mjs` in cứng chuỗi `"(đang cấp 88px)"` và trừ `88` trong
+  phép tính "what-if" (`wrap.scrollWidth+(max-88)`) — hai con số **viết chết trong mã probe**, không
+  đọc từ DOM. `--veh-col` thật ở 390px hiện là 120px (đo ở trên), không phải 88px, nên hai dòng này
+  đang báo sai kể từ khi cột xe được nới rộng. Không ảnh hưởng phán quyết ✅/⚠️ của từng dòng (tính
+  trực tiếp từ `need`/`has` đo sống), chỉ hai dòng tóm tắt bên dưới nó — cùng lớp lỗi "probe mù
+  không báo lỗi" mà `README.md` của thư mục này liệt kê, thêm một ca thứ tư chưa được liệt vào đó.
+
+- ⛔ **Cổng cuối KHÔNG xanh cả bốn** — đo bằng `eslint . --ignore-pattern '.claude/**'` (loại trừ
+  `.claude/skills/impeccable/**`, thư mục cài bằng `npx impeccable install`, có trong `.gitignore`
+  từ trước nhưng **không** có trong `ignores` của `eslint.config.js`, nên `bun run lint` trần trụi
+  ăn thêm hơn 2700 lỗi của một plugin cục bộ không thuộc mã nguồn repo — nhiễu, không phải nợ của
+  đợt này, nhưng khiến `bun run lint` không dùng được để đọc kết quả thật trên máy có cài plugin):
+  **40 lỗi / 16 cảnh báo** trên 7 file, cả 7 đều do đợt này:
+  - `apps/staff/test-setup.ts` — lỗi parse `no-undef`/project-service: file nằm ngoài
+    `include: ["src/**/*", "vite.config.ts"]` của `apps/staff/tsconfig.json`, nên
+    `parserOptions.projectService` của `eslint.config.js` không tìm thấy nó thuộc dự án TS nào.
+  - 6 script `apps/staff/scripts/mobile-probe/*.mjs` — `no-undef` trên `fetch`/`WebSocket`/
+    `console`/`process`/`setTimeout`/`Buffer`: các global Node/DOM này chưa được khai trong
+    `eslint.config.js` cho đường dẫn `scripts/mobile-probe/**` (khác `apps/api/scripts/**`, đã có
+    dòng `"boundaries/ignore"` riêng nhưng đó là rule khác, không phải `no-undef`).
+
+  `bun run typecheck` và `bun test` xanh (498 pass / 0 fail / 47 file, không giảm so với mốc đầu
+  đợt) — **hai** cổng, không phải bốn.
+
+  `./node_modules/.bin/prettier --check .` cũng đỏ: cùng 6 file `.mjs` trên (chưa chạy prettier bao
+  giờ) cộng `.serena/project.yml` và `DESIGN.md` — hai file sau **có trước đợt này**, không phải nợ
+  mới, liệt ra để tách bạch với 6 file `.mjs` mới.
+
+**Bài học công cụ đo — lặp lại lần thứ ba trong đợt này, nên là một LỚP lỗi, không phải ba sự cố
+riêng lẻ:** `modal-submit-hit.mjs` từng chốt cứng toạ độ (nút dời chỗ → báo miss vô nghĩa),
+`staff-table.mjs` từng chỉ soi `<table>` (hết bảng thì trả sớm, thành no-op), `vehicle-column.mjs`
+từng chọn ô theo class `truncate` (bỏ class thì `rows=[]`). Cả ba đã sửa, nhưng mục "phát hiện
+thêm" ở trên (chuỗi `"88px"` viết chết) là ca thứ tư của đúng lớp này: **mỗi lần hình dạng DOM đổi,
+một probe cũ có thể trở nên mù mà không báo lỗi gì** — nó vẫn thoát mã 0, vẫn in ra một dòng trông
+hợp lệ, chỉ là số hoặc điều kiện bên trong không còn khớp thực tế. Bản sao của bài học "công cụ đo
+cũng phải bị đo" mà `docs/ROADMAP.md` đã ghi từ đợt hệ thị giác — lần này lộ ra ở phép đo hình học
+DOM thay vì đếm class Tailwind, cùng nguyên nhân gốc: tin một con số vì nó _có vẻ_ được đo, mà không
+kiểm proof nó còn đang đo đúng thứ nó tuyên bố.
