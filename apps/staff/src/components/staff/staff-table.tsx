@@ -1,6 +1,8 @@
 import { useAvatarUrl } from "../../hooks/use-avatar-url";
+import { useLayoutVariant } from "../../hooks/use-layout-variant";
 import { ROLE_LABEL, STATUS_LABEL, type Me, type StaffRow } from "../../lib/me";
 import { Avatar } from "../ui/avatar";
+import { StaffCards } from "./staff-cards";
 import { StaffRowActions } from "./staff-row-actions";
 
 /**
@@ -41,6 +43,21 @@ interface StaffTableProps {
  * chặn giá trị này.
  */
 export function StaffTable({ rows, me, busy, onApprove, onDisable, onIssueCode }: StaffTableProps) {
+  // Chọn MỘT hình dạng, không dựng cả hai rồi ẩn bằng CSS như `AppNav`: mỗi dòng
+  // gọi `useAvatarUrl`, nên dựng hai bản là nhân đôi số request ảnh đại diện.
+  if (useLayoutVariant() === "mobile") {
+    return (
+      <StaffCards
+        rows={rows}
+        me={me}
+        busy={busy}
+        onApprove={onApprove}
+        onDisable={onDisable}
+        onIssueCode={onIssueCode}
+      />
+    );
+  }
+
   return (
     <div className="mt-4 overflow-x-auto">
       <table className="w-full min-w-[640px] text-left text-sm">
