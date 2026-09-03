@@ -10,10 +10,37 @@ await send('Page.enable');await send('Runtime.enable');
 const REPORT=`(()=>{
   const d=document.querySelector('dialog[open]'); if(!d) return 'KHÔNG mở được dialog';
   const sc=[...d.querySelectorAll('*')].find(e=>e.scrollHeight-e.clientHeight>8 && /auto|scroll/.test(getComputedStyle(e).overflowY));
+  // Lưới 5×5 (cùng năm phân suất cho cả x lẫn y), không chỉ một điểm ở TÂM
+  // rect — một điểm tâm bỏ sót vùng chết theo CHIỀU NGANG (sibling tràn sang,
+  // hay padding của chân panel đẩy nút lệch trái/phải). Một nút bị coi là
+  // chết nếu BẤT KỲ điểm nào trong lưới trượt, kèm số điểm trượt để không chỉ
+  // báo một tổng che khuất chi tiết.
+  //
+  // MIN_EDGE_PX kẹp điểm quét cách mép ÍT NHẤT ngần đó — không có nó thì bốn
+  // GÓC của lưới (fx,fy cùng ở 0.02/0.98) rơi vào chính góc BO TRÒN của nút
+  // (mọi nút trong hệ này dùng rounded-card = 6px, xem index.css), và
+  // elementFromPoint ĐÚNG khi trả về phần tử cha ở đó — góc hình chữ nhật bị
+  // bo tròn cắt đi vốn không phải một pixel của nút, với BẤT KỲ nút nào, có
+  // bug hay không. Đo tay xác nhận: cách mép 1px vẫn thỉnh thoảng trượt, cách
+  // 2px luôn trúng ở bo góc 6px — 3px là biên an toàn. Không kẹp thì việc thêm
+  // trục x (đúng yêu cầu review) biến MỌI nút hẹp (✕, Lưu) thành "chết ở góc"
+  // giả, nhiễu tới mức che mất tín hiệu thật.
+  const FRACS=[0.02,0.15,0.5,0.85,0.98];
+  const MIN_EDGE_PX=3;
+  const clamp=(v,lo,hi)=>Math.min(Math.max(v,lo),hi);
   const hit=()=>{let dead=[],tot=0;
     d.querySelectorAll('button,a[href]').forEach(b=>{const r=b.getBoundingClientRect(); if(r.height<8) return; tot++;
-      const el=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
-      if(!(el===b||b.contains(el))) dead.push((b.textContent||'').trim().slice(0,14)||'✕');});
+      let miss=0;
+      for(const fy of FRACS) for(const fx of FRACS){
+        const x=r.left+clamp(fx*r.width, MIN_EDGE_PX, r.width-MIN_EDGE_PX);
+        const y=r.top+clamp(fy*r.height, MIN_EDGE_PX, r.height-MIN_EDGE_PX);
+        const el=document.elementFromPoint(x,y);
+        if(!(el===b||b.contains(el))) miss++;
+      }
+      if(miss>0){
+        const label=(b.textContent||'').trim().slice(0,14)||'✕';
+        dead.push(label+'('+miss+'/25)');
+      }});
     return {tot,dead};};
   const a=hit(); if(sc) sc.scrollTop=sc.scrollHeight; const b=hit();
   return 'thừa '+(sc?(sc.scrollHeight-sc.clientHeight):0)+'px cuộn · chưa cuộn: '+a.dead.length+'/'+a.tot
