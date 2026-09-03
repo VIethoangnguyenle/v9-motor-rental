@@ -63,8 +63,9 @@ lưới vẫn giấu 44% nội dung.
 > cuộn ngang không có dấu hiệu.
 >
 > Hệ quả: **#2 và #4 là CÙNG một lớp lỗi** — nội dung bị giấu sau cuộn ngang không báo — chỉ khác
-> chỗ xảy ra. Hai bản sửa vẫn khác nhau (bảng thành thẻ; lưới thành danh sách theo ngày), nhưng
-> điều kiện nghiệm thu của cả hai là một: **không còn vùng cuộn ngang nào ở hình dạng mobile.**
+> chỗ xảy ra. Và chính vì cùng lớp lỗi, hai chỗ được sửa bằng hai mức khác nhau, do người dùng
+> chọn: bảng nhân viên đổi **cấu trúc** (thành thẻ, §5), lịch giữ cấu trúc và chỉ thêm **dấu hiệu**
+> (§4). Ít dòng thì thẻ đáng công; một lưới nhiều cột thì không.
 
 ### Hai lỗi đỏ chung một gốc
 
@@ -72,24 +73,29 @@ Lỗi #1 và #3 không phải lỗi bố cục. Cả hai là **hành động ch�
 được neo**. Sheet "Thêm" sạch vì nội dung của nó ngắn hơn khung — cùng component `Modal`, khác kết
 quả. Nên `Modal` là chỗ sửa, không phải từng màn.
 
-## 2. Quyết định: hai hình dạng, không phải một hình co lại
+## 2. Quyết định: hình dạng thứ hai ĐÚNG MỘT CHỖ
 
-Người dùng chọn **tách view riêng cho mobile**. Tôi đề xuất hướng nhẹ hơn (sửa tại tầng component,
-giữ một đường code) vì số liệu cho thấy 6/8 màn đã sạch và lỗi nặng nhất nằm ở một component dùng
-chung. Người dùng cân nhắc rồi vẫn chọn tách view. Ghi lại để người sau biết đây là **lựa chọn đã
-biết giá**, không phải mặc định trôi vào.
+Quyết định đi qua hai vòng, và vòng sau đúng hơn vì dữ liệu đúng hơn.
 
-Giá phải trả, nói trước: hai hình dạng nghĩa là hai thứ phải giữ đúng cùng lúc, và `apps/staff`
-hiện có **0 test component** (`DEBT.md:335`). Vì vậy §6 không phải phần thêm cho đẹp — nó là điều
-kiện để lựa chọn này không tự bắn vào chân.
+Vòng đầu, khi tôi còn đang báo sai rằng bảng nhân viên **mất** cột, người dùng chọn tách view
+riêng cho mobile ở cả lịch lẫn bảng. Tôi đề xuất hướng nhẹ hơn và người dùng vẫn chọn tách.
+
+Vòng sau, sau khi đo lại và biết không có gì bị mất, người dùng chọn lại: **thẻ cho Nhân viên, báo
+cuộn cho Lịch**. Nên đợt này chỉ sinh **một** hình dạng thứ hai — bảng nhân viên — chứ không phải
+hai. Ghi lại cả hai vòng vì bản thân việc đó là bài học: một chẩn đoán sai không dừng ở chỗ nó
+sai, nó kéo theo cả lựa chọn kiến trúc.
+
+Giá phải trả, nói trước: một hình dạng thứ hai vẫn là hai thứ phải giữ đúng cùng lúc, và
+`apps/staff` hiện có **0 test component** (`DEBT.md:335`). Vì vậy §8 không phải phần thêm cho đẹp
+— nó là điều kiện để lựa chọn này không tự bắn vào chân.
 
 ## 3. Cách chọn hình dạng
 
 Theo đúng khuôn đã có trong repo (`AppNav.variant`), không phát minh cơ chế mới.
 
-Nhưng `AppNav` dựng **cả hai** biến thể rồi ẩn bằng CSS. Lịch không làm vậy được: hai hình dạng gọi
-query khác nhau và dựng vài trăm node — dựng cả hai là trả giá hai lần ở mọi lần vẽ. Nên dùng một
-hook chọn **một** hình dạng:
+Nhưng `AppNav` dựng **cả hai** biến thể rồi ẩn bằng CSS. Bảng nhân viên không làm vậy được: mỗi
+dòng gọi `useAvatarUrl` (xem `StaffNameCell`), nên dựng cả hai hình dạng là **nhân đôi số request
+ảnh đại diện**. Nên dùng một hook chọn **một** hình dạng:
 
 ```ts
 useLayoutVariant(): "mobile" | "desktop"; // ngưỡng md = 768px
@@ -97,34 +103,35 @@ useLayoutVariant(): "mobile" | "desktop"; // ngưỡng md = 768px
 
 Dựng bằng `useSyncExternalStore` + `matchMedia`, **không** `useEffect` + `useState`.
 `rental-calendar.tsx` đã ghi lý do và đã trả giá cho nó: effect chạy SAU lần vẽ đầu, nên hình dạng
-sai kịp xuất hiện một khung hình. Một nguồn sự thật cho cả lịch lẫn bảng nhân viên.
+sai kịp xuất hiện một khung hình.
 
-## 4. Lịch — bản mobile là danh sách theo ngày
+Hook này có **đúng một** chỗ dùng: bảng nhân viên (§5). Lịch **không** dùng nó — xem §4.
 
-Ở `"mobile"`, chế độ Timeline (lưới ngang) **không dựng**. Thay bằng danh sách nhóm theo ngày: mỗi
-nhóm một ngày, mỗi dòng một đơn mang **tên xe đầy đủ + biển số**, tên khách, trạng thái, khoảng
-thời gian.
+## 4. Lịch — giữ lưới, làm cho việc cuộn nhìn thấy được
 
-**Cửa sổ thời gian: đúng 7 ngày kể từ ngày neo**, cùng cửa sổ mà `timelineWindow(anchor, 7)` đang
-trả cho mobile hôm nay. Chọn vậy để **không đổi hợp đồng dữ liệu**: cùng một query, cùng một
-`GridWindow`, chỉ khác cách vẽ. Đổi số ngày là việc riêng, không gộp vào đợt này.
+> **Đổi so với bản đầu.** Bản đầu thay Timeline bằng danh sách theo ngày ở mobile. Bỏ. Lý do:
+> chẩn đoán #2 sai đã kéo theo cả hướng — khi biết không có gì bị mất mà chỉ là nội dung nằm sau
+> một vùng cuộn không có dấu hiệu, thì thứ phải sửa là **dấu hiệu**, không phải cấu trúc. Người
+> dùng chọn lại với dữ liệu đúng: thẻ cho Nhân viên, báo cuộn cho Lịch.
 
-**Ngày không có đơn nào vẫn hiện**, mang dòng "trống cả kỳ" — giống ô trống của Timeline. Bỏ ngày
-trống đi thì danh sách ngắn hơn nhưng người đọc mất mốc, và "không có đơn" là thông tin có ích với
-người đang xếp lịch.
+Timeline giữ nguyên ở mọi bề rộng. Ba việc:
 
-**Đổi hình dạng giữa phiên** (xoay máy, đổi cỡ cửa sổ) phải giữ nguyên ngày neo và chế độ
-Timeline/Tháng đang chọn — cả hai đã nằm ở URL (`rental-calendar.tsx` sở hữu URL), nên điều này
-đạt được bằng cách **không** đụng vào state đó, chứ không phải bằng code thêm.
+1. **Ghim cột "Xe"** (`position: sticky; left: 0`). Cột này là danh tính của cả hàng; cuộn ngang mà
+   nó trôi đi thì người đọc không còn biết đang nhìn xe nào. Đóng #7 luôn: cột ghim giữ được bề
+   rộng tối thiểu đủ chữ, không phải cụt thành `Honda…`.
+2. **Dấu hiệu còn nội dung bên phải** — đổ bóng hoặc vệt mờ ở mép, chỉ hiện khi còn phần chưa
+   xem. Đây là thứ đóng #4: vùng lưới **vẫn** cuộn được như hôm nay, nhưng thôi im lặng về điều
+   đó.
+3. **Đầu trang gộp còn một hàng** ở màn hẹp: điều hướng ngày + `Hôm nay` + chuyển chế độ. Đóng #8
+   (đang chiếm 29% màn hình).
 
-Đóng #4 (không còn vùng cuộn ngang nào để giấu 62% nội dung), #7 (tên xe không còn cụt), #8 (đầu
-trang gộp còn một hàng: điều hướng ngày + `Hôm nay` + chuyển chế độ).
+Không đóng được bằng cách này: lưới vẫn cần cuộn để xem hết 7 ngày ở 390px. Đó là đánh đổi đã
+chọn — cuộn có báo, thay vì một cấu trúc thứ hai phải bảo trì.
 
-Chế độ **Tháng giữ nguyên** ở cả hai hình dạng — đã đo sạch: không tràn, 0 nút không bấm được. #6
-(17 phần tử <40px) là đánh đổi `calendar-month.tsx` đã khai bằng văn bản: _"Tháng là mặt phẳng để
-QUÉT; mặt phẳng để LÀM là Timeline"_. Không đụng. Nhưng ở mobile, "mặt phẳng để LÀM" giờ là danh
-sách theo ngày, nên **danh sách đó phải mang vùng chạm 44px đầy đủ** — nó thừa kế vai trò cũ của
-Timeline.
+Chế độ **Tháng giữ nguyên** — đã đo sạch: không tràn, 0 nút không bấm được. #6 (17 phần tử <40px)
+là đánh đổi `calendar-month.tsx` đã khai bằng văn bản: _"Tháng là mặt phẳng để QUÉT; mặt phẳng để
+LÀM là Timeline"_. Lý lẽ đó **vẫn đứng vững** sau thay đổi này, vì Timeline vẫn còn ở mobile —
+khác với bản đầu, nơi bỏ Timeline đi sẽ làm câu đó thành vô nghĩa.
 
 ## 5. Nhân viên — bản mobile là thẻ
 
@@ -162,10 +169,11 @@ Nằm ngoài phạm vi mobile, nhưng cùng file và cùng nguyên nhân — s�
 `happy-dom` + `@testing-library/react`. Viết test cho **hành vi hiện tại** trước khi đổi bất cứ gì,
 để mỗi thay đổi sau đó có đối chứng:
 
-- `Modal` — hành động nằm trong vùng thấy được khi nội dung dài hơn khung
-- `StaffTable` — ở hình dạng mobile, năm trường và hai nút đều có mặt
+- `Modal` — khi nội dung dài hơn khung, hành động vẫn nằm trong vùng thấy được
+- `StaffTable` — hình dạng thẻ mang đủ năm trường và cả ba nút; hình dạng bảng giữ nguyên sáu cột
 - `useLayoutVariant` — đổi khi ngưỡng đổi, và **không** dựng sai hình dạng ở lần vẽ đầu
-- Lịch mobile — không sinh phần tử nào có `overflow-x` cuộn được
+- Lịch — cột "Xe" giữ `position: sticky`, và dấu hiệu mép phải **hiện khi còn phần chưa xem, tắt
+  khi đã cuộn hết**. Hai chiều, không chỉ một: một dấu hiệu luôn bật thì không mang tin gì.
 
 Mỗi test phải **thấy đỏ vì đúng lý do** trước khi có implementation, theo `.claude/CLAUDE.md` §4:
 một test xanh chứng minh ít hơn vẻ ngoài của nó.
@@ -183,16 +191,17 @@ chạm đúng các file này nhưng là lớp lỗi khác; gộp vào sẽ làm 
 
 ## 10. Nghiệm thu — chạy lại đúng bộ đo của §1
 
-| Điều kiện đạt                                                     | Đối chiếu với   |
-| ----------------------------------------------------------------- | --------------- |
-| Sheet chi tiết: 0/7 hành động nằm dưới nếp gấp                    | #1 (đang 4/7)   |
-| `/staff` ở 390px: không vùng cuộn ngang, 3/3 nút trong khung nhìn | #2 (đang 0/3)   |
-| `Tạo đơn` bấm được trên toàn bộ 44px chiều cao                    | #3 (đang 19/44) |
-| Lịch mobile: không phần tử nào có vùng cuộn ngang                 | #4              |
-| Lưới desktop: `scrollWidth ≤ clientWidth` ở 1280px                | #4, #5          |
-| Dòng lịch mobile: mọi vùng chạm ≥ 44px                            | §4              |
-| Tràn ngang cấp trang vẫn 0px ở 360 và 390                         | không hồi quy   |
-| `bun run typecheck` và `bun test` đều exit 0                      |                 |
+| Điều kiện đạt                                                     | Đối chiếu với     |
+| ----------------------------------------------------------------- | ----------------- |
+| Sheet chi tiết: 0/7 hành động nằm dưới nếp gấp                    | #1 (đang 4/7)     |
+| `/staff` ở 390px: không vùng cuộn ngang, 3/3 nút trong khung nhìn | #2 (đang 0/3)     |
+| `Tạo đơn` bấm được trên toàn bộ 44px chiều cao                    | #3 (đang 19/44)   |
+| Lịch 390px: cột "Xe" ghim, không trôi khi cuộn ngang              | #4, #7            |
+| Lịch 390px: dấu hiệu mép phải hiện khi còn nội dung chưa xem      | #4 (đang im lặng) |
+| Đầu trang Lịch ≤ 15% chiều cao màn ở 390px                        | #8 (đang 29%)     |
+| Lưới desktop: `scrollWidth ≤ clientWidth` ở 1280px                | #4, #5            |
+| Tràn ngang cấp trang vẫn 0px ở 360 và 390                         | không hồi quy     |
+| `bun run typecheck` và `bun test` đều exit 0                      |                   |
 
 Đo bằng chính script CDP đã dựng ở đợt này, không đo bằng mắt.
 
