@@ -4,7 +4,30 @@ import boundaries from "eslint-plugin-boundaries";
 import prettier from "eslint-config-prettier";
 
 export default tseslint.config(
-  { ignores: ["**/node_modules/**", "**/.next/**", "**/dist/**", "**/build/**"] },
+  {
+    ignores: [
+      "**/node_modules/**",
+      "**/.next/**",
+      "**/dist/**",
+      "**/build/**",
+      // Skill + agent do `npx impeccable install`/`update` sinh ra — cùng phạm vi
+      // đúng như `.claude/skills/impeccable/` và `.claude/agents/impeccable-*.md`
+      // trong .gitignore (xem chú thích ở đó). Đây là code do trình cài đặt bên
+      // thứ ba sinh ra, không phải của repo, đã gitignore nhưng chưa loại khỏi
+      // lint. Không loại thì lint mất tác dụng: đo được 2706 lỗi/2917 tổng đến
+      // từ riêng thư mục này, chôn 40 lỗi thật của repo. Cùng lý lẽ cspell.json
+      // đã áp cho `.impeccable/` — xem chú thích đầu file đó.
+      //
+      // ⚠️ Phạm vi cố ý HẸP: `.claude/skills/impeccable/**`, không phải
+      // `.claude/**` — năm skill `v9-*` dưới `.claude/skills/` là của repo, viết
+      // tay, đang track trong git (`git ls-files .claude`), và PHẢI tiếp tục
+      // được lint bình thường.
+      ".claude/skills/impeccable/**",
+      // `npx impeccable install/update` cũng sinh agent tại đây — cùng đường,
+      // cùng lý do; giữ khớp .gitignore một chỗ.
+      ".claude/agents/impeccable-*.md",
+    ],
+  },
 
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
