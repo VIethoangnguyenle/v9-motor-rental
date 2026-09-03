@@ -114,16 +114,43 @@ Hook này có **đúng một** chỗ dùng: bảng nhân viên (§5). Lịch **k
 > một vùng cuộn không có dấu hiệu, thì thứ phải sửa là **dấu hiệu**, không phải cấu trúc. Người
 > dùng chọn lại với dữ liệu đúng: thẻ cho Nhân viên, báo cuộn cho Lịch.
 
-Timeline giữ nguyên ở mọi bề rộng. Ba việc:
+> ⚠️ **Sửa lần hai.** Bản trước của mục này liệt "ghim cột Xe" thành việc phải làm. **Việc đó đã
+> có sẵn**: `calendar-timeline.tsx:117` và `:144` đều mang `sticky left-0`, và đo hành vi xác nhận
+> — cuộn hết sang phải thì ô tên xe vẫn đứng nguyên ở `left = 17px`. Tôi lại kết luận từ một tấm
+> ảnh thay vì đọc code và đo. Bỏ khỏi phạm vi.
 
-1. **Ghim cột "Xe"** (`position: sticky; left: 0`). Cột này là danh tính của cả hàng; cuộn ngang mà
-   nó trôi đi thì người đọc không còn biết đang nhìn xe nào. Đóng #7 luôn: cột ghim giữ được bề
-   rộng tối thiểu đủ chữ, không phải cụt thành `Honda…`.
-2. **Dấu hiệu còn nội dung bên phải** — đổ bóng hoặc vệt mờ ở mép, chỉ hiện khi còn phần chưa
-   xem. Đây là thứ đóng #4: vùng lưới **vẫn** cuộn được như hôm nay, nhưng thôi im lặng về điều
-   đó.
-3. **Đầu trang gộp còn một hàng** ở màn hẹp: điều hướng ngày + `Hôm nay` + chuyển chế độ. Đóng #8
+Timeline giữ nguyên ở mọi bề rộng. Hai việc:
+
+1. **Dấu hiệu còn nội dung bên phải** — đổ bóng hoặc vệt mờ ở mép, chỉ hiện khi còn phần chưa xem
+   và tắt khi đã cuộn hết. Đây là thứ đóng #4: vùng lưới **vẫn** cuộn được như hôm nay, nhưng thôi
+   im lặng về điều đó.
+2. **Đầu trang gộp còn một hàng** ở màn hẹp: điều hướng ngày + `Hôm nay` + chuyển chế độ. Đóng #8
    (đang chiếm 29% màn hình).
+
+### #7 — cột xe cụt: bài toán bề rộng, và không nới ra được
+
+Cột đã ghim rồi, nên #7 không phải chuyện trôi mất mà là chỗ quá hẹp. Đo ở 390px
+(`--veh-col: 5.5rem` = 88px):
+
+| Xe                   | Chữ cần | Đủ chỗ? |
+| -------------------- | ------- | ------- |
+| BMW G310GS           | 121px   | ❌      |
+| Ducati Scrambler 800 | 163px   | ❌      |
+| Honda CB500X         | 125px   | ❌      |
+| Honda Rebel 500      | 137px   | ❌      |
+| Kawasaki Z900        | 124px   | ❌      |
+| Yamaha MT-07         | 123px   | ❌      |
+
+**Cả sáu đều cụt**, không phải vài dòng cá biệt.
+
+Cách sửa hiển nhiên — nới cột lên 163px — **bị chính số liệu bác**: khung nhìn ở 390px chỉ có
+356px, nên cột ghim sẽ ăn **46%** màn hình cho riêng cái tên, còn lại ~1,6 cột ngày. Đổi một lỗi
+lấy một lỗi nặng hơn.
+
+Nên: **giữ cột hẹp, cho chữ xuống hai dòng** (bỏ `truncate`, ô đã có `min-h-12` nên có chỗ), và nới
+vừa phải lên `7.5rem` = 120px để dòng dài nhất (`Scrambler 800`) không phải cắt tiếp. Điều kiện
+nghiệm thu là **không tên xe nào bị cắt ở 390px**, không phải một con số bề rộng cụ thể — con số
+là phương tiện, chữ đọc được mới là đích.
 
 Không đóng được bằng cách này: lưới vẫn cần cuộn để xem hết 7 ngày ở 390px. Đó là đánh đổi đã
 chọn — cuộn có báo, thay vì một cấu trúc thứ hai phải bảo trì.
