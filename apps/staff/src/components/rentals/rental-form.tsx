@@ -596,7 +596,6 @@ export function RentalForm({
                   )}
                 </Alert>
               )}
-
             </form>
           </div>
         );
