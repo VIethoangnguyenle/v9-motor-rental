@@ -32,8 +32,13 @@ describe("useLayoutVariant", () => {
       seen.push(v);
       return v;
     });
-    // Không có "mobile" lọt vào lần vẽ đầu rồi mới đổi — đó chính là cái nháy
-    // mà rental-calendar.tsx đã ghi lý do khi chọn useSyncExternalStore.
+    // Bảo đảm HÀNH VI: không có "mobile" lọt vào lần vẽ đầu rồi mới đổi. KHÔNG
+    // khoá cách triển khai — mutation-test đo được: một `useState(() =>
+    // compute())` lazy-init + effect chỉ để subscribe cũng qua trót lọt cả ba
+    // test của file này y hệt `useSyncExternalStore`. Test này chỉ bắt được
+    // đúng biến thể `useEffect`+`useState` NGÂY THƠ (mặc định "mobile" rồi mới
+    // sửa ở effect). Lý do chọn `useSyncExternalStore` là một quyết định kiến
+    // trúc ghi ở `use-layout-variant.ts`, không phải thứ bài test này xác nhận.
     expect(seen).not.toContain("mobile");
   });
 });
