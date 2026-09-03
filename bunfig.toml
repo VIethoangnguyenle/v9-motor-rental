@@ -3,7 +3,9 @@ exact = true
 
 [test]
 coverage = false
-# DOM giả cho test component của apps/staff — xem apps/staff/test-setup.ts.
-# Nạp cho MỌI test, kể cả test của apps/api và packages/db: happy-dom chỉ thêm
-# global, không đổi hành vi của code không đụng tới DOM. Đo ở Bước 7.
+# DOM giả cho test component của apps/staff. Nạp cho MỌI test, kể cả apps/api và
+# packages/db — điều đó KHÔNG miễn phí: đăng ký này ghi đè cả bốn global tầng mạng
+# (fetch/Request/Response/Headers), và test-setup.ts phải bắt-trả lại chúng để
+# apps/api không đỏ. Chi tiết (hai kiểu triệu chứng đã đo, số đo trước/sau) chỉ
+# nằm ở apps/staff/test-setup.ts — đọc ở đó, đừng chép sang đây.
 preload = ["./apps/staff/test-setup.ts"]
