@@ -222,14 +222,13 @@ const VIEW_LABEL: Record<CalendarView, string> = {
 };
 
 /**
- * Ba nút icon-only của toolbar (‹, ›, Hôm nay) — KHÔNG dùng `Button` (Task
- * 11). `BASE` của `Button` cố định `px-4` cho MỌI biến thể, kể cả nút chỉ có
- * icon; ba nút này đứng cạnh nhãn khoảng ngày và `ToggleGroup` trong CÙNG một
- * hàng, nên phần đệm ngang dư ra cho chữ (mà icon không cần) là đúng phần
- * khiến hàng không gộp vừa ở 390px (đóng #8). `min-w-11` (44px) thay `px-4` —
- * vẫn đúng vùng chạm, chỉ bỏ đệm không cần thiết. Cùng tinh thần
- * `ui/toggle-group.tsx` đã chọn tự viết `<button>` thay vì bọc `Button` khi
- * khuôn có sẵn không vừa.
+ * Nút ‹ › của toolbar — KHÔNG dùng `Button` (Task 11). `BASE` của `Button` cố
+ * định `px-4` cho MỌI biến thể, kể cả nút chỉ có icon; hai nút này đứng cạnh
+ * nhãn khoảng ngày, "Hôm nay" và `ToggleGroup` trong CÙNG một hàng, nên phần
+ * đệm ngang dư ra cho chữ (mà icon không cần) là đúng phần khiến hàng không
+ * gộp vừa ở 390px (đóng #8). `min-w-11` (44px) thay `px-4` — vẫn đúng vùng
+ * chạm, chỉ bỏ đệm không cần thiết. Cùng tinh thần `ui/toggle-group.tsx` đã
+ * chọn tự viết `<button>` thay vì bọc `Button` khi khuôn có sẵn không vừa.
  *
  * Đã ĐO: gắn `className="px-3"` thẳng vào `<Button>` (thử trước khi có hằng
  * này) KHÔNG đổi bề rộng render — `px-4` của `BASE` vẫn thắng (hai utility
@@ -237,13 +236,24 @@ const VIEW_LABEL: Record<CalendarView, string> = {
  * Tailwind, không phải thứ tự trong JSX — mới là thứ quyết định ai đè ai). Đây
  * là lý do PHẢI tự viết `<button>` thay vì đè `className` lên `Button`.
  *
- * `disabled:*` chép nguyên từ `BASE`: không ai gọi ba nút này kèm `disabled`
+ * `disabled:*` chép nguyên từ `BASE`: không ai gọi nút này kèm `disabled`
  * hôm nay, nhưng thiếu hai class đó là một extension point chết âm thầm — ai
  * thêm `disabled` sau này (vd chặn lật quá xa) sẽ được một nút trông y hệt
  * nhưng không còn mờ đi khi vô hiệu.
+ *
+ * ⚠️ Review vòng 1: thử luôn icon-only cho "Hôm nay" (mượn `NAV_ICON_BTN`) để
+ * xem có ép được toolbar về một hàng ở 390px không — ĐO được **0px** (vẫn kẹt
+ * 2 hàng, `ToggleGroup` không xẻ được nên nhảy nguyên khối sang hàng dưới bất
+ * kể hàng trên còn dư bao nhiêu). Đổi mất nhãn chữ mà không mua được pixel nào
+ * là mất mát thuần — đã revert, "Hôm nay" quay lại `NAV_TEXT_BTN` có chữ.
  */
 const NAV_ICON_BTN =
   "inline-flex min-h-11 min-w-11 items-center justify-center rounded-card border border-border text-ink transition-[background-color,border-color] duration-(--duration-instant) ease-standard disabled:cursor-not-allowed disabled:opacity-50 hover:border-muted hover:bg-canvas active:bg-border";
+
+/** "Hôm nay" — cùng khuôn `NAV_ICON_BTN`, chỉ thêm `px-3` (đệm ngang cho chữ)
+ *  và font. Không đứng một mình trên `Button`/`className` vì lý do đã ghi ở
+ *  `NAV_ICON_BTN`: `px-3` không thắng nổi `px-4` của `BASE`. */
+const NAV_TEXT_BTN = `${NAV_ICON_BTN} px-3 text-sm font-semibold`;
 
 /** Nhánh vẽ lưới theo chế độ — `never` cuối cùng là hàng rào giống
  *  `router.tsx` (`const unhandled: never = decision`): thêm một `CalendarView`
@@ -431,24 +441,8 @@ export function RentalCalendar() {
           <button type="button" onClick={goNext} aria-label="Kỳ sau" className={NAV_ICON_BTN}>
             <Icon name="chevron-right" />
           </button>
-          {/*
-           * ⚠️ THAY ĐỔI THIẾT KẾ (thử nghiệm, chưa chốt): "Hôm nay" mất nhãn
-           * chữ, chỉ còn icon — đổi để thử ép toolbar về một hàng ở 390px (xem
-           * phép tính ở commit message/report). `aria-label` giữ nguyên nghĩa
-           * cho trình đọc màn hình; `title` cho người dùng chuột/rê. Mượn icon
-           * `nav-calendar` (đã dùng cho mục "Lịch" ở thanh điều hướng và
-           * `STATUS_ICON.BOOKED`) thay vì vẽ icon mới — chưa có hình "hôm nay"
-           * riêng trong `ICONS` và thêm một hình mới đòi xét lại quy tắc
-           * silhouette ở đầu `ui/icon.tsx`, ngoài phạm vi file này.
-           */}
-          <button
-            type="button"
-            onClick={goToday}
-            aria-label="Hôm nay"
-            title="Hôm nay"
-            className={NAV_ICON_BTN}
-          >
-            <Icon name="nav-calendar" />
+          <button type="button" onClick={goToday} className={NAV_TEXT_BTN}>
+            Hôm nay
           </button>
 
           {/* Khung có viền bọc ngoài đã bỏ: cùng thao tác này ở `requests-page.tsx`
