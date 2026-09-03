@@ -42,22 +42,37 @@ Nêu tên file hoặc symbol trong câu hỏi để nhận source đánh số d�
 
 Sửa theo **symbol**, không theo số dòng: số dòng trôi sau mỗi lần sửa, symbol thì không.
 
-## ⚠️ Chỗ output nói dối — đo lại 2026-08-31 trên v1.6.0
+## ⚠️ Chỗ output nói dối — đo lại 2026-09-03 trên v1.6.0
 
-Hai trong ba lỗi cũ **đã hết**. Đừng chép lại cảnh báo cũ từ trí nhớ.
+Một trong ba lỗi cũ đã hết. Đừng chép lại cảnh báo cũ từ trí nhớ — **kể cả bảng này**: bản trước
+của nó ghi rằng lỗi bịa symbol đã hết ở v1.6.0, đo lại trên đúng v1.6.0 thì chưa.
 
 | Điều                            | v1.5.0                                            | v1.6.0 (đo lại)                                                         |
 | ------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------- |
-| `explore` với tên không tồn tại | trả symbol không liên quan một cách tự tin        | ✅ `No relevant code found`                                             |
+| `explore` với tên không tồn tại | trả symbol không liên quan một cách tự tin        | ❌ **vẫn thế** — xem dưới                                               |
 | Cờ test                         | `⚠️ no covering tests found` (heuristic tên file) | ✅ `no tests found within 3 caller hops` — reachability theo caller hop |
 
-**Hai điều còn nguyên:**
+**`explore` KHÔNG BAO GIỜ nói "không tìm thấy".** `codegraph explore ZzzNotARealSymbol` trả về
+`Found 45 symbols across 5 files` kèm 552 dòng source của `app-nav.tsx`, `calendar-timeline.tsx`,
+`attention-list.tsx` — giọng tự tin y hệt một kết quả thật. Hỏng ở **cả hai đường**: CLI và MCP
+`codegraph_explore` (10 symbol / 1 file). Chỉ `codegraph query` là trung thực (`No results found`).
+
+Hệ quả: **muốn biết một symbol có tồn tại hay không thì dùng `query`, không dùng `explore`.** Một
+`explore` có kết quả không chứng minh được cái tên bạn hỏi là có thật.
+
+**Ba điều còn nguyên:**
 
 - **"Trong 3 hop" ≠ "không có test".** Đọc đúng chữ.
 - **Cạnh gọi hàm có thể sai khi trùng tên.** Cặp `rentals` route-vs-bảng đã kiểm là đúng, nhưng một
   cặp sạch không chứng minh được cả lớp.
 - **Index cũ không cảnh báo gì.** Watcher chỉ sống khi daemon/MCP chạy, nên dùng CLI trần thì
   `codegraph sync -q` trước.
+
+**Số caller phồng, nhưng không sót** (đo 2026-09-03): `createRental` được khai là "3 callers in
+`routes/rentals.ts`", grep thật thấy **một** chỗ gọi (dòng 354) + một dòng import. Ba claim còn lại
+của cùng lượt probe khớp chính xác, và nó **không** trộn hàm `createRental` của API với
+`const createRental = useMutation(...)` trùng tên trong `rental-form.tsx`. Nên đọc blast radius theo
+hướng "chỗ này có thể đụng tới", không theo con số.
 
 ## Bốn probe sau mỗi `codegraph upgrade`
 
@@ -66,7 +81,7 @@ Luật "hàng rào phải được probe" áp cho cả tool đọc code, không 
 ```bash
 codegraph index -f                                     # rebuild, đừng tin index cũ
 codegraph query ZzzNotARealSymbol                      # phải: "No results found"
-codegraph explore ZzzNotARealSymbol                    # phải: "No relevant code found"
+codegraph explore ZzzNotARealSymbol                    # BIẾT LÀ HỎNG: vẫn trả symbol lạ
 codegraph explore "createRental transaction boundary"  # blast radius phải khớp grep
 ```
 
