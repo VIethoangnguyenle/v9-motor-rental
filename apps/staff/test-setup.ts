@@ -5,6 +5,7 @@
 // test. Nạp qua `preload` của bunfig.toml chứ không import trong từng file test:
 // import lẻ thì thứ tự nạp phụ thuộc thứ tự file, và một file quên import sẽ đỏ
 // theo cách trông như lỗi của chính nó.
+import { afterEach } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 
 // Ruling 5: happy-dom được cầm DOM, KHÔNG được cầm tầng mạng. `GlobalRegistrator.register()`
@@ -44,3 +45,31 @@ globalThis.fetch = nativeFetch;
 globalThis.Request = nativeRequest;
 globalThis.Response = nativeResponse;
 globalThis.Headers = nativeHeaders;
+
+// `@testing-library/react` thường tự móc `cleanup()` vào `afterEach` của framework
+// test — nhưng cơ chế tự móc đó dò global `afterEach` tại THỜI ĐIỂM MODULE INIT của
+// chính nó, và ESM cache module: cả tiến trình `bun test` chỉ init nó MỘT LẦN
+// (giống `document` ở trên — preload chạy một lần, không phải mỗi file). Đo trực
+// tiếp trên `modal.test.tsx` (2 test, không unmount giữa hai test): panel còn lại
+// trong DOM sau test 1, kiểm bằng `document.querySelectorAll("[data-panel]").length`
+// ngay đầu test 2:
+//   - `bun test modal.test.tsx` một mình:                          1 panel — tự dọn
+//   - `bun test modal.test.tsx use-layout-variant.test.ts`:        2 panel — KHÔNG dọn
+//   - đảo thứ tự hai file trên:                                    2 panel — KHÔNG dọn
+// Tức việc tự-dọn "ăn may" khi chạy một file đơn, và mất hẳn ngay khi có từ hai
+// file trở lên trong cùng lần `bun test` — không phụ thuộc file nào đứng trước.
+// Triệu chứng đã bắt sống: `modal.test.tsx` đỏ ở test "footer nằm NGOÀI vùng cuộn"
+// khi chạy chung với `use-layout-variant.test.ts` — `querySelector("[data-panel]")`
+// bắt phải panel của lần render TRƯỚC (không có footer, còn `overflow-y-auto`) vì
+// nó vẫn nằm trong `document`, không phải panel của lần render đang test. Không tự
+// đăng ký `afterEach(cleanup)` ở đây thì bộ test âm thầm phụ thuộc thứ tự chạy.
+//
+// `import()` động, KHÔNG `import` tĩnh ở đầu file: import tĩnh của
+// `@testing-library/react` bị hoist và chạy TRƯỚC dòng `GlobalRegistrator.register()`
+// phía trên — `@testing-library/dom` chốt singleton `screen` vào global `document`
+// ngay lúc module init, mà lúc đó `document` chưa tồn tại. Đo được: làm vậy thì MỌI
+// test dùng `screen` (kể cả chạy một file, một mình) đỏ đồng loạt với
+// `TypeError: For queries bound to document.body a global document has to be
+// available`. `import()` động chạy sau khi `register()` đã gắn `document` xong.
+const { cleanup } = await import("@testing-library/react");
+afterEach(cleanup);
