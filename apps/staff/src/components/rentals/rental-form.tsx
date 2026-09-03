@@ -12,7 +12,6 @@ import { Button } from "../ui/button";
 import { Icon } from "../ui/icon";
 import { Modal } from "../ui/modal";
 import { Select } from "../ui/select";
-import { SubmitButton } from "../ui/submit-button";
 import { TextField } from "../ui/text-field";
 
 /**
@@ -303,8 +302,35 @@ export function RentalForm({
 
   return (
     // `placement="top"`: form dài và người dùng đang GÕ, nên bàn phím ảo đẩy từ
-    // dưới lên — neo đáy thì các ô nhập cuối bị đẩy khỏi màn hình.
-    <Modal label="Lên đơn thuê xe" placement="top" onClose={onClose}>
+    // dưới lên — neo đáy thì các ô nhập cuối bị đẩy khỏi màn hình. Vẫn đúng dù
+    // nút Tạo đơn đã xuống chân cố định: chỗ bàn phím ảo đẩy là vùng NHẬP LIỆU
+    // ở giữa, không phải hành động ở chân.
+    //
+    // `footer` neo nút Tạo đơn ở chân panel, không cuộn theo nội dung — đóng
+    // lỗi #3 (xem chú thích `footer` ở `ui/modal.tsx`): ở 390px nút từng nằm
+    // y=705–749 trong khi thanh nav dưới bắt đầu ở 724, nên 19/44px của nút rơi
+    // vào `<dialog>` thay vì vào nút. Nút submit đứng NGOÀI `<form>` (chân panel
+    // là anh em của vùng cuộn, không phải con của form) nên `form="rental-form"`
+    // là cách DUY NHẤT để nó vẫn gửi được — thiếu thuộc tính này hoặc thiếu
+    // `id` khớp trên `<form>` thì nút bấm được nhưng không gửi gì cả, và không
+    // test/typecheck nào bắt được lỗi đó.
+    <Modal
+      label="Lên đơn thuê xe"
+      placement="top"
+      onClose={onClose}
+      footer={() => (
+        <div className="card-pad">
+          <Button
+            type="submit"
+            form="rental-form"
+            pending={createRental.isPending}
+            className="w-full"
+          >
+            {createRental.isPending ? "Đang tạo đơn…" : "Tạo đơn"}
+          </Button>
+        </div>
+      )}
+    >
       {(close) => {
         // Ghi vào ref NGAY trong lượt vẽ, cùng khuôn `onCloseRef` của
         // `ui/modal.tsx`: `onSuccess` của mutation nằm ngoài tầm của render
@@ -322,7 +348,7 @@ export function RentalForm({
               </Button>
             </div>
 
-            <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
+            <form id="rental-form" onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
               <div className="flex flex-col gap-1">
                 <Select
                   label="Xe"
@@ -571,9 +597,6 @@ export function RentalForm({
                 </Alert>
               )}
 
-              <SubmitButton pending={createRental.isPending} pendingLabel="Đang tạo đơn…">
-                Tạo đơn
-              </SubmitButton>
             </form>
           </div>
         );
