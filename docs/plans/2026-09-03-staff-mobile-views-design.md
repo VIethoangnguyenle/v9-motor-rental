@@ -38,22 +38,33 @@ từng phần tử · số nút mà `elementFromPoint` tại tâm **không** tr�
 
 ### Kết quả
 
-| #   | Lỗi                                                             | Số đo                                         | Nặng |
-| --- | --------------------------------------------------------------- | --------------------------------------------- | ---- |
-| 1   | Sheet chi tiết đơn: 4/7 hành động nằm dưới nếp gấp, không báo   | thừa 260px (276px ở 360)                      | 🔴   |
-| 2   | `Nhân viên` mất Vai trò, Trạng thái, nút `Duyệt`, nút `Phát mã` | có đủ ở 1280px                                | 🔴   |
-| 3   | `Tạo đơn` không bấm được ở vị trí mở                            | nút 705–749, nav 724–780 → 19/44px sống       | 🔴   |
-| 4   | Timeline giấu phần lớn nội dung                                 | 390: 356/942 (62%) · 1280: 1022/1839 (44%)    | 🟠   |
-| 5   | `currentDayCount()` canh theo bề rộng CỬA SỔ, không phải LƯỚI   | đổi sang 14 ngày ở 1280px, lưới chỉ có 1022px | 🟠   |
-| 6   | Lịch Tháng: 17 phần tử tương tác cao <40px                      | đánh đổi đã ghi trong `calendar-month.tsx`    | 🟡   |
-| 7   | Cột tên xe cụt mất danh tính                                    | hai dòng cùng đọc `Honda…`                    | 🟡   |
-| 8   | Đầu trang Lịch chiếm 29% màn hình trước dòng dữ liệu đầu        | 228/780px (desktop 120/780)                   | 🟡   |
+| #   | Lỗi                                                           | Số đo                                         | Nặng |
+| --- | ------------------------------------------------------------- | --------------------------------------------- | ---- |
+| 1   | Sheet chi tiết đơn: 4/7 hành động nằm dưới nếp gấp, không báo | thừa 260px (276px ở 360)                      | 🔴   |
+| 2   | `Nhân viên`: 0/3 nút hành động nằm trong khung nhìn ở 390px   | wrap 358/640 · 3/3 ở 1280px                   | 🔴   |
+| 3   | `Tạo đơn` không bấm được ở vị trí mở                          | nút 705–749, nav 724–780 → 19/44px sống       | 🔴   |
+| 4   | Timeline giấu phần lớn nội dung                               | 390: 356/942 (62%) · 1280: 1022/1839 (44%)    | 🟠   |
+| 5   | `currentDayCount()` canh theo bề rộng CỬA SỔ, không phải LƯỚI | đổi sang 14 ngày ở 1280px, lưới chỉ có 1022px | 🟠   |
+| 6   | Lịch Tháng: 17 phần tử tương tác cao <40px                    | đánh đổi đã ghi trong `calendar-month.tsx`    | 🟡   |
+| 7   | Cột tên xe cụt mất danh tính                                  | hai dòng cùng đọc `Honda…`                    | 🟡   |
+| 8   | Đầu trang Lịch chiếm 29% màn hình trước dòng dữ liệu đầu      | 228/780px (desktop 120/780)                   | 🟡   |
 
 **Đo sạch, không đụng tới:** Thống kê · Yêu cầu · Cài đặt · Đổi mật khẩu · sheet "Thêm" (0/6 nút,
 không cần cuộn) · nav dưới · tràn ngang cấp trang **0px** ở cả 360 và 390.
 
 Điểm đáng chú ý nhất của bảng trên: **#4 và #5 là lỗi desktop**, không phải lỗi mobile. Ở 1280px
 lưới vẫn giấu 44% nội dung.
+
+> ⚠️ **Sửa chẩn đoán #2.** Bản đầu của tài liệu này ghi bảng `Nhân viên` **mất** các cột Vai trò,
+> Trạng thái và hai nút ở màn hẹp. Sai — kết luận đó rút ra từ một tấm ảnh chụp. Đo thật: `thead`
+> có đủ sáu `<th>` ở cả 390px lẫn 1280px, `tbody` có đủ ba nút `[Duyệt, Phát mã, Phát mã]`. Thứ
+> xảy ra là `StaffTable` đặt `min-w-[640px]` trong một khối `overflow-x-auto`, nên ở 390px khối đó
+> là **358/640** và **0/3 nút nằm trong khung nhìn**. Không có gì bị bỏ; mọi thứ nằm sau một vùng
+> cuộn ngang không có dấu hiệu.
+>
+> Hệ quả: **#2 và #4 là CÙNG một lớp lỗi** — nội dung bị giấu sau cuộn ngang không báo — chỉ khác
+> chỗ xảy ra. Hai bản sửa vẫn khác nhau (bảng thành thẻ; lưới thành danh sách theo ngày), nhưng
+> điều kiện nghiệm thu của cả hai là một: **không còn vùng cuộn ngang nào ở hình dạng mobile.**
 
 ### Hai lỗi đỏ chung một gốc
 
@@ -120,9 +131,13 @@ Timeline.
 Mỗi nhân viên một thẻ: avatar + họ tên · email · **vai trò** · **trạng thái** · và **cả hai nút
 `Duyệt` / `Phát mã`**. Desktop giữ nguyên bảng.
 
-Đây là lỗi đáng xấu hổ nhất của bảng đo, vì `PRODUCT.md` giải thích luồng phát mã tồn tại **vì**
-_"nhân viên shop dùng Zalo nhiều hơn email"_ — một việc sinh ra để làm trên điện thoại, mà điện
-thoại không làm được.
+Thẻ **không phải** để thêm lại thứ đã mất — không có gì mất. Nó để mọi trường và mọi nút nằm
+trong khung nhìn mà không đòi ai phải phát hiện ra là bảng cuộn ngang được. Ở 390px hiện tại,
+**0/3 nút hành động** nằm trong khung nhìn.
+
+Điều đó quan trọng vì `PRODUCT.md` giải thích luồng phát mã tồn tại **vì** _"nhân viên shop dùng
+Zalo nhiều hơn email"_ — một việc sinh ra để làm trên điện thoại. Nút vẫn có trong DOM, chỉ là
+người cầm điện thoại không thấy nó.
 
 ## 6. `Modal` — neo chân hành động
 
@@ -168,16 +183,16 @@ chạm đúng các file này nhưng là lớp lỗi khác; gộp vào sẽ làm 
 
 ## 10. Nghiệm thu — chạy lại đúng bộ đo của §1
 
-| Điều kiện đạt                                      | Đối chiếu với   |
-| -------------------------------------------------- | --------------- |
-| Sheet chi tiết: 0/7 hành động nằm dưới nếp gấp     | #1 (đang 4/7)   |
-| `Nhân viên` ở 390px có đủ 5 trường + 2 nút         | #2              |
-| `Tạo đơn` bấm được trên toàn bộ 44px chiều cao     | #3 (đang 19/44) |
-| Lịch mobile: không phần tử nào có vùng cuộn ngang  | #4              |
-| Lưới desktop: `scrollWidth ≤ clientWidth` ở 1280px | #4, #5          |
-| Dòng lịch mobile: mọi vùng chạm ≥ 44px             | §4              |
-| Tràn ngang cấp trang vẫn 0px ở 360 và 390          | không hồi quy   |
-| `bun run typecheck` và `bun test` đều exit 0       |                 |
+| Điều kiện đạt                                                     | Đối chiếu với   |
+| ----------------------------------------------------------------- | --------------- |
+| Sheet chi tiết: 0/7 hành động nằm dưới nếp gấp                    | #1 (đang 4/7)   |
+| `/staff` ở 390px: không vùng cuộn ngang, 3/3 nút trong khung nhìn | #2 (đang 0/3)   |
+| `Tạo đơn` bấm được trên toàn bộ 44px chiều cao                    | #3 (đang 19/44) |
+| Lịch mobile: không phần tử nào có vùng cuộn ngang                 | #4              |
+| Lưới desktop: `scrollWidth ≤ clientWidth` ở 1280px                | #4, #5          |
+| Dòng lịch mobile: mọi vùng chạm ≥ 44px                            | §4              |
+| Tràn ngang cấp trang vẫn 0px ở 360 và 390                         | không hồi quy   |
+| `bun run typecheck` và `bun test` đều exit 0                      |                 |
 
 Đo bằng chính script CDP đã dựng ở đợt này, không đo bằng mắt.
 
