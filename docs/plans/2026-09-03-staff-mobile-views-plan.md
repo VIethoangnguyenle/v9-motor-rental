@@ -72,7 +72,7 @@ component** và repo chưa cài DOM giả (`DEBT.md:335`).
 - [ ] **Bước 1: Cài phụ thuộc**
 
 ```bash
-bun add -D happy-dom @testing-library/react @testing-library/dom @types/react-dom
+bun add -D happy-dom @happy-dom/global-registrator @testing-library/react @testing-library/dom @types/react-dom
 ```
 
 - [ ] **Bước 2: Viết test ĐỎ trước khi có DOM**
@@ -118,7 +118,26 @@ Tạo `apps/staff/test-setup.ts`:
 // theo cách trông như lỗi của chính nó.
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 
+// ⚠️ `register()` thay LUÔN bốn global của tầng mạng, không chỉ thêm DOM. Bắt lại
+// trước, trả về ngay sau — happy-dom ở đây để có DOM, không phải để có mạng.
+//
+// Đo được khi thiếu, hai triệu chứng trông không liên quan gì nhau:
+//  • thiếu `fetch`                        → 3 file test của apps/api đỏ với
+//    `NetworkError: Cross-Origin Request Blocked` (fetch của happy-dom cưỡng chế
+//    Same-Origin Policy, mà supertokens-node gọi http://localhost:3567)
+//  • thiếu `Request`/`Response`/`Headers` → cùng 3 file đỏ với `401` thay vì `200`
+//    (app.handle() của Elysia cần đúng lớp gốc mới đọc được cookie/session)
+//
+// Cái thứ hai nguy hiểm hơn: nó trông y hệt một lỗi xác thực thật, và người gặp
+// nó sẽ đi tìm bug trong auth.ts chứ không nghĩ tới DOM giả.
+const native = {
+  fetch: globalThis.fetch,
+  Request: globalThis.Request,
+  Response: globalThis.Response,
+  Headers: globalThis.Headers,
+};
 GlobalRegistrator.register();
+Object.assign(globalThis, native);
 ```
 
 - [ ] **Bước 5: Trỏ `preload` vào nó**
@@ -151,8 +170,14 @@ Kỳ vọng: PASS, 1 test.
 bun test
 ```
 
-Kỳ vọng: **485 pass / 0 fail** (484 cũ + 1 mới). Nếu có test cũ đỏ, `preload` đang đổi hành vi —
-dừng lại và thu hẹp phạm vi preload thay vì sửa test cũ.
+Kỳ vọng: **`0 fail`**, và số pass **không giảm** so với baseline `484 pass / 0 fail / 41 file`.
+Không chốt cứng một con số — số học kiểu đó brittle, và bản đầu của kế hoạch này ghi sai ba lần.
+
+Nếu có test cũ đỏ, `preload` đang đổi hành vi: **dừng lại, đừng sửa test cũ.** Đo riêng ba file
+`apps/api/src/plugins/auth.test.ts`, `staff-guard-revocation.test.ts`,
+`services/password-reset.test.ts` — chúng phải cho `37 pass / 0 fail`, y hệt khi không preload.
+Con số ba-file đó là bằng chứng mạnh hơn con số tổng: nó cho thấy trạng thái cũ được trả lại
+nguyên vẹn, chứ không phải bù trừ ở đâu đó.
 
 - [ ] **Bước 8: Commit**
 
@@ -303,7 +328,7 @@ Kỳ vọng: PASS, 2 tests.
 bun run typecheck && bun test
 ```
 
-Kỳ vọng: typecheck exit 0; **486 pass / 0 fail**.
+Kỳ vọng: typecheck exit 0; **`0 fail`**, và số pass **không giảm** so với task trước.
 
 - [ ] **Bước 7: Commit**
 
@@ -618,8 +643,7 @@ export function StaffRowActions(props: StaffRowActionsProps) {
 bun run typecheck && bun test
 ```
 
-Kỳ vọng: typecheck exit 0, **489 pass / 0 fail** (487 sau Task 2 + 3 của Task 5 − trùng; con số
-chính xác lấy từ lần chạy trước, điều kiện là **0 fail** và số pass **không giảm**).
+Kỳ vọng: typecheck exit 0; **`0 fail`**, và số pass **không giảm** so với task trước.
 
 - [ ] **Bước 4: Commit**
 
