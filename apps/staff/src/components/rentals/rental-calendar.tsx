@@ -22,7 +22,6 @@ import {
   type FleetVehicle,
 } from "../../lib/rentals";
 import { Alert } from "../ui/alert";
-import { Button } from "../ui/button";
 import { Icon } from "../ui/icon";
 import { Skeleton } from "../ui/skeleton";
 import { ToggleGroup } from "../ui/toggle-group";
@@ -206,6 +205,14 @@ const RANGE_DATE_FMT = new Intl.DateTimeFormat("vi-VN", {
   year: "numeric",
 });
 
+/** Không năm — dùng ở màn hẹp (Task 11): năm đã nằm trong ngữ cảnh trang, nêu
+ *  lại trên mỗi lần lật khoảng chỉ tốn chỗ mà đầu trang thì đang chật. */
+const RANGE_DATE_SHORT_FMT = new Intl.DateTimeFormat("vi-VN", {
+  timeZone: SHOP_TIMEZONE,
+  day: "2-digit",
+  month: "2-digit",
+});
+
 /** Nhãn hai nút chuyển chế độ — `Record<CalendarView, string>` bắt buộc đủ
  *  nhánh, giống `STATUS_LABEL` ở `lib/rental-status.ts`: thêm một chế độ vào
  *  `CALENDAR_VIEWS` mà quên thêm nhãn ở đây là lỗi biên dịch. */
@@ -213,6 +220,28 @@ const VIEW_LABEL: Record<CalendarView, string> = {
   timeline: "Timeline",
   month: "Tháng",
 };
+
+/**
+ * Nút ‹ › của toolbar — KHÔNG dùng `Button` (Task 11). `BASE` của `Button` cố
+ * định `px-4` cho MỌI biến thể, kể cả nút chỉ có icon; hai nút này đứng cạnh
+ * nhãn khoảng ngày và `ToggleGroup` trong CÙNG một hàng, nên phần đệm ngang dư
+ * ra cho chữ (mà icon không cần) là đúng phần khiến hàng không gộp vừa ở
+ * 390px (đóng #8). `min-w-11` (44px) thay `px-4` — vẫn đúng vùng chạm, chỉ bỏ
+ * đệm không cần thiết. Cùng tinh thần `ui/toggle-group.tsx` đã chọn tự viết
+ * `<button>` thay vì bọc `Button` khi khuôn có sẵn không vừa.
+ */
+const NAV_ICON_BTN =
+  "inline-flex min-h-11 min-w-11 items-center justify-center rounded-card border border-border text-ink transition-[background-color,border-color] duration-(--duration-instant) ease-standard hover:border-muted hover:bg-canvas active:bg-border";
+
+/**
+ * "Hôm nay" — cùng lý do `NAV_ICON_BTN`: `px-3` (thay `px-4` của `Button`) đứng
+ * MỘT MÌNH trên nút tự viết này thay vì cộng vào chuỗi class của `Button`, nơi
+ * nó không thắng nổi `px-4` của `BASE` (hai utility cùng đặc trưng, thứ tự
+ * trong stylesheet — sinh ra từ lượt quét toàn repo của Tailwind, không phải
+ * thứ tự trong JSX — mới là thứ quyết định ai đè ai). Đã ĐO: gắn `className="px-3"`
+ * thẳng vào `<Button>` không đổi bề rộng render — `px-4` vẫn thắng.
+ */
+const NAV_TEXT_BTN = `${NAV_ICON_BTN} px-3 text-sm font-semibold`;
 
 /** Nhánh vẽ lưới theo chế độ — `never` cuối cùng là hàng rào giống
  *  `router.tsx` (`const unhandled: never = decision`): thêm một `CalendarView`
@@ -318,12 +347,20 @@ export function RentalCalendar() {
     });
   }
 
+  // Nhãn đầy đủ (desktop) và nhãn rút gọn (màn hẹp, không năm) — xem
+  // `RANGE_DATE_SHORT_FMT`. Chế độ tháng đã đủ ngắn (`Tháng 9/2026`) nên dùng
+  // chung một nhãn cho cả hai bề rộng.
   let rangeLabel: string;
+  let rangeLabelShort: string;
   if (view === "month") {
     rangeLabel = `Tháng ${String(anchor.month)}/${String(anchor.year)}`;
+    rangeLabelShort = rangeLabel;
   } else {
     const lastDay = addDays(anchor, dayCount - 1);
-    rangeLabel = `${RANGE_DATE_FMT.format(zonedMidnightOf(anchor))} – ${RANGE_DATE_FMT.format(zonedMidnightOf(lastDay))}`;
+    const from = zonedMidnightOf(anchor);
+    const to = zonedMidnightOf(lastDay);
+    rangeLabel = `${RANGE_DATE_FMT.format(from)} – ${RANGE_DATE_FMT.format(to)}`;
+    rangeLabelShort = `${RANGE_DATE_SHORT_FMT.format(from)} – ${RANGE_DATE_SHORT_FMT.format(to)}`;
   }
 
   const isLoading = fleet.isPending || rentals.isPending;
@@ -366,20 +403,31 @@ export function RentalCalendar() {
 
   return (
     <div ref={gridRef} className="flex flex-col gap-4">
+      {/*
+       * Task 11 (đóng #8): ba cụm — điều hướng khoảng, "Hôm nay", chuyển chế độ —
+       * gộp vào MỘT `flex flex-wrap`, không còn hai tầng lồng nhau (nhóm điều
+       * hướng bọc riêng + `justify-between` đẩy `ToggleGroup` ra mép phải). Lồng
+       * hai tầng khiến mỗi tầng wrap độc lập, đo được ba hàng riêng ở 390px
+       * (lưới bắt đầu ở 29% màn hình). Gộp phẳng thì mọi nút cùng tham gia MỘT
+       * vòng wrap, xếp kín tới đâu hay tới đó.
+       */}
       {showToolbar && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="ghost" onClick={goPrev} aria-label="Kỳ trước">
-              <Icon name="chevron-left" />
-            </Button>
-            <span className="text-sm font-medium text-ink">{rangeLabel}</span>
-            <Button type="button" variant="ghost" onClick={goNext} aria-label="Kỳ sau">
-              <Icon name="chevron-right" />
-            </Button>
-            <Button type="button" variant="ghost" onClick={goToday}>
-              Hôm nay
-            </Button>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={goPrev} aria-label="Kỳ trước" className={NAV_ICON_BTN}>
+            <Icon name="chevron-left" />
+          </button>
+          <span className="text-sm font-medium text-ink">
+            {/* Rút ngắn ở màn hẹp (bỏ năm — đã nằm trong ngữ cảnh trang) để một
+                cụm ngày không một mình chiếm hết bề rộng còn lại của hàng. */}
+            <span className="sm:hidden">{rangeLabelShort}</span>
+            <span className="hidden sm:inline">{rangeLabel}</span>
+          </span>
+          <button type="button" onClick={goNext} aria-label="Kỳ sau" className={NAV_ICON_BTN}>
+            <Icon name="chevron-right" />
+          </button>
+          <button type="button" onClick={goToday} className={NAV_TEXT_BTN}>
+            Hôm nay
+          </button>
 
           {/* Khung có viền bọc ngoài đã bỏ: cùng thao tác này ở `requests-page.tsx`
               là những nút rời, và hai hình dạng cho một khuôn là drift. Xem lý
