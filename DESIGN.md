@@ -18,15 +18,15 @@ vừa để **ảnh xe gánh toàn bộ năng lượng**, vừa dựng quanh **l
 Đây **không** phải bản chép. Bảy chỗ dưới đây khác bản gốc, mỗi chỗ có lý do. Đừng "sửa lại cho
 giống BMW" — đọc cột lý do trước.
 
-| #   | BMW M gốc                                        | V9                                      | Vì sao                                                                                                                                      |
-| --- | ------------------------------------------------ | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `BMWTypeNextLatin`; nếu thiếu thì dùng **Inter** | **Archivo**                             | Font BMW không license được. Còn Inter thì `PRODUCT.md` **cấm thẳng** ("Inter ở mọi nơi").                                                  |
-| 2   | display `line-height: 1.0`                       | **1.15 tối thiểu**                      | Đo thật: ở 1.0, dấu sắc trên **Ố** đâm vào **TÔ** dòng trên. Tiếng Việt xếp chồng dấu, không phải tiếng Anh.                                |
+| #   | BMW M gốc                                        | V9                                      | Vì sao                                                                                                                                                                 |
+| --- | ------------------------------------------------ | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `BMWTypeNextLatin`; nếu thiếu thì dùng **Inter** | **Archivo**                             | Font BMW không license được. Còn Inter thì `PRODUCT.md` **cấm thẳng** ("Inter ở mọi nơi").                                                                             |
+| 2   | display `line-height: 1.0`                       | **1.15 tối thiểu**                      | Đo thật: ở 1.0, dấu sắc trên **Ố** đâm vào **TÔ** dòng trên. Tiếng Việt xếp chồng dấu, không phải tiếng Anh.                                                           |
 | 3   | Accent = **M tricolor**                          | **`#f72b28`, rút từ mark V9**           | Tricolor là nhận diện của BMW. Shop **chưa** có nhận diện (`PRODUCT.md` sửa 2026-09-03), nên mark được dựng ở đợt này và màu rút ra từ nó. ✅ Chốt 2026-09-03, xem §9. |
-| 4   | "Đừng dùng màu ngoài M tricolor"                 | **Bỏ luật này**                         | Nó giả định ta là BMW. Ta có brand riêng. Giữ nguyên luật gốc = ship nhận diện của hãng khác.                                               |
-| 5   | Nhịp có băng **magazine grid**                   | **Bỏ**                                  | Ta không có bài viết, không có testimonial, không có con số. `PRODUCT.md` cấm bịa. Băng trống thà bỏ còn hơn độn nội dung giả.              |
-| 6   | CTA = "Order / Configure"                        | **"Gửi yêu cầu thuê"**                  | Web **không chốt đơn**. CTA không được ngụ ý xe còn trống hay đã giữ chỗ. Đây là luật cứng nhất của app, xem §7.                            |
-| 7   | Ảnh studio / trường đua                          | **Ảnh thật từng chiếc, kể cả vết xước** | `PRODUCT.md` nguyên tắc #2: khách thấy đúng chiếc xe mình sẽ nhận. Ảnh đẹp hơn thực tế là phản tác dụng.                                    |
+| 4   | "Đừng dùng màu ngoài M tricolor"                 | **Bỏ luật này**                         | Nó giả định ta là BMW. Ta có brand riêng. Giữ nguyên luật gốc = ship nhận diện của hãng khác.                                                                          |
+| 5   | Nhịp có băng **magazine grid**                   | **Bỏ**                                  | Ta không có bài viết, không có testimonial, không có con số. `PRODUCT.md` cấm bịa. Băng trống thà bỏ còn hơn độn nội dung giả.                                         |
+| 6   | CTA = "Order / Configure"                        | **"Gửi yêu cầu thuê"**                  | Web **không chốt đơn**. CTA không được ngụ ý xe còn trống hay đã giữ chỗ. Đây là luật cứng nhất của app, xem §7.                                                       |
+| 7   | Ảnh studio / trường đua                          | **Ảnh thật từng chiếc, kể cả vết xước** | `PRODUCT.md` nguyên tắc #2: khách thấy đúng chiếc xe mình sẽ nhận. Ảnh đẹp hơn thực tế là phản tác dụng.                                                               |
 
 ---
 
@@ -225,14 +225,14 @@ và số 9 vẫn đọc được; ba răng đỏ thành ba chấm. Đây là đi
 **Màu accent `#f72b28`.** Dùng rất dè, đúng ba chỗ: nền CTA quan trọng nhất, `v9-stripe-divider`,
 và viền trạng thái active.
 
-| Đo trên          | Tỉ lệ | Ngưỡng áp dụng                | Kết luận |
-| ---------------- | ----- | ----------------------------- | -------- |
-| `#000000` canvas | 5.33  | 3.0 (đồ hoạ, WCAG 1.4.11)     | ✅       |
-| `#1a1a1a` card   | 4.42  | 3.0 (đồ hoạ)                  | ✅       |
-| `#0d0d0d` soft   | 4.93  | 3.0 (đồ hoạ)                  | ✅       |
-| chữ **trắng** trên accent | 3.94 | 4.5 (chữ thường)     | ❌       |
-| chữ **đen** trên accent   | 5.33 | 4.5 (chữ thường)     | ✅       |
-| accent làm chữ trên `#1a1a1a` | 4.42 | 4.5              | ❌       |
+| Đo trên                       | Tỉ lệ | Ngưỡng áp dụng            | Kết luận |
+| ----------------------------- | ----- | ------------------------- | -------- |
+| `#000000` canvas              | 5.33  | 3.0 (đồ hoạ, WCAG 1.4.11) | ✅       |
+| `#1a1a1a` card                | 4.42  | 3.0 (đồ hoạ)              | ✅       |
+| `#0d0d0d` soft                | 4.93  | 3.0 (đồ hoạ)              | ✅       |
+| chữ **trắng** trên accent     | 3.94  | 4.5 (chữ thường)          | ❌       |
+| chữ **đen** trên accent       | 5.33  | 4.5 (chữ thường)          | ✅       |
+| accent làm chữ trên `#1a1a1a` | 4.42  | 4.5                       | ❌       |
 
 **Hai luật rút ra từ bảng trên, không phải sở thích:**
 

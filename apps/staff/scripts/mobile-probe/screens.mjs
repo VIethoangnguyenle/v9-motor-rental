@@ -1,42 +1,59 @@
-import { writeFileSync } from 'node:fs';
-const OUT = process.argv[2], WIDTH = Number(process.argv[3]);
-const list = await (await fetch('http://localhost:9222/json/list')).json();
-const page = list.find(t => t.type === 'page');
+import { writeFileSync } from "node:fs";
+const OUT = process.argv[2],
+  WIDTH = Number(process.argv[3]);
+const list = await (await fetch("http://localhost:9222/json/list")).json();
+const page = list.find((t) => t.type === "page");
 const ws = new WebSocket(page.webSocketDebuggerUrl);
-let id = 0; const pending = new Map();
-ws.onmessage = e => {
+let id = 0;
+const pending = new Map();
+ws.onmessage = (e) => {
   const m = JSON.parse(e.data);
-  if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
+  if (m.id && pending.has(m.id)) {
+    pending.get(m.id)(m);
+    pending.delete(m.id);
+  }
 };
-await new Promise(r => ws.onopen = r);
-const send = (method, params = {}) => new Promise(res => {
-  const i = ++id; pending.set(i, res);
-  ws.send(JSON.stringify({ id: i, method, params }));
-});
-const wait = ms => new Promise(r => setTimeout(r, ms));
-const evaluate = async expr => (await send('Runtime.evaluate',
-  { expression: expr, awaitPromise: true, returnByValue: true })).result?.result?.value;
+await new Promise((r) => (ws.onopen = r));
+const send = (method, params = {}) =>
+  new Promise((res) => {
+    const i = ++id;
+    pending.set(i, res);
+    ws.send(JSON.stringify({ id: i, method, params }));
+  });
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const evaluate = async (expr) =>
+  (await send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true }))
+    .result?.result?.value;
 
-await send('Page.enable'); await send('Runtime.enable');
-await send('Emulation.setDeviceMetricsOverride',
-  { width: WIDTH, height: 780, deviceScaleFactor: 2, mobile: true });
-await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+await send("Page.enable");
+await send("Runtime.enable");
+await send("Emulation.setDeviceMetricsOverride", {
+  width: WIDTH,
+  height: 780,
+  deviceScaleFactor: 2,
+  mobile: true,
+});
+await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
 
 const go = async (url, settle = 2200) => {
-  await send('Page.navigate', { url });
+  await send("Page.navigate", { url });
   await wait(settle);
 };
-const shot = async name => {
-  const r = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
-  writeFileSync(`${OUT}/${WIDTH}-${name}.png`, Buffer.from(r.result.data, 'base64'));
-  const h = await evaluate('document.documentElement.scrollHeight');
-  const overflow = await evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth');
-  console.warn(`  ${WIDTH}-${name}.png   cao ${h}px   tràn ngang ${overflow}px ${overflow > 0 ? '⚠️' : ''}`);
+const shot = async (name) => {
+  const r = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: true });
+  writeFileSync(`${OUT}/${WIDTH}-${name}.png`, Buffer.from(r.result.data, "base64"));
+  const h = await evaluate("document.documentElement.scrollHeight");
+  const overflow = await evaluate(
+    "document.documentElement.scrollWidth - document.documentElement.clientWidth",
+  );
+  console.warn(
+    `  ${WIDTH}-${name}.png   cao ${h}px   tràn ngang ${overflow}px ${overflow > 0 ? "⚠️" : ""}`,
+  );
 };
 
-await go('http://localhost:3003/');
+await go("http://localhost:3003/");
 await wait(1500);
-await shot('00-landing');
+await shot("00-landing");
 
 // đăng nhập: set value theo kiểu React nhận được
 const filled = await evaluate(`(() => {
@@ -53,14 +70,19 @@ const filled = await evaluate(`(() => {
   if (!btn) return 'KHÔNG THẤY NÚT GỬI';
   btn.click(); return 'đã gửi';
 })()`);
-console.warn('  đăng nhập:', filled);
+console.warn("  đăng nhập:", filled);
 await wait(3500);
-await shot('01-sau-dang-nhap');
-console.warn('  url hiện tại:', await evaluate('location.pathname'));
+await shot("01-sau-dang-nhap");
+console.warn("  url hiện tại:", await evaluate("location.pathname"));
 
-for (const [path, name] of [['/', '02-thong-ke'], ['/calendar', '03-lich'],
-     ['/requests', '04-yeu-cau'], ['/customers', '05-khach-hang'], ['/staff', '06-nhan-vien']]) {
-  await go('http://localhost:3003' + path, 2600);
+for (const [path, name] of [
+  ["/", "02-thong-ke"],
+  ["/calendar", "03-lich"],
+  ["/requests", "04-yeu-cau"],
+  ["/customers", "05-khach-hang"],
+  ["/staff", "06-nhan-vien"],
+]) {
+  await go("http://localhost:3003" + path, 2600);
   await shot(name);
 }
 ws.close();
