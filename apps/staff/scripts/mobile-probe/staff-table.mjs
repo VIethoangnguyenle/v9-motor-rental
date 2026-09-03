@@ -10,17 +10,41 @@ await send('Page.enable');await send('Runtime.enable');
 for(const W of [390,1280]){
   await send('Emulation.setDeviceMetricsOverride',{width:W,height:780,deviceScaleFactor:1,mobile:W<800});
   await send('Page.navigate',{url:'http://localhost:3003/staff'});await wait(3200);
+  // Đo CẢ HAI hình dạng — bảng lẫn thẻ — chứ không trả sớm khi không thấy
+  // `<table>`. Trả sớm từng làm probe này thành no-op ở đúng bề rộng mà nó cần
+  // gác: `<table>` biến mất ở 390px SAU khi bug #2 được sửa (hình dạng thẻ thay
+  // thế), và bản trả-sớm chỉ nói "không thấy bảng" thay vì đo tiếp thẻ.
+  // Scope vào `#main` (landmark nội dung của `AppShell`) để không đếm nhầm
+  // `<ul>`/`<button>` của nav sang cùng khối.
   console.log(`  ${W}px:`, await ev(`(()=>{
-    const wrap=document.querySelector('.overflow-x-auto');
-    const t=document.querySelector('table');
-    if(!t) return 'không thấy bảng';
-    const ths=[...t.querySelectorAll('thead th')].map(th=>th.textContent.trim()||'(nút)');
-    const btns=[...t.querySelectorAll('tbody button')].map(b=>b.textContent.trim());
-    const vis=[...t.querySelectorAll('tbody button')].filter(b=>{
-      const r=b.getBoundingClientRect(); return r.left>=0 && r.right<=${W};}).length;
-    return 'th trong DOM: ['+ths.join(', ')+'] · '
-      +'wrap '+(wrap?wrap.clientWidth+'/'+wrap.scrollWidth+(wrap.scrollWidth>wrap.clientWidth?' ⚠️ CUỘN NGANG':''):'-')
-      +' · nút trong tbody: '+btns.length+' ['+btns.join(',')+'] · nằm trong khung nhìn: '+vis;
+    const main = document.querySelector('#main') ?? document;
+    const wrap = main.querySelector('.overflow-x-auto');
+    const fmtWrap = wrap
+      ? wrap.clientWidth + '/' + wrap.scrollWidth + (wrap.scrollWidth > wrap.clientWidth ? ' ⚠️ CUỘN NGANG' : '')
+      : '-';
+    const visibleCount = (btns) => btns.filter(b => {
+      const r = b.getBoundingClientRect();
+      return r.left >= 0 && r.right <= ${W};
+    }).length;
+
+    const t = main.querySelector('table');
+    if (t) {
+      const ths = [...t.querySelectorAll('thead th')].map(th => th.textContent.trim() || '(nút)');
+      const btns = [...t.querySelectorAll('tbody button')];
+      return 'HÌNH DẠNG bảng · th trong DOM: [' + ths.join(', ') + '] · '
+        + 'wrap ' + fmtWrap
+        + ' · nút trong tbody: ' + btns.length + ' [' + btns.map(b => b.textContent.trim()).join(',') + ']'
+        + ' · nằm trong khung nhìn: ' + visibleCount(btns);
+    }
+
+    const cardList = main.querySelector('ul');
+    if (!cardList) return 'HÌNH DẠNG không xác định — không thấy <table> lẫn <ul> trong #main';
+    const btns = [...cardList.querySelectorAll('button')];
+    const cardCount = cardList.querySelectorAll(':scope > li').length;
+    return 'HÌNH DẠNG thẻ · số thẻ: ' + cardCount + ' · '
+      + 'wrap ' + fmtWrap
+      + ' · nút trong thẻ: ' + btns.length + ' [' + btns.map(b => b.textContent.trim()).join(',') + ']'
+      + ' · nằm trong khung nhìn: ' + visibleCount(btns);
   })()`));
 }
 ws.close();
