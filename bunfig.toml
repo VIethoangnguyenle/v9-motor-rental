@@ -3,3 +3,7 @@ exact = true
 
 [test]
 coverage = false
+# DOM giả cho test component của apps/staff — xem apps/staff/test-setup.ts.
+# Nạp cho MỌI test, kể cả test của apps/api và packages/db: happy-dom chỉ thêm
+# global, không đổi hành vi của code không đụng tới DOM. Đo ở Bước 7.
+preload = ["./apps/staff/test-setup.ts"]
