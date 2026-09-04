@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   availableRequestTransitions,
   REQUEST_STATUSES,
@@ -12,6 +11,7 @@ import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
 import { ToggleGroup } from "../components/ui/toggle-group";
 import { errorMessage } from "../lib/errors";
+import { ALL_REQUESTS } from "../lib/requests-search";
 import {
   changeRequestStatus,
   newRequestCountQuery,
@@ -169,9 +169,70 @@ function RequestCard({
  * không có màn này thì yêu cầu vẫn trôi — chỉ khác là trôi trong database thay
  * vì trôi trong hộp tin nhắn Zalo, và không ai nhìn thấy nó tệ hơn.
  */
+/**
+ * Trạng thái rỗng, và nó phải DẠY chứ không chỉ báo.
+ *
+ * Bản trước là đúng một câu: "Không có yêu cầu nào ở trạng thái …". Câu đó nói
+ * đúng chuyện gì đang xảy ra nhưng để người đọc ở ngõ cụt — nhất là nhân viên
+ * mới, người không biết yêu cầu tới từ đâu và sẽ tưởng màn này hỏng. Ở 390px nó
+ * còn tệ hơn: một dòng chữ xám trên hơn 1000px khoảng trắng.
+ *
+ * Nói ba thứ, đúng thứ tự người cần: đang lọc gì · yêu cầu tới từ đâu · làm gì
+ * tiếp. Không bịa thêm gì — `PRODUCT.md` đã ghi web chỉ tạo YÊU CẦU và nhân
+ * viên là người chốt thành đơn thật.
+ */
+function EmptyRequests({
+  filter,
+  onShowAll,
+}: {
+  readonly filter: RequestStatus | null;
+  readonly onShowAll: () => void;
+}) {
+  return (
+    <div className="flex max-w-prose flex-col items-start gap-2 rounded-card border border-border bg-surface-sunken card-pad">
+      <p className="m-0 text-sm text-ink">
+        {filter === null
+          ? "Chưa có yêu cầu nào từ web."
+          : `Không có yêu cầu nào ở trạng thái "${STATUS_LABEL[filter]}".`}
+      </p>
+      <p className="m-0 text-sm text-muted">
+        Yêu cầu tới từ form trên site công khai, kể cả ngoài giờ làm. Khách không
+        tự chốt đơn — nhân viên tiếp nhận rồi lên đơn thật ở màn Đơn thuê.
+      </p>
+      {/* ĐIỀU HƯỚNG, không phải `history.back()`: người dùng có thể tới đây bằng
+          một link trực tiếp, và lúc đó "lùi" rời hẳn khỏi màn này. */}
+      {filter !== null && (
+        <Button type="button" variant="ghost" onClick={onShowAll}>
+          Xem tất cả trạng thái
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export function RequestsPage() {
   const qc = useQueryClient();
-  const [filter, setFilter] = useState<RequestStatus | null>("NEW");
+  // `strict: false` chứ không `requestsRoute.useSearch()` — import route vào page
+  // dựng ra chu trình module, cùng lý do ba màn danh sách kia.
+  const search = useSearch({ strict: false });
+  const navigate = useNavigate();
+
+  /*
+   * `"ALL"` ở URL ⇄ `null` ở tầng dữ liệu. `requestsQuery(null)` nghĩa là "không
+   * lọc" và đó là hợp đồng sẵn có của nó; đổi chỗ đó là chạm vào một query đã
+   * chạy đúng. Nên việc dịch nằm ở đây, đúng một dòng, hai chiều.
+   */
+  const raw = search.status ?? "NEW";
+  const filter: RequestStatus | null = raw === ALL_REQUESTS ? null : raw;
+
+  const setFilter = (next: RequestStatus | null): void => {
+    void navigate({
+      to: "/requests",
+      search: { status: next ?? ALL_REQUESTS },
+      replace: true,
+    });
+  };
+
   const list = useQuery(requestsQuery(filter));
 
   const change = useMutation({
@@ -225,11 +286,7 @@ export function RequestsPage() {
         // Nói rõ ĐANG LỌC GÌ. Một câu "chưa có yêu cầu nào" trong khi bộ lọc đang
         // ở "Đã đóng" là một câu sai về shop — cùng lớp lỗi `failed` vs `empty`
         // mà `apps/web` đã tách ra ở `lib/vehicles.ts`.
-        <p className="text-sm text-muted">
-          {filter === null
-            ? "Chưa có yêu cầu nào từ web."
-            : `Không có yêu cầu nào ở trạng thái "${STATUS_LABEL[filter]}".`}
-        </p>
+        <EmptyRequests filter={filter} onShowAll={() => setFilter(null)} />
       )}
 
       {list.data?.ok && list.data.requests.length > 0 && (

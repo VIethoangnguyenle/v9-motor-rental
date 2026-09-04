@@ -29,7 +29,27 @@ function StaffCard({
         <span className="font-semibold text-ink">{row.fullName}</span>
       </div>
       <p className="mt-1 text-sm text-muted">{row.email}</p>
-      <p className="text-sm text-muted">{row.phone ?? "—"}</p>
+      {/* CHỮ, không phải dấu `—`.
+
+          Trong BẢNG, `—` nằm dưới một `<th>` ghi "Điện thoại", nên nó đọc được
+          là "cột này rỗng". Trên THẺ không có tiêu đề cột nào, nên cùng ký tự đó
+          đứng một mình giữa email và vai trò đọc ra như dữ liệu hỏng — đo bằng
+          ảnh chụp 390px: một gạch ngang trần chiếm trọn một dòng, không nói gì.
+
+          Số điện thoại là HÀNH ĐỘNG khi có (shop chạy bằng Zalo và điện thoại),
+          nên khi có thì nó là link gọi, cùng cách `customer-cards.tsx` làm. */}
+      {row.phone === null ? (
+        <p className="text-sm text-muted">Chưa có số điện thoại</p>
+      ) : (
+        <p className="text-sm">
+          <a
+            href={`tel:${row.phone}`}
+            className="inline-flex min-h-11 items-center tabular-nums text-ink underline-offset-2 hover:underline"
+          >
+            {row.phone}
+          </a>
+        </p>
+      )}
       {/* Vai trò và trạng thái đi cùng một dòng: ở bảng chúng là hai cột cạnh
           nhau, giữ nguyên quan hệ đó thì người đã quen bảng không phải học lại.
           Mỗi nhãn nằm trong `<span>` riêng — không chỉ để test truy vấn được

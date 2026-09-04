@@ -24,7 +24,9 @@ import { LOGIN_REASONS, decideEntry, type LoginReason } from "./lib/guard-decisi
 import { ensureMe } from "./lib/me";
 import { validateCustomersSearch } from "./lib/customers-search";
 import { validateCalendarSearch } from "./lib/calendar-search";
+import { validateFieldSearch } from "./lib/field-search";
 import { validateRentalsSearch } from "./lib/rentals-search";
+import { validateRequestsSearch } from "./lib/requests-search";
 import { PendingApprovalPage } from "./pages/pending-approval-page";
 import { LoginPage } from "./pages/login-page";
 import { StatsPage } from "./pages/stats-page";
@@ -208,9 +210,14 @@ const pendingApprovalRoute = createRoute({
  * viên, không phải việc quản trị. Hàng rào dữ liệu tương ứng ở server là
  * `staffGuard` (đòi hồ sơ ACTIVE), không phải `requireRole`.
  */
+/**
+ * `?status=` sống ở URL cùng lý lẽ bốn route kia: F5 không mất bộ lọc, Back trả
+ * về đúng bộ lọc vừa xem, và gửi được link "xem giúp mấy yêu cầu chưa xử lý".
+ */
 const requestsRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: "/requests",
+  validateSearch: validateRequestsSearch,
   component: lazy(() => import("./pages/requests-page"), "RequestsPage"),
 });
 
@@ -341,6 +348,22 @@ const rentalsRoute = createRoute({
   component: lazy(() => import("./pages/rentals-page"), "RentalsPage"),
 });
 
+/**
+ * Màn Hiện trường — hình dạng riêng cho việc làm NGOÀI ĐƯỜNG, không phải bản thu
+ * nhỏ của `/rentals`. Lý lẽ đầy đủ ở JSDoc của `FieldPage` và ở surface brief
+ * `.impeccable/surfaces/src-pages-field-page-tsx.md`.
+ *
+ * `?rental=` sống ở URL cùng lý lẽ bốn route trên: nhân viên chụp dở, 4G rớt,
+ * tải lại trang — chỗ đứng phải còn nguyên. `validateFieldSearch` lọc giá trị
+ * lạ thay vì throw, cùng khuôn ba validator kia.
+ */
+const fieldRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/field",
+  validateSearch: validateFieldSearch,
+  component: lazy(() => import("./pages/field-page"), "FieldPage"),
+});
+
 const routeTree = rootRoute.addChildren([
   publicLayoutRoute.addChildren([
     loginRoute,
@@ -359,6 +382,7 @@ const routeTree = rootRoute.addChildren([
     customerDetailRoute,
     requestsRoute,
     rentalsRoute,
+    fieldRoute,
   ]),
 ]);
 

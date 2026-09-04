@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { CustomerCards } from "../components/customers/customer-cards";
 import { CustomerTable } from "../components/customers/customer-table";
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
@@ -9,6 +10,7 @@ import { TextField } from "../components/ui/text-field";
 import { CUSTOMERS_PAGE_SIZE, connectionFailed, customersListQuery } from "../lib/customers";
 import { shouldResyncSearchText } from "../lib/customers-search";
 import { errorMessage } from "../lib/errors";
+import { useLayoutVariant } from "../hooks/use-layout-variant";
 
 /**
  * Màn danh sách khách hàng. `q` rỗng CỐ Ý trả về trang đầu tiên của TOÀN BỘ
@@ -20,6 +22,7 @@ import { errorMessage } from "../lib/errors";
  * (`apps/api/src/routes/rentals.ts`).
  */
 export function CustomersListPage() {
+  const variant = useLayoutVariant();
   // `strict: false` chứ không `customersListRoute.useSearch()` — cùng lý do
   // `login-page.tsx` và `rental-calendar.tsx:299` làm vậy: import route vào
   // page dựng ra chu trình module.
@@ -122,7 +125,17 @@ export function CustomersListPage() {
         </div>
       )}
 
-      <CustomerTable rows={query.data?.ok ? query.data.customers : []} listSearch={{ q, page }} />
+      {/* Một hình dạng, không phải cả hai rồi ẩn bằng CSS: mỗi dòng/thẻ dựng
+          hai link và một chip, nên dựng cả hai bản là nhân đôi cây DOM của một
+          danh sách 20 dòng. Cùng quyết định `staff-table.tsx` đã ghi. */}
+      {variant === "mobile" ? (
+        <CustomerCards
+          rows={query.data?.ok ? query.data.customers : []}
+          listSearch={{ q, page }}
+        />
+      ) : (
+        <CustomerTable rows={query.data?.ok ? query.data.customers : []} listSearch={{ q, page }} />
+      )}
 
       {/* `isFetching`, KHÔNG `isPending`: với `placeholderData` thì từ lần tải thứ
           hai trở đi `status` là "success" ngay nên `isPending` luôn false —
@@ -148,7 +161,7 @@ export function CustomersListPage() {
               disabled={page <= 1}
               onClick={() => void navigate({ search: { q, page: Math.max(1, page - 1) } })}
             >
-              <Icon name="arrow-left" className="mr-1" />
+              <Icon name="arrow-left" />
               Trước
             </Button>
           )}
@@ -164,7 +177,7 @@ export function CustomersListPage() {
               onClick={() => void navigate({ search: { q, page: Math.min(totalPages, page + 1) } })}
             >
               Sau
-              <Icon name="arrow-right" className="ml-1" />
+              <Icon name="arrow-right" />
             </Button>
           )}
         </div>

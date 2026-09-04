@@ -73,7 +73,21 @@ export function AppShell({
         {/* `tabIndex={-1}`: không có nó thì nhảy `#main` chỉ cuộn màn hình mà
             KHÔNG chuyển tiêu điểm — lần Tab kế tiếp lại quay về ngay sau skip
             link, tức nút đầu tiên của nav, và link trở thành vô dụng. */}
-        <main id="main" tabIndex={-1} className="page-gutter flex-1 py-4">
+        {/*
+          `max-w-app` (1440px, khai ở `index.css`) + `mx-auto`: TRẦN bề rộng nội dung.
+
+          Không có nó, `main` giãn theo cửa sổ — đo ở 1920px: `main` rộng 1712px
+          và dòng văn xuôi dài nhất chạy **1664px ≈ 208ch**, trong khi ngưỡng đọc
+          được là 65–75ch. Hệ quả không chỉ ở chữ: hàng "Cần chú ý" kéo ngang
+          1650px với mũi tên mắc kẹt tận mép phải, nên mắt phải đi hết bề ngang
+          màn hình mới tới chỗ bấm; ba thẻ doanh thu phình ~550px cho một con số.
+
+          Con số và lý lẽ chọn 1440 nằm cạnh chỗ khai token, không chép lại ở đây.
+
+          `w-full` bắt buộc đi kèm: `main` là flex item của cột dọc bọc ngoài, và
+          `max-width` một mình không ép nó nở ra trước khi bị chặn.
+        */}
+        <main id="main" tabIndex={-1} className="page-gutter mx-auto w-full max-w-app flex-1 py-4">
           {children}
         </main>
         <AppNav variant="bottom" me={me} />

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useAvatarUrl } from "../../hooks/use-avatar-url";
 import { ROLE_LABEL, type Me } from "../../lib/me";
 import { Modal } from "../ui/modal";
@@ -10,10 +10,11 @@ import { Icon, type IconName } from "../ui/icon";
 
 /**
  * Bảy điểm đến, hai hình dạng. `NAV_ITEMS` là danh sách duy nhất — sidebar
- * (≥768) hiện cả bảy; bottom nav (<768) chỉ có chỗ cho hai cái đầu trực tiếp
- * (Thống kê, Lịch), phần còn lại nằm sau nút **Thêm**. Một nguồn dữ liệu duy
- * nhất nghĩa là thêm một mục mới chỉ sửa MỘT chỗ, không phải nhớ sửa cả hai
- * hình dạng.
+ * (≥768) hiện cả bảy; bottom nav (<768) chỉ có chỗ cho hai ô trực tiếp, và HAI
+ * ô đó do `BOTTOM_DIRECT` chọn theo đích chứ không phải hai mục đầu bảng (xem
+ * chú thích tại chỗ khai nó). Phần còn lại nằm sau nút **Thêm**. Một nguồn dữ
+ * liệu duy nhất nghĩa là thêm một mục mới chỉ sửa MỘT chỗ, không phải nhớ sửa
+ * cả hai hình dạng.
  *
  * `kind: "soon"` = tính năng chưa xây (Plan C+). Với các mục còn lại, route
  * CHƯA TỒN TẠI nên phần tử KHÔNG được là `<Link>` — một link tới route không
@@ -32,7 +33,14 @@ type NavItem =
       /** Hình nhận dạng điểm đến. Bảy dòng chữ cùng cỡ cùng màu thì mắt phải
        *  ĐỌC mới biết mình ở đâu; icon cho nhận ra bằng hình dạng. */
       readonly icon: IconName;
-      readonly to: "/" | "/staff" | "/calendar" | "/customers" | "/requests" | "/rentals";
+      readonly to:
+    | "/"
+    | "/staff"
+    | "/calendar"
+    | "/customers"
+    | "/requests"
+    | "/rentals"
+    | "/field";
       /** Hiện số việc đang chờ cạnh nhãn. Chỉ `/requests` dùng, xem `AppNav`. */
       readonly badge?: "newRequests";
       readonly ownerOnly?: true;
@@ -45,7 +53,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   { kind: "link", label: "Yêu cầu", to: "/requests", badge: "newRequests", icon: "nav-requests" },
   { kind: "link", label: "Đơn thuê", to: "/rentals", icon: "nav-rentals" },
   { kind: "link", label: "Khách hàng", to: "/customers", icon: "nav-customers" },
-  { kind: "soon", label: "Bàn giao", icon: "nav-handover" },
+  { kind: "link", label: "Hiện trường", to: "/field", icon: "nav-handover" },
   // Chỉ hiện với OWNER — đây là hàng rào của TRẢI NGHIỆM, không phải của dữ
   // liệu: `beforeLoad` của route `/staff` và `/staff/users*` ở server mới là
   // hàng rào thật (403 FORBIDDEN). Bỏ điều kiện ở đây thì STAFF thấy một link
@@ -246,17 +254,76 @@ function SidebarNav({ me }: { readonly me: Me | null }) {
 }
 
 /**
- * Đúng 3 ô trực tiếp (Thống kê · Lịch · Thêm), không phải 4. Bảng mục ở
- * CLAUDE.md/design doc gán CHỈ Thống kê và Lịch cho bottom nav trực tiếp —
- * bốn mục còn lại (Đơn thuê, Khách hàng, Bàn giao, Nhân viên) và hai hành động
- * tài khoản đều "trong Thêm". Làm đúng bảng đó cho ra 3 ô, không phải 4: phần
- * mô tả ("bốn ô ~85px") không khớp với chính bảng nó đi kèm. Ưu tiên bảng —
- * nó cụ thể tới từng route — và 3 ô rộng hơn 4 ô nên vẫn thoả mọi ngưỡng vùng
- * chạm/chữ mà phần mô tả kia đang bảo vệ.
+ * Bốn điểm đến trực tiếp của bottom nav, **hai bên trái và một bên phải một ô
+ * HÀNH ĐỘNG nằm chính giữa**. Chọn theo ý định, không theo vị trí trong
+ * `NAV_ITEMS`.
+ *
+ * Bản trước lấy hai mục đầu bằng `const [home, lich, ...rest] = NAV_ITEMS`, nên
+ * thứ tự của sidebar và nội dung của bottom nav dính vào nhau: chèn một mục vào
+ * đầu bảng là bottom nav lặng lẽ đổi ô — không lỗi biên dịch, không test nào đỏ.
+ * Nó còn hard-code `nav-stats`/`nav-calendar` thay vì đọc `item.icon`, nên đổi
+ * đích của ô mà quên đổi icon cho ra một ô mang hình của trang khác.
+ *
+ * **Ô đầu là Thống kê (`/`), tức trang chủ.** Trong một khoảng ngắn của
+ * 2026-09-04 ô này là màn Hiện trường, với lý lẽ "thứ cần trong một chạm là việc
+ * đang phải làm ngoài đường". Người dùng quyết định ngược lại: trang chủ là
+ * Thống kê, và Hiện trường nằm trong "Thêm" cùng ba mục kia. Ghi lại vì lý lẽ cũ
+ * đã nằm trong git history và đọc nó mà không có dòng này thì tưởng đây là một
+ * lần trôi ngẫu nhiên.
+ *
+ * **"Lên đơn" nằm trong thanh này.** Trước 2026-09-04 nó là một nút trên đầu màn
+ * Thống kê — sống được vì Thống kê là ô đầu. Nhưng nó là hành động sinh ra dữ
+ * liệu của cả hệ thống, nên nó không nên phụ thuộc vào việc màn nào đang chiếm ô
+ * đầu; ở đây thì nó tới được từ MỌI trang.
+ *
+ * Năm ô, số LẺ, để ô hành động rơi đúng giữa: hai đích · hành động · một đích ·
+ * Thêm.
  */
+const BOTTOM_LEFT = ["/", "/calendar"] as const;
+const BOTTOM_RIGHT = ["/requests"] as const;
+
+/**
+ * `RentalForm` chỉ được nạp khi người dùng bấm "Lên đơn" — cùng lý lẽ
+ * `stats-page.tsx` đã ghi: 560 dòng cộng nhánh `@v9/shared/domain/money` không
+ * có việc gì trong chunk vào cửa, mà thanh điều hướng thì nằm trên MỌI trang.
+ */
+const RentalForm = lazy(() =>
+  import("../rentals/rental-form").then((m) => ({ default: m.RentalForm })),
+);
+
+/**
+ * Một ô ĐIỂM ĐẾN của bottom nav, dùng cho cả hai bên của ô hành động ở giữa.
+ *
+ * Tách ra vì nó được dựng ở hai chỗ (`left` và `right`), và hai bản chép tay của
+ * cùng một ô là hai chỗ để `activeProps` hay ngưỡng vùng chạm trôi khỏi nhau.
+ */
+function NavCell({ item }: { readonly item: Extract<NavItem, { kind: "link" }> }) {
+  return (
+    <Link
+      to={item.to}
+      className={`${TOUCH} flex-1 flex-col justify-center gap-0.5 text-ink`}
+      activeProps={{ className: "font-semibold" }}
+    >
+      {/* `item.icon`, không phải một tên viết cứng: ô và hình của nó phải đến từ
+          cùng một dòng dữ liệu, nếu không đổi đích mà quên đổi hình cho ra một ô
+          mang hình của trang khác. */}
+      <Icon name={item.icon} />
+      <span className="flex items-center gap-1">
+        {item.label}
+        {/* Badge đi theo mục, không viết cứng cho `/requests`: mục nào khai
+            `badge` thì có, và hôm nay chỉ `/requests` khai. */}
+        {item.badge === "newRequests" && <NewRequestBadge />}
+      </span>
+    </Link>
+  );
+}
+
 function BottomNav({ me }: { readonly me: Me | null }) {
   const [moreOpen, setMoreOpen] = useState(false);
+  /** Form lên đơn, mở từ ô hành động ở giữa thanh. */
+  const [formOpen, setFormOpen] = useState(false);
   const closeMore = () => setMoreOpen(false);
+  const navigate = useNavigate();
 
   /*
    * Đóng sheet khi cửa sổ vượt qua 768px — cùng ngưỡng `md` mà `AppShell` dùng
@@ -285,8 +352,25 @@ function BottomNav({ me }: { readonly me: Me | null }) {
     return () => mq.removeEventListener("change", onChange);
   }, [moreOpen]);
 
-  const [home, lich, ...rest] = NAV_ITEMS;
-  const moreItems = rest.filter((item) => visibleFor(item, me));
+  const isDirect = (item: NavItem): boolean =>
+    item.kind === "link" &&
+    ([...BOTTOM_LEFT, ...BOTTOM_RIGHT] as readonly string[]).includes(item.to);
+
+  /*
+   * `flatMap` + `find` chứ không `filter` trên `NAV_ITEMS`: thứ tự các ô phải là
+   * thứ tự khai ở `BOTTOM_LEFT`/`BOTTOM_RIGHT`, không phải thứ tự tình cờ của
+   * bảng mục. Một đích khai ở đó mà không có trong `NAV_ITEMS` biến mất lặng lẽ
+   * thay vì dựng một ô rỗng — cùng cách `visibleFor` xử lý mục của OWNER.
+   */
+  const cellsFor = (paths: readonly string[]) =>
+    paths.flatMap((to) => {
+      const found = NAV_ITEMS.find((item) => item.kind === "link" && item.to === to);
+      return found?.kind === "link" && visibleFor(found, me) ? [found] : [];
+    });
+
+  const left = cellsFor(BOTTOM_LEFT);
+  const right = cellsFor(BOTTOM_RIGHT);
+  const moreItems = NAV_ITEMS.filter((item) => !isDirect(item) && visibleFor(item, me));
 
   return (
     <>
@@ -294,23 +378,36 @@ function BottomNav({ me }: { readonly me: Me | null }) {
         className="sticky bottom-0 z-10 flex min-h-14 shrink-0 items-stretch border-t border-border bg-surface pb-safe text-xs md:hidden"
         aria-label="Điều hướng chính"
       >
-        <Link
-          to={home?.kind === "link" ? home.to : "/"}
-          className={`${TOUCH} flex-1 flex-col justify-center gap-0.5 text-ink`}
-          activeProps={{ className: "font-semibold" }}
-        >
-          <Icon name="nav-stats" />
-          {home?.label}
-        </Link>
+        {left.map((item) => (
+          <NavCell key={item.to} item={item} />
+        ))}
 
-        <Link
-          to={lich?.kind === "link" ? lich.to : "/calendar"}
-          className={`${TOUCH} flex-1 flex-col justify-center gap-0.5 text-ink`}
-          activeProps={{ className: "font-semibold" }}
+        {/*
+          Ô HÀNH ĐỘNG, không phải một điểm đến — nên nó là `<button>` và nó KHÁC
+          bốn ô kia bằng màu, không chỉ bằng vị trí. Bốn ô điều hướng dẫn tới một
+          nơi; ô này tạo ra dữ liệu, và nhầm hai loại đó là nhầm thứ không quay
+          lại được với thứ quay lại được.
+
+          `w-auto px-3` chứ không `flex-1`: bốn ô kia chia đều phần còn lại, còn
+          ô này rộng theo nhãn của nó. Cho nó `flex-1` là để bề rộng của nó phụ
+          thuộc vào việc hôm nay có mấy ô — mà số ô thì đổi theo vai trò người
+          đăng nhập.
+        */}
+        <button
+          type="button"
+          onClick={() => setFormOpen(true)}
+          // Phản hồi khi bấm. Bốn ô kia là `<Link>` và đổi trạng thái ngay (trang
+          // chuyển); ô này MỞ MỘT FORM, mà form thì mất một nhịp để nạp chunk —
+          // không có gì nhấp nháy dưới ngón tay thì cú chạm đầu đọc ra như trượt.
+          className={`${TOUCH} w-auto flex-col justify-center gap-0.5 rounded-card bg-accent px-3 font-semibold text-accent-ink transition-colors duration-(--duration-instant) ease-standard active:bg-accent-active`}
         >
-          <Icon name="nav-calendar" />
-          {lich?.label}
-        </Link>
+          <Icon name="plus" />
+          Lên đơn
+        </button>
+
+        {right.map((item) => (
+          <NavCell key={item.to} item={item} />
+        ))}
 
         <button
           type="button"
@@ -319,7 +416,7 @@ function BottomNav({ me }: { readonly me: Me | null }) {
           aria-expanded={moreOpen}
           className={`${TOUCH} flex-1 flex-col justify-center gap-0.5 text-ink`}
         >
-          <Icon name="plus" />
+          <Icon name="settings" />
           Thêm
         </button>
       </nav>
@@ -335,27 +432,84 @@ function BottomNav({ me }: { readonly me: Me | null }) {
        * bàn phím mở nó ra là không có đường ra. `ui/modal.tsx` (`showModal()`)
        * cho cả bốn thứ đó.
        */}
+      {/* `fallback={null}`: `RentalForm` tự dựng lớp phủ của nó, nên một skeleton
+          ở đây sẽ nằm chèn vào giữa TRANG chứ không nằm trong modal — cùng lý lẽ
+          `stats-page.tsx` đã ghi cho đúng component này. */}
+      {formOpen && (
+        <Suspense fallback={null}>
+          <RentalForm
+            onClose={() => setFormOpen(false)}
+            onCreated={() => {
+              setFormOpen(false);
+              /*
+               * Đi tới màn Đơn thuê sau khi tạo, KHÔNG ở nguyên chỗ cũ.
+               *
+               * Thanh nav nằm trên mọi trang nên nó không có chỗ nào để đặt câu
+               * "đã tạo xong" — mà một hành động không quay lại được thì im lặng
+               * là tệ nhất. `/rentals` là nơi đơn mới chắc chắn hiện ra (hàng đợi
+               * hoặc sổ cái), nên chính màn hình đó là lời xác nhận.
+               *
+               * KHÔNG đi tới `/field`: đơn mới thường đặt cho ngày sau, mà hàng
+               * đợi của màn đó chỉ nhìn bảy ngày tới — người dùng sẽ nhận đúng
+               * câu "không thấy đơn đó" ngay sau khi vừa tạo nó.
+               */
+              void navigate({
+                to: "/rentals",
+                // `/rentals` bắt buộc search params (`validateRentalsSearch`) —
+                // gửi giá trị MẶC ĐỊNH của chính validator đó, tức mở ra hàng
+                // đợi trang 1 không lọc, nơi đơn vừa tạo chắc chắn nằm trong.
+                search: { mode: "queue", q: "", page: 1, from: "", to: "" },
+              });
+            }}
+          />
+        </Suspense>
+      )}
+
       {moreOpen && (
         <Modal label="Thêm" placement="bottom" onClose={closeMore}>
           {(close) => (
             <div>
-              <ul className="flex flex-col gap-1 p-3">
+              {/*
+                Tay nắm kéo. Không kéo được thật — `<dialog>` không có cử chỉ vuốt
+                — nhưng nó là thứ nói cho người dùng biết TẤM NÀY LÀ MỘT SHEET
+                trồi lên từ đáy, chứ không phải trang vừa đổi. Không có nó, tấm
+                phủ chiếm nửa dưới màn hình và không có dấu hiệu nào cho biết phần
+                trên vẫn còn đó.
+
+                `aria-hidden`: thuần thị giác, và ngay dưới đã có tiêu đề thật cho
+                trình đọc màn hình.
+              */}
+              <div aria-hidden="true" className="flex justify-center pt-2 pb-1">
+                <span className="h-1 w-10 rounded-card bg-border-strong" />
+              </div>
+
+              {/* Tiêu đề nhìn thấy được, không chỉ `aria-label` của `<dialog>`:
+                  người nhìn cũng cần biết tấm này là gì, không riêng người nghe. */}
+              <h2 className="m-0 px-3 pb-1 text-sm font-semibold text-ink">Thêm</h2>
+
+              <ul className="m-0 flex list-none flex-col gap-1 p-3 pt-1">
                 {moreItems.map((item) => (
                   <li key={item.label}>
                     {item.kind === "link" ? (
                       <Link
                         to={item.to}
                         onClick={close}
-                        className={`${TOUCH} gap-2 rounded-card px-3 text-ink ${HOVER_ROW}`}
+                        className={`${TOUCH} w-full gap-3 rounded-card px-3 text-ink ${HOVER_ROW}`}
                       >
                         <Icon name={item.icon} />
-                        {item.label}
+                        <span className="flex-1 text-left">{item.label}</span>
+                        {item.badge === "newRequests" && <NewRequestBadge />}
+                        {/* Mũi tên: hàng này ĐI TỚI một trang. Không có nó, một
+                            hàng chữ + icon trong sheet trông y hệt một nhãn không
+                            bấm được — cùng lý do `ClosedDuty` ở màn Hiện trường
+                            mang mũi tên. */}
+                        <Icon name="chevron-right" className="text-muted" />
                       </Link>
                     ) : (
                       <button
                         type="button"
                         disabled
-                        className={`${TOUCH} w-full gap-2 rounded-card px-3 text-muted`}
+                        className={`${TOUCH} w-full gap-3 rounded-card px-3 text-muted`}
                       >
                         <Icon name={item.icon} />
                         <span className="flex-1 truncate text-left">{item.label}</span>

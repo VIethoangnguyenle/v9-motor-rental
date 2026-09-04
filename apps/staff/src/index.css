@@ -193,6 +193,32 @@
   --color-accent-soft: oklch(96% 0.019 255);
 
   /* Bán kính nhỏ và thống nhất: app mật độ cao, bo nhiều làm hàng bảng rối mắt. */
+  /*
+   * Trần bề rộng nội dung, sinh ra utility `max-w-app`.
+   *
+   * 90rem = 1440px, CÙNG con số `DESIGN.md` §5 đặt cho `apps/web` — hai app khác
+   * hệ thị giác nhưng không có lý do gì để khác nhau ở "một trang rộng tối đa
+   * bao nhiêu", và một con số dùng chung thì đổi được ở một chỗ.
+   *
+   * Vì sao cần trần: đo ở 1920px trước khi có nó, `main` rộng 1712px và dòng văn
+   * xuôi dài nhất chạy 1664px ≈ 208ch (ngưỡng đọc được là 65–75ch). Hàng "Cần
+   * chú ý" kéo ngang 1650px với mũi tên mắc kẹt tận mép phải.
+   *
+   * Vì sao 1440 chứ không 1280 (`max-w-7xl` có sẵn): `dayCountForWidth` chuyển
+   * sang 14 ngày từ mốc 1280px của VÙNG LƯỚI, mà ở trần 1280 vùng lưới chỉ còn
+   * 1232px — tức trần đó khoá lịch ở 10 ngày vĩnh viễn. 1440 cho vùng lưới
+   * 1392px, đủ để mốc 14 ngày với tới được.
+   *
+   * ⚠️ Bản đầu của chú thích này viết "1392px gần như vừa khít" cho 10 ngày —
+   * SAI, và đo mới bác bỏ: ở 1920 lịch cuộn 449px chứ không vừa, vì nó đã
+   * chuyển sang 14 ngày. Thứ làm lưới vừa khung là bỏ `min-w-max` ở
+   * `calendar-timeline.tsx`, không phải con số này.
+   *
+   * Đây là trần của KHỔ TRANG, không phải của văn xuôi: đoạn chữ vẫn cần
+   * `max-w-prose` riêng, vì 1392px vẫn là ~148ch.
+   */
+  --container-app: 90rem;
+
   --radius-card: 0.375rem;
 
   /*
@@ -354,6 +380,82 @@
       opacity: 1;
     }
   }
+}
+
+/*
+ * ── Ảnh bằng chứng vừa đáp xuống trạm của nó ─────────────────────────────────
+ *
+ * Khoảnh khắc dàn dựng của màn Hiện trường, tương ứng với `just-changed` của
+ * sheet chi tiết đơn — nhưng cho một sự kiện KHÁC, nên là một hiệu ứng khác chứ
+ * không phải cùng một thứ dùng lại.
+ *
+ * Việc nó giải thích: nhân viên bấm chụp, camera của hệ điều hành CHIẾM TRỌN màn
+ * hình, rồi trả họ về đây. Không có gì đánh dấu thì tấm ảnh mới chỉ lặng lẽ xuất
+ * hiện trong một hàng đã có sẵn vài tấm — và câu hỏi "tấm vừa chụp đã lưu chưa"
+ * không có câu trả lời nào ngoài việc đếm lại. `PRODUCT.md` nguyên tắc #3 coi ảnh
+ * bàn giao là bằng chứng bảo vệ cả hai phía; "đã ghi được chưa" vì vậy là câu
+ * đáng được trả lời bằng một chuyển động, không phải bằng suy đoán.
+ *
+ * `translateY` NGƯỢC chiều cuộn (từ dưới lên): tấm ảnh đi vào chỗ của nó trên
+ * trục, không rơi từ trên xuống. Trục chạy từ trên xuống nên "ghim vào" là một
+ * chuyển động đi lên đúng vị trí.
+ *
+ * `--duration-quick` (180ms) + `--ease-enter`: đây là phản hồi cho một hành động
+ * vừa xong, không phải một màn chào. Dài hơn thì nó thành độ trễ.
+ *
+ * KHÔNG cần khối `prefers-reduced-motion` riêng, khác `just-changed`: chuỗi đó
+ * kết ở `opacity: 0` nên quét 1ms làm nó biến mất hoàn toàn, còn chuỗi này kết ở
+ * TRẠNG THÁI NHÌN THẤY ĐƯỢC. Quét toàn cục nhảy thẳng tới khung cuối là đúng
+ * đích: ảnh có mặt, chỉ không có quãng đường.
+ */
+@keyframes v9-pinned {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility pinned {
+  animation: v9-pinned var(--duration-quick) var(--ease-enter) 1 both;
+}
+
+/*
+ * ── Lật sang ngày khác trên màn Lịch hẹp ─────────────────────────────────────
+ *
+ * Bảng một ngày thay TOÀN BỘ nội dung mỗi lần bấm ‹ ›. Không có hướng thì hai
+ * nút cho ra cùng một cú nháy, và người dùng lật vài lần là mất dấu mình đang đi
+ * tới hay lùi — trên một màn hình mà thứ duy nhất neo họ lại là dòng "Thứ Sáu,
+ * 04-09" ở đầu trang.
+ *
+ * Hướng đi qua `--v9-day-from` chứ không nhân đôi keyframe: hai chiều là cùng
+ * một chuyển động, khác dấu.
+ *
+ * Nội dung mới trượt VÀO từ phía nó tới — bấm ‹ (lùi) thì nội dung tới từ bên
+ * trái. Ngược lại là ngày mới trông như đang bị đẩy đi thay vì đang tới.
+ */
+@keyframes v9-day-enter {
+  from {
+    opacity: 0;
+    transform: translateX(var(--v9-day-from));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@utility day-enter-next {
+  --v9-day-from: 0.75rem;
+  animation: v9-day-enter var(--duration-quick) var(--ease-enter) 1 both;
+}
+
+@utility day-enter-prev {
+  --v9-day-from: -0.75rem;
+  animation: v9-day-enter var(--duration-quick) var(--ease-enter) 1 both;
 }
 
 /*

@@ -18,9 +18,11 @@ const RentalForm = lazy(() =>
   import("../components/rentals/rental-form").then((m) => ({ default: m.RentalForm })),
 );
 import { Alert } from "../components/ui/alert";
+import { BrandMark } from "../components/ui/brand-mark";
 import { Button } from "../components/ui/button";
 import { Icon } from "../components/ui/icon";
 import { Skeleton } from "../components/ui/skeleton";
+import { useLayoutVariant } from "../hooks/use-layout-variant";
 import { errorMessage } from "../lib/errors";
 import { statsQuery } from "../lib/rentals";
 
@@ -38,6 +40,7 @@ function toVnDate(ymd: string): string {
 }
 
 export function StatsPage() {
+  const variant = useLayoutVariant();
   const { data, isPending } = useQuery(statsQuery);
   // Task 7: nút "+ Lên đơn" từng là placeholder `disabled`. `RentalForm` chỉ
   // mount khi mở — đóng lại (huỷ hoặc tạo xong) là dọn sạch state của form,
@@ -57,12 +60,43 @@ export function StatsPage() {
     // có một form: đó là chỗ `/change-password` từng trượt, vì nó mượn
     // `ui/page-shell.tsx` — khung dành cho trang đứng NGOÀI shell.
     <div className="flex flex-col gap-4">
+      {/*
+        Khoá nhận diện, chỉ ở TRANG CHỦ.
+        
+        Không đặt vào `AppShell` để nó hiện trên mọi trang: đây là app vận hành,
+        nhân viên mở nó hàng trăm lần mỗi ca và không cần được nhắc mình đang
+        dùng phần mềm của ai ở mỗi màn hình. Trang chủ là cửa vào — và trên điện
+        thoại, khi app được cài thành PWA, đây là thứ đầu tiên hiện ra sau màn
+        khởi động.
+        
+        `text-ink-soft` chứ không `text-ink`: mark đứng TRÊN tiêu đề trang, nên
+        nó không được cạnh tranh với "Thống kê" về độ đậm. Nhận diện ở đây là
+        chỗ đứng, không phải tiêu đề.
+      */}
+      <div className="flex items-center gap-2 text-ink-soft">
+        <BrandMark className="h-8 w-8 shrink-0" />
+        {/* `tracking-wide` + `uppercase`: cùng khuôn nhãn của app (xem tiêu đề
+            "DOANH THU" / "CẦN CHÚ Ý" ngay dưới), nên tên thương hiệu đọc ra là
+            một nhãn chỗ-đứng chứ không phải một tiêu đề thứ hai. */}
+        <span className="text-sm font-semibold tracking-wide uppercase">V9 Motor Rental</span>
+      </div>
+
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-ink">Thống kê</h1>
-        <Button type="button" onClick={() => setFormOpen(true)}>
-          <Icon name="plus" className="mr-1" />
-          Lên đơn
-        </Button>
+        {/*
+          Chỉ ở màn RỘNG. Bottom nav của điện thoại đã có ô hành động "Lên đơn"
+          ở chính giữa và nó nằm trên MỌI trang, nên giữ nút này ở đây nữa là bày
+          cùng một hành động hai lần trong một khung nhìn 390px.
+
+          Không bỏ hẳn: sidebar của màn rộng KHÔNG có ô hành động nào, nên đây
+          vẫn là đường vào "Lên đơn" duy nhất ở đó.
+        */}
+        {variant === "desktop" && (
+          <Button type="button" onClick={() => setFormOpen(true)}>
+            <Icon name="plus" />
+            Lên đơn
+          </Button>
+        )}
       </div>
 
       {/* `fallback={null}`: `RentalForm` tự dựng lớp phủ của nó, nên một
