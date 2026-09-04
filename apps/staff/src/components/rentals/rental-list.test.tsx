@@ -58,9 +58,12 @@ describe("RentalList", () => {
 
   describe("hình dạng thẻ (màn hẹp)", () => {
     // `useLayoutVariant` đọc `window.matchMedia` trực tiếp (không qua React
-    // context), nên đây là cách duy nhất ép hook trả "mobile" trong test —
-    // happy-dom không cắm sẵn `matchMedia`, nên bản gốc của nó không tồn tại
-    // để khôi phục; xoá thuộc tính đi là đủ dọn dẹp.
+    // context), nên stub là cách duy nhất ép hook trả "mobile" trong test — không
+    // có seam ở tầng React để tiêm qua. `window.matchMedia` là global THẬT ở
+    // happy-dom (không phải hàm thiếu cần polyfill — xem
+    // `use-layout-variant.test.ts`), và global đó DÙNG CHUNG cho cả tiến trình
+    // `bun test`, nên `afterEach` phải trả lại đúng bản gốc đã lưu — bỏ quên thì
+    // stub rò sang các file test khác chạy sau trong cùng tiến trình.
     const originalMatchMedia = window.matchMedia.bind(window);
 
     afterEach(() => {
