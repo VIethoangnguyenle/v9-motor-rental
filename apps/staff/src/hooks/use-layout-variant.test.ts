@@ -1,18 +1,37 @@
-import { describe, expect, it, beforeEach } from "bun:test";
+import { describe, expect, it, beforeEach, afterEach } from "bun:test";
 import { renderHook } from "@testing-library/react";
 import { useLayoutVariant } from "./use-layout-variant";
 
+// Ngưỡng thật của hook, xem `use-layout-variant.ts` (không export, nên lặp lại
+// nguyên văn ở đây — đổi ngưỡng ở hook mà quên đổi ở đây thì test này SAI ÂM,
+// không phải điều tệ nhất nhưng đáng biết).
+const MD_QUERY = "(min-width: 768px)";
+
+// `window.matchMedia` là global CẢ TIẾN TRÌNH `bun test` (`preload` chỉ init
+// module một lần) — không lưu lại bản gốc và trả về thì stub của file chạy
+// SAU CÙNG còn nguyên cho mọi file test khác chạy sau nó, kể cả những test
+// không liên quan gì tới layout variant. `lib/theme.ts`, `app-nav.tsx`,
+// `rental-detail-sheet.tsx` đều gọi `matchMedia` với query KHÁC — stub chỉ
+// khớp đúng `MD_QUERY`, mọi query khác rơi về bản gốc của happy-dom.
+const originalMatchMedia = window.matchMedia.bind(window);
+
 function stubMatchMedia(matches: boolean) {
-  window.matchMedia = ((q: string) => ({
-    matches,
-    media: q,
-    addEventListener() {},
-    removeEventListener() {},
-  })) as unknown as typeof window.matchMedia;
+  window.matchMedia = ((q: string) =>
+    q === MD_QUERY
+      ? {
+          matches,
+          media: q,
+          addEventListener() {},
+          removeEventListener() {},
+        }
+      : originalMatchMedia(q)) as unknown as typeof window.matchMedia;
 }
 
 describe("useLayoutVariant", () => {
   beforeEach(() => stubMatchMedia(false));
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
 
   it("dưới ngưỡng md → mobile", () => {
     stubMatchMedia(false);

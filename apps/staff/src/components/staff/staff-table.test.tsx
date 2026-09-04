@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "bun:test";
+import { describe, expect, it, beforeEach, afterEach } from "bun:test";
 import { render, screen, within } from "@testing-library/react";
 import { StaffTable } from "./staff-table";
 
@@ -14,13 +14,26 @@ const ROWS = [
   },
 ] as const;
 
+// Ngưỡng thật mà `StaffTable` phụ thuộc, qua `useLayoutVariant` — xem chú
+// thích tương tự ở `use-layout-variant.test.ts`.
+const MD_QUERY = "(min-width: 768px)";
+
+// Không lưu lại bản gốc và trả về thì stub này còn nguyên cho MỌI file test
+// khác chạy sau nó trong cùng tiến trình `bun test` — kể cả test không liên
+// quan gì tới `StaffTable`. Chỉ khớp đúng `MD_QUERY`; mọi query khác (vd.
+// `prefers-color-scheme`, `prefers-reduced-motion`) rơi về bản gốc happy-dom.
+const originalMatchMedia = window.matchMedia.bind(window);
+
 function stub(matches: boolean) {
-  window.matchMedia = ((q: string) => ({
-    matches,
-    media: q,
-    addEventListener() {},
-    removeEventListener() {},
-  })) as unknown as typeof window.matchMedia;
+  window.matchMedia = ((q: string) =>
+    q === MD_QUERY
+      ? {
+          matches,
+          media: q,
+          addEventListener() {},
+          removeEventListener() {},
+        }
+      : originalMatchMedia(q)) as unknown as typeof window.matchMedia;
 }
 
 const props = {
@@ -34,6 +47,9 @@ const props = {
 
 describe("StaffTable", () => {
   beforeEach(() => stub(true));
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
 
   it("desktop: vẫn là <table> đủ sáu cột", () => {
     stub(true);

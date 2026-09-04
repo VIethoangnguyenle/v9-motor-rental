@@ -10,9 +10,12 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator";
 
 // Ruling 5: happy-dom được cầm DOM, KHÔNG được cầm tầng mạng. `GlobalRegistrator.register()`
 // không chỉ "thêm global" — nó GHI ĐÈ mọi property của `window` lên `globalThis`, và tầng mạng ở
-// đây là BỐN global: `fetch`, `Request`, `Response`, `Headers`. Mất bốn cái đó thì `apps/api` đỏ
-// theo HAI kiểu khác nhau, đo trên ba file gọi `supertokens-node` (`querier.js` → SuperTokens core
-// ở `http://localhost:3567`) và trên `app.handle()` của Elysia:
+// đây là BẢY global: `fetch`, `Request`, `Response`, `Headers`, `FormData`, `File`, `Blob`. Ba cái
+// sau là thân request multipart (`t.File` của Elysia — `apps/api/src/routes/handover.ts`,
+// `routes/staff.ts` — dùng chúng để nhận ảnh upload); ranh giới "tầng mạng" của ruling này vốn đã
+// gồm cả thân request, không chỉ bốn global đầu. Mất bốn global đầu thì `apps/api` đỏ theo HAI
+// kiểu khác nhau, đo trên ba file gọi `supertokens-node` (`querier.js` → SuperTokens core ở
+// `http://localhost:3567`) và trên `app.handle()` của Elysia:
 //
 //   - Thiếu `fetch`: `NetworkError: Cross-Origin Request Blocked` — cửa sổ trình duyệt giả của
 //     happy-dom mặc định bật Same-Origin Policy, và gọi ra `localhost:3567` bị nó coi là khác gốc.
@@ -33,18 +36,27 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator";
 //   - không preload:                                37 pass / 0 fail  (baseline)
 //   - preload, chỉ bắt lại `fetch`:                  26 pass / 4 fail, 7 test biến mất — CORS
 //   - preload, bắt lại cả bốn global dưới đây:       37 pass / 0 fail  — khớp baseline
-// Bắt cả bốn global gốc TRƯỚC khi đăng ký, trả lại NGAY SAU — có DOM cho test component, KHÔNG đổi
+// Bắt cả bảy global gốc TRƯỚC khi đăng ký, trả lại NGAY SAU — có DOM cho test component, KHÔNG đổi
 // tầng mạng cho phần còn lại của repo. XOÁ khối dưới đây thì ba file `apps/api` đỏ lại theo MỘT
 // trong hai kiểu trên tuỳ dòng nào bị xoá, không kèm gợi ý nào tại chỗ lỗi nói đây là do DOM giả.
+// `FormData`/`File`/`Blob` chưa đo được ca đỏ cụ thể (chưa có test upload multipart nào ở
+// `apps/api` chạm tầng DOM giả này) — bắt lại theo ĐÚNG NGUYÊN TẮC của ba global mạng trên, phòng
+// trước thay vì đợi đo được triệu chứng rồi mới sửa.
 const nativeFetch = globalThis.fetch;
 const nativeRequest = globalThis.Request;
 const nativeResponse = globalThis.Response;
 const nativeHeaders = globalThis.Headers;
+const nativeFormData = globalThis.FormData;
+const nativeFile = globalThis.File;
+const nativeBlob = globalThis.Blob;
 GlobalRegistrator.register();
 globalThis.fetch = nativeFetch;
 globalThis.Request = nativeRequest;
 globalThis.Response = nativeResponse;
 globalThis.Headers = nativeHeaders;
+globalThis.FormData = nativeFormData;
+globalThis.File = nativeFile;
+globalThis.Blob = nativeBlob;
 
 // `@testing-library/react` thường tự móc `cleanup()` vào `afterEach` của framework
 // test — nhưng cơ chế tự móc đó dò global `afterEach` tại THỜI ĐIỂM MODULE INIT của
