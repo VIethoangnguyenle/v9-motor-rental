@@ -532,6 +532,10 @@ column.mjs`: cả 6 xe "cần 119px ✅", không xe nào cụt) — chỉ bất 
   trực tiếp từ `need`/`has` đo sống), chỉ hai dòng tóm tắt bên dưới nó — cùng lớp lỗi "probe mù
   không báo lỗi" mà `README.md` của thư mục này liệt kê, thêm một ca thứ tư chưa được liệt vào đó.
 
+  **Chưa xử lý** tại thời điểm đợt sửa cuối 2026-09-04 — hai con số `88` vẫn còn nguyên trong
+  `vehicle-column.mjs:42,44`. Giữ nguyên mục này thay vì đóng, để lần sau chạm probe này biết còn
+  nợ.
+
 - ✅ **Cổng cuối, cả bốn đã xanh** — đóng bởi ba commit ngay sau khi mục này được ghi lần đầu:
   `84c7b90` (eslint ignores), `63fc84c` (tsconfig include + sửa 40 lỗi/16 cảnh báo thật),
   `e19e0dd` (prettier). Ghi lại cấu hình đã thêm và vì sao, để lần sau chạm `eslint.config.js` hay
@@ -570,3 +574,63 @@ hợp lệ, chỉ là số hoặc điều kiện bên trong không còn khớp t
 cũng phải bị đo" mà `docs/ROADMAP.md` đã ghi từ đợt hệ thị giác — lần này lộ ra ở phép đo hình học
 DOM thay vì đếm class Tailwind, cùng nguyên nhân gốc: tin một con số vì nó _có vẻ_ được đo, mà không
 kiểm proof nó còn đang đo đúng thứ nó tuyên bố.
+
+## Nợ phát hiện thêm — đợt sửa cuối 2026-09-04
+
+Bốn món chưa được ghi ở đâu trước đó, phát hiện khi review 26 commit của nhánh này.
+
+- ⚠️ **Bug #2 (bảng `Nhân viên`) chỉ đóng dưới 768px — đúng ngay chỗ Task 10 đã sửa cho lịch.**
+  `useLayoutVariant` đổi sang hình bảng ở `min-width: 768px`. Ở cửa sổ 768px: sidebar
+  `md:w-[168px]` (`app-shell.tsx:61`) + `page-gutter` 1.25rem mỗi bên ở `≥768px`
+  (`index.css:241`, `= 40px` hai bên) → vùng nội dung thật ≈ `768 - 168 - 40 = 560px`, trong khi
+  bảng là `min-w-[640px]` (`staff-table.tsx:63`) → tràn ~80px, và cột hành động (cuối bảng) là cột
+  bị đẩy ra ngoài khung nhìn trước tiên. Dải hỏng kéo dài tới cửa sổ ≈848px (điểm mà vùng nội dung
+  vừa đúng 640px) — **ba kích thước iPad dọc phổ biến 768/810/834 nằm TRỌN trong dải đó**.
+
+  Không phải hồi quy của đợt này — hành vi này có từ trước. Nhưng đây đúng LOẠI sai lầm mà Task 10
+  đã sửa cho lịch (đo bề rộng CỬA SỔ trong khi ràng buộc thật là bề rộng VÙNG NỘI DUNG, xem
+  `use-layout-variant.ts` và chú thích "vì sao ở đây dùng cửa sổ là ĐÚNG" — đúng cho hình dạng
+  trang, sai cho bảng vì bảng bị sidebar ăn bớt chỗ). `staff-table.mjs` chỉ probe ở 390 và 1280px
+  (`staff-table.mjs:25`) nên cả hai đều lọt qua dải hỏng. Cách kiểm rẻ: thêm bề rộng 834 vào mảng
+  `W` của probe.
+
+- ⚠️ **Lịch có thể bắn hai `GET /rentals` mỗi lần mount ở ≥768px — suy luận từ code, CHƯA ĐO.**
+  `useCalendarDayCount` (`rental-calendar.tsx:180`) đọc `gridRef.current` trong `getSnapshot`; lần
+  render đầu ref còn `null` nên hàm trả cứng `7` (`rental-calendar.tsx:193`) → `gridWindow` tính từ
+  7 ngày → `rentalsQuery(gridWindow.from, gridWindow.to)` bắn ngay với `queryKey` đó. Sau khi mount,
+  `ResizeObserver` đo được bề rộng lưới thật, `dayCountForWidth` trả về số khác (10 hoặc 14 ở
+  ≥768px) → `gridWindow` đổi → `queryKey` đổi → React Query bắn round hai, kết quả round đầu bị
+  vứt.
+
+  Mâu thuẫn với chính lý lẽ ở `calendar-timeline.tsx:33–39`: đoạn đó loại bỏ phương án "component tự
+  báo số ngày ưa thích lên cho parent" **VÌ** nó tạo đúng một round-trip y hệt (mount sai số ngày →
+  báo lên → parent fetch lại đúng khoảng → mount lại). Cách đã chọn tưởng tránh được round-trip đó
+  nhưng tái tạo lại nó ở một chỗ khác — `getSnapshot` trả `7` khi `gridRef.current` còn `null` thay
+  vì trả thẳng giá trị đúng ngay từ đầu.
+
+  Kiểm rẻ, chưa làm: mở tab Network khi vào `/calendar` ở 1280px, đếm số request `GET /rentals`
+  ngay sau khi trang mount.
+
+- ⚠️ **Minor T2 — `Modal` áp `flex flex-col` cho CẢ HAI nhánh (có/không `footer`).** Nhánh không
+  `footer` (`ui/modal.tsx:338`) đổi hành vi layout của panel từ block sang flex column so với trước
+  khi có `footer`, dù `children(close)` được render y hệt cũ. Hôm nay tương đương với ba caller
+  hiện có (`app-nav.tsx`, `rental-form.tsx`, `rental-detail-sheet.tsx`) vì mỗi caller đều bọc nội
+  dung trong đúng MỘT `<div>` gốc, nên flex-col chỉ có một item và không đổi gì thấy được. Test hiện
+  có chỉ kiểm className panel _chứa_ `overflow-y-auto`, không kiểm layout của children — không gác
+  được ca này. Bẫy ngủ: một caller tương lai không truyền `footer` mà `children` trả về nhiều phần
+  tử anh em (không bọc trong một root) sẽ lệch layout theo hướng flex column ngoài ý muốn.
+
+- ⚠️ **Minor T4 — `clamp(v, MIN_EDGE_PX, size - MIN_EDGE_PX)` đảo chiều nếu cạnh nhỏ hơn
+  `2 * MIN_EDGE_PX`.** Ở `modal-submit-hit.mjs:58,62–63` và `sheet-actions.mjs` tương tự,
+  `MIN_EDGE_PX = 3`; nếu `r.width` hoặc `r.height < 6`, `lo (= 3) > hi (= size - 3)`, và
+  `clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi)` trả về `hi` thay vì `lo` — điểm quét bị
+  kéo lệch khỏi phía "cách mép ít nhất 3px" mà biến này định bảo đảm. Không xảy ra hôm nay:
+  `min-h-11` (44px) áp toàn cục cho mọi phần tử tương tác nên không có nút nào nhỏ hơn 6px. Nhưng
+  đây là một giả định ngầm không có guard — không có `assert`/comment nào ở chỗ khai `MIN_EDGE_PX`
+  nói rõ nó chỉ đúng khi cạnh phần tử ≥ 6px.
+
+Và sửa hai chỗ đã có: mục "`apps/staff` không có một test component nào" (đợt hệ thị giác) đã ghi
+đúng **5 file**, không phải 6 như số đầu đợt nghiệm thu — xác nhận lại bằng `grep -rl
+"@testing-library" apps/staff/src --include="*.test.ts*" | wc -l` ra đúng `5`, không cần sửa gì
+thêm ở đó. Mục chuỗi `"88px"` viết chết trong `vehicle-column.mjs` xem ghi chú "Chưa xử lý" ngay
+phía trên trong mục nợ đợt nghiệm thu 11 task.
