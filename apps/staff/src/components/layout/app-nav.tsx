@@ -17,14 +17,13 @@ import { Icon, type IconName } from "../ui/icon";
  *
  * `kind: "soon"` = tính năng chưa xây (Plan C+). Với các mục còn lại, route
  * CHƯA TỒN TẠI nên phần tử KHÔNG được là `<Link>` — một link tới route không
- * tồn tại là một cú 404 trong chính app của mình. `Lịch` (Task 6) và `Đơn
- * thuê` (Task 9) đã MỞ KHOÁ theo cùng khuôn: route đăng ký trước, nội dung
- * nghiệp vụ thật land sau (`RentalCalendar` ở `pages/calendar-page.tsx`,
- * `RentalsPage` ở `pages/rentals-page.tsx`), rồi mới chuyển sang `kind:
- * "link"` — không còn là ngoại lệ "có route nhưng chưa render được". Render
- * bằng `<button disabled>` cho các mục còn `"soon"`: không bấm được, không
- * nằm trong tab order, và trình đọc màn hình biết nó là nút bị vô hiệu hoá
- * chứ không phải nút hỏng.
+ * tồn tại là một cú 404 trong chính app của mình. `Lịch` và `Đơn thuê` đã
+ * chuyển sang `kind: "link"`: route của cả hai có nội dung nghiệp vụ thật rồi
+ * (`RentalCalendar` ở `pages/calendar-page.tsx`, `RentalsPage` ở
+ * `pages/rentals-page.tsx`), không còn là ngoại lệ "có route nhưng chưa render
+ * được". Render bằng `<button disabled>` cho các mục còn `"soon"`: không bấm
+ * được, không nằm trong tab order, và trình đọc màn hình biết nó là nút bị vô
+ * hiệu hoá chứ không phải nút hỏng.
  */
 type NavItem =
   | {
