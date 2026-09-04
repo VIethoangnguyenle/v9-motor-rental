@@ -1765,10 +1765,17 @@ describe("RentalList", () => {
 Run: `bun test apps/staff/src/components/rentals/rental-list.test.tsx`
 Expected: PASS.
 
-⚠️ `useLayoutVariant` trả `"desktop"` trong test (happy-dom chưa cắm `matchMedia`, và server
-snapshot của hook là `"desktop"` — đã ghi ở JSDoc của hook). Nên bốn test trên đo **hình dạng
-bảng**. Muốn đo hình dạng thẻ thì phải cắm `window.matchMedia` giả trong test; nếu làm, kiểm rằng
-nó thật sự đổi hình dạng bằng cách assert vắng mặt `<table>`.
+⚠️ **`useLayoutVariant` trả `"desktop"` trong test, nhưng KHÔNG phải vì lý do dễ đoán.** Bản đầu
+của plan này ghi "happy-dom chưa cắm `matchMedia` nên hook rơi về server snapshot" — **sai cả hai
+vế**, và đã đo lại: happy-dom CÓ `window.matchMedia` thật, trả `matches: true` cho
+`(min-width: 768px)`; còn đối số thứ ba của `useSyncExternalStore` chỉ chạy khi SSR/hydration, không
+bao giờ chạy khi render phía client. Cơ chế thật là `getSnapshot()` gọi đúng `window.matchMedia`
+thật và nhận `true`. Bốn test trên vì vậy đo **hành vi client thật**, tình cờ rơi vào nhánh bảng.
+
+Hệ quả cho người viết test: `window.matchMedia` là **global dùng chung cho cả tiến trình `bun test`**
+(`hooks/use-layout-variant.test.ts` đã ghi điều này), nên stub nó BẮT BUỘC phải khôi phục trong
+`afterEach` — stub rò ra là hỏng file test khác. Muốn đo hình dạng thẻ thì stub rồi assert **vắng
+mặt** `<table>`, để chứng minh hình dạng đổi thật chứ không phải đo lại một chuỗi chữ có ở cả hai.
 
 - [ ] **Bước 4: Chứng minh test biên mở đo được thứ nó tuyên bố đo**
 
