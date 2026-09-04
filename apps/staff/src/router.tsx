@@ -24,6 +24,7 @@ import { LOGIN_REASONS, decideEntry, type LoginReason } from "./lib/guard-decisi
 import { ensureMe } from "./lib/me";
 import { validateCustomersSearch } from "./lib/customers-search";
 import { validateCalendarSearch } from "./lib/calendar-search";
+import { validateRentalsSearch } from "./lib/rentals-search";
 import { PendingApprovalPage } from "./pages/pending-approval-page";
 import { LoginPage } from "./pages/login-page";
 import { StatsPage } from "./pages/stats-page";
@@ -325,6 +326,21 @@ const customerDetailRoute = createRoute({
   component: lazy(() => import("./pages/customer-detail-page"), "CustomerDetailPage"),
 });
 
+/**
+ * `?mode=`/`?q=`/`?page=`/`?from=`/`?to=` sống ở URL — cùng lý lẽ `calendarRoute`/
+ * `customersListRoute` ngay trên: Back trả về đúng chế độ + từ khoá + khoảng
+ * ngày đang xem, F5 không mất chỗ, link gửi đồng nghiệp mở ra đúng thứ đang nhìn.
+ *
+ * `validateRentalsSearch` lọc giá trị lạ thay vì throw, cùng khuôn hai validator
+ * trên: `?mode=xyz` cho ra `"queue"`, không cho ra màn lỗi.
+ */
+const rentalsRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/rentals",
+  validateSearch: validateRentalsSearch,
+  component: lazy(() => import("./pages/rentals-page"), "RentalsPage"),
+});
+
 const routeTree = rootRoute.addChildren([
   publicLayoutRoute.addChildren([
     loginRoute,
@@ -342,6 +358,7 @@ const routeTree = rootRoute.addChildren([
     customersListRoute,
     customerDetailRoute,
     requestsRoute,
+    rentalsRoute,
   ]),
 ]);
 

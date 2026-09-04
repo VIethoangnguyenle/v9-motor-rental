@@ -172,5 +172,20 @@ export const rentals = pgTable(
     index("rentals_revenue_idx")
       .on(t.handedOverAt)
       .where(sql`${t.handedOverAt} IS NOT NULL`),
+    // Hai partial index cho màn Đơn thuê, chế độ hàng đợi. Vị từ của nó là
+    //   (status = 'ONGOING' AND ends_at < :dayEnd) OR (status = 'BOOKED' AND starts_at < :horizon)
+    // — hai nhánh rời nhau theo `status`, nên hai index riêng phục vụ đúng hai
+    // nhánh, và mỗi index chỉ chứa những hàng có thể thuộc nhánh đó.
+    //
+    // Partial chứ không phải index đầy đủ trên `(status, ends_at)`: đơn
+    // COMPLETED chiếm phần lớn bảng theo thời gian và KHÔNG BAO GIỜ vào hàng
+    // đợi, nên để chúng trong index chỉ làm index to ra. Cùng lý lẽ
+    // `rentals_revenue_idx` ngay trên.
+    index("rentals_queue_ongoing_idx")
+      .on(t.endsAt)
+      .where(sql`${t.status} = 'ONGOING'`),
+    index("rentals_queue_booked_idx")
+      .on(t.startsAt)
+      .where(sql`${t.status} = 'BOOKED'`),
   ],
 );

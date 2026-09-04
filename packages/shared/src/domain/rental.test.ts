@@ -237,3 +237,105 @@ describe("availableTransitions", () => {
     }
   });
 });
+
+import {
+  QUEUE_GROUPS,
+  QUEUE_HORIZON_DAYS,
+  queueGroupOf,
+  type QueueBoundaries,
+} from "./rental";
+
+describe("queueGroupOf", () => {
+  // Giờ shop UTC+7. `now` 15:00 ngày 04/09 ⇒ hết ngày là 00:00 ngày 05/09.
+  const B: QueueBoundaries = {
+    now: new Date("2026-09-04T15:00:00+07:00"),
+    dayEnd: new Date("2026-09-05T00:00:00+07:00"),
+    horizon: new Date("2026-09-12T00:00:00+07:00"),
+  };
+  const at = (iso: string) => new Date(iso);
+
+  it("ONGOING quá endsAt ⇒ OVERDUE", () => {
+    expect(
+      queueGroupOf(
+        { status: "ONGOING", startsAt: at("2026-09-01T09:00:00+07:00"), endsAt: at("2026-09-04T09:00:00+07:00") },
+        B,
+      ),
+    ).toBe("OVERDUE");
+  });
+
+  it("BOOKED quá startsAt ⇒ PICKUP_OVERDUE", () => {
+    expect(
+      queueGroupOf(
+        { status: "BOOKED", startsAt: at("2026-09-04T09:00:00+07:00"), endsAt: at("2026-09-08T09:00:00+07:00") },
+        B,
+      ),
+    ).toBe("PICKUP_OVERDUE");
+  });
+
+  it("ONGOING đáo hạn CÒN LẠI trong hôm nay ⇒ DUE_TODAY", () => {
+    expect(
+      queueGroupOf(
+        { status: "ONGOING", startsAt: at("2026-09-01T09:00:00+07:00"), endsAt: at("2026-09-04T20:00:00+07:00") },
+        B,
+      ),
+    ).toBe("DUE_TODAY");
+  });
+
+  it("BOOKED lấy xe CÒN LẠI trong hôm nay ⇒ PICKUP_TODAY", () => {
+    expect(
+      queueGroupOf(
+        { status: "BOOKED", startsAt: at("2026-09-04T20:00:00+07:00"), endsAt: at("2026-09-08T09:00:00+07:00") },
+        B,
+      ),
+    ).toBe("PICKUP_TODAY");
+  });
+
+  it("BOOKED trong 7 ngày tới ⇒ UPCOMING", () => {
+    expect(
+      queueGroupOf(
+        { status: "BOOKED", startsAt: at("2026-09-09T09:00:00+07:00"), endsAt: at("2026-09-11T09:00:00+07:00") },
+        B,
+      ),
+    ).toBe("UPCOMING");
+  });
+
+  it("BOOKED xa hơn chân trời ⇒ không thuộc nhóm nào", () => {
+    expect(
+      queueGroupOf(
+        { status: "BOOKED", startsAt: at("2026-09-20T09:00:00+07:00"), endsAt: at("2026-09-22T09:00:00+07:00") },
+        B,
+      ),
+    ).toBeNull();
+  });
+
+  // Đây là cái bẫy thật, không phải ca biên hình thức: một đơn đã trả gần như
+  // LUÔN có endsAt trong quá khứ, nên một luật viết tay so `endsAt < now` sẽ
+  // gán nó thành OVERDUE và đẩy đơn đã xong vào hàng đợi việc.
+  it("COMPLETED và CANCELLED không bao giờ vào hàng đợi", () => {
+    const past = { startsAt: at("2026-08-01T09:00:00+07:00"), endsAt: at("2026-08-05T09:00:00+07:00") };
+    expect(queueGroupOf({ status: "COMPLETED", ...past }, B)).toBeNull();
+    expect(queueGroupOf({ status: "CANCELLED", ...past }, B)).toBeNull();
+  });
+
+  // Biên: hai vị từ dùng `<` nên đúng mốc thuộc về nhóm SAU, không phải nhóm trước.
+  it("đúng mốc now KHÔNG phải quá hạn; đúng mốc dayEnd KHÔNG phải hôm nay", () => {
+    expect(
+      queueGroupOf({ status: "ONGOING", startsAt: at("2026-09-01T00:00:00+07:00"), endsAt: B.now }, B),
+    ).toBe("DUE_TODAY");
+    expect(
+      queueGroupOf({ status: "BOOKED", startsAt: B.dayEnd, endsAt: at("2026-09-10T00:00:00+07:00") }, B),
+    ).toBe("UPCOMING");
+    expect(
+      queueGroupOf({ status: "ONGOING", startsAt: at("2026-09-01T00:00:00+07:00"), endsAt: B.dayEnd }, B),
+    ).toBeNull();
+    expect(
+      queueGroupOf({ status: "BOOKED", startsAt: B.horizon, endsAt: at("2026-09-20T00:00:00+07:00") }, B),
+    ).toBeNull();
+  });
+
+  it("năm nhóm, không trùng, và chân trời là 7 ngày", () => {
+    expect(QUEUE_GROUPS).toHaveLength(5);
+    expect(new Set(QUEUE_GROUPS).size).toBe(5);
+    expect(QUEUE_HORIZON_DAYS).toBe(7);
+  });
+});

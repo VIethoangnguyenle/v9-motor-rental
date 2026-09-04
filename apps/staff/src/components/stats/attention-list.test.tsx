@@ -8,7 +8,7 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { AttentionList } from "./attention-list";
-import { validateCalendarSearch } from "../../lib/calendar-search";
+import { validateRentalsSearch } from "../../lib/rentals-search";
 import type { StatsSummary } from "../../lib/rentals";
 
 type Attention = StatsSummary["attention"];
@@ -28,10 +28,10 @@ async function renderIn(attention: Attention) {
     path: "/",
     component: () => <AttentionList attention={attention} />,
   });
-  const calendarRoute = createRoute({
+  const rentalsRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "/calendar",
-    validateSearch: validateCalendarSearch,
+    path: "/rentals",
+    validateSearch: validateRentalsSearch,
     component: () => null,
   });
   const staffRoute = createRoute({
@@ -40,7 +40,7 @@ async function renderIn(attention: Attention) {
     component: () => null,
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, calendarRoute, staffRoute]),
+    routeTree: rootRoute.addChildren([indexRoute, rentalsRoute, staffRoute]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
   await router.load();
@@ -60,8 +60,11 @@ async function renderIn(attention: Attention) {
 const hrefs = () => screen.getAllByRole("link").map((a) => a.getAttribute("href"));
 const labels = () => screen.getAllByRole("link").map((a) => a.textContent);
 
+/** Đích chung của ba dòng `overdue`/`pickupOverdue`/`dueToday` — hàng đợi mặc định, không neo ngày. */
+const RENTALS_QUEUE_HREF = "/rentals?mode=queue&q=&page=1&from=&to=";
+
 describe("AttentionList", () => {
-  it("dựng href thật, mỗi dòng neo vào mốc sớm nhất của nhóm mình", async () => {
+  it("overdue và pickupOverdue cùng sang hàng đợi /rentals, không còn neo ngày", async () => {
     await renderIn({
       ...NONE,
       overdue: 2,
@@ -69,15 +72,12 @@ describe("AttentionList", () => {
       pickupOverdue: 3,
       pickupOverdueFrom: "2026-09-01",
     });
-    expect(hrefs()).toEqual([
-      "/calendar?view=timeline&from=2026-08-20",
-      "/calendar?view=timeline&from=2026-09-01",
-    ]);
+    expect(hrefs()).toEqual([RENTALS_QUEUE_HREF, RENTALS_QUEUE_HREF]);
   });
 
-  it("dueToday KHÔNG mang from — vắng from đã có nghĩa là hôm nay", async () => {
+  it("dueToday cũng sang hàng đợi /rentals", async () => {
     await renderIn({ ...NONE, dueToday: 4 });
-    expect(hrefs()).toEqual(["/calendar?view=timeline"]);
+    expect(hrefs()).toEqual([RENTALS_QUEUE_HREF]);
   });
 
   it("sắp theo độ gấp: overdue → pickupOverdue → dueToday → pendingStaff", async () => {
@@ -95,6 +95,18 @@ describe("AttentionList", () => {
       "2 xe phải trả hôm nay",
       "4 nhân viên chờ duyệt",
     ]);
+  });
+
+  it("pendingStaff vẫn đi /staff — domain khác, không theo ba dòng kia sang /rentals", async () => {
+    await renderIn({
+      overdue: 0,
+      dueToday: 0,
+      pickupOverdue: 0,
+      overdueFrom: null,
+      pickupOverdueFrom: null,
+      pendingStaff: 5,
+    });
+    expect(hrefs()).toEqual(["/staff"]);
   });
 
   it("đếm 0 thì KHÔNG có dòng — kể cả khi mốc neo còn null", async () => {

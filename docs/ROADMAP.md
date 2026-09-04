@@ -3,6 +3,20 @@
 Tách khỏi `docs/ARCHITECTURE.md` để file đó không phình theo mỗi đợt — roadmap đổi thường xuyên, luật thì
 không. Nợ kỹ thuật ở [`DEBT.md`](DEBT.md); thiết kế của từng đợt ở [`plans/`](plans/).
 
+**Đã xong — màn Đơn thuê (`/rentals`) cho `apps/staff`, 2026-09-04.** Thiết kế ở
+[`plans/2026-09-04-staff-rentals-surface-design.md`](plans/2026-09-04-staff-rentals-surface-design.md),
+thi công ở
+[`plans/2026-09-04-staff-rentals-surface-plan.md`](plans/2026-09-04-staff-rentals-surface-plan.md).
+
+Một trang, hai chế độ sống ở URL: `?mode=queue` (mặc định) nhóm đơn theo ĐỘ GẤP thay vì theo xe hay
+theo khách — câu hỏi "sáng nay tôi phải giao xe cho những ai" trước đợt này không có chỗ nào trả
+lời được; `?mode=ledger` là bảng phẳng để tra cứu/đối soát, có cả đơn `CANCELLED`. Mục nav "Đơn
+thuê" mở khoá từ `kind: "soon"` sang `kind: "link"`, và ba dòng "Cần chú ý" (`overdue`,
+`pickupOverdue`, `dueToday`) ở màn Thống kê đổi đích từ `/calendar` kèm mốc neo sang `/rentals` —
+hàng đợi tự nhảy tới nhóm gấp nhất nên không cần neo ngày, đóng luôn cảnh báo "neo ở mốc sớm nhất
+không bảo đảm nhìn thấy đủ cả nhóm" mà bản thiết kế trước đó tự ghi lại. Nay chỉ còn đúng **"Bàn
+giao"** là mục nav còn `kind: "soon"`.
+
 **Đã xong — đợt hệ thị giác `apps/staff`, 2026-09-01/02.** Thiết kế ở
 [`plans/2026-09-01-staff-visual-system-design.md`](plans/2026-09-01-staff-visual-system-design.md),
 thi công ở [`plans/2026-09-01-staff-visual-system-plan.md`](plans/2026-09-01-staff-visual-system-plan.md).
