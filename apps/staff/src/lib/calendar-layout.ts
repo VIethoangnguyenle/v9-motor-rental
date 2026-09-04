@@ -160,38 +160,3 @@ export function placeBar(r: { startsAt: Date; endsAt: Date }, w: GridWindow): Ba
     clippedEnd: r.endsAt.getTime() > w.to.getTime(),
   };
 }
-
-/**
- * Ô này có phải chỗ ĐÚNG để nói "đơn còn kéo dài ra ngoài lưới" không.
- *
- * Chế độ Tháng gọi `placeBar` với cửa sổ MỘT NGÀY cho từng ô, nên một đơn dài
- * render một chip ở mỗi ô nó phủ, và `clippedStart`/`clippedEnd` của cửa sổ
- * một-ngày bật ở mọi ô GIỮA. Chevron theo cờ đó nói "còn kéo dài qua ngày
- * khác" — đúng, nhưng đã hiển nhiên, vì chính chip đó nằm ở ô bên cạnh. Trên
- * chip 41,8px của màn 390px, hai mũi tên thừa đó ăn 2/3 chiều rộng.
- *
- * Thứ KHÔNG hiển nhiên là đơn kéo dài ra ngoài khoảng đang hiển thị — không ô
- * nào cho thấy phần đó. Nên điều kiện là cắt-theo-LƯỚI, và chỉ ở ô mép: một đơn
- * bắt đầu trước `w.from` chắc chắn phủ ô 0, nên đó là ô duy nhất cần nói.
- *
- * Chế độ Timeline KHÔNG dùng hàm này và không nên: ở đó thanh đơn LIỀN MẠCH,
- * một thanh cho cả đơn, nên `clippedStart`/`clippedEnd` của chính nó đã là
- * "vượt ra ngoài cửa sổ" — tin thật, không lặp lại ở đâu.
- *
- * Không tự so ngày: `placeBar` là chỗ DUY NHẤT trong repo định nghĩa "bị cắt",
- * kèm hai ca biên nửa mở đã khoá bằng test. Một phép so viết tay ở đây là bản
- * sao thứ hai của quy ước `[from, to)` mà bốn chỗ đang phải tự đồng ý.
- */
-export function gridEdgeClip(
-  r: { startsAt: Date; endsAt: Date },
-  w: GridWindow,
-  cellIndex: number,
-  cellCount: number,
-): { start: boolean; end: boolean } {
-  const placement = placeBar(r, w);
-  if (!placement) return { start: false, end: false };
-  return {
-    start: placement.clippedStart && cellIndex === 0,
-    end: placement.clippedEnd && cellIndex === cellCount - 1,
-  };
-}

@@ -38,15 +38,18 @@ import { Icon } from "../ui/icon";
  * "đo trước lần vẽ đầu của chính nó ra sao" (xem đánh đổi ghi ở
  * `useCalendarDayCount`), component ở đây không phải đoán rồi tự sửa.
  *
- * Cột xe (120/112/130px — base/md/xl, xem `--veh-col` bên dưới) là quyết định
+ * Cột xe (120/120/130px — base/md/xl, xem `--veh-col` bên dưới) là quyết định
  * THUẦN TRÌNH BÀY — không ảnh hưởng gì tới việc fetch — nên nó là ngoại lệ hợp
- * lý: ba class Tailwind `md:`/`xl:` bên dưới tự đổi độ rộng cột theo breakpoint
- * CSS của CỬA SỔ, ĐỘC LẬP với việc parent đổi `gridWindow`.
+ * lý: class Tailwind `xl:` bên dưới tự đổi độ rộng cột theo breakpoint CSS của
+ * CỬA SỔ, ĐỘC LẬP với việc parent đổi `gridWindow`.
  *
- * Dãy đó KHÔNG ĐƠN ĐIỆU: base 120px > md 112px < xl 130px — cột xe ở tablet
- * hẹp hơn cả điện thoại rồi mới rộng lại ở desktop (`DEBT.md`, mục đợt nghiệm
- * thu 11 task màn hình hẹp). Không mất dữ liệu (tên xe xuống dòng thay vì cắt
- * — hàng rào #7), chỉ bất nhất hình ảnh giữa ba breakpoint.
+ * Dãy này ĐƠN ĐIỆU không giảm, và trước đợt 2026-09-04 thì KHÔNG: bản cũ có
+ * `md:[--veh-col:7rem]` nên dãy là 120 > 112 < 130 — cột xe ở tablet hẹp hơn cả
+ * điện thoại rồi mới rộng lại ở desktop. Đã bỏ override ở `md` thay vì nới nó
+ * lên: tên xe rộng nhất đo được cần 119px (`vehicle-column.mjs`), tức 112px ở
+ * `md` là giá trị DUY NHẤT trong dãy không đủ chỗ, còn 120px của base thì đủ.
+ * Bỏ đi vừa làm dãy đơn điệu vừa xoá chỗ hẹp nhất, và bớt một class phải giữ
+ * đúng.
  *
  * ⚠️ Từ Task 10, đây là HAI GỐC QUY CHIẾU KHÁC NHAU dùng chung ba con số
  * 768/1280: `rental-calendar.tsx` đo bề rộng VÙNG LƯỚI (đóng #5 — sidebar ăn
@@ -158,9 +161,9 @@ export function CalendarTimeline({
   }
 
   return (
-    // Chỉ khối này cuộn ngang — KHÔNG phải trang. `min-w-max` ở lưới bên trong
-    // ép nó giữ đúng độ rộng tự nhiên (cột ngày không bị bóp lại để vừa
-    // viewport), nên cuộn diễn ra ở ĐÂY, không đẩy `<body>` cuộn ngang.
+    // Chỉ khối này cuộn ngang — KHÔNG phải trang. Khi lưới rộng hơn khối này
+    // (dữ liệu dày, hoặc khung quá hẹp), cuộn diễn ra ở ĐÂY, không đẩy `<body>`
+    // cuộn ngang.
     <div className="relative">
       <div ref={scrollerRef} className="w-full overflow-x-auto rounded-card border border-border">
         <div
@@ -169,7 +172,25 @@ export function CalendarTimeline({
           // (`w-[${n}px]`) sẽ KHÔNG được tìm thấy và sinh ra một class rỗng,
           // hỏng im lặng. Giá trị 7/10/14 ngày (động, phụ thuộc `gridWindow`) vì
           // vậy phải đi qua `style` (raw CSS, không qua Tailwind) — xem bên dưới.
-          className="grid min-w-max [--veh-col:7.5rem] md:[--veh-col:7rem] xl:[--veh-col:8.125rem]"
+          /*
+           * KHÔNG còn `min-w-max`. Nó ép lưới giữ bề rộng MAX-CONTENT, tức mỗi
+           * cột ngày nở ra theo tên khách dài nhất nằm trong nó — nên lưới luôn
+           * rộng hơn khung và luôn phải cuộn ngang, càng nhiều ngày càng tệ. Đo
+           * ở 1920px: khung 1392px, lưới cần 1841px, tức **cuộn 449px** và bốn
+           * ngày cuối của kỳ 14 ngày không bao giờ nhìn thấy nếu không kéo.
+           *
+           * Nó từng đúng: nó bảo vệ ca màn HẸP, nơi cột ngày sẽ bị bóp dưới
+           * ngưỡng đọc được. Nhưng từ khi màn hẹp chuyển sang bảng một ngày
+           * (`calendar-day.tsx`), component này chỉ còn chạy ở ≥768px — và ở đó
+           * `minmax(2.75rem, 1fr)` một mình đã giữ sàn 44px: 14 ngày trong
+           * 1392px cho ra ~99px/cột, 10 ngày trong 768px cho ra ~77px/cột. Sàn
+           * không bao giờ chạm tới, nên thứ `min-w-max` bảo vệ đã không còn.
+           *
+           * Bỏ nó thì cột co về `1fr`, tên khách trong thanh `truncate` (đã có
+           * sẵn `min-w-0 truncate`), và CẢ KỲ nhìn thấy được cùng lúc — đúng thứ
+           * chế độ Timeline tồn tại để làm.
+           */
+          className="grid [--veh-col:7.5rem] xl:[--veh-col:8.125rem]"
           style={{
             gridTemplateColumns: `var(--veh-col) repeat(${String(cols.length)}, minmax(2.75rem, 1fr))`,
           }}

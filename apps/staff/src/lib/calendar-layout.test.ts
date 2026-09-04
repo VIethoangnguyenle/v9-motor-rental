@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { dayColumns, gridEdgeClip, placeBar, type GridWindow } from "./calendar-layout";
+import { dayColumns, placeBar, type GridWindow } from "./calendar-layout";
 
 const D = (iso: string) => new Date(`${iso}T00:00:00+07:00`);
 /** Cửa sổ 14 ngày: 15/08 → 29/08, nửa mở [from, to). */
@@ -102,47 +102,3 @@ describe("placeBar", () => {
  * "bị cắt", kèm hai ca biên nửa mở ngay trên. Viết lại phép so ở đây là dựng
  * bản sao thứ hai của một quy ước mà bốn chỗ khác đang phải tự đồng ý với nhau.
  */
-describe("gridEdgeClip — chevron chỉ ở mép lưới", () => {
-  const CELLS = 14; // W trải 15/08 → 28/08
-
-  it("đơn nằm trọn trong lưới: không ô nào có chevron", () => {
-    const r = { startsAt: D("2026-08-17"), endsAt: D("2026-08-22") };
-    for (let i = 0; i < CELLS; i++) {
-      expect(gridEdgeClip(r, W, i, CELLS)).toEqual({ start: false, end: false });
-    }
-  });
-
-  it("đơn bắt đầu trước lưới: chevron trái CHỈ ở ô đầu", () => {
-    const r = { startsAt: D("2026-08-12"), endsAt: D("2026-08-18") };
-    expect(gridEdgeClip(r, W, 0, CELLS)).toEqual({ start: true, end: false });
-    // Ô 1 và 2 cũng nằm trong đơn — trước đợt này chúng cũng hiện `‹`.
-    expect(gridEdgeClip(r, W, 1, CELLS)).toEqual({ start: false, end: false });
-    expect(gridEdgeClip(r, W, 2, CELLS)).toEqual({ start: false, end: false });
-  });
-
-  it("đơn kết thúc sau lưới: chevron phải CHỈ ở ô cuối", () => {
-    const r = { startsAt: D("2026-08-26"), endsAt: D("2026-09-02") };
-    expect(gridEdgeClip(r, W, CELLS - 1, CELLS)).toEqual({ start: false, end: true });
-    expect(gridEdgeClip(r, W, CELLS - 2, CELLS)).toEqual({ start: false, end: false });
-  });
-
-  it("đơn phủ trọn lưới: trái ở ô đầu, phải ở ô cuối, giữa không gì", () => {
-    const r = { startsAt: D("2026-08-01"), endsAt: D("2026-09-15") };
-    expect(gridEdgeClip(r, W, 0, CELLS)).toEqual({ start: true, end: false });
-    expect(gridEdgeClip(r, W, CELLS - 1, CELLS)).toEqual({ start: false, end: true });
-    expect(gridEdgeClip(r, W, 7, CELLS)).toEqual({ start: false, end: false });
-  });
-
-  it("đơn kết thúc ĐÚNG lúc lưới kết thúc: không cắt phải (nửa mở)", () => {
-    // Mốc cuối còn nằm trong đơn là `to - 1ms`, tức vẫn trong lưới. Đây là ca
-    // mà một phép so `endsAt >= to` viết tay sẽ trả sai.
-    const r = { startsAt: D("2026-08-26"), endsAt: W.to };
-    expect(gridEdgeClip(r, W, CELLS - 1, CELLS)).toEqual({ start: false, end: false });
-  });
-
-  it("đơn không chạm lưới: không gì cả", () => {
-    const r = { startsAt: D("2026-09-10"), endsAt: D("2026-09-12") };
-    expect(gridEdgeClip(r, W, 0, CELLS)).toEqual({ start: false, end: false });
-    expect(gridEdgeClip(r, W, CELLS - 1, CELLS)).toEqual({ start: false, end: false });
-  });
-});

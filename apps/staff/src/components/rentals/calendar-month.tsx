@@ -1,19 +1,30 @@
 import { SHOP_TIMEZONE } from "@v9/shared/domain/rental";
-import { dayColumns, gridEdgeClip, placeBar, type GridWindow } from "../../lib/calendar-layout";
+import { dayColumns, type GridWindow } from "../../lib/calendar-layout";
 import type { CalendarRental, FleetVehicle } from "../../lib/rentals";
-import { STATUS_LABEL, rentalChipClass, statusIconOf } from "../../lib/rental-status";
+import { dayRole } from "../../lib/rental-day";
 import { Icon } from "../ui/icon";
 
 /**
  * Ô ngày kiểu Google Calendar. Tuần bắt đầu THỨ HAI (quy ước VN, và khớp
  * `date_trunc('week')` mà `apps/api` đã dùng — xem plan Task 5).
  *
- * ⚠️ KHÔNG cho thấy xe nào còn trống — thứ TRỐNG thì không xuất hiện trên một
- * lưới ngày. Đây là giới hạn ĐÃ BIẾT và có chủ ý (design doc §9), lý do
- * `calendar-timeline.tsx` tồn tại song song. Đừng vá nó ở đây bằng cách bịa
- * thêm badge kiểu "còn N xe trống" — không có dữ liệu "xe trống" nào truyền
- * vào component này để tính đúng số đó, và tính sai một con số như vậy còn tệ
- * hơn không hiện gì.
+ * ## Ô ngày vẽ SỰ KIỆN, không vẽ trạng thái lặp lại
+ *
+ * Bản trước vẽ một chip cho MỌI đơn phủ ngày đó, nên một đơn sáu ngày sinh ra
+ * sáu chip ở sáu ô liền nhau. Đo ở 390px với sáu xe cùng bận: **22/35 ô có
+ * chip, năm chỗ "+k nữa", chip rộng 42px** — tức nhãn xe còn đúng một chữ cái
+ * (`K…`, `D…`, `H…`), và cả tuần là cùng sáu đơn vẽ lại bảy lần. Lưới cao hơn
+ * màn hình mà không trả lời được ngày nào bận hơn ngày nào.
+ *
+ * Một đơn sáu ngày cần người đúng HAI lần: lúc giao và lúc nhận lại. Ô ngày vì
+ * vậy đếm hai việc đó (`dayRole` ở `lib/rental-day.ts`, dùng chung với bảng một
+ * ngày), còn những ngày ở giữa — xe đã ra khỏi shop, không ai phải làm gì — đi
+ * vào THANH ĐỘ BẬN chứ không thành chip.
+ *
+ * ✅ Có cho thấy mức trống: `vehicles` là toàn đội xe, nên "N/M xe đang thuê"
+ * tính được và tính ĐÚNG. Bản trước của chú thích này khẳng định ngược lại
+ * ("không có dữ liệu xe trống nào truyền vào component này") — sai kể từ khi
+ * `vehicles` được thêm vào props để tra tên xe.
  *
  * ## `gridWindow` PHẢI đã dính Thứ Hai và đệm đủ tuần — component không tự tính lại
  *
@@ -38,15 +49,16 @@ export interface CalendarMonthProps {
   readonly vehicles: readonly FleetVehicle[];
   readonly rentals: readonly CalendarRental[];
   readonly gridWindow: GridWindow;
-  /** Chạm vào một chip đơn — mở sheet chi tiết. Xem `CalendarTimelineProps`. */
-  readonly onSelect: (rental: CalendarRental) => void;
   /**
-   * Chạm vào "+k nữa" — mở Timeline neo vào đúng ngày đó.
+   * Chạm vào một ô ngày — mở đúng ngày đó (bảng một ngày ở màn hẹp, Timeline ở
+   * màn rộng). Điều hướng thuộc `rental-calendar.tsx` (nó sở hữu URL), nên
+   * component này chỉ báo ra ngày được chạm.
    *
-   * Trước đây "+k nữa" là một `<div>` trơ: từ đơn thứ tư trở đi của một ngày
-   * KHÔNG có đường nào chạm tới trong chế độ Tháng, và cũng không có gì gợi ý
-   * rằng chúng ở đâu. Điều hướng thuộc `rental-calendar.tsx` (nó sở hữu URL),
-   * nên component này chỉ báo ra ngày được chạm.
+   * ⚠️ CẢ Ô là một `<button>`, và trong nó KHÔNG có nút nào nữa. Bản trước cho
+   * mỗi chip đơn một `<button>` riêng ở 24px — vừa là vùng chạm dưới ngưỡng 44px
+   * mà chính app này tự đặt, vừa buộc "+k nữa" thành một nút thứ tư chen vào
+   * cùng một ô 51px. Ở tầm THÁNG thì thứ người ta chọn là một NGÀY; chọn đúng
+   * một đơn là việc của màn ngày, nơi mỗi đơn có trọn 44px.
    */
   readonly onShowDay: (date: Date) => void;
 }
@@ -73,49 +85,18 @@ function dayLabel(date: Date): string {
 }
 
 /**
- * Tối đa 3 dòng đơn mỗi ô trước khi gộp thành "+k nữa".
+ * Chiều cao ô ngày. Thấp hơn hẳn bản trước (`min-h-24` = 96px, đo thật ra 117px
+ * khi đầy chip): ô giờ chứa nhiều nhất ba dòng ngắn — số ngày, hai dòng đếm
+ * việc, một thanh độ bận — thay vì ba chip 24px cộng "+k nữa".
  *
- * Vì sao 3, không phải 4 hay 5: ô lịch tháng chia đều 7 cột nên đã hẹp theo
- * chiều ngang (điện thoại ~51px/ô, đo ở 390px); hơn 3 dòng ở độ rộng đó thì tên
- * xe bị truncate tới mức vô nghĩa, lúc ấy "+k nữa" là thông tin hữu ích hơn một
- * dòng chip thứ tư không đọc nổi.
- *
- * Con số này KHÔNG giảm khi chip cao lên 24px (xem `CHIP` bên dưới): giảm nó đi
- * một dòng là đẩy thêm một đơn nữa ra khỏi tầm chạm trực tiếp, mà chi phí giữ
- * nguyên chỉ là ô cao thêm ~8px. Ô lịch tháng cao lên là chấp nhận được — lưới
- * vốn đã cuộn.
+ * Đổi lại, cả tháng vào vừa một màn hình nhiều hơn, mà đó chính là thứ chế độ
+ * Tháng tồn tại để làm: một mặt phẳng để QUÉT.
  */
-const MAX_CHIPS = 3;
+const CELL = "min-h-20";
 
-/**
- * Chip đơn thuê trong ô ngày. `min-h-6` = 24px là **ngưỡng WCAG 2.2 SC 2.5.8
- * (Target Size Minimum, mức AA)**, không phải một con số thẩm mỹ.
- *
- * Bản trước không khai chiều cao gì cả, nên chip cao đúng bằng line box của
- * `text-xs`: **đo được 52 × 16 px, xếp cách nhau 2px** (`gap-0.5`). Vừa dưới
- * ngưỡng 24px, vừa không lọt ngoại lệ giãn cách (vòng tròn 24px quanh mỗi chip
- * chồng lên chip kế bên) — trượt ở cả hai đường. Mà đây là đường DUY NHẤT mở
- * được sheet chi tiết từ lịch tháng.
- *
- * Vì sao 24px chứ không phải 44px như `ui/button.tsx` và `AppNav` tự đặt: 44px
- * × 3 chip đẩy ô ngày lên ~168px, tức một lưới 6 tuần cao hơn 1000px và mất hẳn
- * cái làm nên giá trị của chế độ Tháng — nhìn một phát thấy cả tháng. Chế độ
- * Tháng là mặt phẳng để QUÉT; mặt phẳng để LÀM là Timeline, và ở đó thanh đơn
- * mang đủ 44px. Hai chế độ, hai vai trò, đúng ngưỡng cho từng vai.
- */
-const CHIP =
-  "flex min-h-6 w-full items-center gap-0.5 truncate rounded-card px-1 text-left text-xs";
-
-export function CalendarMonth({
-  vehicles,
-  rentals,
-  gridWindow,
-  onSelect,
-  onShowDay,
-}: CalendarMonthProps) {
+export function CalendarMonth({ vehicles, rentals, gridWindow, onShowDay }: CalendarMonthProps) {
   const now = new Date();
   const cols = dayColumns(gridWindow);
-  const vehicleById = new Map(vehicles.map((v) => [v.id, v] as const));
 
   const weeks: (typeof cols)[] = [];
   for (let i = 0; i < cols.length; i += 7) weeks.push(cols.slice(i, i + 7));
@@ -145,100 +126,115 @@ export function CalendarMonth({
             const isToday =
               now.getTime() >= col.date.getTime() && now.getTime() < cellEnd.getTime();
 
-            // Tái dùng `placeBar` với cửa sổ MỘT NGÀY để hỏi "đơn này có chạm ô
-            // này không" — cùng ngữ nghĩa `[from, to)` đã kiểm ở Task 1, thay vì
-            // viết một điều kiện overlap thứ năm (CLAUDE.md: bốn chỗ đã phải tự
-            // đồng ý với nhau bằng test, không có gì ép máy).
-            //
-            // Chỉ lấy CÓ/KHÔNG, không giữ `BarPlacement`: `startCol` và `span`
-            // của nó là toạ độ lưới ngang của chế độ Timeline, ở đây ô ngày đã
-            // là toạ độ rồi. Chevron thì hỏi `gridEdgeClip` với cửa sổ CẢ LƯỚI,
-            // không phải cờ cắt của cửa sổ một-ngày này.
-            const chips: CalendarRental[] = rentals
-              .filter((rental) => placeBar(rental, { from: col.date, to: cellEnd }) !== null)
-              .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
-
-            const shown = chips.slice(0, MAX_CHIPS);
-            const hiddenCount = chips.length - shown.length;
+            /*
+             * Phân loại vai của từng đơn trong ĐÚNG ngày này bằng `dayRole`
+             * (`lib/rental-day.ts`) — cùng hàm mà bảng một ngày dùng, nên hai
+             * màn lịch không thể lệch nhau về "hôm nay đơn này là việc gì".
+             *
+             * Bản trước hỏi `placeBar` với cửa sổ một ngày, tức chỉ hỏi CÓ CHẠM
+             * hay không — nên mọi ngày ở giữa một đơn dài đều thành một chip.
+             */
+            const roles = rentals.map((rental) => dayRole(rental, col.date, cellEnd));
+            const handovers = roles.filter((r) => r === "start" || r === "start-end").length;
+            const returns = roles.filter((r) => r === "end" || r === "start-end").length;
+            // Xe nằm ngoài đường trong ngày này, ở bất kỳ vai nào khác `none`.
+            const busy = roles.filter((r) => r !== "none").length;
 
             return (
-              <div
+              <button
                 key={col.date.toISOString()}
-                className={`min-h-24 border-r border-b border-border p-1 last:border-r-0 ${col.isWeekend ? "bg-canvas" : "bg-surface"}`}
+                type="button"
+                onClick={() => onShowDay(col.date)}
+                aria-label={`${DAY_MONTH_FMT.format(col.date)} — ${
+                  busy === 0
+                    ? "không có xe nào đang thuê"
+                    : `${String(busy)} trên ${String(vehicles.length)} xe đang thuê` +
+                      (handovers > 0 ? `, ${String(handovers)} lượt giao` : "") +
+                      (returns > 0 ? `, ${String(returns)} lượt nhận lại` : "")
+                }. Xem ngày này`}
+                // ⚠️ `items-stretch` TƯỜNG MINH, không dựa vào mặc định của flex.
+                //
+                // `<button>` mang `display: flex` nhận `align-items: center` từ UA
+                // stylesheet của Chromium, KHÔNG phải `stretch` như một `<div>`.
+                // Hệ quả đo được: thanh độ bận bên dưới dùng `flex-1` trong một
+                // hàng có bề rộng 0, nên nó render ra `0x4px` — biến mất hoàn
+                // toàn trong khi `aria-label` vẫn đọc đúng "5 trên 6 xe đang
+                // thuê". Một khiếm khuyết chỉ thấy được bằng mắt hoặc bằng
+                // `getBoundingClientRect`, không thấy bằng test hay bằng đọc code.
+                className={`${CELL} flex flex-col items-stretch gap-1 border-r border-b border-border p-1 text-left transition-colors duration-(--duration-instant) ease-standard last:border-r-0 active:bg-canvas ${
+                  col.isWeekend ? "bg-canvas" : "bg-surface"
+                }`}
               >
                 {/* `min-w-6` + `px-1` chứ KHÔNG `w-6` cố định: `dayLabel` trả
                     "1 thg 9" ở ngày mùng 1 (có chủ ý, xem trên), và chuỗi đó
                     không lọt vừa ô 24px — nó tràn ra ngoài vòng tròn, nơi
                     `text-accent-ink` là chữ TRẮNG trên nền ô trắng, nên ở ngày
-                    hôm nay con số biến mất hẳn và badge chỉ còn chữ "thg".
-                    Badge phải co giãn theo nhãn, không bắt nhãn vừa badge. */}
+                    hôm nay con số biến mất hẳn và badge chỉ còn chữ "thg". */}
                 <span
-                  className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs whitespace-nowrap ${
+                  className={`inline-flex h-6 min-w-6 shrink-0 items-center justify-center self-start rounded-full px-1 text-xs whitespace-nowrap ${
                     isToday ? "bg-accent font-semibold text-accent-ink" : "text-muted"
                   }`}
                 >
                   {dayLabel(col.date)}
                 </span>
 
-                {/* `gap-1` (4px), không `gap-0.5`: hai vùng chạm 24px cách nhau
-                    2px là mời chạm nhầm sang đơn bên cạnh — trên điện thoại,
-                    một tay, trong gara. */}
-                <div className="mt-1 flex flex-col gap-1">
-                  {shown.map((rental) => {
-                    const vehicle = vehicleById.get(rental.vehicleId);
-                    const edge = gridEdgeClip(rental, gridWindow, globalIndex, cols.length);
-                    const label = vehicle
-                      ? `${vehicle.make} ${vehicle.model}`
-                      : (rental.customerName ?? "—");
-                    return (
-                      <button
-                        key={rental.id}
-                        type="button"
-                        onClick={() => onSelect(rental)}
-                        title={`${vehicle ? `${vehicle.make} ${vehicle.model}` : "?"} · ${rental.customerName ?? "—"} · ${STATUS_LABEL[rental.status]}`}
-                        aria-label={`${label} · ${rental.customerName ?? "Khách chưa rõ"} · ${STATUS_LABEL[rental.status]} — xem chi tiết`}
-                        className={`${CHIP} ${rentalChipClass(rental, now)}`}
-                      >
-                        {/* `size="sm"` (12px) cho cả ba icon: chúng nằm trong
-                            một chip `text-xs`, cỡ mặc định 20px sẽ nuốt mất nhãn
-                            đứng cạnh. Cỡ đi qua PROP — `className="size-3"` hỏng
-                            im lặng, xem `ui/icon.tsx`.
+                {/*
+                  Hai dòng đếm việc. Chỉ hiện khi khác 0 — một ô ngày rỗng phải
+                  ĐỌC RA LÀ RỖNG, không phải "0 giao · 0 nhận".
 
-                            `‹`/`›` đọc `gridEdgeClip` chứ KHÔNG đọc `placement`:
-                            `placement` cắt theo Ô NGÀY, mà chip lặp ở mỗi ô đơn
-                            phủ, nên cờ đó bật ở mọi ô giữa và mũi tên chỉ nói
-                            lại thứ ô bên cạnh đã cho thấy. Lý lẽ ở
-                            `calendar-layout.ts`. Chúng đứng sát hai mép chip vì
-                            mũi tên chỉ ra ngoài LƯỚI. */}
-                        {edge.start && <Icon name="chevron-left" size="sm" />}
-                        {/* Chữ trên chip này là TÊN XE, nên trạng thái ở đây
-                            cũng đi bằng màu và CHỈ màu — lý lẽ đầy đủ ở
-                            `calendar-timeline.tsx`, chỗ gọi `statusIconOf` kia.
-                            Chế độ Tháng còn ngặt hơn: trên 390px chip rộng
-                            41,8px, nhãn xe vốn đã chỉ còn một ký tự, nên hình là
-                            thứ DUY NHẤT còn đọc được ở bề rộng đó.
+                  Chữ "giao"/"nhận" ẩn dưới `md`: ở 390px ô rộng 51px, chỉ đủ cho
+                  hình và con số. Hình mang nghĩa ở mọi bề rộng (`nav-handover` =
+                  xe rời shop, `check` = đã về), nên đây là bớt CHỮ chứ không bớt
+                  thông tin — cùng lý lẽ `RANGE_DATE_SHORT_FMT` của toolbar.
+                */}
+                {handovers > 0 && (
+                  <span className="flex items-center gap-1 text-xs whitespace-nowrap text-status-ongoing">
+                    <Icon name="nav-handover" size="sm" />
+                    <span className="tabular-nums">{handovers}</span>
+                    <span className="hidden md:inline">giao</span>
+                  </span>
+                )}
+                {returns > 0 && (
+                  <span className="flex items-center gap-1 text-xs whitespace-nowrap text-ink-soft">
+                    <Icon name="check" size="sm" />
+                    <span className="tabular-nums">{returns}</span>
+                    <span className="hidden md:inline">nhận</span>
+                  </span>
+                )}
 
-                            `now` dùng chung với `rentalChipClass` ngay trên:
-                            hình và màu của MỘT chip phải suy từ cùng một thời
-                            điểm. */}
-                        <Icon name={statusIconOf(rental, now)} size="sm" />
-                        <span className="min-w-0 truncate">{label}</span>
-                        {edge.end && <Icon name="chevron-right" size="sm" />}
-                      </button>
-                    );
-                  })}
-                  {hiddenCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => onShowDay(col.date)}
-                      aria-label={`Còn ${String(hiddenCount)} đơn nữa ngày ${DAY_MONTH_FMT.format(col.date)} — xem trên Timeline`}
-                      className={`${CHIP} text-muted underline underline-offset-2`}
+                {/*
+                  Thanh độ bận — thứ thay cho những chip "đang thuê" lặp lại.
+                  Ngày ở giữa một đơn dài không có việc gì để làm, nhưng nó VẪN
+                  là thông tin: bao nhiêu xe đang nằm ngoài đường, tức còn mấy
+                  chiếc để nhận khách mới.
+
+                  Thanh TỈ LỆ chứ không phải N ô nhỏ: đội xe hôm nay có 6 chiếc
+                  và một ngày nào đó có 30 — sáu ô nhỏ đọc được, ba mươi thì
+                  không. Con số "N/M" hiện kèm từ `md` trở lên, còn ở màn hẹp
+                  `aria-label` của cả ô đã đọc đủ.
+
+                  `mt-auto`: dính đáy ô, nên ở cả tuần nó nằm trên một đường
+                  thẳng và quét mắt theo hàng ngang là so được ngày nào bận hơn.
+                */}
+                {busy > 0 && (
+                  <span className="mt-auto flex items-center gap-1">
+                    <span
+                      aria-hidden="true"
+                      className="h-1 min-w-0 flex-1 overflow-hidden rounded-card bg-border"
                     >
-                      +{String(hiddenCount)} nữa
-                    </button>
-                  )}
-                </div>
-              </div>
+                      <span
+                        className="block h-full bg-status-ongoing"
+                        style={{
+                          width: `${String(Math.round((busy / Math.max(vehicles.length, 1)) * 100))}%`,
+                        }}
+                      />
+                    </span>
+                    <span className="hidden text-xs tabular-nums text-muted md:inline">
+                      {busy}/{vehicles.length}
+                    </span>
+                  </span>
+                )}
+              </button>
             );
           })}
         </div>

@@ -25,6 +25,8 @@ import { Alert } from "../ui/alert";
 import { Icon } from "../ui/icon";
 import { Skeleton } from "../ui/skeleton";
 import { ToggleGroup } from "../ui/toggle-group";
+import { useLayoutVariant } from "../../hooks/use-layout-variant";
+import { CalendarDay } from "./calendar-day";
 import { CalendarMonth } from "./calendar-month";
 import { CalendarTimeline } from "./calendar-timeline";
 import { RentalDetailSheet } from "./rental-detail-sheet";
@@ -213,6 +215,12 @@ const RANGE_DATE_SHORT_FMT = new Intl.DateTimeFormat("vi-VN", {
   month: "2-digit",
 });
 
+/** Thứ trong tuần, dùng cho nhãn của bảng một ngày (`dayBoard`). */
+const WEEKDAY_LONG_FMT = new Intl.DateTimeFormat("vi-VN", {
+  timeZone: SHOP_TIMEZONE,
+  weekday: "long",
+});
+
 /** Nhãn hai nút chuyển chế độ — `Record<CalendarView, string>` bắt buộc đủ
  *  nhánh, giống `STATUS_LABEL` ở `lib/rental-status.ts`: thêm một chế độ vào
  *  `CALENDAR_VIEWS` mà quên thêm nhãn ở đây là lỗi biên dịch. */
@@ -266,7 +274,31 @@ function renderGrid(
   gridWindow: GridWindow,
   onSelect: (rental: CalendarRental) => void,
   onShowDay: (date: Date) => void,
+  /**
+   * Màn hẹp vẽ MỘT NGÀY thay vì lưới nhiều ngày — xem JSDoc của `CalendarDay`.
+   * Chỉ áp cho `view === "timeline"`; chế độ Tháng giữ nguyên lưới 7 cột ở mọi
+   * bề rộng, vì 7 cột ngày vốn đã vừa màn hẹp.
+   */
+  dayBoard: boolean,
+  dir: "next" | "prev",
 ) {
+  if (view === "timeline" && dayBoard) {
+    return (
+      <CalendarDay
+        // `key` đổi theo ngày để hiệu ứng vào CHẠY LẠI mỗi lần lật: gắn thêm một
+        // class lên một phần tử đã tồn tại không khởi động lại animation — CSS
+        // chỉ chạy khi `animation-name` vừa được gắn vào một phần tử. Cùng cái
+        // bẫy `rental-detail-sheet.tsx` đã ghi khi phải đổi `key` của chip.
+        key={gridWindow.from.toISOString()}
+        vehicles={vehicles}
+        rentals={rentals}
+        dayStart={gridWindow.from}
+        dayEnd={gridWindow.to}
+        dir={dir}
+        onSelect={onSelect}
+      />
+    );
+  }
   if (view === "timeline") {
     return (
       <CalendarTimeline
@@ -283,7 +315,6 @@ function renderGrid(
         vehicles={vehicles}
         rentals={rentals}
         gridWindow={gridWindow}
-        onSelect={onSelect}
         onShowDay={onShowDay}
       />
     );
@@ -307,7 +338,21 @@ export function RentalCalendar() {
   // Bọc ngoài cùng của trang — xem `useCalendarDayCount` để biết vì sao đo ở
   // đây, không đo `window`.
   const gridRef = useRef<HTMLDivElement>(null);
-  const dayCount = useCalendarDayCount(gridRef);
+  const measuredDayCount = useCalendarDayCount(gridRef);
+
+  /**
+   * Màn hẹp + chế độ timeline = bảng MỘT NGÀY.
+   *
+   * `useLayoutVariant` (matchMedia trên CỬA SỔ) chứ không `useCalendarDayCount`
+   * (ResizeObserver trên VÙNG LƯỚI): đây là câu hỏi "trang này mang hình dạng
+   * nào", cùng loại với nav dưới ↔ sidebar, không phải câu hỏi "vùng lưới đủ
+   * chỗ cho mấy cột". Hai hook đo hai ràng buộc khác nhau — lý lẽ đầy đủ ở
+   * `hooks/use-layout-variant.ts`.
+   */
+  const dayBoard = useLayoutVariant() === "mobile" && view === "timeline";
+
+  /** Bảng một ngày đi từng NGÀY một: cửa sổ một ngày, và ‹ › bước một ngày. */
+  const dayCount = dayBoard ? 1 : measuredDayCount;
   const gridWindow: GridWindow =
     view === "month" ? monthWindow(anchor) : timelineWindow(anchor, dayCount);
 
@@ -327,16 +372,32 @@ export function RentalCalendar() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [changed, setChanged] = useState<string | null>(null);
 
+  /**
+   * Hướng của lần lật kỳ gần nhất, để bảng một ngày trượt vào đúng phía.
+   *
+   * Đặt trong CHÍNH các hàm điều hướng chứ không suy bằng cách so neo cũ với neo
+   * mới trong lúc render: so như vậy phải giữ giá trị cũ trong một `ref` và ghi
+   * vào nó giữa render — một tác dụng phụ trong pha render, thứ React ở chế độ
+   * đồng thời có quyền chạy hai lần. Ở đây thì mỗi nút TỰ BIẾT nó đi đường nào,
+   * nên không phải suy gì cả.
+   */
+  const [dir, setDir] = useState<"next" | "prev">("next");
+
   function updateFrom(next: Ymd): void {
     void navigate({ search: (prev) => ({ ...prev, from: ymdToString(next) }) });
   }
   function goToday(): void {
-    updateFrom(zonedTodayYmd());
+    const today = zonedTodayYmd();
+    // "Hôm nay" đi được cả hai chiều — so với neo đang xem để trượt đúng phía.
+    setDir(ymdToString(today) >= ymdToString(anchor) ? "next" : "prev");
+    updateFrom(today);
   }
   function goPrev(): void {
+    setDir("prev");
     updateFrom(view === "month" ? addMonths(anchor, -1) : addDays(anchor, -dayCount));
   }
   function goNext(): void {
+    setDir("next");
     updateFrom(view === "month" ? addMonths(anchor, 1) : addDays(anchor, dayCount));
   }
   function switchView(next: CalendarView): void {
@@ -367,6 +428,13 @@ export function RentalCalendar() {
   if (view === "month") {
     rangeLabel = `Tháng ${String(anchor.month)}/${String(anchor.year)}`;
     rangeLabelShort = rangeLabel;
+  } else if (dayBoard) {
+    // Một ngày thì "04-09 – 04-09" là một khoảng giả — nêu THỨ thay vào chỗ đó.
+    // Thứ mới là thứ người dùng dùng để định vị khi lật từng ngày; ngày-tháng
+    // một mình không nói được "đây là cuối tuần".
+    const day = zonedMidnightOf(anchor);
+    rangeLabel = `${WEEKDAY_LONG_FMT.format(day)}, ${RANGE_DATE_FMT.format(day)}`;
+    rangeLabelShort = `${WEEKDAY_LONG_FMT.format(day)}, ${RANGE_DATE_SHORT_FMT.format(day)}`;
   } else {
     const lastDay = addDays(anchor, dayCount - 1);
     const from = zonedMidnightOf(anchor);
@@ -450,7 +518,12 @@ export function RentalCalendar() {
               lẽ chọn hình dạng nào ở `ui/toggle-group.tsx`. */}
           <ToggleGroup
             label="Chế độ xem"
-            options={CALENDAR_VIEWS.map((v) => ({ value: v, label: VIEW_LABEL[v] }))}
+            /* Ở màn hẹp, chế độ `timeline` KHÔNG vẽ timeline — nó vẽ bảng một
+               ngày. Giữ nhãn "Timeline" ở đó là để nút nói sai thứ nó mở ra. */
+            options={CALENDAR_VIEWS.map((v) => ({
+              value: v,
+              label: v === "timeline" && dayBoard ? "Ngày" : VIEW_LABEL[v],
+            }))}
             value={view}
             onChange={switchView}
           />
@@ -516,6 +589,8 @@ export function RentalCalendar() {
             setSelectedId(r.id);
           },
           showDay,
+          dayBoard,
+          dir,
         )}
 
       {selected && (
