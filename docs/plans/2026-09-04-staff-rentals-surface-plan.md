@@ -27,7 +27,10 @@ Router/Query · Tailwind v4 (`@theme` trong `index.css`) · `bun test` + happy-d
 - **Tách nhánh trước khi commit.** Cây đang ở `main`; chín commit của plan này không được rơi
   thẳng vào đó. `git switch -c feat/staff-rentals-surface` trước Task 1.
 - **Mỗi commit phải tự dựng được.** Kiểm trước khi commit:
-  `git stash push --include-untracked && bun run typecheck && bun test && git stash pop`
+  `git stash push --include-untracked && bun run typecheck && bun test && bun run lint && git stash pop`
+- ⚠️ **`bun run lint` NẰM TRONG cổng CI** (`.github/workflows/ci.yml:111`) — typecheck xanh và test
+  xanh KHÔNG chứng minh CI xanh. Bản đầu của plan này bỏ sót lint khỏi lệnh kiểm, và hệ quả là một
+  lỗi `no-unused-vars` đi qua trọn hai vòng review mà không ai thấy. Chạy cả ba, mọi task.
 - **Chỉ `git add` file thuộc task đang làm.** Không bao giờ `git add -A`. Nhưng nếu file bạn commit
   **import** một symbol nằm trong file chưa commit, phải kéo file đó vào cùng commit.
 - **TDD NGHIÊM ở `packages/shared/src/domain/**`** (Task 1): viết test → chạy → thấy **ĐỎ vì đúng
