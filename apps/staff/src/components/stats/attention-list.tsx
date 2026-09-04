@@ -1,19 +1,29 @@
 import { Link } from "@tanstack/react-router";
+import type { CalendarSearch } from "../../lib/calendar-search";
 import { STATUS_ICON } from "../../lib/rental-status";
 import type { StatsSummary } from "../../lib/rentals";
 import { Icon, type IconName } from "../ui/icon";
 
 /**
- * `icon` chứ không phải một chấm tô màu. Ba dòng này nằm CẠNH NHAU, và hai dòng
- * đầu mang cặp `status-overdue` ↔ `warning` — ΔE≈0,040 dưới deuteranopia (design
- * doc §2.5), tức cùng MỘT màu với ~6% nam giới. Ba chấm tròn cùng hình khác màu
- * ở đây là thông tin đi bằng đúng một kênh, tại đúng chỗ tệ nhất trong app để
- * làm vậy; hình dạng mới là thứ tách được ba dòng.
+ * `icon` chứ không phải một chấm tô màu. Bốn dòng này nằm CẠNH NHAU, và cặp
+ * `status-overdue` ↔ `warning` — ΔE≈0,040 dưới deuteranopia (design doc §2.5),
+ * tức cùng MỘT màu với ~6% nam giới — vẫn kề nhau sau khi chèn dòng thứ ba
+ * (`pickupOverdue` đỏ đứng ngay trên `dueToday` vàng). Chèn dòng mới KHÔNG gỡ
+ * được cặp đó, chỉ dời chỗ nó; thứ tách được bốn dòng vẫn là hình dạng.
  */
 interface Row {
   readonly key: string;
   readonly label: string;
-  readonly to: "/calendar" | "/staff";
+  /**
+   * Cả `to` lẫn `search` trong MỘT union phân biệt, thay vì hai field rời.
+   * `search` của `/calendar` là bắt buộc (`CalendarSearch.view` không optional)
+   * còn `/staff` không nhận search nào — để rời nhau thì `<Link to={row.to}
+   * search={row.search}>` phải nhận một `search` hợp lệ cho MỌI nhánh của `to`,
+   * và không có kiểu nào thoả. Gói lại rồi `{...row.target}` thì mỗi nhánh tự
+   * mang đúng bộ prop của nó.
+   */
+  readonly target:
+    { readonly to: "/calendar"; readonly search: CalendarSearch } | { readonly to: "/staff" };
   readonly icon: IconName;
   readonly className: string;
 }
@@ -38,7 +48,29 @@ const ROW =
   "flex min-h-11 items-center justify-between gap-3 rounded-card px-3 text-sm text-ink transition-[background-color] duration-(--duration-instant) ease-standard hover:bg-canvas";
 
 /**
- * Ba dòng, đúng thứ tự mockup (design doc §8): quá hạn → trả hôm nay → chờ duyệt.
+ * Bốn dòng, sắp theo ĐỘ GẤP — không còn theo thứ tự mockup (design doc §8), vì
+ * mockup đó được vẽ khi danh sách mới có ba dòng và chưa có `pickupOverdue`:
+ *
+ *  1. `overdue` — xe đang ngoài đường quá hạn trả. Tài sản ngoài tầm kiểm soát.
+ *  2. `pickupOverdue` — đơn đã qua giờ nhận mà vẫn `BOOKED`. Xe bị giữ chỗ,
+ *     không cho ai thuê được, và có thể khách đã bỏ kèo. Là vấn đề ĐANG sống.
+ *  3. `dueToday` — chưa phải vấn đề, mới là việc sắp tới trong ngày.
+ *  4. `pendingStaff` — hành chính, không đụng tới xe.
+ *
+ * Ba dòng đầu điều hướng sang `/calendar` kèm `search` chứ không còn `to` trần.
+ * `overdueFrom`/`pickupOverdueFrom` là mốc SỚM NHẤT của mỗi nhóm, do server cắt
+ * kỳ sẵn thành Y-M-D theo giờ shop (`services/stats.ts`).
+ *
+ * ⚠️ Neo ở mốc sớm nhất KHÔNG bảo đảm nhìn thấy đủ cả nhóm: timeline chỉ vẽ
+ * 7–14 ngày kể từ `from` (`dayCountForWidth`), nên hai đơn quá hạn cách nhau ba
+ * tuần thì bấm vào chỉ thấy đơn cũ hơn. Chọn mốc sớm nhất vì đó là đơn GẤP
+ * NHẤT và timeline chạy xuôi từ đó — không phải vì nó gom đủ.
+ *
+ * `?? undefined` chứ không `!`: `overdueFrom` là `null` khi `overdue === 0`, mà
+ * nhánh này chỉ chạy khi `overdue > 0` nên hai vế đã ràng nhau ở server. Ràng
+ * buộc đó type-level KHÔNG thấy, và cách xử lý khi nó vỡ phải là rơi về "hôm
+ * nay" chứ không phải ném — một con số đúng kèm ngày sai vẫn đọc được.
+ *
  * `attention.pendingStaff` là `undefined` với STAFF (server không gửi field —
  * xem `routes/stats.ts`) — yêu cầu #7: VẮNG thì không render dòng đó, không
  * render "0". Một STAFF thấy "0 nhân viên chờ duyệt" sẽ tưởng đúng là 0, trong
@@ -51,7 +83,10 @@ export function AttentionList({ attention }: { readonly attention: StatsSummary[
     rows.push({
       key: "overdue",
       label: `${String(attention.overdue)} xe quá hạn chưa trả`,
-      to: "/calendar",
+      target: {
+        to: "/calendar",
+        search: { view: "timeline", from: attention.overdueFrom ?? undefined },
+      },
       // Đọc TỪ `STATUS_ICON` chứ không gõ lại `"alert-triangle"`: dòng này đếm
       // đúng tập đơn mà `isOverdue` chọn (`services/stats.ts` lọc
       // `ONGOING AND ends_at < now`), nên hai chỗ phải mang cùng một hình. Gõ
@@ -60,13 +95,40 @@ export function AttentionList({ attention }: { readonly attention: StatsSummary[
       className: "text-status-overdue",
     });
   }
+  if (attention.pickupOverdue > 0) {
+    rows.push({
+      key: "pickupOverdue",
+      // "đơn", không phải "xe" như ba dòng kia — và đó là chủ ý. `BOOKED` quá
+      // `startsAt` có HAI cách đọc: khách chưa tới lấy, hoặc nhân viên đã giao
+      // mà quên bấm "đã giao" (`rental-status.ts` ghi rõ vế thứ hai đắt hơn
+      // nhiều). Tức chỗ này KHÔNG biết xe đang ở đâu; chỉ có cái đơn là chắc
+      // chắn đang sai trạng thái. Viết "N xe chưa ai tới lấy" là khẳng định vế
+      // thứ nhất, và sẽ dạy sai đúng lúc vế thứ hai xảy ra.
+      label: `${String(attention.pickupOverdue)} đơn quá giờ nhận xe`,
+      target: {
+        to: "/calendar",
+        search: { view: "timeline", from: attention.pickupOverdueFrom ?? undefined },
+      },
+      // CÙNG token đỏ với dòng trên, cố ý — `rentalChipClass` cũng dùng một
+      // token đỏ cho cả hai và tách chúng bằng CÁCH TÔ. Ở đây không có mảng tô
+      // để tách, chỉ có hình: tam giác (kín) vs đồng hồ (tròn). Màu vì vậy nói
+      // đúng một điều — "cùng hạng đỏ, cần người xử lý" — thay vì bịa ra token
+      // thứ năm để nói một điều mà nhãn đã nói rõ hơn.
+      icon: STATUS_ICON.PICKUP_OVERDUE,
+      className: "text-status-overdue",
+    });
+  }
   if (attention.dueToday > 0) {
     rows.push({
       key: "dueToday",
       label: `${String(attention.dueToday)} xe phải trả hôm nay`,
-      to: "/calendar",
+      // Không `from`: nhóm này theo định nghĩa nằm trong hôm nay, mà vắng
+      // `from` đã có nghĩa là "hôm nay" (`calendar-search.ts`). Gửi kèm một
+      // mốc tính ở client là dựng lại phép cắt kỳ theo múi giờ shop mà server
+      // cố ý giữ trong SQL.
+      target: { to: "/calendar", search: { view: "timeline" } },
       // Lịch có dấu kiểm — việc gắn với NGÀY, và đường bao vuông tách hẳn
-      // khỏi tam giác của dòng ngay phía trên.
+      // khỏi đồng hồ tròn của dòng ngay phía trên.
       icon: "calendar-check",
       className: "text-warning",
     });
@@ -75,7 +137,7 @@ export function AttentionList({ attention }: { readonly attention: StatsSummary[
     rows.push({
       key: "pendingStaff",
       label: `${String(attention.pendingStaff)} nhân viên chờ duyệt`,
-      to: "/staff",
+      target: { to: "/staff" },
       icon: "nav-staff",
       className: "text-accent",
     });
@@ -92,7 +154,7 @@ export function AttentionList({ attention }: { readonly attention: StatsSummary[
         <ul className="mt-2 flex flex-col gap-1">
           {rows.map((row) => (
             <li key={row.key}>
-              <Link to={row.to} className={ROW}>
+              <Link {...row.target} className={ROW}>
                 <span className="flex items-center gap-2">
                   <Icon name={row.icon} className={row.className} />
                   {row.label}
