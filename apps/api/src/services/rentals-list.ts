@@ -227,7 +227,7 @@ export async function listRentalsQueue(
     const group = GROUP_OF_RANK[c.rank];
     // KHÔNG `continue`: hạng lạ nghĩa là `CASE` và `GROUP_OF_RANK` đã lệch
     // nhau (drift đúng thứ hàng rào ở trên canh) — im lặng bỏ qua hàng này
-    // còn ÂM THẦM LÀM SAI `total` (Task 8 tính `lastPage = ceil(total /
+    // còn ÂM THẦM LÀM SAI `total` (trang Đơn thuê tính `lastPage = ceil(total /
     // pageSize)` từ nó), tức trang cuối vĩnh viễn không tới được. Nổ to hơn
     // là đúng: `where` hiện là tập cha của `CASE` NÊN nhánh này hôm nay không
     // tới được — nhưng "không tới được hôm nay" không phải lý do để im lặng
