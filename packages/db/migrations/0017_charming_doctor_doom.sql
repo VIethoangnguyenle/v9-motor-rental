@@ -1,0 +1,2 @@
+CREATE INDEX "rentals_queue_ongoing_idx" ON "rentals" USING btree ("ends_at") WHERE "rentals"."status" = 'ONGOING';--> statement-breakpoint
+CREATE INDEX "rentals_queue_booked_idx" ON "rentals" USING btree ("starts_at") WHERE "rentals"."status" = 'BOOKED';
