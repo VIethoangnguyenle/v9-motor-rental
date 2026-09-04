@@ -253,10 +253,10 @@ export async function listRentalsQueue(
 
   const rentals: RentalQueueRow[] = [];
   for (const r of rows) {
-    const group = GROUP_OF_RANK[r.rank];
+    const { rank, ...rest } = r;
+    const group = GROUP_OF_RANK[rank];
     // Cùng lý do với vòng lặp đếm ở trên — nổ to thay vì bỏ sót lặng lẽ.
-    if (!group) throw new Error(`hạng hàng đợi không xác định: ${r.rank}`);
-    const { rank: _rank, ...rest } = r;
+    if (!group) throw new Error(`hạng hàng đợi không xác định: ${rank}`);
     rentals.push({ ...rest, status: rest.status as RentalStatus, group });
   }
 
