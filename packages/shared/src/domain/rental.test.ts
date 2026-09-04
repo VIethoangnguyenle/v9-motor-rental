@@ -328,6 +328,9 @@ describe("queueGroupOf", () => {
     expect(
       queueGroupOf({ status: "ONGOING", startsAt: at("2026-09-01T00:00:00+07:00"), endsAt: B.dayEnd }, B),
     ).toBeNull();
+    expect(
+      queueGroupOf({ status: "BOOKED", startsAt: B.horizon, endsAt: at("2026-09-20T00:00:00+07:00") }, B),
+    ).toBeNull();
   });
 
   it("năm nhóm, không trùng, và chân trời là 7 ngày", () => {
