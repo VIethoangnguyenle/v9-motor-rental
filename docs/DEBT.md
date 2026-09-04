@@ -634,3 +634,11 @@ Và sửa hai chỗ đã có: mục "`apps/staff` không có một test componen
 "@testing-library" apps/staff/src --include="*.test.ts*" | wc -l` ra đúng `5`, không cần sửa gì
 thêm ở đó. Mục chuỗi `"88px"` viết chết trong `vehicle-column.mjs` xem ghi chú "Chưa xử lý" ngay
 phía trên trong mục nợ đợt nghiệm thu 11 task.
+
+## Nợ sinh ra từ đợt màn hình Đơn thuê (`staff-rentals-surface`, 2026-09-04)
+
+- ⚠️ **`+07:00` viết cứng trong `toApiFrom`/`toApiTo` (`apps/staff/src/lib/rentals-list.ts`)** thay
+  vì suy từ `SHOP_TIMEZONE`. Cố ý: `SHOP_TIMEZONE` là tên vùng IANA (`Asia/Ho_Chi_Minh`), không phải
+  một độ lệch, và đổi tên vùng thành độ lệch trong trình duyệt cần `Intl` — quá nặng cho hai hàm
+  chuyển `YYYY-MM-DD` sang mốc `date-time`. Việt Nam không có DST nên `+07:00` là hằng số đúng hôm
+  nay, nhưng nợ vẫn còn: đổi múi giờ shop (nếu có chi nhánh ngoài VN) sẽ không tự phản ánh vào đây.
