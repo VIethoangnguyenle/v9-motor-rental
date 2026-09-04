@@ -146,7 +146,7 @@ export function AvatarActions({ me }: { readonly me: Me }) {
           pending={busy}
           onClick={() => inputRef.current?.click()}
         >
-          <Icon name="camera" className="mr-1" />
+          <Icon name="camera" />
           {upload.isPending ? "Đang tải ảnh lên…" : "Đổi ảnh"}
         </Button>
 
@@ -161,7 +161,7 @@ export function AvatarActions({ me }: { readonly me: Me }) {
               remove.mutate();
             }}
           >
-            <Icon name="trash" className="mr-1" />
+            <Icon name="trash" />
             {remove.isPending ? "Đang xoá…" : "Xoá ảnh"}
           </Button>
         )}

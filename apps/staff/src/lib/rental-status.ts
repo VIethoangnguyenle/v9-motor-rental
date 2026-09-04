@@ -1,4 +1,9 @@
-import { isOverdue, isPickupOverdue, type RentalStatus } from "@v9/shared/domain/rental";
+import {
+  isOverdue,
+  isPickupOverdue,
+  type QueueGroup,
+  type RentalStatus,
+} from "@v9/shared/domain/rental";
 import type { IconName } from "../components/ui/icon";
 
 /**
@@ -9,6 +14,23 @@ import type { IconName } from "../components/ui/icon";
  * chính là kiểu "bản sao thứ hai sẽ lệch" mà CLAUDE.md cảnh báo, chỉ khác ở
  * tầng trình bày thay vì tầng domain.
  */
+/**
+ * Nhãn tiếng Việt của năm nhóm hàng đợi. `Record` đủ cả năm nhánh chứ không phải
+ * một object tự do: thêm một nhóm ở `@v9/shared` mà quên nhãn ở đây là LỖI BIÊN
+ * DỊCH, cùng khuôn `STATUS_LABEL` ngay dưới.
+ *
+ * Ở file này chứ không trong `rental-queue.tsx` như bản đầu: màn Hiện trường cần
+ * đúng năm nhãn đó, và đây là file vốn sinh ra để chặn bản sao thứ hai của một
+ * bộ nhãn — chính là lớp lỗi mà JSDoc của `STATUS_LABEL` mô tả.
+ */
+export const GROUP_LABEL: Record<QueueGroup, string> = {
+  OVERDUE: "Quá hạn trả",
+  PICKUP_OVERDUE: "Chưa lấy xe",
+  DUE_TODAY: "Nhận lại hôm nay",
+  PICKUP_TODAY: "Giao hôm nay",
+  UPCOMING: "Sắp tới",
+};
+
 export const STATUS_LABEL: Record<RentalStatus, string> = {
   BOOKED: "Đã đặt",
   ONGOING: "Đang thuê",

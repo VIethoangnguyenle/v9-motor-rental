@@ -1,19 +1,7 @@
-import { QUEUE_GROUPS, type QueueGroup } from "@v9/shared/domain/rental";
+import { QUEUE_GROUPS } from "@v9/shared/domain/rental";
 import type { RentalQueueRow, RentalsQueueResult } from "../../lib/rentals-list";
+import { GROUP_LABEL } from "../../lib/rental-status";
 import { RentalList } from "./rental-list";
-
-/**
- * Nhãn tiếng Việt của năm nhóm. `Record` đủ cả năm nhánh chứ không phải một
- * object tự do: thêm một nhóm ở `@v9/shared` mà quên nhãn ở đây là LỖI BIÊN
- * DỊCH, cùng khuôn `STATUS_LABEL`.
- */
-const GROUP_LABEL: Record<QueueGroup, string> = {
-  OVERDUE: "Quá hạn trả",
-  PICKUP_OVERDUE: "Chưa lấy xe",
-  DUE_TODAY: "Nhận lại hôm nay",
-  PICKUP_TODAY: "Giao hôm nay",
-  UPCOMING: "Sắp tới",
-};
 
 interface RentalQueueProps {
   readonly rentals: readonly RentalQueueRow[];

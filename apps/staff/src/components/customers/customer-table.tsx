@@ -1,71 +1,14 @@
 import { Link } from "@tanstack/react-router";
-import { SHOP_TIMEZONE } from "@v9/shared/domain/rental";
+import { WHEN_FMT, WHEN_LABEL, whenOf } from "../../lib/customer-activity";
 import type { CustomerListRow } from "../../lib/customers";
 import type { CustomersSearch } from "../../lib/customers-search";
-import { STATUS_LABEL, lastMomentOf, rentalChipClass } from "../../lib/rental-status";
+import { STATUS_LABEL, rentalChipClass } from "../../lib/rental-status";
 
 interface CustomerTableProps {
   readonly rows: readonly CustomerListRow[];
   /** `q`/`page` đang xem, đi cùng sang trang chi tiết để nút back quay lại đúng đây. */
   readonly listSearch: CustomersSearch;
 }
-
-/**
- * Kiểu SUY RA từ chính dòng dữ liệu, không gõ lại: `activeRental` là hợp đồng
- * của `GET /customers/list`, và một bản sao thứ hai ở đây sẽ biên dịch được cho
- * tới ngày route đổi một field.
- */
-type ActiveRental = NonNullable<CustomerListRow["activeRental"]>;
-
-/**
- * Hai trạng thái ở đây hỏi HAI câu khác nhau, nên đọc hai cột mốc khác nhau:
- *
- * - `ONGOING` → "bao giờ khách phải trả xe" → `endsAt`.
- * - `BOOKED` → "bao giờ khách tới lấy xe" → `startsAt`.
- *
- * Đưa ngày trả cho một đơn chưa giao xe là trả lời sai câu hỏi bằng một con số
- * trông rất đúng. Lý lẽ đầy đủ ở `ActiveRental` (`apps/api/src/services/customers.ts`).
- *
- * `Record<ActiveRental["status"], …>` chứ không phải một `if`: thêm một trạng
- * thái vào `activeRental` phía API mà quên nhãn ở đây là LỖI BIÊN DỊCH, không
- * phải một ô trống lặng lẽ.
- */
-const WHEN_LABEL: Record<ActiveRental["status"], string> = {
-  ONGOING: "Trả",
-  BOOKED: "Lấy",
-};
-
-/**
- * `ONGOING` đi qua `lastMomentOf`: `endsAt` là biên MỞ, nên đơn phải trả ngày
- * 28-08 lưu `endsAt = 29/08 00:00` và cột này từng in "Trả 00:00 29-08" — sai
- * một ngày, ở đúng cột mà `CustomerTable` tồn tại để trả lời. `startsAt` là biên
- * ĐÓNG nên `BOOKED` dùng thẳng, không lùi gì cả.
- *
- * Giờ vẫn hiện (xem `WHEN_FMT`) và vẫn là thông tin thật: `endsAt` không phải
- * lúc nào cũng nửa đêm, nên "Trả 23:59 28-08" và "Trả 01:59 29-08" là hai đơn
- * khác nhau, không phải cùng một đơn hiển thị hai kiểu.
- */
-function whenOf(rental: ActiveRental): Date {
-  return rental.status === "ONGOING" ? lastMomentOf(rental.endsAt) : rental.startsAt;
-}
-
-/**
- * Có GIỜ, không chỉ ngày — khác `customer-rental-history.tsx` (chỉ ngày, vì ở đó
- * là một khoảng đã đóng, đọc để đối chiếu). Ở đây nhân viên đang hỏi "bây giờ
- * thì sao", và "9h sáng nay" với "9h tối nay" là hai câu trả lời khác hẳn nhau.
- *
- * Ra "18:00 15-08" — GIỜ TRƯỚC, và gạch ngang chứ không phải gạch chéo. Cả hai
- * là do `vi-VN` quyết định, không phải lỗi: bỏ `year` thì Intl chuyển sang khuôn
- * `dd-MM`, đúng khuôn mà tiêu đề cột của `calendar-timeline.tsx` đang hiện. Đừng
- * "sửa" thành `15/08` bằng cách tự ghép chuỗi — làm vậy là bỏ luôn `SHOP_TIMEZONE`.
- */
-const WHEN_FMT = new Intl.DateTimeFormat("vi-VN", {
-  timeZone: SHOP_TIMEZONE,
-  hour: "2-digit",
-  minute: "2-digit",
-  day: "2-digit",
-  month: "2-digit",
-});
 
 /**
  * `<table>` 5 cột, cùng khuôn `staff-table.tsx`: `overflow-x-auto` bọc NGOÀI

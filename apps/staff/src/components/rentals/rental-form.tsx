@@ -455,7 +455,7 @@ export function RentalForm({
                           variant="ghost"
                           onClick={() => setCustomerMode("create")}
                         >
-                          <Icon name="plus" className="mr-1" />
+                          <Icon name="plus" />
                           Khách hàng mới
                         </Button>
                       </div>
@@ -494,7 +494,7 @@ export function RentalForm({
                             variant="ghost"
                             onClick={() => setCustomerMode("search")}
                           >
-                            <Icon name="arrow-left" className="mr-1" />
+                            <Icon name="arrow-left" />
                             Quay lại tìm
                           </Button>
                         </div>

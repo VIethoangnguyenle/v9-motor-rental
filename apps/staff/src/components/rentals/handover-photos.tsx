@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
-import { SHOP_TIMEZONE } from "@v9/shared/domain/rental";
+import { useRef, useState } from "react";
+import type { RentalStatus } from "@v9/shared/domain/rental";
+import { nextEvidence } from "@v9/shared/domain/rental-evidence";
 import { MAX_PHOTO_BYTES, PHOTO_KINDS, type PhotoKind } from "@v9/shared/domain/rental-photo";
 import { errorMessage } from "../../lib/errors";
+import { KIND_HINT, KIND_LABEL, PHOTO_TIME_FMT } from "../../lib/photo-labels";
+import { usePhotoObjectUrl } from "../../hooks/use-photo-object-url";
 import {
   deleteRentalPhoto,
-  fetchPhotoObjectUrl,
   rentalPhotosQuery,
   uploadRentalPhoto,
   type RentalPhotoRow,
@@ -14,43 +16,12 @@ import { Alert } from "../ui/alert";
 import { Icon } from "../ui/icon";
 import { Button } from "../ui/button";
 
-const KIND_LABEL: Record<PhotoKind, string> = {
-  DOCUMENT: "Giấy tờ tuỳ thân",
-  HANDOVER: "Tình trạng xe lúc giao",
-  RETURN: "Tình trạng xe lúc nhận lại",
-};
-
 /**
- * Mốc chụp ảnh, theo giờ SHOP chứ không theo đồng hồ máy đang xem.
+ * Một ô ảnh của sheet chi tiết: ảnh, và nút mở câu hỏi xoá.
  *
- * Hai chỗ dùng: `alt` của ảnh và câu hỏi xác nhận trước khi xoá. Cả hai đều là
- * thứ nhân viên đối chiếu với khách ("tấm này chụp lúc mấy giờ"), nên đọc theo
- * đồng hồ của người xem là sai — `toLocaleString("vi-VN")` trần (bản trước của
- * file này) làm đúng điều đó. Mọi `Intl.DateTimeFormat` khác trong app đều khai
- * `timeZone` tường minh; lý lẽ đầy đủ ở `calendar-timeline.tsx`.
- */
-const PHOTO_TIME_FMT = new Intl.DateTimeFormat("vi-VN", {
-  timeZone: SHOP_TIMEZONE,
-  day: "2-digit",
-  month: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-const KIND_HINT: Record<PhotoKind, string> = {
-  DOCUMENT: "CCCD hoặc hộ chiếu shop đang giữ cho đơn này.",
-  HANDOVER: "Chụp trước khi khách đi — vết xước có sẵn phải nằm trong ảnh này.",
-  RETURN: "Chụp lúc nhận lại, cùng góc với ảnh lúc giao thì dễ đối chiếu nhất.",
-};
-
-/**
- * Một ô ảnh. Tự tải byte qua `fetch` rồi dựng `blob:` URL — KHÔNG gắn thẳng URL
- * API vào `src`, lý do đầy đủ ở `lib/photos.ts`.
- *
- * `revokeObjectURL` chạy trong cleanup của `useEffect`, và cờ `alive` chặn ca
- * component unmount trong lúc `fetch` còn bay: không có nó thì URL được tạo sau
- * khi cleanup đã chạy, và blob đó rò lại trong bộ nhớ tab cho tới khi tải lại
- * trang — im lặng, và tệ dần theo số lần mở sheet.
+ * Việc tải byte và thu hồi `blob:` URL nằm ở `hooks/use-photo-object-url.ts` —
+ * màn Hiện trường cần đúng cơ chế đó, và hai bản của một `revokeObjectURL` là
+ * hai chỗ để quên nó.
  */
 function PhotoThumb({
   photo,
@@ -66,53 +37,30 @@ function PhotoThumb({
    *  dưới trỏ vào đúng một tấm nhìn thấy được, không phải "một tấm nào đó". */
   readonly confirming: boolean;
 }) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    let created: string | null = null;
-
-    void fetchPhotoObjectUrl(photo.rentalId, photo.id).then((u) => {
-      if (!alive) {
-        if (u !== null) URL.revokeObjectURL(u);
-        return;
-      }
-      if (u === null) setFailed(true);
-      else {
-        created = u;
-        setUrl(u);
-      }
-    });
-
-    return () => {
-      alive = false;
-      if (created !== null) URL.revokeObjectURL(created);
-    };
-  }, [photo.rentalId, photo.id]);
+  const object = usePhotoObjectUrl(photo.rentalId, photo.id);
 
   return (
     <li className="relative">
       <a
-        href={url ?? undefined}
+        href={object.state === "ready" ? object.url : undefined}
         target="_blank"
         rel="noreferrer"
         className={`block aspect-square overflow-hidden rounded-card border bg-canvas ${
           confirming ? "border-status-overdue" : "border-border"
         }`}
       >
-        {url === null ? (
-          <span className="flex h-full items-center justify-center text-xs text-muted">
-            {failed ? "Không tải được" : "Đang tải…"}
-          </span>
-        ) : (
+        {object.state === "ready" ? (
           // `alt` mô tả VAI TRÒ của ảnh, không mô tả nội dung: không ai biết
           // trong ảnh có gì ngoài người đã chụp nó.
           <img
-            src={url}
+            src={object.url}
             alt={`${KIND_LABEL[photo.kind]} — chụp lúc ${PHOTO_TIME_FMT.format(new Date(photo.createdAt))}`}
             className="h-full w-full object-cover"
           />
+        ) : (
+          <span className="flex h-full items-center justify-center text-xs text-muted">
+            {object.state === "failed" ? "Không tải được" : "Đang tải…"}
+          </span>
         )}
       </a>
       {/* Nút này MỞ câu hỏi, không xoá. Trước đây một chạm là xoá vĩnh viễn, và
@@ -143,6 +91,7 @@ function PhotoThumb({
 
 function KindSection({
   kind,
+  openByDefault,
   photos,
   busy,
   confirming,
@@ -152,6 +101,8 @@ function KindSection({
   onConfirmDelete,
 }: {
   readonly kind: PhotoKind;
+  /** Nhóm thuộc bước hiện tại thì mở sẵn — xem `openKinds` ở `HandoverPhotos`. */
+  readonly openByDefault: boolean;
   readonly photos: readonly RentalPhotoRow[];
   readonly busy: boolean;
   /** Ảnh đang chờ xác nhận xoá — của BẤT KỲ nhóm nào; lọc lại bên dưới. */
@@ -162,6 +113,12 @@ function KindSection({
   readonly onConfirmDelete: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  /**
+   * Khởi tạo từ `openByDefault` rồi TỰ SỞ HỮU: sau khi người dùng tự mở hay gập
+   * một nhóm, một lần render lại (tải xong ảnh mới, đổi trạng thái đơn) không
+   * được phép giật nó về trạng thái mặc định giữa lúc họ đang nhìn.
+   */
+  const [open, setOpen] = useState(openByDefault);
   const mine = photos.filter((p) => p.kind === kind);
   // Khối hỏi nằm trong nhóm CHỨA tấm ảnh đó, không phải ở đáy cả khu vực: câu
   // hỏi phải ở cạnh tấm nó đang hỏi, nếu không người dùng phải cuộn để đối chiếu
@@ -169,81 +126,110 @@ function KindSection({
   const confirmingMine = confirming?.kind === kind ? confirming : null;
 
   return (
-    <section className="flex flex-col gap-2">
-      <div>
-        <h3 className="m-0 text-sm font-semibold text-ink">{KIND_LABEL[kind]}</h3>
-        <p className="m-0 text-xs text-muted">{KIND_HINT[kind]}</p>
-      </div>
+    /*
+     * `<details>` giữ NGỮ NGHĨA (bàn phím, trình đọc màn hình, `open`), nhưng
+     * phần thân được render CÓ ĐIỀU KIỆN thay vì để trình duyệt tự ẩn.
+     *
+     * Không phải sở thích — đo được: với `open={false}`, nút "Thêm ảnh" bên
+     * trong vẫn trả `height=44px`, `visibility=visible`, và `elementFromPoint`
+     * vẫn trúng nó, nên `sheet-actions.mjs` tiếp tục đếm nó là hành động dưới
+     * nếp gấp. Cơ chế ẩn nội dung gốc của `<details>` không ăn ở đây; đoán thêm
+     * nguyên nhân là đổi một ẩn số lấy một ẩn số khác. Render có điều kiện thì
+     * xác định: không có DOM thì không có chiều cao.
+     */
+    <details open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      {/* `min-h-11` cho vùng chạm 44px: `<summary>` mặc định chỉ cao bằng dòng
+          chữ, và đây là thứ người dùng phải bấm để mở nhóm đã gập.
+          `[&::-webkit-details-marker]:hidden` + mũi tên riêng: mũi tên mặc định
+          của WebKit không theo được token màu nào của app. */}
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
+        <Icon
+          name="chevron-right"
+          className="text-muted transition-transform duration-150 group-open:rotate-90"
+        />
+        <span className="flex-1">
+          <span className="block text-sm font-semibold text-ink">{KIND_LABEL[kind]}</span>
+          <span className="block text-xs text-muted">
+            {mine.length > 0 ? `${String(mine.length)} ảnh` : "chưa có ảnh"}
+          </span>
+        </span>
+      </summary>
 
-      {mine.length > 0 && (
-        <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0">
-          {mine.map((p) => (
-            <PhotoThumb
-              key={p.id}
-              photo={p}
-              busy={busy}
-              confirming={confirmingMine?.id === p.id}
-              onRequestDelete={() => onRequestDelete(p)}
-            />
-          ))}
-        </ul>
-      )}
+      {open && (
+        <div className="flex flex-col gap-2 pt-1">
+          <p className="m-0 text-xs text-muted">{KIND_HINT[kind]}</p>
 
-      {/* Cùng khuôn xác nhận với nút huỷ đơn ở `rental-detail-sheet.tsx`: một
+          {mine.length > 0 && (
+            <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0">
+              {mine.map((p) => (
+                <PhotoThumb
+                  key={p.id}
+                  photo={p}
+                  busy={busy}
+                  confirming={confirmingMine?.id === p.id}
+                  onRequestDelete={() => onRequestDelete(p)}
+                />
+              ))}
+            </ul>
+          )}
+
+          {/* Cùng khuôn xác nhận với nút huỷ đơn ở `rental-detail-sheet.tsx`: một
           `Alert tone="warning"` nói HẬU QUẢ, rồi hai nút — không phải
           `window.confirm`, vốn không đọc được bằng token và bị chặn trong PWA
           standalone ở vài trình duyệt. Câu hỏi nêu đủ loại ảnh và giờ chụp để
           người đang cầm điện thoại tự kiểm là mình bấm đúng tấm. */}
-      {confirmingMine && (
-        <div className="flex flex-col gap-2">
-          <Alert tone="warning">
-            Xoá ảnh {KIND_LABEL[confirmingMine.kind].toLowerCase()} chụp lúc{" "}
-            {PHOTO_TIME_FMT.format(new Date(confirmingMine.createdAt))}? Ảnh bàn giao là bằng chứng
-            khi có tranh chấp xước xát — xoá rồi không lấy lại được.
-          </Alert>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" pending={busy} onClick={onConfirmDelete}>
-              {busy ? "Đang xoá…" : "Xoá ảnh"}
-            </Button>
-            <Button type="button" variant="ghost" onClick={onCancelDelete}>
-              Giữ lại
-            </Button>
-          </div>
+          {confirmingMine && (
+            <div className="flex flex-col gap-2">
+              <Alert tone="warning">
+                Xoá ảnh {KIND_LABEL[confirmingMine.kind].toLowerCase()} chụp lúc{" "}
+                {PHOTO_TIME_FMT.format(new Date(confirmingMine.createdAt))}? Ảnh bàn giao là bằng
+                chứng khi có tranh chấp xước xát — xoá rồi không lấy lại được.
+              </Alert>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" pending={busy} onClick={onConfirmDelete}>
+                  {busy ? "Đang xoá…" : "Xoá ảnh"}
+                </Button>
+                <Button type="button" variant="ghost" onClick={onCancelDelete}>
+                  Giữ lại
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/*
+           * `capture="environment"` mở thẳng camera sau trên điện thoại thay vì
+           * thư viện ảnh — nhân viên đang đứng cạnh xe, không đi tìm ảnh cũ. Trên
+           * desktop thuộc tính này bị bỏ qua, nên vẫn là chọn file bình thường.
+           *
+           * Input bị ẩn và điều khiển bằng `<Button>` vì `<input type=file>` gốc
+           * không nhận được style, và một nút cao 20px là nút bấm trượt trong gara.
+           */}
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            capture="environment"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onUpload(kind, file);
+              // Xoá giá trị để chọn LẠI CÙNG một file vẫn kích hoạt `change` —
+              // không có dòng này thì chụp lại đúng tấm vừa xoá sẽ không gửi gì.
+              e.target.value = "";
+            }}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={busy}
+            onClick={() => inputRef.current?.click()}
+          >
+            <Icon name="camera" />
+            Thêm ảnh
+          </Button>
         </div>
       )}
-
-      {/*
-       * `capture="environment"` mở thẳng camera sau trên điện thoại thay vì
-       * thư viện ảnh — nhân viên đang đứng cạnh xe, không đi tìm ảnh cũ. Trên
-       * desktop thuộc tính này bị bỏ qua, nên vẫn là chọn file bình thường.
-       *
-       * Input bị ẩn và điều khiển bằng `<Button>` vì `<input type=file>` gốc
-       * không nhận được style, và một nút cao 20px là nút bấm trượt trong gara.
-       */}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        capture="environment"
-        hidden
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) onUpload(kind, file);
-          // Xoá giá trị để chọn LẠI CÙNG một file vẫn kích hoạt `change` —
-          // không có dòng này thì chụp lại đúng tấm vừa xoá sẽ không gửi gì.
-          e.target.value = "";
-        }}
-      />
-      <Button
-        type="button"
-        variant="ghost"
-        disabled={busy}
-        onClick={() => inputRef.current?.click()}
-      >
-        <Icon name="camera" className="mr-1" />
-        Thêm ảnh
-      </Button>
-    </section>
+    </details>
   );
 }
 
@@ -255,7 +241,19 @@ function KindSection({
  * nhau kèm câu gợi ý riêng — một đống ảnh không phân loại không trả lời được
  * câu "lúc giao trông thế nào so với lúc nhận lại".
  */
-export function HandoverPhotos({ rentalId }: { readonly rentalId: string }) {
+export function HandoverPhotos({
+  rentalId,
+  status,
+}: {
+  readonly rentalId: string;
+  /**
+   * Trạng thái đơn — quyết định nhóm ảnh nào MỞ SẴN.
+   *
+   * Không suy được từ danh sách ảnh: một đơn `BOOKED` chưa có tấm nào và một đơn
+   * `ONGOING` chưa có tấm nào có cùng danh sách rỗng nhưng nợ hai bước khác nhau.
+   */
+  readonly status: RentalStatus;
+}) {
   const qc = useQueryClient();
   const list = useQuery(rentalPhotosQuery(rentalId));
 
@@ -299,6 +297,31 @@ export function HandoverPhotos({ rentalId }: { readonly rentalId: string }) {
   const busy = upload.isPending || remove.isPending;
   const photos = list.data?.ok ? list.data.photos : [];
 
+  /**
+   * Nhóm nào mở sẵn: ĐÚNG MỘT nhóm — món nợ bằng chứng đầu tiên của đơn.
+   *
+   * Trước đợt 2026-09-04 cả ba nhóm đều mở, và hệ quả đo được (`sheet-actions.mjs`):
+   * **3/7 hành động của sheet nằm dưới nếp gấp ở cả 390 lẫn 360px**, cả ba đều
+   * là nút "Thêm ảnh" — trong đó nút của bước NHẬN LẠI XE nằm dưới cùng, mà
+   * `PRODUCT.md` nguyên tắc #3 gọi ảnh bàn giao là bằng chứng bảo vệ cả hai phía.
+   *
+   * Một, không phải tất cả nhóm còn nợ: cùng nguyên tắc `EvidenceAxis` ở màn
+   * Hiện trường — màn hình chỉ hỏi MỘT câu. Mở cả hai nhóm nợ của một đơn
+   * `BOOKED` đo được 2/6 hành động vẫn dưới nếp gấp; mở một thì còn 1.
+   *
+   * Đơn đã đóng (`COMPLETED`/`CANCELLED`) không nợ gì, nên mở nhóm nào ĐÃ CÓ
+   * ảnh: ở đó sheet là chỗ xem lại bằng chứng, không phải chỗ chụp thêm.
+   *
+   * `<details>` gốc chứ không state trong React: nó cho sẵn bàn phím, trình đọc
+   * màn hình và trạng thái mở/đóng mà không cần một `useState` thứ tư trong
+   * component này — và người dùng vẫn mở được nhóm đã gập bất cứ lúc nào, nên
+   * đây là THU GỌN chứ không phải giấu đi.
+   */
+  const have = photos.map((p) => p.kind);
+  const next = nextEvidence(status, have);
+  const openKinds: readonly PhotoKind[] =
+    next === null ? PHOTO_KINDS.filter((k) => have.includes(k)) : [next];
+
   return (
     <div className="flex flex-col gap-4 border-t border-border pt-4">
       {upload.error && <Alert tone="error">{upload.error.message}</Alert>}
@@ -314,6 +337,7 @@ export function HandoverPhotos({ rentalId }: { readonly rentalId: string }) {
         <KindSection
           key={kind}
           kind={kind}
+          openByDefault={openKinds.includes(kind)}
           photos={photos}
           busy={busy}
           confirming={confirming}

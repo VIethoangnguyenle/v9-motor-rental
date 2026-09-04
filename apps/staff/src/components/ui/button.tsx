@@ -47,8 +47,14 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
  * token. Gõ nhầm thành `duration-instant` thì nút chạy 150ms mặc định và KHÔNG
  * có gì kêu.
  */
+/*
+ * `gap-2` cho cặp icon + nhãn. Ở đây chứ không ở từng chỗ gọi: `stats-page.tsx`
+ * từng tự vá bằng `className="mr-1"` trên icon, và mọi nút có icon sau đó phải
+ * nhớ lặp lại con số đó — tức một thang cách thứ hai, không ai khai, sống trong
+ * JSX. Nút chỉ có chữ không đổi gì: `gap` giữa một phần tử con duy nhất là 0.
+ */
 const BASE =
-  "inline-flex min-h-11 items-center justify-center rounded-card px-4 text-sm font-semibold transition-[background-color,border-color] duration-(--duration-instant) ease-standard disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-card px-4 text-sm font-semibold transition-[background-color,border-color] duration-(--duration-instant) ease-standard disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
  * Mỗi biến thể có đủ default · hover · active. Bản trước chỉ có default và

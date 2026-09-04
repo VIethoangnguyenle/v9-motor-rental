@@ -361,7 +361,7 @@ export function RentalDetailSheet({ rental, vehicle, onClose, onChanged }: Renta
               deliveryAddress={rental.deliveryAddress}
             />
 
-            <HandoverPhotos rentalId={rental.id} />
+            <HandoverPhotos rentalId={rental.id} status={rental.status} />
           </div>
         );
       }}
