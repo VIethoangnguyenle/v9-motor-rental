@@ -1,5 +1,5 @@
 import { Elysia, t, type Static } from "elysia";
-import type { RentalStatus } from "@v9/shared/domain/rental";
+import type { QueueGroup, RentalStatus } from "@v9/shared/domain/rental";
 import { staffGuard, type GuardErrorCode } from "../plugins/staff-guard";
 import {
   createCustomer,
@@ -20,6 +20,11 @@ import {
   type CreateRentalResult,
   type ListRentalsResult,
 } from "../services/rentals";
+import {
+  listRentalsLedger,
+  listRentalsQueue,
+  RENTALS_PAGE_SIZE_MAX,
+} from "../services/rentals-list";
 
 const errorSchema = t.Object({ message: t.String(), code: t.String() });
 
@@ -91,6 +96,35 @@ type StatusSetsMatch = [RentalStatus] extends [StatusSchemaValue]
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- tồn tại CHỈ để ép kiểm tra hai chiều ở trên; không đọc lúc chạy.
 const _statusSchemaMatchesDomain: StatusSetsMatch = true;
 
+/**
+ * Cùng bài toán và cùng cách giải với `statusSchema` ngay trên. Khác một điểm:
+ * `QUEUE_GROUPS` LÀ một tuple runtime (`as const` ở `domain/rental.ts`), nên về
+ * lý thuyết `.map()` được — nhưng `t.Union(QUEUE_GROUPS.map(t.Literal))` không
+ * dùng được vì TypeBox cần một tuple có ĐỘ DÀI biết trước ở tầng kiểu để suy ra
+ * union; kết quả của `.map()` rộng ra `TLiteral<...>[]` (mất thông tin độ dài),
+ * và ép kiểu bằng `as` một tuple năm phần tử qua instantiation expression
+ * (`t.Literal<QueueGroup>`) không dựng được trên TypeScript 6.0.3 ở đây. Nên
+ * quay lại liệt kê tay — CHẤP NHẬN ĐƯỢC vì ràng buộc hai chiều ngay dưới đây bắt
+ * mọi lệch lạc giữa danh sách này và `QUEUE_GROUPS`: thêm/bớt một nhóm ở một bên
+ * mà quên bên kia là lỗi biên dịch tại chỗ, không phải một nhóm mới lặng lẽ
+ * không đi qua được API.
+ */
+const queueGroupSchema = t.Union([
+  t.Literal("OVERDUE"),
+  t.Literal("PICKUP_OVERDUE"),
+  t.Literal("DUE_TODAY"),
+  t.Literal("PICKUP_TODAY"),
+  t.Literal("UPCOMING"),
+]);
+type QueueGroupSchemaValue = Static<typeof queueGroupSchema>;
+type QueueGroupSetsMatch = [QueueGroup] extends [QueueGroupSchemaValue]
+  ? [QueueGroupSchemaValue] extends [QueueGroup]
+    ? true
+    : never
+  : never;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- tồn tại CHỈ để ép kiểm hai chiều ở trên; không đọc lúc chạy.
+const _queueGroupSchemaMatchesDomain: QueueGroupSetsMatch = true;
+
 const rentalSchema = t.Object({
   id: t.String({ format: "uuid" }),
   vehicleId: t.String({ format: "uuid" }),
@@ -130,6 +164,29 @@ const rentalWithVehicleSchema = t.Composite([
     vehiclePlate: t.Nullable(t.String()),
   }),
 ]);
+
+const queueRowSchema = t.Composite([rentalWithVehicleSchema, t.Object({ group: queueGroupSchema })]);
+
+/**
+ * Đếm cho CẢ hàng đợi, không chỉ trang đang xem — tiêu đề nhóm phải nói đúng
+ * "Quá hạn trả (7)" kể cả khi trang này chứa 3 trong 7. Khai đủ năm khoá bắt
+ * buộc (không `t.Optional`): nhóm rỗng gửi `0`, và VIỆC ẨN nó là quyết định của
+ * tầng hiển thị, không phải của tầng truyền tải.
+ *
+ * Liệt kê tay như `queueGroupSchema` ở trên, cùng lý do — nhưng khoá hai chiều
+ * với `QueueGroup` bằng `satisfies` một mapped type thay vì bằng khối
+ * `extends`/`extends` (khối đó chỉ so được HAI type, không so được "đối tượng
+ * này có ĐỦ và CHỈ ĐỦ từng ấy khoá"): thiếu một khoá là lỗi "property is missing";
+ * thừa một khoá là lỗi excess-property. Cả hai chiều đều là lỗi biên dịch tại
+ * chỗ.
+ */
+const groupCountsSchema = t.Object({
+  OVERDUE: t.Integer(),
+  PICKUP_OVERDUE: t.Integer(),
+  DUE_TODAY: t.Integer(),
+  PICKUP_TODAY: t.Integer(),
+  UPCOMING: t.Integer(),
+} satisfies { [G in QueueGroup]: ReturnType<typeof t.Integer> });
 
 /**
  * Suy từ kiểu trả về của NĂM service — không liệt kê tay lần thứ hai, cùng lý lẽ
@@ -325,6 +382,96 @@ export const rentals = new Elysia({ name: "rentals" })
     params: t.Object({ id: t.String({ format: "uuid" }) }),
     response: { 200: t.Array(rentalWithVehicleSchema) },
   })
+
+  /**
+   * Hàng đợi việc — mở màn Đơn thuê ra là thấy ngay cái này, KHÔNG cần chọn
+   * ngày. Khác `GET /rentals` (lịch) ở đúng chỗ đó: lịch hỏi "khoảng này có gì",
+   * hàng đợi hỏi "giờ phải làm gì".
+   *
+   * ĐỨNG TRƯỚC `GET /rentals` (và mọi route `GET /rentals/:something` sau này)
+   * — hôm nay chưa có route param nào va vào, nhưng đặt đúng thứ tự ngay từ
+   * đầu để ngày có `GET /rentals/:id` không sinh ra một 404 khó tìm.
+   *
+   * KHÔNG nhận `q`: một hàng đợi đã lọc theo từ khoá thì không còn là hàng đợi.
+   * Tìm kiếm đi qua `/rentals/ledger` không truyền `from`/`to`.
+   *
+   * `now` đóng ở server (`new Date()`), không nhận từ client: "quá hạn" phụ
+   * thuộc đồng hồ, và một client lệch giờ sẽ tự thấy một hàng đợi khác mọi người.
+   * `createdBy` của `listRentalsQueue` cố ý để trống — tham số đó chỉ tồn tại để
+   * test tự cô lập trên DB dev dùng chung, route đếm cho CẢ shop.
+   */
+  .get(
+    "/rentals/queue",
+    async ({ query }) => {
+      const page = query.page ?? 1;
+      const pageSize = query.pageSize ?? 20;
+      const r = await listRentalsQueue(new Date(), { page, pageSize });
+      return { ...r, page, pageSize };
+    },
+    {
+      query: t.Object({
+        page: t.Optional(t.Numeric({ minimum: 1 })),
+        pageSize: t.Optional(t.Numeric({ minimum: 1, maximum: RENTALS_PAGE_SIZE_MAX })),
+      }),
+      response: {
+        200: t.Object({
+          rentals: t.Array(queueRowSchema),
+          total: t.Integer(),
+          page: t.Integer(),
+          pageSize: t.Integer(),
+          groupCounts: groupCountsSchema,
+        }),
+      },
+    },
+  )
+
+  /**
+   * Sổ cái + tra cứu. `from`/`to` TUỲ CHỌN — thiếu cả hai nghĩa là "mọi thời
+   * điểm", đó là hình dạng mà ô tìm dùng. Không có trần `MAX_RANGE_DAYS` ở đây:
+   * trần đó tồn tại để bảo vệ lịch khỏi vẽ 10.000 thanh, còn danh sách này đã
+   * phân trang nên nó tự bị chặn.
+   *
+   * `status` nhận NHIỀU giá trị (`?status=BOOKED&status=ONGOING`). Elysia chỉ
+   * gộp query trùng khoá thành mảng khi có ≥2 giá trị — một giá trị đơn lẻ vào
+   * là một chuỗi trần, nên xử lý cả hai hình dạng ở handler bên dưới.
+   */
+  .get(
+    "/rentals/ledger",
+    async ({ query }) => {
+      const page = query.page ?? 1;
+      const pageSize = query.pageSize ?? 20;
+      const raw = query.status;
+      const statuses = raw === undefined ? undefined : Array.isArray(raw) ? raw : [raw];
+      const r = await listRentalsLedger({
+        q: query.q,
+        statuses,
+        from: query.from === undefined ? undefined : new Date(query.from),
+        to: query.to === undefined ? undefined : new Date(query.to),
+        page,
+        pageSize,
+      });
+      return { ...r, page, pageSize };
+    },
+    {
+      query: t.Object({
+        q: t.Optional(t.String()),
+        status: t.Optional(t.Union([statusSchema, t.Array(statusSchema)])),
+        from: t.Optional(t.String({ format: "date-time" })),
+        to: t.Optional(t.String({ format: "date-time" })),
+        page: t.Optional(t.Numeric({ minimum: 1 })),
+        pageSize: t.Optional(t.Numeric({ minimum: 1, maximum: RENTALS_PAGE_SIZE_MAX })),
+      }),
+      response: {
+        200: t.Object({
+          rentals: t.Array(rentalWithVehicleSchema),
+          total: t.Integer(),
+          page: t.Integer(),
+          pageSize: t.Integer(),
+          collectedAmount: t.Integer(),
+        }),
+      },
+    },
+  )
 
   .get(
     "/rentals",
