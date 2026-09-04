@@ -532,26 +532,33 @@ column.mjs`: cả 6 xe "cần 119px ✅", không xe nào cụt) — chỉ bất 
   trực tiếp từ `need`/`has` đo sống), chỉ hai dòng tóm tắt bên dưới nó — cùng lớp lỗi "probe mù
   không báo lỗi" mà `README.md` của thư mục này liệt kê, thêm một ca thứ tư chưa được liệt vào đó.
 
-- ⛔ **Cổng cuối KHÔNG xanh cả bốn** — đo bằng `eslint . --ignore-pattern '.claude/**'` (loại trừ
-  `.claude/skills/impeccable/**`, thư mục cài bằng `npx impeccable install`, có trong `.gitignore`
-  từ trước nhưng **không** có trong `ignores` của `eslint.config.js`, nên `bun run lint` trần trụi
-  ăn thêm hơn 2700 lỗi của một plugin cục bộ không thuộc mã nguồn repo — nhiễu, không phải nợ của
-  đợt này, nhưng khiến `bun run lint` không dùng được để đọc kết quả thật trên máy có cài plugin):
-  **40 lỗi / 16 cảnh báo** trên 7 file, cả 7 đều do đợt này:
-  - `apps/staff/test-setup.ts` — lỗi parse `no-undef`/project-service: file nằm ngoài
-    `include: ["src/**/*", "vite.config.ts"]` của `apps/staff/tsconfig.json`, nên
-    `parserOptions.projectService` của `eslint.config.js` không tìm thấy nó thuộc dự án TS nào.
-  - 6 script `apps/staff/scripts/mobile-probe/*.mjs` — `no-undef` trên `fetch`/`WebSocket`/
-    `console`/`process`/`setTimeout`/`Buffer`: các global Node/DOM này chưa được khai trong
-    `eslint.config.js` cho đường dẫn `scripts/mobile-probe/**` (khác `apps/api/scripts/**`, đã có
-    dòng `"boundaries/ignore"` riêng nhưng đó là rule khác, không phải `no-undef`).
+- ✅ **Cổng cuối, cả bốn đã xanh** — đóng bởi ba commit ngay sau khi mục này được ghi lần đầu:
+  `84c7b90` (eslint ignores), `63fc84c` (tsconfig include + sửa 40 lỗi/16 cảnh báo thật),
+  `e19e0dd` (prettier). Ghi lại cấu hình đã thêm và vì sao, để lần sau chạm `eslint.config.js` hay
+  `tsconfig.json` biết tiền lệ đã có:
+  - `.claude/skills/impeccable/**` (thư mục cài bằng `npx impeccable install`, đã có trong
+    `.gitignore` từ trước) thêm vào `ignores` của `eslint.config.js`. Không có dòng này, `bun run
+lint` trần trụi ăn thêm hơn 2700 lỗi của code do trình cài bên thứ ba sinh ra — không thuộc mã
+    nguồn repo — chôn mất 40 lỗi thật của đợt này. Không đụng năm skill `v9-*` (viết tay, đang
+    track) dưới cùng thư mục cha.
+  - `apps/staff/test-setup.ts` thêm vào `include` của `apps/staff/tsconfig.json` (cùng chỗ với
+    `vite.config.ts`, cùng tiền lệ "tooling file ở root package, không phải code ứng dụng"). Thiếu
+    dòng này thì `parserOptions.projectService` không tìm thấy file thuộc dự án TS nào, ném lỗi
+    parse `no-undef` giả.
+  - Một khối `languageOptions.globals` riêng cho `apps/staff/scripts/**/*.mjs` (Node 22 chạy ngoài
+    trình duyệt, không khớp block globals nào có sẵn) — thay vì rải `eslint-disable` từng dòng cho
+    `fetch`/`WebSocket`/`setTimeout`/`console`/`process`/`Buffer`.
+  - 16 cảnh báo `no-console` đi kèm (`console.log` trong 6 file `.mjs` trên) sửa bằng
+    `console.warn`, theo đúng convention output-report đã có ở `scripts/seed-dev.ts`,
+    `packages/db/scripts/migrate.ts`, `apps/api/scripts/bench.ts` — không tắt rule.
+  - `./node_modules/.bin/prettier --write` cho 6 file `.mjs` trên (chưa từng qua prettier) cộng
+    `DESIGN.md` (lệch format từ trước đợt này, gộp luôn vì cùng lệnh). **Không đụng**
+    `.serena/project.yml` — file MCP Serena tự sinh lại, không phải nguồn do người viết, ngoài
+    phạm vi đợt gate-fix.
 
-  `bun run typecheck` và `bun test` xanh (498 pass / 0 fail / 47 file, không giảm so với mốc đầu
-  đợt) — **hai** cổng, không phải bốn.
-
-  `./node_modules/.bin/prettier --check .` cũng đỏ: cùng 6 file `.mjs` trên (chưa chạy prettier bao
-  giờ) cộng `.serena/project.yml` và `DESIGN.md` — hai file sau **có trước đợt này**, không phải nợ
-  mới, liệt ra để tách bạch với 6 file `.mjs` mới.
+  Đo tại đỉnh nhánh: `bun run typecheck` + `bun test` (498 pass / 0 fail / 47 file) +
+  `bun run lint` (0 vấn đề) + `prettier --check .` (chỉ còn `.serena/project.yml` lệch, cố ý bỏ
+  qua như trên) — bốn cổng xanh.
 
 **Bài học công cụ đo — lặp lại lần thứ ba trong đợt này, nên là một LỚP lỗi, không phải ba sự cố
 riêng lẻ:** `modal-submit-hit.mjs` từng chốt cứng toạ độ (nút dời chỗ → báo miss vô nghĩa),
