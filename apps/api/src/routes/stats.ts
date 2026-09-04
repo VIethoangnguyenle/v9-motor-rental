@@ -46,6 +46,9 @@ export const stats = new Elysia({ name: "stats" })
           attention: t.Object({
             overdue: t.Integer(),
             dueToday: t.Integer(),
+            pickupOverdue: t.Integer(),
+            overdueFrom: t.Nullable(t.String()),
+            pickupOverdueFrom: t.Nullable(t.String()),
             pendingStaff: t.Optional(t.Integer()),
           }),
         }),

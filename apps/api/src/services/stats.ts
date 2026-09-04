@@ -17,6 +17,19 @@ export interface StatsSummary {
   readonly attention: {
     readonly overdue: number;
     readonly dueToday: number;
+    readonly pickupOverdue: number;
+    /**
+     * Mốc `ends_at` SỚM NHẤT trong nhóm quá hạn, dạng `YYYY-MM-DD` theo giờ
+     * shop — `null` khi `overdue === 0`. Trả CHUỖI đã cắt kỳ trong Postgres
+     * (`to_char`), không phải timestamp, vì nơi duy nhất dùng giá trị này là
+     * `search.from` của route `/calendar` (`lib/calendar-search.ts`), vốn chỉ
+     * nhận Y-M-D. Trả timestamp rồi format ở client là dựng lại đúng phép cắt
+     * kỳ theo múi giờ mà `getStatsSummary` đã cố tình làm trong SQL — xem
+     * JSDoc của hàm bên dưới.
+     */
+    readonly overdueFrom: string | null;
+    /** Cùng lý lẽ `overdueFrom`, cho nhóm `pickupOverdue` (`starts_at` sớm nhất). */
+    readonly pickupOverdueFrom: string | null;
   };
 }
 
@@ -48,6 +61,9 @@ interface StatsRow {
   prev_month_amount: number;
   overdue: number;
   due_today: number;
+  pickup_overdue: number;
+  overdue_from: string | null;
+  pickup_overdue_from: string | null;
 }
 
 /**
@@ -104,7 +120,13 @@ export async function getStatsSummary(now: Date, filter?: StatsFilter): Promise<
       (SELECT COUNT(*)::int FROM rentals, b WHERE status = 'ONGOING' AND ends_at < ${now}
         AND (${createdBy}::text IS NULL OR created_by = ${createdBy}))                                                                                      AS overdue,
       (SELECT COUNT(*)::int FROM rentals, b WHERE status = 'ONGOING' AND ends_at >= b.day_start AND ends_at < b.day_start + interval '1 day'
-        AND (${createdBy}::text IS NULL OR created_by = ${createdBy}))                                                                                      AS due_today`;
+        AND (${createdBy}::text IS NULL OR created_by = ${createdBy}))                                                                                      AS due_today,
+      (SELECT COUNT(*)::int FROM rentals, b WHERE status = 'BOOKED' AND starts_at < ${now}
+        AND (${createdBy}::text IS NULL OR created_by = ${createdBy}))                                                                                      AS pickup_overdue,
+      (SELECT to_char(MIN(ends_at) AT TIME ZONE ${tz}, 'YYYY-MM-DD') FROM rentals, b WHERE status = 'ONGOING' AND ends_at < ${now}
+        AND (${createdBy}::text IS NULL OR created_by = ${createdBy}))                                                                                      AS overdue_from,
+      (SELECT to_char(MIN(starts_at) AT TIME ZONE ${tz}, 'YYYY-MM-DD') FROM rentals, b WHERE status = 'BOOKED' AND starts_at < ${now}
+        AND (${createdBy}::text IS NULL OR created_by = ${createdBy}))                                                                                      AS pickup_overdue_from`;
 
   const row = rows[0];
   if (!row) throw new Error("truy vấn thống kê không trả về hàng nào");
@@ -127,6 +149,12 @@ export async function getStatsSummary(now: Date, filter?: StatsFilter): Promise<
         prevAmount: row.prev_month_amount,
       },
     },
-    attention: { overdue: row.overdue, dueToday: row.due_today },
+    attention: {
+      overdue: row.overdue,
+      dueToday: row.due_today,
+      pickupOverdue: row.pickup_overdue,
+      overdueFrom: row.overdue_from,
+      pickupOverdueFrom: row.pickup_overdue_from,
+    },
   };
 }

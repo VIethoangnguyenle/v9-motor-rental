@@ -223,4 +223,95 @@ describe("getStatsSummary", () => {
     expect(stats.attention.overdue).toBe(1);
     expect(stats.attention.dueToday).toBe(1);
   });
+
+  // `pickupOverdue` đếm `isPickupOverdue` (@v9/shared/domain/rental): BOOKED
+  // đã qua `starts_at` — khách hẹn lấy xe mà không tới. Khác `overdue` ở chỗ
+  // xét `starts_at`, không phải `ends_at`, và chỉ tính đơn CHƯA giao xe.
+  it("pickupOverdue đếm đúng: BOOKED quá startsAt, không tính ONGOING hay BOOKED chưa tới hẹn", async () => {
+    const now = new Date("2026-08-20T10:00:00+07:00");
+
+    // Quá hẹn lấy xe: BOOKED, starts_at (18/8) đã qua so với now (20/8).
+    await seedRental({
+      startsAt: "2026-08-18T00:00:00+07:00",
+      endsAt: "2026-08-22T00:00:00+07:00",
+      status: "BOOKED",
+    });
+
+    // Chưa tới hẹn: BOOKED nhưng starts_at (25/8) còn ở tương lai.
+    await seedRental({
+      startsAt: "2026-08-25T00:00:00+07:00",
+      endsAt: "2026-08-28T00:00:00+07:00",
+      status: "BOOKED",
+    });
+
+    // Đã lấy xe rồi (ONGOING) dù starts_at cũng đã qua từ lâu — KHÔNG được tính
+    // vào pickupOverdue, vì khách đã tới nhận xe. Khoảng ngày tách rời hai đơn
+    // BOOKED ở trên: cả ba đơn dùng CHUNG một xe (`vehicleId` seed ở
+    // `beforeAll`), và `rentals_no_overlap` (migration `0010`) từ chối chồng
+    // lấn bất kể trạng thái (trừ CANCELLED).
+    await seedRental({
+      startsAt: "2026-08-01T00:00:00+07:00",
+      endsAt: "2026-08-05T00:00:00+07:00",
+      status: "ONGOING",
+      handedOverAt: "2026-08-01T00:00:00+07:00",
+    });
+
+    const stats = await getStatsSummary(now, { createdBy: staffId });
+
+    expect(stats.attention.pickupOverdue).toBe(1);
+  });
+
+  // Hai mốc neo (`overdueFrom`/`pickupOverdueFrom`) là để client đưa vào
+  // `search.from` của route `/calendar` (`lib/calendar-search.ts`) — phải là
+  // đơn SỚM NHẤT trong nhóm, không phải đơn mới nhất hay bất kỳ đơn nào.
+  it("overdueFrom/pickupOverdueFrom là mốc SỚM NHẤT trong nhóm", async () => {
+    const now = new Date("2026-08-20T10:00:00+07:00");
+
+    // Bốn đơn nối đuôi nhau KHÔNG chồng lấn (chung một xe — cùng lý do đã ghi
+    // ở test `pickupOverdue` ngay trên): [1/8,10/8) → [10/8,15/8) → [15/8,17/8)
+    // → [17/8,19/8). Biên chạm nhau vẫn hợp lệ vì `period` là nửa mở `[)`.
+    //
+    // Hai đơn quá hạn, ends_at khác nhau — overdueFrom phải là mốc SỚM hơn (10/8).
+    await seedRental({
+      startsAt: "2026-08-01T00:00:00+07:00",
+      endsAt: "2026-08-10T00:00:00+07:00",
+      status: "ONGOING",
+      handedOverAt: "2026-08-01T00:00:00+07:00",
+    });
+    await seedRental({
+      startsAt: "2026-08-10T00:00:00+07:00",
+      endsAt: "2026-08-15T00:00:00+07:00",
+      status: "ONGOING",
+      handedOverAt: "2026-08-10T00:00:00+07:00",
+    });
+
+    // Hai đơn quá hẹn lấy xe, starts_at khác nhau — pickupOverdueFrom phải là
+    // mốc SỚM hơn (15/8).
+    await seedRental({
+      startsAt: "2026-08-15T00:00:00+07:00",
+      endsAt: "2026-08-17T00:00:00+07:00",
+      status: "BOOKED",
+    });
+    await seedRental({
+      startsAt: "2026-08-17T00:00:00+07:00",
+      endsAt: "2026-08-19T00:00:00+07:00",
+      status: "BOOKED",
+    });
+
+    const stats = await getStatsSummary(now, { createdBy: staffId });
+
+    expect(stats.attention.overdueFrom).toBe("2026-08-10");
+    expect(stats.attention.pickupOverdueFrom).toBe("2026-08-15");
+  });
+
+  it("overdueFrom/pickupOverdueFrom là null khi nhóm tương ứng rỗng", async () => {
+    const now = new Date("2026-08-20T10:00:00+07:00");
+
+    const stats = await getStatsSummary(now, { createdBy: staffId });
+
+    expect(stats.attention.overdue).toBe(0);
+    expect(stats.attention.pickupOverdue).toBe(0);
+    expect(stats.attention.overdueFrom).toBeNull();
+    expect(stats.attention.pickupOverdueFrom).toBeNull();
+  });
 });
