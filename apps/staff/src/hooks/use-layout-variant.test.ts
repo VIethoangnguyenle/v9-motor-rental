@@ -10,9 +10,10 @@ const MD_QUERY = "(min-width: 768px)";
 // `window.matchMedia` là global CẢ TIẾN TRÌNH `bun test` (`preload` chỉ init
 // module một lần) — không lưu lại bản gốc và trả về thì stub của file chạy
 // SAU CÙNG còn nguyên cho mọi file test khác chạy sau nó, kể cả những test
-// không liên quan gì tới layout variant. `lib/theme.ts`, `app-nav.tsx`,
-// `rental-detail-sheet.tsx` đều gọi `matchMedia` với query KHÁC — stub chỉ
-// khớp đúng `MD_QUERY`, mọi query khác rơi về bản gốc của happy-dom.
+// không liên quan gì tới layout variant. `lib/theme.ts`, `rental-detail-sheet.tsx`
+// gọi `matchMedia` với query KHÁC — stub chỉ khớp đúng `MD_QUERY`, mọi query khác
+// rơi về bản gốc của happy-dom. Còn `app-nav.tsx` cũng dùng `"(min-width: 768px)"`
+// (line 276), nhưng vô hại ở đây vì `AppNav` không render trong test này.
 const originalMatchMedia = window.matchMedia.bind(window);
 
 function stubMatchMedia(matches: boolean) {
