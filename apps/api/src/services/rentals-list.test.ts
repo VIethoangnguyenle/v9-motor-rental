@@ -12,6 +12,38 @@ const NOW = new Date("2026-09-04T15:00:00+07:00");
 const at = (iso: string) => new Date(iso);
 
 /**
+ * Ba mốc đồng hồ cho hàng rào SQL ↔ TS — §6 design doc đòi so ở "nhiều mốc
+ * `now` khác nhau kể cả sát biên (đúng `now`, đúng `dayEnd`, `dayEnd - 1ms`)".
+ * `queueBoundaries` phụ thuộc `now`, nên MỖI mốc dưới đây tính lại `b` của
+ * RIÊNG nó — không dùng chung `b` của `NOW`.
+ *
+ * - `NOW`: mốc gốc, dùng cho mọi test khác trong describe này.
+ * - `NOW2`: đúng bằng `endsAt` của hàng OVERDUE VÀ `startsAt` của hàng
+ *   PICKUP_OVERDUE — hai hàng seed CỐ Ý dùng chung giờ 09:00 sáng 09-04. Pin
+ *   CHÍNH XÁC biên `b.now` của cả nhánh 1 lẫn nhánh 2 cùng lúc: tại mốc này cả
+ *   hai hàng chuyển từ "quá hạn" (`<`) sang "chưa quá hạn, rơi vào nhóm hôm
+ *   nay" — đúng chỗ một lỗi `<` → `<=` sẽ lộ ra mà không cần thêm dữ liệu.
+ * - `DAY_END`: đúng bằng `b.dayEnd` của `NOW` (tính tay: `NOW` là 09-04 giờ
+ *   VN nên `dayEnd` là nửa đêm 09-05). Đẩy đồng hồ tới đúng mốc này khiến hai
+ *   hàng DUE_TODAY/PICKUP_TODAY (endsAt/startsAt = 20:00 hôm 09-04) chuyển
+ *   HẲN sang OVERDUE/PICKUP_OVERDUE — một phép kiểm khác các mốc trên, vì nó
+ *   xuyên qua ranh giới `dayEnd` được TÍNH LẠI cho `now` mới (`dayEnd(DAY_END)`
+ *   là nửa đêm 09-06, không phải 09-05 nữa).
+ *
+ * `dayEnd - 1ms` KHÔNG có trong danh sách trên: đã kiểm tay — với đúng bộ tám
+ * hàng seed này, kết quả tại `dayEnd - 1ms` giống HỆT tại `DAY_END` (không
+ * hàng nào có mốc riêng nằm lọt trong đúng một mili-giây cuối ngày), nên thêm
+ * nó vào sweep chỉ tốn thời gian chạy chứ không kiểm thêm được gì — đúng điều
+ * dặn "nếu một mốc không kiểm thêm gì thì nói thẳng, đừng giữ lại cho đẹp".
+ * Biên `dayEnd` cho nhánh 4 (BOOKED, mốc `startsAt`) được pin RIÊNG ở khối
+ * "biên dayEnd cho BOOKED" bên dưới bằng một hàng đặt ĐÚNG lên mốc đó — cách
+ * DUY NHẤT phân biệt được `dayEnd` với `dayEnd - 1ms` là có một hàng nằm đúng
+ * giữa hai mốc, và không hàng nào trong tám hàng seed chính làm được việc đó.
+ */
+const NOW2 = at("2026-09-04T09:00:00+07:00");
+const DAY_END = at("2026-09-05T00:00:00+07:00");
+
+/**
  * Mọi hàng `listRentalsQueue` trả về ĐÃ ở trong hàng đợi, nên `queueGroupOf`
  * không thể trả `null` cho nó — nếu có thì đó tự nó là drift giữa SQL và
  * domain, đáng nổ to hơn là một lỗi kiểu ở `toEqual`. Không dùng `as`: đây là
@@ -26,6 +58,14 @@ function requireGroup(g: ReturnType<typeof queueGroupOf>) {
 
 let customerId: string;
 let staffId: string;
+/**
+ * Nhân viên RIÊNG cho đúng MỘT hàng biên (`edgeDayEndRental` ở dưới). Tách
+ * khỏi `staffId` để hàng đó không lọt vào các test đếm-đúng-số của khối
+ * "hàng rào SQL ↔ TS" (`groupCounts` kỳ vọng đúng 1 mỗi nhóm/tổng 5) — nếu
+ * seed chung `staffId` thì mỗi lần thêm một hàng biên là một lần phải sửa lại
+ * mọi con số kỳ vọng ở nơi khác, dễ quên.
+ */
+let staffId2: string;
 
 async function clean() {
   await db.delete(schema.rentals).where(like(schema.rentals.createdBy, `${P}%`));
@@ -55,6 +95,8 @@ async function seedRental(input: {
   status: "BOOKED" | "ONGOING" | "COMPLETED" | "CANCELLED";
   startsAt: Date;
   endsAt: Date;
+  /** Mặc định `staffId` — hàng biên `dayEnd` truyền `staffId2` để tự cô lập. */
+  createdBy?: string;
 }) {
   const out = input.status === "ONGOING" || input.status === "COMPLETED";
   const [row] = await db
@@ -62,7 +104,7 @@ async function seedRental(input: {
     .values({
       vehicleId: input.vehicleId,
       customerId,
-      createdBy: staffId,
+      createdBy: input.createdBy ?? staffId,
       startsAt: input.startsAt,
       endsAt: input.endsAt,
       status: input.status,
@@ -113,9 +155,20 @@ beforeAll(async () => {
       status: "ACTIVE",
     })
     .returning();
-  if (!c || !s) throw new Error("seed hỏng");
+  const [s2] = await db
+    .insert(schema.staffUsers)
+    .values({
+      id: `${P}owner2`,
+      email: `${P}owner2@example.com`,
+      fullName: "Nhân viên biên test",
+      role: "OWNER",
+      status: "ACTIVE",
+    })
+    .returning();
+  if (!c || !s || !s2) throw new Error("seed hỏng");
   customerId = c.id;
   staffId = s.id;
+  staffId2 = s2.id;
 
   // Một hàng cho MỖI nhóm, cộng ba hàng cố ý nằm ngoài hàng đợi. Hàng OVERDUE
   // (sắp đầu danh sách) mang chiếc xe có tên/biển cụ thể — test "mang đủ tên
@@ -128,6 +181,7 @@ beforeAll(async () => {
   const vBeyondHorizon = await makeVehicle("v6");
   const vCompleted = await makeVehicle("v7");
   const vCancelled = await makeVehicle("v8");
+  const vDayEndEdge = await makeVehicle("v9");
 
   await seedRental({ vehicleId: vOverdue, status: "ONGOING", startsAt: at("2026-09-01T09:00:00+07:00"), endsAt: at("2026-09-04T09:00:00+07:00") }); // OVERDUE
   await seedRental({ vehicleId: vPickupOverdue, status: "BOOKED",  startsAt: at("2026-09-04T09:00:00+07:00"), endsAt: at("2026-09-08T09:00:00+07:00") }); // PICKUP_OVERDUE
@@ -137,18 +191,36 @@ beforeAll(async () => {
   await seedRental({ vehicleId: vBeyondHorizon, status: "BOOKED",  startsAt: at("2026-09-25T09:00:00+07:00"), endsAt: at("2026-09-27T09:00:00+07:00") }); // ngoài chân trời
   await seedRental({ vehicleId: vCompleted, status: "COMPLETED", startsAt: at("2026-08-01T09:00:00+07:00"), endsAt: at("2026-08-05T09:00:00+07:00") });
   await seedRental({ vehicleId: vCancelled, status: "CANCELLED", startsAt: at("2026-09-04T08:00:00+07:00"), endsAt: at("2026-09-07T08:00:00+07:00") });
+
+  // Hàng biên RIÊNG cho nhánh 4 (`BOOKED`, mốc `b.dayEnd`) — `startsAt` đặt
+  // ĐÚNG lên `DAY_END` (= `dayEnd` của `NOW`). Không hàng nào trong tám hàng
+  // trên làm được việc này vì tất cả seed ở giờ 09:00/20:00, không bao giờ
+  // đúng nửa đêm — mà `dayEnd` LUÔN LÀ nửa đêm. `createdBy: staffId2` để hàng
+  // này không lọt vào các test đếm-đúng-số của `staffId` ở trên.
+  await seedRental({
+    vehicleId: vDayEndEdge,
+    status: "BOOKED",
+    startsAt: DAY_END,
+    endsAt: at("2026-09-07T00:00:00+07:00"),
+    createdBy: staffId2,
+  });
 });
 
 afterAll(clean);
 
 describe("listRentalsQueue — hàng rào SQL ↔ TS", () => {
-  it("SQL và queueGroupOf gán CÙNG một nhóm cho mọi hàng", async () => {
-    const b = await queueBoundaries(NOW);
-    const { rentals } = await listRentalsQueue(NOW, { pageSize: 100, createdBy: staffId });
+  it("SQL và queueGroupOf gán CÙNG một nhóm cho mọi hàng — ở NOW, sát biên b.now, và đúng b.dayEnd", async () => {
+    for (const pos of [NOW, NOW2, DAY_END]) {
+      // Tính lại `b` cho ĐÚNG `pos` này — không dùng chung `b` của NOW, vì
+      // `dayEnd`/`horizon` của `DAY_END` khác của `NOW` (xem JSDoc của ba mốc
+      // ở đầu file).
+      const b = await queueBoundaries(pos);
+      const { rentals } = await listRentalsQueue(pos, { pageSize: 100, createdBy: staffId });
 
-    expect(rentals.length).toBeGreaterThan(0);
-    for (const r of rentals) {
-      expect({ id: r.id, group: r.group }).toEqual({ id: r.id, group: requireGroup(queueGroupOf(r, b)) });
+      expect(rentals.length).toBeGreaterThan(0);
+      for (const r of rentals) {
+        expect({ id: r.id, group: r.group }).toEqual({ id: r.id, group: requireGroup(queueGroupOf(r, b)) });
+      }
     }
   });
 
@@ -197,6 +269,46 @@ describe("listRentalsQueue — hàng rào SQL ↔ TS", () => {
     expect(first?.customerName).toBe(`${P}Trần Quốc Bảo`);
     expect(first?.vehicleMake).toBe("Yamaha");
     expect(first?.vehiclePlate).toBe("59X1-12345");
+  });
+
+  /**
+   * Pin RIÊNG biên `dayEnd` cho nhánh 4 (`BOOKED`, mốc `startsAt`) — hàng
+   * `edgeDayEndRental` (seed ở `beforeAll`, `createdBy: staffId2`) có
+   * `startsAt` đúng bằng `DAY_END`.
+   *
+   * Đúng LÚC `dayEnd` (không sớm hơn, không muộn hơn) là mốc mà nhánh 4 loại
+   * trừ (`startsAt < dayEnd` sai vì BẰNG chứ không nhỏ hơn) — hàng rơi qua
+   * nhánh 5 (`UPCOMING`) tại `NOW`. Đẩy đồng hồ tới đúng `DAY_END` thì
+   * `dayEnd` được TÍNH LẠI (nửa đêm 09-06, không còn là 09-05 nữa), nên
+   * `startsAt` cũ giờ nhỏ hơn `dayEnd` mới — hàng chuyển hẳn sang nhánh 4
+   * (`PICKUP_TODAY`). Hai mốc cho hai nhóm khác nhau — đúng loại bằng chứng
+   * mà một lỗi `<` → `<=` ở nhánh 4 sẽ làm sai.
+   *
+   * Nhánh 3 (`ONGOING`, mốc `dayEnd`) và nhánh 5 (`BOOKED`, mốc `horizon`)
+   * KHÔNG có bài kiểm tương tự: cả hai trùng NGUYÊN VĂN vế lọc tương ứng của
+   * `queueWhere` (xem JSDoc `queueWhere` ở `rentals-list.ts`), nên một hàng
+   * nằm đúng lên biên của chúng bị chính `WHERE` loại trước khi `CASE` kịp
+   * chạy — đổi `<` thành `<=` ở hai nhánh đó không đổi được hàng nào từng lọt
+   * qua `WHERE`, tức không có hàng nào để so lệch. Đây là hệ quả CỐ Ý của
+   * thiết kế `queueWhere` (dùng được hai partial index), không phải khoảng
+   * trống cần vá thêm test.
+   */
+  it("biên dayEnd cho BOOKED (nhánh 4): startsAt đúng bằng dayEnd đổi nhóm khi đồng hồ chạm mốc", async () => {
+    const bAtNow = await queueBoundaries(NOW);
+    const atNow = await listRentalsQueue(NOW, { pageSize: 100, createdBy: staffId2 });
+    expect(atNow.rentals).toHaveLength(1);
+    const rowAtNow = atNow.rentals[0];
+    if (!rowAtNow) throw new Error("hàng biên dayEnd không thấy ở NOW");
+    expect(rowAtNow.group).toBe("UPCOMING");
+    expect(rowAtNow.group).toBe(requireGroup(queueGroupOf(rowAtNow, bAtNow)));
+
+    const bAtDayEnd = await queueBoundaries(DAY_END);
+    const atDayEnd = await listRentalsQueue(DAY_END, { pageSize: 100, createdBy: staffId2 });
+    expect(atDayEnd.rentals).toHaveLength(1);
+    const rowAtDayEnd = atDayEnd.rentals[0];
+    if (!rowAtDayEnd) throw new Error("hàng biên dayEnd không thấy ở DAY_END");
+    expect(rowAtDayEnd.group).toBe("PICKUP_TODAY");
+    expect(rowAtDayEnd.group).toBe(requireGroup(queueGroupOf(rowAtDayEnd, bAtDayEnd)));
   });
 });
 

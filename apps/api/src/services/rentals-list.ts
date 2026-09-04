@@ -98,6 +98,16 @@ function emptyGroupCounts(): Record<QueueGroup, number> {
  * `make_interval(days => ...)` chứ không phải ghép chuỗi `'N days'::interval`:
  * tham số đi vào đúng chỗ tham số, không đi qua phép nối chuỗi nào.
  */
+/**
+ * ⚠️ Hàng rào SQL ↔ TS (`rentals-list.test.ts`) truyền `b` do CHÍNH hàm này
+ * tính cho cả hai vế so sánh — nó không có cách nào tự kiểm tra `queueBoundaries`
+ * đúng, vì cả `groupRankSql` (SQL) lẫn `queueGroupOf` (TS) đều NHẬN `b` làm
+ * đầu vào thay vì tự suy. Một lỗi nằm TRONG hàm này (sai `AT TIME ZONE`, sai
+ * `make_interval`) lọt qua hàng rào đó — nó chỉ canh hai bên CÙNG dùng một `b`
+ * có ĐỒNG Ý với nhau không, không canh `b` có đúng không. Đây là đánh đổi cố
+ * ý của quyết định "mốc tính trong Postgres" (xem JSDoc ngay dưới), không phải
+ * lỗ hổng cần vá — chỉ ghi lại để không ai tưởng hàng rào phủ luôn phần này.
+ */
 export async function queueBoundaries(now: Date): Promise<QueueBoundaries> {
   const rows: { day_end: Date; horizon: Date }[] = await client`
     WITH d AS (
@@ -213,7 +223,14 @@ export async function listRentalsQueue(
   let total = 0;
   for (const c of counts) {
     const group = GROUP_OF_RANK[c.rank];
-    if (!group) continue;
+    // KHÔNG `continue`: hạng lạ nghĩa là `CASE` và `GROUP_OF_RANK` đã lệch
+    // nhau (drift đúng thứ hàng rào ở trên canh) — im lặng bỏ qua hàng này
+    // còn ÂM THẦM LÀM SAI `total` (Task 8 tính `lastPage = ceil(total /
+    // pageSize)` từ nó), tức trang cuối vĩnh viễn không tới được. Nổ to hơn
+    // là đúng: `where` hiện là tập cha của `CASE` NÊN nhánh này hôm nay không
+    // tới được — nhưng "không tới được hôm nay" không phải lý do để im lặng
+    // nếu mai nó tới được.
+    if (!group) throw new Error(`hạng hàng đợi không xác định: ${c.rank}`);
     groupCounts[group] = c.n;
     total += c.n;
   }
@@ -235,7 +252,8 @@ export async function listRentalsQueue(
   const rentals: RentalQueueRow[] = [];
   for (const r of rows) {
     const group = GROUP_OF_RANK[r.rank];
-    if (!group) continue;
+    // Cùng lý do với vòng lặp đếm ở trên — nổ to thay vì bỏ sót lặng lẽ.
+    if (!group) throw new Error(`hạng hàng đợi không xác định: ${r.rank}`);
     const { rank: _rank, ...rest } = r;
     rentals.push({ ...rest, status: rest.status as RentalStatus, group });
   }
