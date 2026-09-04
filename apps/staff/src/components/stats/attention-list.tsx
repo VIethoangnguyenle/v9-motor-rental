@@ -75,7 +75,8 @@ const RENTALS_QUEUE_TARGET: Row["target"] = {
  *
  * `overdueFrom`/`pickupOverdueFrom` (`services/stats.ts`) không còn dùng ở
  * đây — hàng đợi tự sắp xếp theo độ gấp rồi, không cần mốc ngày để neo tới.
- * Hai field đó vẫn còn ở API cho các đường khác dùng, không đụng trong đợt này.
+ * Hai field đó giờ không còn nơi tiêu thụ nào ngoài chính `services/stats.ts`,
+ * `routes/stats.ts` và test của chúng — không đụng trong đợt này.
  *
  * `attention.pendingStaff` là `undefined` với STAFF (server không gửi field —
  * xem `routes/stats.ts`) — yêu cầu #7: VẮNG thì không render dòng đó, không

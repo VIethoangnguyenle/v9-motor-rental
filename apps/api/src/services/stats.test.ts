@@ -326,9 +326,10 @@ describe("getStatsSummary", () => {
     expect(stats.attention.pickupOverdue).toBe(1);
   });
 
-  // Hai mốc neo (`overdueFrom`/`pickupOverdueFrom`) là để client đưa vào
-  // `search.from` của route `/calendar` (`lib/calendar-search.ts`) — phải là
-  // đơn SỚM NHẤT trong nhóm, không phải đơn mới nhất hay bất kỳ đơn nào.
+  // Hai mốc neo (`overdueFrom`/`pickupOverdueFrom`) hiện không còn client nào
+  // đọc — hàng đợi đơn thuê tự sắp theo độ gấp, không cần neo ngày để nhảy
+  // tới. Vẫn khoá hợp đồng SQL ở đây vì trường còn tồn tại trong response:
+  // phải là đơn SỚM NHẤT trong nhóm, không phải đơn mới nhất hay bất kỳ đơn nào.
   it("overdueFrom/pickupOverdueFrom là mốc SỚM NHẤT trong nhóm", async () => {
     const now = new Date("2026-08-20T10:00:00+07:00");
 

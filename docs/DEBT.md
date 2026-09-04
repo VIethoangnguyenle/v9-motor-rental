@@ -642,3 +642,19 @@ phía trên trong mục nợ đợt nghiệm thu 11 task.
   một độ lệch, và đổi tên vùng thành độ lệch trong trình duyệt cần `Intl` — quá nặng cho hai hàm
   chuyển `YYYY-MM-DD` sang mốc `date-time`. Việt Nam không có DST nên `+07:00` là hằng số đúng hôm
   nay, nhưng nợ vẫn còn: đổi múi giờ shop (nếu có chi nhánh ngoài VN) sẽ không tự phản ánh vào đây.
+
+- ⚠️ **`overdueFrom`/`pickupOverdueFrom` (`apps/api/src/services/stats.ts`, `getStatsSummary`) hết
+  người dùng.** Bốn dòng "Cần chú ý" giờ nhảy thẳng tới `/rentals?mode=queue` — hàng đợi tự sắp theo
+  độ gấp, không còn cần hai mốc ngày này để neo `search.from` như thiết kế ban đầu giả định. Sau
+  nhánh này, hai field chỉ còn được đọc ở chính `services/stats.ts`, `routes/stats.ts` và test của
+  chúng; mọi nơi khác — kể cả fixture của các test không liên quan trực tiếp — đều truyền `null`.
+  Cùng với chúng là hai subquery `MIN(...)` sinh ra hai field đó trong `getStatsSummary`. Có thể gỡ
+  cả field lẫn subquery trong một đợt dọn sau, không đụng ở đây vì ngoài phạm vi.
+
+- ⚠️ **Tổng `total_amount` của sổ cái đơn thuê ép `::int` trên một cửa sổ KHÔNG bị chặn khi thiếu
+  `from`/`to`** (`apps/api/src/services/rentals-list.ts`, dòng tính `collected`). Đây là chế độ mặc
+  định của sổ cái và của mọi lượt tìm kiếm — khác `stats.ts`, nơi kiểu ép này kế thừa từ đó nhưng
+  luôn chạy trong một cửa sổ ngày đã bị chặn. `int4` tràn ở 2.147.483.647 ₫; theo đúng giả định quy
+  mô 100–200 đơn/tháng ở thiết kế của đợt này, con số đó còn vài năm mới chạm tới, nhưng khi chạm
+  tới thì lỗi ra là `integer out of range` → HTTP 500, không phải một con số sai. Sửa rẻ khi cần: đổi
+  `::int` thành `::bigint` hoặc `::numeric`.

@@ -333,11 +333,6 @@ const customerDetailRoute = createRoute({
  *
  * `validateRentalsSearch` lọc giá trị lạ thay vì throw, cùng khuôn hai validator
  * trên: `?mode=xyz` cho ra `"queue"`, không cho ra màn lỗi.
- *
- * Trang mới chỉ mở được qua URL trực tiếp: mục nav "Đơn thuê" giữ nguyên
- * `kind: "soon"` (`components/layout/app-nav.tsx`) tới khi mặt hàng được nối
- * đủ đầu-cuối — route sống trước, lối vào từ nav theo sau, cùng khuôn mọi mục
- * `"soon"` khác đã đi qua ở file đó.
  */
 const rentalsRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,

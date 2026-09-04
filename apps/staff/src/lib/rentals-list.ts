@@ -59,7 +59,7 @@ export type RentalsLedgerResult =
  * `isFetching` là chỉ báo tải duy nhất còn nghĩa.
  */
 export const rentalsQueueQuery = (page: number) => ({
-  queryKey: ["rentals-queue", page] as const,
+  queryKey: ["rentals", "queue", page] as const,
   placeholderData: keepPreviousData,
   queryFn: async (): Promise<RentalsQueueResult> => {
     const res = await api.rentals.queue.get({ query: { page, pageSize: RENTALS_PAGE_SIZE } });
@@ -90,7 +90,7 @@ function toApiTo(ymd: string): string | undefined {
 }
 
 export const rentalsLedgerQuery = (s: RentalsSearch) => ({
-  queryKey: ["rentals-ledger", s.q, s.page, s.from, s.to] as const,
+  queryKey: ["rentals", "ledger", s.q, s.page, s.from, s.to] as const,
   placeholderData: keepPreviousData,
   queryFn: async (): Promise<RentalsLedgerResult> => {
     const res = await api.rentals.ledger.get({

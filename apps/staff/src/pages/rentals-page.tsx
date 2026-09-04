@@ -121,6 +121,16 @@ export function RentalsPage() {
   const vehicles = fleet.data?.ok ? fleet.data.vehicles : [];
   const lastPage = Math.max(1, Math.ceil(total / RENTALS_PAGE_SIZE));
 
+  // Trang vượt quá số trang thật (đồng nghiệp vừa xử lý bớt đơn, hoặc URL bị sửa
+  // tay) ⇒ quay về trang 1 thay vì màn trắng "Không có đơn nào cần xử lý." — cùng
+  // luật "không bao giờ in một số 0 giả" mà `pendingStaff` đã theo. `lastPage`
+  // không bao giờ dưới 1, nên ở trang 1 điều kiện luôn sai — effect không tự lặp.
+  useEffect(() => {
+    if (active.data?.ok && page > lastPage) {
+      void navigate({ search: (prev) => ({ ...prev, page: 1 }), replace: true });
+    }
+  }, [active.data, page, lastPage, navigate]);
+
   return (
     // `<div>`, không `<main>` — `AppShell` đã bọc một `<main>` ngoài rồi (cùng
     // comment ở `stats-page.tsx`/`calendar-page.tsx`); thêm một `<main>` nữa là
@@ -227,30 +237,43 @@ export function RentalsPage() {
         />
       )}
 
-      {total > RENTALS_PAGE_SIZE && (
+      {/* Tách số tổng khỏi điều kiện phân trang — cùng sửa và cùng lý lẽ đã ghi ở
+          `customers-list-page.tsx`: trước đây cả dòng này chỉ hiện khi
+          `total > RENTALS_PAGE_SIZE`, nên tiệm dưới một trang đơn (sổ cái sau
+          khi lọc, hoặc một cửa hàng nhỏ) không bao giờ thấy mình có bao nhiêu
+          đơn khớp. Ở chế độ hàng đợi số nhóm đã bù việc này, nhưng sổ cái không
+          có gì khác nói ra con số — nên số tổng hiện bất cứ khi nào có ít nhất
+          một dòng; hai nút Trước/Sau và tiền tố "Trang X/Y ·" chỉ mọc thêm khi
+          thật sự có hơn một trang. */}
+      {total > 0 && (
         <div className="flex items-center justify-between gap-3">
           {/* `push`, không `replace`: bấm sang trang là hành động rời rạc, có chủ
               ý, xứng đáng một điểm dừng riêng trong lịch sử — cùng khuôn nút
               prev/next của lịch và của màn Khách hàng. */}
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => void navigate({ search: { ...current, page: page - 1 } })}
-            className="min-h-11 rounded-card border border-border px-3 text-sm text-ink disabled:opacity-50"
-          >
-            Trước
-          </button>
+          {total > RENTALS_PAGE_SIZE && (
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => void navigate({ search: { ...current, page: page - 1 } })}
+              className="min-h-11 rounded-card border border-border px-3 text-sm text-ink disabled:opacity-50"
+            >
+              Trước
+            </button>
+          )}
           <span className="text-sm text-muted tabular-nums">
-            Trang {page}/{lastPage} · {total} đơn
+            {total > RENTALS_PAGE_SIZE ? `Trang ${page}/${lastPage} · ` : ""}
+            {total} đơn
           </span>
-          <button
-            type="button"
-            disabled={page >= lastPage}
-            onClick={() => void navigate({ search: { ...current, page: page + 1 } })}
-            className="min-h-11 rounded-card border border-border px-3 text-sm text-ink disabled:opacity-50"
-          >
-            Sau →
-          </button>
+          {total > RENTALS_PAGE_SIZE && (
+            <button
+              type="button"
+              disabled={page >= lastPage}
+              onClick={() => void navigate({ search: { ...current, page: page + 1 } })}
+              className="min-h-11 rounded-card border border-border px-3 text-sm text-ink disabled:opacity-50"
+            >
+              Sau →
+            </button>
+          )}
         </div>
       )}
 
