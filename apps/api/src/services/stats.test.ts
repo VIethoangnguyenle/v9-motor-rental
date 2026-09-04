@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import { schema } from "@v9/db";
 import { like } from "drizzle-orm";
+import {
+  isOverdue,
+  isPickupOverdue,
+  RENTAL_STATUSES,
+  type RentalStatus,
+} from "@v9/shared/domain/rental";
 import { db } from "../db";
 import { getStatsSummary } from "./stats";
 
@@ -118,6 +124,65 @@ async function seedRental(opts: {
     depositAmount: 0,
     status: opts.status,
     handedOverAt: opts.handedOverAt ? new Date(opts.handedOverAt) : null,
+  });
+}
+
+/**
+ * Xe RIÊNG cho một ca biên của test hợp đồng SQL ↔ TS bên dưới —
+ * KHÔNG dùng `vehicleId` chung của file: `rentals_no_overlap` (migration
+ * `0010`) từ chối hai đơn KHÔNG `CANCELLED` chồng khoảng thời gian trên CÙNG
+ * một xe, và ca biên cần nhiều đơn cùng đứng sát mốc `now` trên các trục khác
+ * nhau (`endsAt` lẫn `startsAt`) — tách xe là cách rẻ nhất để mỗi trục độc
+ * lập mà không phải tính toán một chuỗi mốc không chồng lấn thủ công.
+ */
+async function seedBoundaryVehicle(suffix: string): Promise<string> {
+  const [v] = await db
+    .insert(schema.vehicles)
+    .values({
+      slug: `${P}boundary-${suffix}`,
+      make: "Honda",
+      model: "Boundary",
+      engineCc: 150,
+      pricePerDay: 100_000,
+      deposit: 1_000_000,
+    })
+    .returning();
+  if (!v) throw new Error("seed xe biên hỏng");
+  return v.id;
+}
+
+/**
+ * Ghi thẳng một hàng `rentals` với `vehicleId`/`status`/`startsAt`/`endsAt` tuỳ
+ * ý — `seedRental()` ở trên KHÔNG nhận `vehicleId`, và test hợp đồng bên dưới
+ * cần kiểm soát nó để rải nhiều đơn qua nhiều xe khác nhau (xem
+ * `seedBoundaryVehicle`).
+ *
+ * Tự suy `handedOverAt`/`returnedAt` theo `status`, đúng bốn CHECK hai chiều
+ * của `packages/db/src/schema/rentals.ts` (`rentals_ongoing_has_handover`,
+ * `rentals_completed_has_return`, và hai chiều ngược): ONGOING/COMPLETED bắt
+ * buộc có `handedOverAt`; chỉ COMPLETED mới có thêm `returnedAt`; BOOKED/
+ * CANCELLED thì cả hai phải là `null`.
+ */
+async function seedBoundaryRental(opts: {
+  vehicleId: string;
+  status: RentalStatus;
+  startsAt: Date;
+  endsAt: Date;
+}) {
+  const handedOverAt =
+    opts.status === "ONGOING" || opts.status === "COMPLETED" ? opts.startsAt : null;
+  const returnedAt = opts.status === "COMPLETED" ? opts.endsAt : null;
+  await db.insert(schema.rentals).values({
+    vehicleId: opts.vehicleId,
+    customerId,
+    createdBy: staffId,
+    startsAt: opts.startsAt,
+    endsAt: opts.endsAt,
+    totalAmount: 1_000_000,
+    depositAmount: 0,
+    status: opts.status,
+    handedOverAt,
+    returnedAt,
   });
 }
 
@@ -313,5 +378,94 @@ describe("getStatsSummary", () => {
     expect(stats.attention.pickupOverdue).toBe(0);
     expect(stats.attention.overdueFrom).toBeNull();
     expect(stats.attention.pickupOverdueFrom).toBeNull();
+  });
+});
+
+/**
+ * ⚠️ Hàng rào QUAN TRỌNG NHẤT của file này. `overdue`/`pickupOverdue` có HAI
+ * định nghĩa sống song song — SQL ở `stats.ts` (`status = 'ONGOING' AND
+ * ends_at < now`) và TS ở `@v9/shared/domain/rental` (`isOverdue`,
+ * `isPickupOverdue`). Hôm nay chúng khớp; rủi ro là TRÔI theo thời gian, không
+ * phải sai ngay bây giờ — một lần sửa `<` thành `<=` ở MỘT bên là hai con số
+ * khác nhau cho cùng một shop, và không có gì báo.
+ *
+ * Test dưới đây seed đúng ca biên `endsAt`/`startsAt` LỆCH `now` ±1ms, nhân
+ * với MỌI `RentalStatus`, rồi khẳng định: đếm được từ SQL (`getStatsSummary`)
+ * PHẢI bằng đếm được từ áp `isOverdue`/`isPickupOverdue` lên ĐÚNG tập dữ liệu
+ * vừa seed — không hardcode con số kỳ vọng, để test còn đúng nếu ai đó đổi bố
+ * cục ca biên mà quên đổi assertion.
+ *
+ * Đã tự kiểm test CẮN được (xem report): đổi `ends_at < ${now}` thành
+ * `ends_at <= ${now}` trong `stats.ts` làm test này ĐỎ (SQL đếm thêm ca
+ * `endsAt === now`, TS thì không), rồi hoàn nguyên lại xanh.
+ */
+describe("getStatsSummary — hợp đồng SQL ↔ TS (isOverdue/isPickupOverdue)", () => {
+  it("overdue/pickupOverdue của SQL khớp isOverdue/isPickupOverdue tại ca biên ±1ms quanh now, cho MỌI RentalStatus", async () => {
+    const now = new Date("2026-08-20T10:00:00+07:00");
+    const t = now.getTime();
+
+    interface SeededRow {
+      readonly status: RentalStatus;
+      readonly startsAt: Date;
+      readonly endsAt: Date;
+    }
+    const rows: SeededRow[] = [];
+
+    for (const status of RENTAL_STATUSES) {
+      // Trục `endsAt` (ca biên của `isOverdue`): ba đơn CHẠM NHAU tại biên,
+      // không chồng lấn ([)  — nửa mở, xem `period` ở migration `0010`), lấy
+      // đúng `endsAt` = now-1ms / now / now+1ms.
+      const endsVehicle =
+        status === "CANCELLED"
+          ? vehicleId
+          : await seedBoundaryVehicle(`ends-${status.toLowerCase()}`);
+      const e1 = new Date(t - 1);
+      const e2 = new Date(t);
+      const e3 = new Date(t + 1);
+      const endsAxisRows: SeededRow[] = [
+        { status, startsAt: new Date(t - 1_000_000), endsAt: e1 },
+        { status, startsAt: e1, endsAt: e2 },
+        { status, startsAt: e2, endsAt: e3 },
+      ];
+
+      // Trục `startsAt` (ca biên của `isPickupOverdue`): CÙNG khuôn, xe RIÊNG
+      // (không dùng chung xe trục `endsAt` — hai trục có khoảng thời gian
+      // chồng nhau quanh `now`, và exclusion constraint không phân biệt "trục
+      // nào" khi hai đơn chung một xe).
+      const startsVehicle =
+        status === "CANCELLED"
+          ? vehicleId
+          : await seedBoundaryVehicle(`starts-${status.toLowerCase()}`);
+      const s1 = new Date(t - 1);
+      const s2 = new Date(t);
+      const s3 = new Date(t + 1);
+      const startsAxisRows: SeededRow[] = [
+        { status, startsAt: s1, endsAt: s2 },
+        { status, startsAt: s2, endsAt: s3 },
+        { status, startsAt: s3, endsAt: new Date(t + 1_000_000) },
+      ];
+
+      for (const r of endsAxisRows) {
+        await seedBoundaryRental({ vehicleId: endsVehicle, ...r });
+        rows.push(r);
+      }
+      for (const r of startsAxisRows) {
+        await seedBoundaryRental({ vehicleId: startsVehicle, ...r });
+        rows.push(r);
+      }
+    }
+
+    const stats = await getStatsSummary(now, { createdBy: staffId });
+
+    const expectedOverdue = rows.filter((r) => isOverdue(r, now)).length;
+    const expectedPickupOverdue = rows.filter((r) => isPickupOverdue(r, now)).length;
+
+    // Cả hai vế PHẢI > 0 — nếu không, một test "khớp nhau" chỉ vì cả hai đều
+    // đếm ra 0 (ví dụ boundary rows lọt hết vào WHERE sai) sẽ xanh giả.
+    expect(expectedOverdue).toBeGreaterThan(0);
+    expect(expectedPickupOverdue).toBeGreaterThan(0);
+
+    expect(stats.attention.overdue).toBe(expectedOverdue);
+    expect(stats.attention.pickupOverdue).toBe(expectedPickupOverdue);
   });
 });
