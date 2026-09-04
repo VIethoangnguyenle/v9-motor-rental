@@ -465,6 +465,53 @@ này cần vài vòng đẩy để chỉnh.
 không còn phân biệt được "hỏng thật" với "thiếu MinIO". Đó mới là giá đắt nhất của món nợ này: một
 cổng đỏ thường trực là một cổng không ai đọc nữa.
 
+## Nợ sinh ra từ đợt thanh điều hướng + màn Lịch (2026-09-04)
+
+Thiết kế ở [`docs/plans/2026-09-04-staff-field-layer-design.md`](plans/2026-09-04-staff-field-layer-design.md) §10.
+
+- 🔸 **`CalendarDay` vẫn chưa có test component, nhưng phần LOGIC đã ra `lib/`.** `dayRole`
+  (`lib/rental-day.ts`) — phân loại vai của một đơn trong một ngày — có test và đã qua mutation
+  test, và cả lịch tháng lẫn bảng một ngày dùng chung nó. Còn lại trong component là phép dịch vai
+  → câu chữ, gồm nhánh rẽ theo `status` từng cắn thật (đơn `BOOKED` phủ trọn ngày hiện "Đang ngoài
+  đường cả ngày", mâu thuẫn với chip bên cạnh). Nhánh đó vẫn chỉ được giữ bởi một `if`.
+
+- ⚠️ **Bảng một ngày không trả lời được "tuần sau xe này có rảnh không".** Cố ý: nó đổi câu hỏi từ
+  "cả kỳ trông thế nào" sang "hôm nay xe nào đi, xe nào về". Câu thứ nhất còn ở chế độ Tháng và ở
+  màn rộng, nhưng trên điện thoại người dùng phải chuyển chế độ mới hỏi được — và chế độ Tháng thì
+  không hiện tình trạng từng xe. Nếu nhân viên thường xuyên phải trả lời câu này qua Zalo khi đang
+  ngoài đường thì đây là chỗ phải xem lại trước tiên.
+
+## Nợ sinh ra từ màn Hiện trường `apps/staff` (2026-09-04)
+
+Thiết kế và số đo đầy đủ ở [`docs/plans/2026-09-04-staff-field-layer-design.md`](plans/2026-09-04-staff-field-layer-design.md).
+
+- ⚠️ **Màn Hiện trường chỉ đọc TRANG 1 của hàng đợi** (`rentalsQueueQuery(1)`, 20 dòng). Một
+  `?rental=<id>` trỏ vào đơn nằm ở trang 2 rơi về việc gấp nhất thay vì mở đúng đơn đó — im lặng,
+  không báo lỗi, và đó là lựa chọn: một màn hình dùng ngoài đường không được bắt người ta lật
+  trang, còn một câu "không tìm thấy" thì chặn họ khỏi việc hôm nay để đổi lấy thông tin về một
+  đơn đã trôi qua. Chưa phải vấn đề đang sống ở quy mô 100–200 đơn/tháng. Ngày hàng đợi thường
+  xuyên quá 20 dòng thì cần `GET /rentals/:id` — xem mục ngay dưới.
+
+- ⚠️ **API không có `GET /rentals/:id`.** `apps/api/src/routes/rentals.ts` có `queue`, `ledger`,
+  `customers/:id/rentals`, nhưng không có đường lấy MỘT đơn theo id. Đây là lý do màn Hiện trường
+  lấy đơn từ hàng đợi thay vì tự tải, và là lý do món nợ trên tồn tại. Thêm route đó thì chỗ sửa
+  là biến `open` trong `pages/field-page.tsx`.
+
+- ⚠️ **`missingEvidence` là hướng dẫn, không phải hàng rào.** Nút "Đã giao xe" bấm được kể cả khi
+  chưa có tấm ảnh nào. Đúng với sản phẩm hôm nay — không tài liệu nào nói thiếu ảnh thì cấm giao
+  xe — nhưng nó nghĩa là màn hình CÓ THỂ ghi nhận một lần giao xe không kèm bằng chứng, đúng thứ
+  `PRODUCT.md` nguyên tắc #3 dựng ảnh bàn giao để tránh. Ngày muốn biến thành ràng buộc thật thì
+  chỗ sửa là `availableTransitions` (`@v9/shared/domain/rental`) và route đổi trạng thái, KHÔNG
+  phải tầng trình bày.
+
+- ⚠️ **`FieldPage` chưa có test component.** `EvidenceAxis` thì CÓ
+  (`evidence-axis.test.tsx`, đã qua mutation test: bỏ điều kiện `actionable` làm 2/4 ca đỏ), nên
+  luật "trạm chưa tới lượt KHÔNG có nút chụp" được canh. Nhưng ba hành vi của `FieldPage` thì
+  không: (1) sau khi đổi trạng thái, thẻ đang mở phải THU LẠI chứ không thành đơn khác — đây là ca
+  nguy hiểm nhất vì nó đặt một nút không quay lại được vào chỗ ngón tay vừa bấm; (2) `?rental=`
+  trỏ hụt phải NÓI RA; (3) mở một việc phải trao tiêu điểm cho thẻ. Cả ba hiện chỉ được giữ bởi
+  logic trong component.
+
 ## Nợ sinh ra từ đợt nghiệm thu 11 task màn hình hẹp `apps/staff` (2026-09-03)
 
 Đo lại toàn bộ bằng probe vendor ở `apps/staff/scripts/mobile-probe/`, hạ tầng đang chạy sẵn
@@ -473,36 +520,50 @@ cổng đỏ thường trực là một cổng không ai đọc nữa.
 `<dialog>` → báo trượt đúng 10/25 điểm; gỡ lớp che → 0/25 trở lại) — probe được tin trước khi dùng
 số nó trả ra.
 
-- ⚠️ Sheet chi tiết đơn còn **3/7** hành động dưới nếp gấp (`sheet-actions.mjs`, cả 390 lẫn 360px:
-  `chưa cuộn: 3/7 [Thêm ảnh(15/25),Thêm ảnh(25/25),Thêm ảnh(25/25)]`), cả ba đều là nút "Thêm ảnh"
-  của `HandoverPhotos` — có ba `PhotoKind` (DOCUMENT, HANDOVER, RETURN), không phải hai như bảng
-  đếm đầu đợt. Nút "Thêm ảnh" của bước **nhận lại xe** (RETURN, đứng cuối cùng) nằm dưới cùng — mà
-  `PRODUCT.md` (dòng 101) gọi ảnh bàn giao là "Bằng chứng bảo vệ cả hai phía." Ràng buộc cứng của
-  đợt này — hai nút trạng thái "Đã giao xe"/"Huỷ đơn" ra khỏi vùng cuộn — đã đạt (không nút trạng
-  thái nào còn trong danh sách trượt).
+- 🔸 **Sheet chi tiết đơn: 3/7 → 1/5 hành động dưới nếp gấp** (cuộn thừa 269px → 193px), đo lại
+  2026-09-04 bằng `sheet-actions.mjs`. Ba nhóm ảnh của `HandoverPhotos` giờ gập lại, chỉ mở ĐÚNG
+  MỘT — món nợ bằng chứng đầu tiên của đơn (`nextEvidence`, `@v9/shared/domain/rental-evidence`).
+  Nút "Thêm ảnh" của bước **nhận lại xe**, thứ bản đo cũ gọi là đắt nhất vì `PRODUCT.md` nguyên tắc
+  #3 coi ảnh bàn giao là bằng chứng bảo vệ cả hai phía, không còn mắc kẹt dưới đáy.
 
-- ⚠️ Đầu trang Lịch còn chiếm **168px/780px (22%)** chiều cao màn hình ở 390px (`calendar-
-geometry.mjs`), chưa đạt mốc 15% ban đầu. Đòn bẩy trong phạm vi đã cạn: `ToggleGroup` là flex
-  item không xẻ được, cần trọn ~150px, nên toolbar buộc phải xuống hai hàng
-  (`rental-calendar.tsx:246`). Hai lựa chọn còn lại đều là quyết định **sản phẩm**, không phải kỹ
-  thuật:
-  1. sửa `apps/staff/src/components/ui/toggle-group.tsx` — dùng chung ba trang
-     (`rental-calendar.tsx`: Timeline|Tháng, `requests-page.tsx`: bốn trạng thái), đổi ở đây ảnh
-     hưởng cả ba;
-  2. ẩn tiêu đề "Lịch" trên mobile — `app-nav.tsx` (bottom nav) đã gắn nhãn "Lịch" cho tab đang mở
-     (`{ kind: "link", label: "Lịch", to: "/calendar", ... }`) nên tiêu đề trang dư thừa ở màn hẹp.
+  **Chưa đóng hẳn:** nút của nhóm đang mở vẫn nằm dưới nếp gấp. Đưa nốt nó lên đòi nén phần TRÊN
+  của sheet (chip trạng thái, thông tin đơn, `HandoverDetails`), tức thiết kế lại cả sheet — không
+  nằm trong đợt này. Màn Hiện trường (`/field`) đã giải cùng bài theo cách khác và đạt **0** hành
+  động dưới nếp gấp, nên đường đi ngoài đường không phụ thuộc sheet này nữa.
 
-- ⚠️ `--veh-col` (`calendar-timeline.tsx:167`) **không đơn điệu** qua breakpoint: base (áp dụng ở
-  390px) `7.5rem` = 120px > `md:7rem` = 112px < `xl:8.125rem` = 130px — cột xe ở tablet (`md`) hẹp
-  hơn ở điện thoại, rồi lại rộng hơn ở desktop (`xl`). Đo trực tiếp `getBoundingClientRect().width`
-  của ô sticky ở 390px ra đúng 120px, khớp `--veh-col` base — số đo, không phải đọc CSS suy ra.
-  Không mất dữ liệu: hàng rào #7 đã bỏ `truncate` nên tên xe xuống dòng thay vì cắt (`vehicle-
-column.mjs`: cả 6 xe "cần 119px ✅", không xe nào cụt) — chỉ bất nhất **hình ảnh** giữa ba
-  breakpoint.
+  ⚠️ **Bẫy đã cắn hai lần, ghi lại để khỏi cắn lần ba.** (1) Đặt `display: flex` lên chính
+  `<details>` làm Chromium thôi ẩn nội dung khi đóng — probe vẫn báo 3/7 y như trước vì chẳng có gì
+  gập. (2) Sửa xong `display` rồi thì với `open={false}`, nút bên trong VẪN trả `height=44px`,
+  `visibility=visible`, và `elementFromPoint` vẫn trúng nó. Cơ chế ẩn gốc của `<details>` không ăn
+  ở đây. Lời giải đang dùng: giữ `<details>` cho ngữ nghĩa (bàn phím, trình đọc màn hình, `open`)
+  nhưng render phần thân CÓ ĐIỀU KIỆN — không có DOM thì không có chiều cao.
 
-- ⚠️ `ToggleGroup` (`ui/toggle-group.tsx`) dùng `gap-2` (8px) giữa các pill 44px của chính nó,
-  trong khi toolbar bọc ngoài ở `rental-calendar.tsx:431` dùng `gap-1` (4px) cho cùng một hàng,
-  cùng loại target chạm — hai khoảng cách khác nhau trong cùng một cụm điều khiển liền kề.
+- 🔸 **Đầu trang Lịch: 22% → 16%, chưa chạm 15%.** Đo lại 2026-09-04 sau khi lấy **lựa chọn 2**
+  dưới đây: `124px/780px (16%)` ở 390px (`calendar-geometry.mjs`), so với `168px/780px (22%)` của
+  bản đo 2026-09-03. Còn cách mốc 15% đúng **7px**, và đầu trang mobile giờ chỉ dày hơn đầu trang
+  desktop (120px) 4px — tức đòn bẩy còn lại nằm ở `py-4` của `<main>` trong `AppShell`, thứ dùng
+  chung cho MỌI trang. Không đụng vì 7px không đáng đổi lấy một thay đổi toàn cục.
+
+  Bản đo gốc và lý lẽ giữ nguyên ở đây để lần sau đọc được vì sao chỉ có hai lựa chọn: đòn bẩy
+  trong phạm vi đã cạn — `ToggleGroup` là flex item không xẻ được, cần trọn ~150px, nên toolbar
+  buộc phải xuống hai hàng (`rental-calendar.tsx:246`).
+
+  1. ~~sửa `apps/staff/src/components/ui/toggle-group.tsx`~~ — **không lấy**: dùng chung ba trang
+     (`rental-calendar.tsx`: Timeline|Tháng, `requests-page.tsx`: bốn trạng thái), đổi ở đó ảnh
+     hưởng cả ba để lấy về một màn.
+  2. ✅ **đã lấy** — ẩn tiêu đề "Lịch" ở màn hẹp (`calendar-page.tsx`). `app-nav.tsx` đã gắn nhãn
+     "Lịch" cho tab đang mở ở bottom nav, nên chữ "Lịch" ở đỉnh trang nói lại điều người dùng vừa
+     đọc cách đó một màn hình. Dùng `sr-only md:not-sr-only`, KHÔNG `hidden`: bottom nav thay được
+     kênh thị giác, không thay được `<h1>` trong cấu trúc tiêu đề của tài liệu.
+
+- ✅ **`--veh-col` đơn điệu trở lại (120/120/130)** — đóng 2026-09-04. Bỏ `md:[--veh-col:7rem]`
+  thay vì nới nó lên: tên xe rộng nhất đo được cần 119px (`vehicle-column.mjs`), tức 112px ở `md`
+  là giá trị DUY NHẤT trong dãy không đủ chỗ, còn 120px của base thì đủ. Bỏ đi vừa làm dãy đơn điệu
+  vừa xoá chỗ hẹp nhất, và bớt một class phải giữ đúng.
+
+- ✅ **`ToggleGroup` dùng `gap-1`, khớp toolbar bọc ngoài** — đóng 2026-09-04. Tiền lệ
+  `calendar-month.tsx` đã ghi 4px đủ tách cho vùng chạm 24px; ở đây vùng chạm 44px nên biên còn dư
+  hơn. Ảnh hưởng cả `requests-page.tsx` (bốn nút lọc) — đã chụp lại ở 390px, không vỡ.
 
 - ⚠️ `ScrollHint` (`calendar-timeline.tsx`) có **vùng chết ~1px**: biên `- 1` trong phép so sánh
   (`el.scrollLeft + el.clientWidth < el.scrollWidth - 1`) cố ý tránh nhấp nháy sub-pixel, nhưng

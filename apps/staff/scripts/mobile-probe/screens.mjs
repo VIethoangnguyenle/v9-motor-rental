@@ -81,6 +81,13 @@ for (const [path, name] of [
   ["/requests", "04-yeu-cau"],
   ["/customers", "05-khach-hang"],
   ["/staff", "06-nhan-vien"],
+  // Hai route dưới đây thêm SAU đợt dựng probe (2026-09-03). Danh sách này là
+  // thứ duy nhất nói "đã chụp hết màn hình chưa", nên một route không có tên ở
+  // đây là một màn không ai nhìn — probe vẫn xanh và vẫn mù.
+  ["/rentals", "07-don-thue"],
+  ["/field", "08-hien-truong"],
+  ["/settings", "09-cai-dat"],
+  ["/change-password", "10-doi-mat-khau"],
 ]) {
   await go("http://localhost:3003" + path, 2600);
   await shot(name);

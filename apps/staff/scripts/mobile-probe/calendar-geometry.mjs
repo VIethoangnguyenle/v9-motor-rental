@@ -33,11 +33,32 @@ for (const w of [390, 1280]) {
   console.warn(
     w + "px:",
     await ev(`(()=>{
+    // Hai HÌNH DẠNG, không phải một. Từ 2026-09-04, màn hẹp ở chế độ timeline
+    // vẽ BẢNG MỘT NGÀY (danh sách dọc, không cuộn ngang) chứ không vẽ lưới, nên
+    // '.overflow-x-auto' KHÔNG tồn tại ở đó. Bản trước của probe này truy vấn
+    // thẳng nó rồi đọc '.getBoundingClientRect()' của \`null\` — báo ra
+    // 'undefined' và KHÔNG thoát khác 0, tức probe mù mà vẫn trông như chạy
+    // được. Đúng lớp lỗi mà README.md của thư mục này liệt kê.
     const grid=document.querySelector('.overflow-x-auto');
-    const g=grid.getBoundingClientRect();
-    const cols=grid.querySelectorAll('thead th, [role=columnheader]').length;
-    return 'lưới bắt đầu ở y='+Math.round(g.top)+'px  ('+Math.round(g.top/780*100)+'% màn hình dùng cho phần đầu) · '
-      + 'hiện '+grid.clientWidth+' / cần '+grid.scrollWidth+'px · cột tiêu đề: '+cols;
+    const main=document.querySelector('#main');
+    if(!main) return 'LỖI: không thấy #main — có đăng nhập được không?';
+
+    if(grid){
+      const g=grid.getBoundingClientRect();
+      const cols=grid.querySelectorAll('thead th, [role=columnheader]').length;
+      return 'LƯỚI · bắt đầu ở y='+Math.round(g.top)+'px  ('+Math.round(g.top/780*100)+'% màn hình dùng cho phần đầu) · '
+        + 'hiện '+grid.clientWidth+' / cần '+grid.scrollWidth+'px · cột tiêu đề: '+cols;
+    }
+
+    // Bảng một ngày: đo đúng thứ tương ứng — phần đầu ăn bao nhiêu chiều cao
+    // trước khi nội dung đầu tiên bắt đầu, và có cuộn ngang sót lại không.
+    const first=main.querySelector('ul[role=list] > li, p, div[class*="border"]');
+    if(!first) return 'LỖI: không thấy nội dung nào trong #main';
+    const f=first.getBoundingClientRect();
+    const overflow=document.documentElement.scrollWidth-document.documentElement.clientWidth;
+    const cards=main.querySelectorAll('ul[role=list] > li').length;
+    return 'BẢNG MỘT NGÀY · nội dung bắt đầu ở y='+Math.round(f.top)+'px  ('+Math.round(f.top/780*100)+'% màn hình dùng cho phần đầu) · '
+      + 'tràn ngang '+overflow+'px · số thẻ: '+cards;
   })()`),
   );
 }

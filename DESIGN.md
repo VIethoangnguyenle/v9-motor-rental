@@ -244,8 +244,23 @@ và viền trạng thái active.
 Ba răng đỏ **không mang thông tin nào**: bỏ hết màu thì mark vẫn đọc đủ. Đây là điều kiện để nó
 sống ở chỗ in một màu và ở chế độ tương phản cao.
 
+### Chỗ mark đang được dùng — cập nhật 2026-09-04
+
+Cho tới 2026-09-04, mark **chỉ tồn tại dưới dạng file**: cả `apps/web` không chỗ nào render nó, và
+thứ duy nhất được dùng thật là MÀU rút ra từ nó. §9 này đánh dấu "✅ chốt" từ 2026-09-03 nhưng bước
+đặt mark vào trang không nằm trong đợt đó — một khoảng cách dễ tưởng là đã xong vì tài liệu nói xong.
+
+| Chỗ | Bản dùng | Vì sao |
+| --- | --- | --- |
+| `apps/web` — thanh đầu trang | **nguyên bản, đủ màu** | Nền `canvas` đen tuyền cố định, đúng môi trường mark được vẽ ra để sống |
+| `apps/web` — favicon (`app/icon.svg`) | nguyên bản **+ nền đen** | Thanh tab của trình duyệt sáng hay tối là do người dùng chọn; nét trắng trên nền trong suốt biến mất trên tab sáng |
+| `apps/staff` — trang chủ | **một màu, `currentColor`** | App đó nền sáng và có ba trạng thái theme; và accent thương hiệu `#f72b28` khác accent giao diện `#0067c8` của nó. Đường này do chính §9 mở ra ("bỏ hết màu thì mark vẫn đọc đủ") |
+
 ### Còn treo
 
 `apps/staff/public/icon-{192,512}.png` **chưa** đổi sang mark này. `docs/ROADMAP.md:117` ghi icon đó
 đã xong 2026-09-01 bằng "logo mô tô thật" — nhưng shop không có logo thật, nên chưa rõ thứ đang nằm
 trong hai file kia là gì. Không đụng vào cho tới khi biết.
+
+Giờ mark đã có mặt ở cả ba chỗ trên, bất nhất này **nhìn thấy được** khi người dùng cài `apps/staff`
+thành PWA: icon màn hình chính mang một hình, trang chủ trong app mang hình khác.

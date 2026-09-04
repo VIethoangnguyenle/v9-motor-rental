@@ -78,7 +78,35 @@ for (const W of [390, 360]) {
   console.warn(`  ${W} sheet "Thêm":`, await ev(REPORT));
   await send("Page.navigate", { url: "http://localhost:3003/calendar" });
   await wait(3200);
-  await ev(`document.querySelector('.overflow-x-auto button')?.click()`);
+  /*
+   * Mở sheet chi tiết đơn bằng cách bấm vào một đơn trên màn Lịch — nhưng màn
+   * Lịch có HAI hình dạng từ 2026-09-04:
+   *
+   *   • màn rộng / chế độ Tháng → lưới, đơn là `<button>` bên trong `.overflow-x-auto`;
+   *   • màn hẹp / chế độ timeline → bảng MỘT NGÀY, đơn là `<button>` trong
+   *     `ul[role=list]`, và `.overflow-x-auto` KHÔNG tồn tại.
+   *
+   * Bản trước chỉ biết hình dạng đầu, nên ở 390/360px nó không bấm được gì và
+   * báo "KHÔNG mở được dialog" — trung thực, nhưng vô dụng: nó thôi đo được món
+   * nợ 3/7 mà nó sinh ra để canh.
+   */
+  await ev(`(()=>{
+    const bar=document.querySelector('.overflow-x-auto button');
+    if(bar){bar.click();return 'lưới';}
+    /*
+     * Chọn đơn CÒN VIỆC, không lấy thẻ đầu tiên gặp được.
+     *
+     * Món nợ này nói về nút "Thêm ảnh" của một lần bàn giao đang diễn ra. Một
+     * đơn đã trả thì sheet là chỗ XEM LẠI bằng chứng — ở đó HandoverPhotos cố
+     * ý mở mọi nhóm có ảnh, nên đo nó ra một con số đúng cho một câu hỏi khác.
+     * Bản trước lấy thẻ đầu tiên và rơi đúng vào một đơn COMPLETED.
+     */
+    const cards=[...document.querySelectorAll('#main ul[role=list] > li > button')];
+    const live=cards.find(c=>!/Đã trả|Đã huỷ/.test(c.textContent||''));
+    if(live){live.click();return 'bảng một ngày · đơn còn việc';}
+    if(cards[0]){cards[0].click();return 'bảng một ngày · CHỈ CÓ đơn đã đóng';}
+    return 'KHÔNG thấy đơn nào để bấm';
+  })()`);
   await wait(2300);
   console.warn(`  ${W} sheet chi tiết đơn:`, await ev(REPORT));
 }
