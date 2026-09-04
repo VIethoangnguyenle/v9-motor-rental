@@ -53,8 +53,13 @@ hình dạng nút là `@utility` (`display-xl`, `label-upper`, `btn-shape`) — 
 tiếng Việt đâm dòng trên, đã render kiểm chứng) · **không dùng Inter** dù file gốc khuyên thế ·
 accent lấy từ **logo thật của shop**, không phải M tricolor.
 
-⛔ **Màu accent chưa chốt** — chờ file logo. Cho tới lúc đó dựng đơn sắc trắng-đen, **không bịa
-màu**. Xem §9 của `DESIGN.md`.
+✅ **Nhận diện đã chốt 2026-09-03** — mark ở `public/brand/v9-mark.svg`, accent `#f72b28` rút từ
+nó, token khai ở `app/globals.css`. Xem §9 của `DESIGN.md` để biết hai luật tương phản kèm theo
+(nút CTA dùng chữ ĐEN trên nền accent; không dùng accent làm chữ trên `surface-card`).
+
+_Sửa 2026-09-04:_ dòng này trước đó ghi "⛔ Màu accent chưa chốt — chờ file logo, không bịa màu",
+đúng ở thời điểm viết nhưng đã lạc hậu kể từ khi §9 chốt. Một tài liệu workspace nói ngược `DESIGN.md`
+thì người đọc tin cái nào cũng sai một nửa.
 
 **Cấm rõ**: thẩm mỹ SaaS generic — gradient tím, Inter ở mọi nơi, card lồng card.
 
