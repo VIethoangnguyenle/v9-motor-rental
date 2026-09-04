@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import type { CalendarSearch } from "../../lib/calendar-search";
 import { STATUS_ICON } from "../../lib/rental-status";
 import type { StatsSummary } from "../../lib/rentals";
+import type { RentalsSearch } from "../../lib/rentals-search";
 import { Icon, type IconName } from "../ui/icon";
 
 /**
@@ -16,14 +16,15 @@ interface Row {
   readonly label: string;
   /**
    * Cả `to` lẫn `search` trong MỘT union phân biệt, thay vì hai field rời.
-   * `search` của `/calendar` là bắt buộc (`CalendarSearch.view` không optional)
-   * còn `/staff` không nhận search nào — để rời nhau thì `<Link to={row.to}
-   * search={row.search}>` phải nhận một `search` hợp lệ cho MỌI nhánh của `to`,
-   * và không có kiểu nào thoả. Gói lại rồi `{...row.target}` thì mỗi nhánh tự
-   * mang đúng bộ prop của nó.
+   * `search` của `/rentals` là bắt buộc (`RentalsSearch` không có field
+   * optional) còn `/staff` không nhận search nào — để rời nhau thì `<Link
+   * to={row.to} search={row.search}>` phải nhận một `search` hợp lệ cho MỌI
+   * nhánh của `to`, và không có kiểu nào thoả. Gói lại rồi `{...row.target}`
+   * thì mỗi nhánh tự mang đúng bộ prop của nó.
    */
   readonly target:
-    { readonly to: "/calendar"; readonly search: CalendarSearch } | { readonly to: "/staff" };
+    | { readonly to: "/rentals"; readonly search: RentalsSearch }
+    | { readonly to: "/staff" };
   readonly icon: IconName;
   readonly className: string;
 }
@@ -48,6 +49,16 @@ const ROW =
   "flex min-h-11 items-center justify-between gap-3 rounded-card px-3 text-sm text-ink transition-[background-color] duration-(--duration-instant) ease-standard hover:bg-canvas";
 
 /**
+ * Đích chung của ba dòng đơn thuê — hàng đợi mặc định (`rentals-search.ts`)
+ * đã tự nhảy tới nhóm gấp nhất, nên không có gì để tham số hoá theo từng dòng.
+ * Một hằng số dùng chung thay vì gõ lại object này ba lần.
+ */
+const RENTALS_QUEUE_TARGET: Row["target"] = {
+  to: "/rentals",
+  search: { mode: "queue", q: "", page: 1, from: "", to: "" },
+};
+
+/**
  * Bốn dòng, sắp theo ĐỘ GẤP — không còn theo thứ tự mockup (design doc §8), vì
  * mockup đó được vẽ khi danh sách mới có ba dòng và chưa có `pickupOverdue`:
  *
@@ -57,19 +68,14 @@ const ROW =
  *  3. `dueToday` — chưa phải vấn đề, mới là việc sắp tới trong ngày.
  *  4. `pendingStaff` — hành chính, không đụng tới xe.
  *
- * Ba dòng đầu điều hướng sang `/calendar` kèm `search` chứ không còn `to` trần.
- * `overdueFrom`/`pickupOverdueFrom` là mốc SỚM NHẤT của mỗi nhóm, do server cắt
- * kỳ sẵn thành Y-M-D theo giờ shop (`services/stats.ts`).
+ * Ba dòng đầu (`overdue`, `pickupOverdue`, `dueToday`) đều là **đơn thuê** —
+ * `/rentals?mode=queue` mở đúng hàng đợi đó, tự nhảy tới nhóm gấp nhất, nên
+ * không cần neo ngày nào cả. `pendingStaff` là **nhân viên**, một domain khác
+ * hẳn, vẫn giữ `/staff` như cũ.
  *
- * ⚠️ Neo ở mốc sớm nhất KHÔNG bảo đảm nhìn thấy đủ cả nhóm: timeline chỉ vẽ
- * 7–14 ngày kể từ `from` (`dayCountForWidth`), nên hai đơn quá hạn cách nhau ba
- * tuần thì bấm vào chỉ thấy đơn cũ hơn. Chọn mốc sớm nhất vì đó là đơn GẤP
- * NHẤT và timeline chạy xuôi từ đó — không phải vì nó gom đủ.
- *
- * `?? undefined` chứ không `!`: `overdueFrom` là `null` khi `overdue === 0`, mà
- * nhánh này chỉ chạy khi `overdue > 0` nên hai vế đã ràng nhau ở server. Ràng
- * buộc đó type-level KHÔNG thấy, và cách xử lý khi nó vỡ phải là rơi về "hôm
- * nay" chứ không phải ném — một con số đúng kèm ngày sai vẫn đọc được.
+ * `overdueFrom`/`pickupOverdueFrom` (`services/stats.ts`) không còn dùng ở
+ * đây — hàng đợi tự sắp xếp theo độ gấp rồi, không cần mốc ngày để neo tới.
+ * Hai field đó vẫn còn ở API cho các đường khác dùng, không đụng trong đợt này.
  *
  * `attention.pendingStaff` là `undefined` với STAFF (server không gửi field —
  * xem `routes/stats.ts`) — yêu cầu #7: VẮNG thì không render dòng đó, không
@@ -83,10 +89,7 @@ export function AttentionList({ attention }: { readonly attention: StatsSummary[
     rows.push({
       key: "overdue",
       label: `${String(attention.overdue)} xe quá hạn chưa trả`,
-      target: {
-        to: "/calendar",
-        search: { view: "timeline", from: attention.overdueFrom ?? undefined },
-      },
+      target: RENTALS_QUEUE_TARGET,
       // Đọc TỪ `STATUS_ICON` chứ không gõ lại `"alert-triangle"`: dòng này đếm
       // đúng tập đơn mà `isOverdue` chọn (`services/stats.ts` lọc
       // `ONGOING AND ends_at < now`), nên hai chỗ phải mang cùng một hình. Gõ
@@ -105,10 +108,7 @@ export function AttentionList({ attention }: { readonly attention: StatsSummary[
       // chắn đang sai trạng thái. Viết "N xe chưa ai tới lấy" là khẳng định vế
       // thứ nhất, và sẽ dạy sai đúng lúc vế thứ hai xảy ra.
       label: `${String(attention.pickupOverdue)} đơn quá giờ nhận xe`,
-      target: {
-        to: "/calendar",
-        search: { view: "timeline", from: attention.pickupOverdueFrom ?? undefined },
-      },
+      target: RENTALS_QUEUE_TARGET,
       // CÙNG token đỏ với dòng trên, cố ý — `rentalChipClass` cũng dùng một
       // token đỏ cho cả hai và tách chúng bằng CÁCH TÔ. Ở đây không có mảng tô
       // để tách, chỉ có hình: tam giác (kín) vs đồng hồ (tròn). Màu vì vậy nói
@@ -122,11 +122,7 @@ export function AttentionList({ attention }: { readonly attention: StatsSummary[
     rows.push({
       key: "dueToday",
       label: `${String(attention.dueToday)} xe phải trả hôm nay`,
-      // Không `from`: nhóm này theo định nghĩa nằm trong hôm nay, mà vắng
-      // `from` đã có nghĩa là "hôm nay" (`calendar-search.ts`). Gửi kèm một
-      // mốc tính ở client là dựng lại phép cắt kỳ theo múi giờ shop mà server
-      // cố ý giữ trong SQL.
-      target: { to: "/calendar", search: { view: "timeline" } },
+      target: RENTALS_QUEUE_TARGET,
       // Lịch có dấu kiểm — việc gắn với NGÀY, và đường bao vuông tách hẳn
       // khỏi đồng hồ tròn của dòng ngay phía trên.
       icon: "calendar-check",

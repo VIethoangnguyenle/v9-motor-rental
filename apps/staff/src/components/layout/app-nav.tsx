@@ -17,13 +17,14 @@ import { Icon, type IconName } from "../ui/icon";
  *
  * `kind: "soon"` = tính năng chưa xây (Plan C+). Với các mục còn lại, route
  * CHƯA TỒN TẠI nên phần tử KHÔNG được là `<Link>` — một link tới route không
- * tồn tại là một cú 404 trong chính app của mình. `Lịch` đã MỞ KHOÁ ở Task 6:
- * route `/calendar` (đăng ký ở Task 3) nay có nội dung nghiệp vụ thật
- * (`RentalCalendar`, xem `pages/calendar-page.tsx`), nên chuyển hẳn sang
- * `kind: "link"` — không còn là ngoại lệ "có route nhưng chưa render được".
- * Render bằng `<button disabled>` cho các mục còn `"soon"`: không bấm được,
- * không nằm trong tab order, và trình đọc màn hình biết nó là nút bị vô hiệu
- * hoá chứ không phải nút hỏng.
+ * tồn tại là một cú 404 trong chính app của mình. `Lịch` (Task 6) và `Đơn
+ * thuê` (Task 9) đã MỞ KHOÁ theo cùng khuôn: route đăng ký trước, nội dung
+ * nghiệp vụ thật land sau (`RentalCalendar` ở `pages/calendar-page.tsx`,
+ * `RentalsPage` ở `pages/rentals-page.tsx`), rồi mới chuyển sang `kind:
+ * "link"` — không còn là ngoại lệ "có route nhưng chưa render được". Render
+ * bằng `<button disabled>` cho các mục còn `"soon"`: không bấm được, không
+ * nằm trong tab order, và trình đọc màn hình biết nó là nút bị vô hiệu hoá
+ * chứ không phải nút hỏng.
  */
 type NavItem =
   | {
@@ -32,7 +33,7 @@ type NavItem =
       /** Hình nhận dạng điểm đến. Bảy dòng chữ cùng cỡ cùng màu thì mắt phải
        *  ĐỌC mới biết mình ở đâu; icon cho nhận ra bằng hình dạng. */
       readonly icon: IconName;
-      readonly to: "/" | "/staff" | "/calendar" | "/customers" | "/requests";
+      readonly to: "/" | "/staff" | "/calendar" | "/customers" | "/requests" | "/rentals";
       /** Hiện số việc đang chờ cạnh nhãn. Chỉ `/requests` dùng, xem `AppNav`. */
       readonly badge?: "newRequests";
       readonly ownerOnly?: true;
@@ -43,7 +44,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   { kind: "link", label: "Thống kê", to: "/", icon: "nav-stats" },
   { kind: "link", label: "Lịch", to: "/calendar", icon: "nav-calendar" },
   { kind: "link", label: "Yêu cầu", to: "/requests", badge: "newRequests", icon: "nav-requests" },
-  { kind: "soon", label: "Đơn thuê", icon: "nav-rentals" },
+  { kind: "link", label: "Đơn thuê", to: "/rentals", icon: "nav-rentals" },
   { kind: "link", label: "Khách hàng", to: "/customers", icon: "nav-customers" },
   { kind: "soon", label: "Bàn giao", icon: "nav-handover" },
   // Chỉ hiện với OWNER — đây là hàng rào của TRẢI NGHIỆM, không phải của dữ
