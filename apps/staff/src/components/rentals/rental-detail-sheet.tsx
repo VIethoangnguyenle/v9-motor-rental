@@ -228,8 +228,14 @@ export function RentalDetailSheet({ rental, vehicle, onClose, onChanged }: Renta
    * Đã giao xe / Huỷ đơn là hành động của CẢ ĐƠN, không phải của một khối nội
    * dung — neo ở khe `footer` của `Modal` (chân panel, không cuộn theo), thay
    * vì nằm cuối content dưới ảnh giao/trả xe. Trước đây 4/7 nút của sheet này
-   * nằm dưới nếp gấp trên điện thoại; hai nút "Thêm ảnh" CỐ Ý ở lại trong nội
-   * dung — chúng thuộc về khối ảnh của chúng (giấy tờ / tình trạng xe).
+   * nằm dưới nếp gấp trên điện thoại; BA nút "Thêm ảnh" CỐ Ý ở lại trong nội
+   * dung — một nút cho mỗi `PhotoKind` (`DOCUMENT`, `HANDOVER`, `RETURN` —
+   * `@v9/shared/domain/rental-photo`), chúng thuộc về khối ảnh của chính
+   * chúng (giấy tờ / giao xe / nhận lại xe). Nút của `RETURN` — ảnh lúc NHẬN
+   * LẠI xe — đứng cuối cùng và nằm dưới nếp gấp: `PRODUCT.md` nguyên tắc #3
+   * gọi ảnh bàn giao là "bằng chứng bảo vệ cả hai phía", nên người sau đọc
+   * chú thích này cần biết nó tồn tại và đang ở đâu, không chỉ biết nó "cố ý
+   * ở lại".
    */
   const renderFooter = () => (
     <div className="card-pad flex flex-col gap-2">

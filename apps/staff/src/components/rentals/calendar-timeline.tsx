@@ -38,10 +38,15 @@ import { Icon } from "../ui/icon";
  * "đo trước lần vẽ đầu của chính nó ra sao" (xem đánh đổi ghi ở
  * `useCalendarDayCount`), component ở đây không phải đoán rồi tự sửa.
  *
- * Cột xe (88/112/130px) là quyết định THUẦN TRÌNH BÀY — không ảnh hưởng gì tới
- * việc fetch — nên nó là ngoại lệ hợp lý: ba class Tailwind `md:`/`xl:` bên
- * dưới tự đổi độ rộng cột theo breakpoint CSS của CỬA SỔ, ĐỘC LẬP với việc
- * parent đổi `gridWindow`.
+ * Cột xe (120/112/130px — base/md/xl, xem `--veh-col` bên dưới) là quyết định
+ * THUẦN TRÌNH BÀY — không ảnh hưởng gì tới việc fetch — nên nó là ngoại lệ hợp
+ * lý: ba class Tailwind `md:`/`xl:` bên dưới tự đổi độ rộng cột theo breakpoint
+ * CSS của CỬA SỔ, ĐỘC LẬP với việc parent đổi `gridWindow`.
+ *
+ * Dãy đó KHÔNG ĐƠN ĐIỆU: base 120px > md 112px < xl 130px — cột xe ở tablet
+ * hẹp hơn cả điện thoại rồi mới rộng lại ở desktop (`DEBT.md`, mục đợt nghiệm
+ * thu 11 task màn hình hẹp). Không mất dữ liệu (tên xe xuống dòng thay vì cắt
+ * — hàng rào #7), chỉ bất nhất hình ảnh giữa ba breakpoint.
  *
  * ⚠️ Từ Task 10, đây là HAI GỐC QUY CHIẾU KHÁC NHAU dùng chung ba con số
  * 768/1280: `rental-calendar.tsx` đo bề rộng VÙNG LƯỚI (đóng #5 — sidebar ăn

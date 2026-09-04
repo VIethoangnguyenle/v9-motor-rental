@@ -15,8 +15,15 @@ function getSnapshot(): "mobile" | "desktop" {
 
 /**
  * `useSyncExternalStore`, KHÔNG `useEffect` + `useState`: effect chạy SAU lần vẽ
- * đầu, nên hình dạng sai kịp xuất hiện đúng một khung hình rồi mới bị sửa. Cùng
- * kỹ thuật và cùng lý do với `currentDayCount` ở `rental-calendar.tsx`.
+ * đầu, nên hình dạng sai kịp xuất hiện đúng một khung hình rồi mới bị sửa.
+ *
+ * Dùng `matchMedia` trên CỬA SỔ ở đây là ĐÚNG — khác với `rental-calendar.tsx`
+ * (đo `gridRef.current.clientWidth`, bề rộng VÙNG LƯỚI, không phải cửa sổ, để
+ * đóng bug #5: sidebar ăn bớt phần cửa sổ nên đo cửa sổ trả sai số cột). Hai
+ * hook đo hai ràng buộc khác nhau: `useLayoutVariant` chọn HÌNH DẠNG của cả
+ * trang (nav trên cùng vs. nav dưới, bảng vs. thẻ) — ràng buộc thật là bề rộng
+ * VIEWPORT chứ không phải bề rộng của riêng một vùng nội dung nào, nên
+ * `matchMedia` trên cửa sổ khớp đúng thứ nó cần đo.
  *
  * Đây là QUYẾT ĐỊNH kiến trúc — ghi ra vì nhất quán với `rental-calendar.tsx`,
  * KHÔNG phải vì test "lần vẽ ĐẦU đã đúng" ở `use-layout-variant.test.ts` ép
