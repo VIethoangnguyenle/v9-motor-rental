@@ -258,3 +258,30 @@ Người dùng khai "nhiều xe, nhiều đơn". Lấy **20–40 xe, 100–200 �
 
 Nếu số thật nhỏ hơn nhiều (dưới 10 xe): mọi thứ vẫn đúng, chỉ nên nới nhóm "Sắp tới" từ 7 lên 30
 ngày. Đó là **một hằng số**, và nó được khai một chỗ chính vì lý do này.
+
+---
+
+## 13. Còn phải kiểm bằng mắt — chưa ai làm
+
+Đợt này dựng và kiểm bằng máy: 546 test, typecheck, lint, và hai lời gọi HTTP có phiên đăng nhập
+thật vào `/rentals/queue` và `/rentals/ledger` (xác nhận `groupCounts` đủ năm khoá và
+`collectedAmount` về dạng **số**, không phải chuỗi).
+
+**Tám ý dưới đây chưa ai bấm thử**, xếp theo rủi ro giảm dần. Bốn ý đầu không có hàng rào tự động
+nào che:
+
+1. **Màn 375px đổi sang hình dạng thẻ, không cuộn ngang.** Rủi ro cao nhất, và là ý duy nhất
+   **không có hàng rào tự động nào cả**: `useLayoutVariant()` trả `"desktop"` dưới headless, còn
+   test thẻ chỉ stub `matchMedia` để chứng minh **nhánh** render — nó không chứng minh được thẻ vừa
+   màn 375px hay không có gì tràn ngang. Toàn bộ quyết định bố cục của §10 đứng trên ý này.
+2. **Sheet chạy hết hiệu ứng ra rồi mới đóng sau khi đổi trạng thái.** Đoạn ghim `useRef` là code
+   **chết** cho tới khi lỗi cache key được sửa (refetch chưa từng chạy), nên nó chỉ sống lần đầu
+   sau đợt sửa cuối. Phải kiểm **sau** khi sửa, không phải trước.
+3. **Gõ ô tìm → tự chuyển sổ cái, thấy được đơn `CANCELLED`.** DB dev không có đơn đã huỷ nào, nên
+   đường này chưa từng chạy đầu-cuối ngoài test của service.
+4. **Bấm "Sau →" rồi Back giữ nguyên chữ trong ô tìm.** Ngữ nghĩa lịch sử (`push` cho phân trang,
+   `replace` cho debounce) mới chỉ được khẳng định bằng cách đọc code.
+
+Bốn ý còn lại có bằng chứng gián tiếp mạnh, không đáng chặn: hàng đợi mở đúng nhóm gấp nhất · nhóm
+rỗng không hiện "(0)" · bấm dòng mở sheet có nút đổi trạng thái và ảnh bàn giao · con số ở Trang chủ
+khớp số dòng của nhóm (đã đo trên DB dev: `attention.overdue` = `groupCounts.OVERDUE` = 1, cùng một đơn).
