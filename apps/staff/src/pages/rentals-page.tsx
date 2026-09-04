@@ -6,6 +6,7 @@ import { RentalLedger } from "../components/rentals/rental-ledger";
 import { RentalQueue } from "../components/rentals/rental-queue";
 import { RentalDetailSheet } from "../components/rentals/rental-detail-sheet";
 import { Alert } from "../components/ui/alert";
+import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
 import { ToggleGroup } from "../components/ui/toggle-group";
 import { TextField } from "../components/ui/text-field";
@@ -50,7 +51,18 @@ export function RentalsPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       const next = searchText.trim();
-      if (next !== q) void navigate({ search: { ...current, q: next, page: 1 }, replace: true });
+      // Updater DẠNG HÀM, không phải object tĩnh: closure của timer chụp
+      // `current` tại lúc đồng hồ được bấm, và `current` KHÔNG nằm trong deps
+      // (xem lý do ngay dưới) — nếu người dùng đổi `mode`/`from`/`to` trong
+      // đúng 300ms sau lần gõ cuối, một object tĩnh `{ ...current, q: next }`
+      // sẽ ghi đè bằng bản `current` CŨ, âm thầm huỷ đúng thay đổi họ vừa làm.
+      // `(prev) => ({ ...prev, ... })` đọc search THẬT tại lúc commit thay vì
+      // bản đã chụp — cùng khuôn `rental-calendar.tsx:331,343,358` dùng cho
+      // đúng lý do này (đã kiểm: `@tanstack/react-router@1.170.18` — bản repo
+      // đang ghim — nhận `search` dạng hàm, ba chỗ đó đang chạy thật).
+      if (next !== q) {
+        void navigate({ search: (prev) => ({ ...prev, q: next, page: 1 }), replace: true });
+      }
     }, 300);
     return () => clearTimeout(timer);
     // `current` dựng mới mỗi lần render nên KHÔNG đưa vào deps — nó sẽ làm effect
@@ -67,6 +79,23 @@ export function RentalsPage() {
   const active = shown === "queue" ? queue : ledger;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [changed, setChanged] = useState<string | null>(null);
+
+  // Banner "Đã cập nhật…" nói về MỘT đơn cụ thể — để nó sống mãi qua đổi chế
+  // độ/từ khoá/trang/khoảng ngày là gán một xác nhận cho một ngữ cảnh người
+  // dùng đã rời khỏi. Xoá khi ngữ cảnh xem đổi (đúng năm tham số quyết định
+  // `queryKey` của `active` — `rentalsQueueQuery`/`rentalsLedgerQuery` ở
+  // `lib/rentals-list.ts`); việc xoá khi MỞ đơn khác nằm ở `handleOpen` bên
+  // dưới, cùng khuôn `rental-calendar.tsx` (`setChanged(null)` trước
+  // `setSelectedId`). Không xoá khi tự đóng sheet: đó là lúc người dùng CẦN
+  // thấy xác nhận nhất.
+  useEffect(() => {
+    setChanged(null);
+  }, [mode, q, page, from, to]);
+
+  function handleOpen(id: string): void {
+    setChanged(null);
+    setSelectedId(id);
+  }
 
   const rows = active.data?.ok ? active.data.rentals : [];
   const total = active.data?.ok ? active.data.total : 0;
@@ -117,8 +146,12 @@ export function RentalsPage() {
       </div>
 
       {/* Gõ từ khoá thì hàng đợi mất nghĩa và trang tự chuyển sang sổ cái. NÓI RA
-          điều đó, đừng để người dùng tự đoán vì sao nhóm biến mất. */}
-      {q.trim().length > 0 && mode === "queue" && (
+          điều đó, đừng để người dùng tự đoán vì sao nhóm biến mất.
+          `shown !== mode` chứ không tự so `q.trim().length > 0 && mode === "queue"`:
+          luật "có `q` thì hàng đợi mất nghĩa" đã sống ở `effectiveMode`
+          (`rentals-search.ts`), viết lại điều kiện ở đây là dựng bản sao thứ
+          hai của đúng luật đó, ngay trong JSX — hai bản sẽ lệch ngày luật đổi. */}
+      {shown !== mode && (
         <Alert tone="info">Đang tìm trong tất cả đơn thuê, kể cả đơn đã trả và đã huỷ.</Alert>
       )}
 
@@ -137,13 +170,23 @@ export function RentalsPage() {
         </div>
       )}
 
+      {/* `keepPreviousData` (`lib/rentals-list.ts`) giữ `status` là "success" ngay
+          từ lần tải THỨ HAI, nên `isPending` không còn bật lại — đổi trang, đổi
+          khoảng ngày, hay gõ tìm sau lần đầu đều không có gì báo đang tải nếu chỉ
+          nhìn `isPending`. `isFetching` là chỉ báo còn nghĩa cho mọi lần sau đó,
+          cùng khuôn `customers-list-page.tsx`. Loại trừ `isPending` để không in
+          "Đang tải…" chồng lên khối `Skeleton` ở lần tải đầu. */}
+      {active.isFetching && !active.isPending && (
+        <p className="text-sm text-muted">Đang tải…</p>
+      )}
+
       {connectionFailed(active) && (
-        <Alert tone="error">
-          Không kết nối được tới máy chủ.{" "}
-          <button type="button" className="underline" onClick={() => void active.refetch()}>
+        <div className="flex flex-col items-start gap-2">
+          <Alert tone="error">Không kết nối được tới máy chủ.</Alert>
+          <Button type="button" variant="ghost" onClick={() => void active.refetch()}>
             Thử lại
-          </button>
-        </Alert>
+          </Button>
+        </div>
       )}
 
       {!connectionFailed(active) && active.data && !active.data.ok && (
@@ -167,7 +210,7 @@ export function RentalsPage() {
           rentals={queue.data.rentals}
           groupCounts={queue.data.groupCounts}
           now={now}
-          onOpen={setSelectedId}
+          onOpen={handleOpen}
         />
       )}
 
@@ -180,7 +223,7 @@ export function RentalsPage() {
           onRange={(nextFrom, nextTo) =>
             void navigate({ search: { ...current, from: nextFrom, to: nextTo, page: 1 } })
           }
-          onOpen={setSelectedId}
+          onOpen={handleOpen}
         />
       )}
 
