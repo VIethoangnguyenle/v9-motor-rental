@@ -106,10 +106,14 @@ export function Modal({
    * Hành động chính, neo ở CHÂN panel và KHÔNG cuộn theo nội dung.
    *
    * Sinh ra từ một ca đo được: ở 390px nút `Tạo đơn` của `RentalForm` nằm ở
-   * y=705–749 trong khi thanh nav dưới bắt đầu ở 724 — chạm vào nửa dưới của nút
-   * rơi vào `<dialog>` chứ không vào nút, tức 19/44px là vùng chết. Sheet chi tiết
-   * đơn còn nặng hơn: 4/7 hành động (`Thêm ảnh` ×2, `Đã giao xe`, `Huỷ đơn`) nằm
-   * dưới nếp gấp của panel, không có gì báo rằng chúng tồn tại.
+   * y=705–749, tràn ra ngoài hộp `max-h-[90dvh]` của chính panel — chạm vào
+   * nửa dưới của nút rơi vào nền `<dialog>` chứ không vào nút, tức 19/44px là
+   * vùng chết. KHÔNG phải nav dưới đè lên nút: `<dialog>` mở bằng
+   * `showModal()` nằm trong top layer, luôn vẽ trên mọi z-index thường, nên
+   * nav (bắt đầu ở y=724, cùng phép tính chiều cao viewport nhưng không liên
+   * quan nhân quả) không thể che được nó. Sheet chi tiết đơn còn nặng hơn:
+   * 4/7 hành động (`Thêm ảnh` ×2, `Đã giao xe`, `Huỷ đơn`) nằm dưới nếp gấp
+   * của panel, không có gì báo rằng chúng tồn tại.
    *
    * KHÔNG truyền thì panel giữ nguyên hành vi cũ — sheet "Thêm" đo sạch (0/6 nút
    * ngoài tầm) chính vì nội dung của nó ngắn hơn khung, nên nó không cần khe này.

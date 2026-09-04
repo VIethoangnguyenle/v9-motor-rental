@@ -308,8 +308,11 @@ export function RentalForm({
     //
     // `footer` neo nút Tạo đơn ở chân panel, không cuộn theo nội dung — đóng
     // lỗi #3 (xem chú thích `footer` ở `ui/modal.tsx`): ở 390px nút từng nằm
-    // y=705–749 trong khi thanh nav dưới bắt đầu ở 724, nên 19/44px của nút rơi
-    // vào `<dialog>` thay vì vào nút. Nút submit đứng NGOÀI `<form>` (chân panel
+    // y=705–749, tràn ra ngoài hộp `max-h-[90dvh]` của panel, nên 19/44px của
+    // nút rơi vào nền `<dialog>` thay vì vào nút — nav dưới bắt đầu đúng ở 724
+    // là hệ quả của CÙNG phép tính chiều cao, không phải nguyên nhân che nút
+    // (`<dialog>` mở bằng `showModal()` nằm trong top layer, nav không đè được
+    // nó). Nút submit đứng NGOÀI `<form>` (chân panel
     // là anh em của vùng cuộn, không phải con của form) nên `form="rental-form"`
     // là cách DUY NHẤT để nó vẫn gửi được — thiếu thuộc tính này hoặc thiếu
     // `id` khớp trên `<form>` thì nút bấm được nhưng không gửi gì cả, và không

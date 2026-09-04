@@ -52,6 +52,15 @@ từng phần tử · số nút mà `elementFromPoint` tại tâm **không** tr�
 **Đo sạch, không đụng tới:** Thống kê · Yêu cầu · Cài đặt · Đổi mật khẩu · sheet "Thêm" (0/6 nút,
 không cần cuộn) · nav dưới · tràn ngang cấp trang **0px** ở cả 360 và 390.
 
+> ⚠️ _Sửa 2026-09-04:_ **#3 chẩn đoán sai nguyên nhân, dù số đo đúng.** Bảng trên đọc "nav
+> 724–780" thành nav che nút — sai. `<dialog>` mở bằng `showModal()` nằm trong **top layer**, luôn
+> vẽ trên mọi z-index thường; `elementFromPoint` ở `y=727` trả về chính `<dialog>`, không trả về
+> phần tử nav, nên nav **không thể** che nút dù có đứng ở toạ độ nào. Nguyên nhân thật: nút cao
+> 44px tràn ra ngoài hộp `max-h-[90dvh]` của chính panel, phần tràn rơi vào nền dialog — không bấm
+> được vì nằm ngoài panel, không phải vì bị đè. Nav bắt đầu đúng ở 724 là **hệ quả cùng một phép
+> tính chiều cao** (cả hai đo từ cùng chiều cao viewport), không phải nguyên nhân. Giữ nguyên số đo
+> gốc ở trên vì đó là bằng chứng đã dùng để lần ra nguyên nhân thật — chỉ sửa lại phần suy luận.
+
 Điểm đáng chú ý nhất của bảng trên: **#4 và #5 là lỗi desktop**, không phải lỗi mobile. Ở 1280px
 lưới vẫn giấu 44% nội dung.
 
@@ -178,10 +187,15 @@ người cầm điện thoại không thấy nó.
 Áp cho cả hai hình dạng, và cần thiết bất kể chọn hướng nào.
 
 `Modal` nhận thêm khe `footer`. Nội dung cuộn ở giữa; hành động chính nằm ở chân **cố định**, luôn
-trên nếp gấp, `padding-bottom` theo `env(safe-area-inset-bottom)`, và không bao giờ bị nav dưới đè.
+trên nếp gấp, `padding-bottom` theo `env(safe-area-inset-bottom)`.
 
 Đóng #1 và #3. Lưu ý khi thi công: cuộn hết panel hiện tại làm nút đóng `✕` trôi khỏi vùng thấy
 được — chân cố định phải không tạo ra phiên bản mới của chính lỗi đó ở đầu panel.
+
+> ⚠️ _Sửa 2026-09-04:_ dòng gốc ở đây ghi "không bao giờ bị nav dưới đè" — sai khung tham chiếu.
+> `<dialog>` mở bằng `showModal()` nằm trong top layer nên nav vốn dĩ không đè được nó, có neo chân
+> hay không cũng vậy. Khe `footer` cố định giải quyết đúng nguyên nhân thật: nút tràn ra ngoài hộp
+> `max-h-[90dvh]` của panel. Xem sửa cùng ngày ở bảng lỗi (mục 1, dòng #3).
 
 ## 7. Bug desktop #5
 
