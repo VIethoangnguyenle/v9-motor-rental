@@ -395,9 +395,14 @@ describe("getStatsSummary", () => {
  * vừa seed — không hardcode con số kỳ vọng, để test còn đúng nếu ai đó đổi bố
  * cục ca biên mà quên đổi assertion.
  *
- * Đã tự kiểm test CẮN được (xem report): đổi `ends_at < ${now}` thành
- * `ends_at <= ${now}` trong `stats.ts` làm test này ĐỎ (SQL đếm thêm ca
- * `endsAt === now`, TS thì không), rồi hoàn nguyên lại xanh.
+ * Đã đo là test CẮN được, cả hai vế, bằng cách lệch MỘT bên rồi hoàn nguyên:
+ *
+ *   • `ends_at < ${now}` → `<=` trong `stats.ts`: overdue đỏ, TS đếm 1 còn SQL
+ *     đếm 3 (thêm ca `endsAt === now` trên CẢ hai trục seed).
+ *   • `starts_at < ${now}` → `<=`: pickupOverdue đỏ, TS đếm 3 còn SQL đếm 5.
+ *
+ * Ghi số ra đây thay vì "đã kiểm rồi": một hàng rào tự khai là kín mà không
+ * kèm bằng chứng thì tệ hơn không có, vì nó khiến người sau thôi kiểm lại.
  */
 describe("getStatsSummary — hợp đồng SQL ↔ TS (isOverdue/isPickupOverdue)", () => {
   it("overdue/pickupOverdue của SQL khớp isOverdue/isPickupOverdue tại ca biên ±1ms quanh now, cho MỌI RentalStatus", async () => {
