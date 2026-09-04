@@ -62,7 +62,7 @@ export function RevenueCards({ revenue }: { readonly revenue: StatsSummary["reve
        * tuần/tháng (so với kỳ trước đủ 7/30 ngày dữ liệu) dễ đọc nhầm thành sụt
        * doanh thu thật nếu không có nhãn.
        */}
-      <p className="mt-1 text-xs text-muted">
+      <p className="mt-1 max-w-prose text-xs text-muted">
         Tính theo ngày giao xe, không phải ngày đặt hay ngày thu tiền. Tuần này và tháng này đang
         tính dở — so với kỳ trước đã hết, % âm ở đầu kỳ là bình thường.
       </p>

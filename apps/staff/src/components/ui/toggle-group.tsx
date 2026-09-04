@@ -36,7 +36,18 @@ export function ToggleGroup<T extends string | null>({
   readonly onChange: (value: T) => void;
 }) {
   return (
-    <div role="group" aria-label={label} className="flex flex-wrap gap-2">
+    /*
+     * `gap-1` (4px), KHÔNG `gap-2`.
+     *
+     * Component này đứng bên trong toolbar của `rental-calendar.tsx`, và toolbar
+     * đó dùng `gap-1` cho cùng loại vùng chạm 44px. Hai khoảng cách khác nhau
+     * trong CÙNG một cụm điều khiển liền kề là thứ mắt đọc ra ngay mà không gọi
+     * tên được (`DEBT.md`, đợt nghiệm thu 11 task màn hình hẹp).
+     *
+     * 4px đủ tách: tiền lệ `calendar-month.tsx` dùng nó cho vùng chạm 24px, và ở
+     * đây vùng chạm là 44px nên biên còn dư hơn nhiều.
+     */
+    <div role="group" aria-label={label} className="flex flex-wrap gap-1">
       {options.map((option) => {
         const selected = option.value === value;
         return (
