@@ -4,7 +4,7 @@ import { queueGroupOf } from "@v9/shared/domain/rental";
 import { like } from "drizzle-orm";
 import { db } from "../db";
 import { getStatsSummary } from "./stats";
-import { listRentalsQueue, queueBoundaries } from "./rentals-list";
+import { listRentalsLedger, listRentalsQueue, queueBoundaries } from "./rentals-list";
 
 const P = "ztest-ds-";
 /** Đồng hồ cố định của cả file — mọi mốc dưới đây neo vào nó. */
@@ -338,5 +338,70 @@ describe("listRentalsQueue ↔ getStatsSummary", () => {
     const stats = await getStatsSummary(NOW, { createdBy: staffId });
     const { groupCounts } = await listRentalsQueue(NOW, { pageSize: 100, createdBy: staffId });
     expect(groupCounts.DUE_TODAY).toBeLessThanOrEqual(stats.attention.dueToday);
+  });
+});
+
+/**
+ * Sổ cái đọc CHÍN hàng của khách seed, không phải tám: `edgeDayEndRental`
+ * (`createdBy: staffId2`, seed riêng cho biên `dayEnd` của hàng đợi ở trên)
+ * dùng CHUNG `customerId` với tám hàng còn lại, và `listRentalsLedger` không
+ * lọc theo `createdBy` — nó lọc theo `q` khớp tên/điện thoại khách hoặc biển
+ * số xe. Đếm tay từ `beforeAll`: 4 BOOKED gốc + hàng biên (cũng BOOKED) = 5
+ * BOOKED; tổng chung 9.
+ */
+describe("listRentalsLedger", () => {
+  it("KHÔNG cần from/to — không chọn ngày vẫn ra kết quả", async () => {
+    const r = await listRentalsLedger({ q: `${P}Trần`, pageSize: 100 });
+    expect(r.total).toBe(9);
+  });
+
+  it("CÓ đơn đã huỷ — khác hẳn lịch", async () => {
+    const r = await listRentalsLedger({ q: `${P}Trần`, pageSize: 100 });
+    expect(r.rentals.map((x) => x.status)).toContain("CANCELLED");
+  });
+
+  it("lọc theo trạng thái", async () => {
+    const r = await listRentalsLedger({ q: `${P}Trần`, statuses: ["BOOKED"], pageSize: 100 });
+    expect(r.total).toBe(5);
+    expect(new Set(r.rentals.map((x) => x.status))).toEqual(new Set(["BOOKED"]));
+  });
+
+  it("tìm được theo biển số", async () => {
+    const r = await listRentalsLedger({ q: "59X1-12345", pageSize: 100 });
+    expect(r.total).toBeGreaterThan(0);
+  });
+
+  it("tìm được theo số điện thoại đã chuẩn hoá", async () => {
+    const r = await listRentalsLedger({ q: "+84912000301", pageSize: 100 });
+    expect(r.total).toBe(9);
+  });
+
+  /**
+   * Ba đơn có `handed_over_at` trong seed: OVERDUE, DUE_TODAY, COMPLETED —
+   * mỗi đơn 1.000.000 ₫. Bốn đơn BOOKED gốc, hàng biên BOOKED, và một đơn
+   * CANCELLED không có mốc giao xe nên KHÔNG được cộng: đó chính là vị từ
+   * doanh thu, và một đơn chưa giao lọt vào tổng tiền là kiểu sai im lặng mà
+   * CHECK `rentals_handover_only_when_out` sinh ra để chặn ở tầng dưới.
+   */
+  it("collectedAmount chỉ cộng đơn ĐÃ GIAO XE", async () => {
+    const r = await listRentalsLedger({ q: `${P}Trần`, pageSize: 100 });
+    expect(r.collectedAmount).toBe(3_000_000);
+    expect(typeof r.collectedAmount).toBe("number");
+  });
+
+  it("sắp gần nhất lên trước", async () => {
+    const r = await listRentalsLedger({ q: `${P}Trần`, pageSize: 100 });
+    const times = r.rentals.map((x) => x.startsAt.getTime());
+    expect(times).toEqual([...times].sort((a, z) => z - a));
+  });
+
+  it("phân trang không sót và không trùng", async () => {
+    const seen: string[] = [];
+    for (let page = 1; page <= 3; page += 1) {
+      const r = await listRentalsLedger({ q: `${P}Trần`, page, pageSize: 3 });
+      seen.push(...r.rentals.map((x) => x.id));
+    }
+    expect(seen.length).toBe(9);
+    expect(new Set(seen).size).toBe(9);
   });
 });

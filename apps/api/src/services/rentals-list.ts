@@ -1,4 +1,4 @@
-import { asc, eq, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql, type SQL } from "drizzle-orm";
 import { schema } from "@v9/db";
 import {
   QUEUE_GROUPS,
@@ -9,7 +9,9 @@ import {
   type RentalStatus,
 } from "@v9/shared/domain/rental";
 import type { Vnd } from "@v9/shared/domain/money";
+import { normalizePhone } from "@v9/shared/domain/phone";
 import { client, db } from "../db";
+import { fullNameMatches } from "./customers";
 
 export const RENTALS_PAGE_SIZE_DEFAULT = 20;
 export const RENTALS_PAGE_SIZE_MAX = 100;
@@ -259,4 +261,98 @@ export async function listRentalsQueue(
   }
 
   return { rentals, total, groupCounts };
+}
+
+/**
+ * Sổ cái — **có** đơn `CANCELLED`, khác hẳn `listRentalsInRange` (lịch, lọc bỏ
+ * chúng). Đó không phải thiếu nhất quán: trên lịch một đơn đã huỷ không chiếm
+ * chỗ nên vẽ nó ra là nói dối về chỗ trống; trong sổ cái nó là một dòng có thật
+ * của tháng đó.
+ *
+ * `from`/`to` rỗng KHÔNG bị chặn: `tstzrange(NULL, NULL, '[)')` là khoảng vô
+ * hạn hai đầu và khớp mọi hàng, nên ô tìm chạy được mà không cần người dùng
+ * chọn ngày trước. Đó là toàn bộ lý do vị từ này viết bằng range chứ không bằng
+ * hai phép so `>=`/`<`: một hình dạng câu duy nhất cho cả bốn tổ hợp có/không
+ * của hai biên. Ép `::timestamptz` là bắt buộc — không có nó, tham số `null`
+ * không có kiểu và Postgres lỗi `could not determine data type of parameter`.
+ *
+ * `period` viết bằng SQL trần (không qua `schema.rentals.period`): cột đó cùng
+ * exclusion constraint `rentals_no_overlap` sống ở migration viết tay, không
+ * khai trong schema Drizzle — đúng cách `listRentalsInRange` (`services/rentals.ts`)
+ * đã làm.
+ */
+export async function listRentalsLedger(input: {
+  q?: string | undefined;
+  statuses?: readonly RentalStatus[] | undefined;
+  from?: Date | undefined;
+  to?: Date | undefined;
+  page?: number | undefined;
+  pageSize?: number | undefined;
+}): Promise<{ rentals: RentalListRow[]; total: number; collectedAmount: Vnd }> {
+  const page = Math.max(1, Math.trunc(input.page ?? 1));
+  const pageSize = Math.min(
+    RENTALS_PAGE_SIZE_MAX,
+    Math.max(1, Math.trunc(input.pageSize ?? RENTALS_PAGE_SIZE_DEFAULT)),
+  );
+
+  const conditions: SQL[] = [
+    sql`period && tstzrange(${input.from ?? null}::timestamptz, ${input.to ?? null}::timestamptz, '[)')`,
+  ];
+
+  if (input.statuses && input.statuses.length > 0) {
+    conditions.push(inArray(schema.rentals.status, [...input.statuses]));
+  }
+
+  const term = (input.q ?? "").trim();
+  if (term.length > 0) {
+    // Chuẩn hoá ĐƯỜNG ĐỌC cho số điện thoại, cùng lý lẽ `searchCustomers`: gõ
+    // "+84912…" phải ra đúng khách đó. Thêm biển số vì trên điện thoại nhân
+    // viên thường có biển số trong tay chứ không có tên khách.
+    const asPhone = normalizePhone(term);
+    const byText = or(
+      fullNameMatches(term),
+      sql`${schema.vehicles.plate} ILIKE ${`%${term}%`}`,
+    );
+    conditions.push(asPhone ? or(eq(schema.customers.phone, asPhone), byText)! : byText!);
+  }
+
+  const where = and(...conditions)!;
+
+  const base = db
+    .select({
+      n: sql<number>`count(*)::int`,
+      // ⚠️ `::int` phải bọc CẢ cụm `COALESCE(SUM(...) FILTER (...), 0)`. Viết
+      // `SUM(...)::int FILTER (...)` là lỗi cú pháp; quên hẳn thì Bun trả CHUỖI
+      // và `collectedAmount` lặng lẽ thành `string` sau khi đi qua Eden Treaty.
+      //
+      // Vị từ `handed_over_at IS NOT NULL` là ĐÚNG vị từ doanh thu của
+      // `getStatsSummary`, cố ý dùng lại. Nhưng CỬA SỔ lọc thì khác (giao với
+      // khoảng thuê, không phải mốc giao xe), nên con số này KHÔNG bằng
+      // "Doanh thu tháng" ở Thống kê và không được đặt tên như thế.
+      collected: sql<number>`(COALESCE(SUM(${schema.rentals.totalAmount}) FILTER (WHERE ${schema.rentals.handedOverAt} IS NOT NULL), 0))::int`,
+    })
+    .from(schema.rentals)
+    .innerJoin(schema.customers, eq(schema.customers.id, schema.rentals.customerId))
+    .innerJoin(schema.vehicles, eq(schema.vehicles.id, schema.rentals.vehicleId))
+    .where(where);
+
+  const [totals] = await base;
+
+  const rows = await db
+    .select(LIST_COLUMNS)
+    .from(schema.rentals)
+    .innerJoin(schema.customers, eq(schema.customers.id, schema.rentals.customerId))
+    .innerJoin(schema.vehicles, eq(schema.vehicles.id, schema.rentals.vehicleId))
+    .where(where)
+    // Gần nhất lên trước — sổ cái đọc ngược thời gian. `id` là khoá phụ bắt
+    // buộc, cùng lý do đã ghi ở `listRentalsQueue`.
+    .orderBy(desc(schema.rentals.startsAt), desc(schema.rentals.id))
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+
+  return {
+    rentals: rows.map((r) => ({ ...r, status: r.status as RentalStatus })),
+    total: totals?.n ?? 0,
+    collectedAmount: totals?.collected ?? 0,
+  };
 }
