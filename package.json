@@ -27,6 +27,7 @@
     "seed:dev": "bun --env-file=.env ./scripts/seed-dev.ts"
   },
   "dependencies": {
+    "@v9/shared": "workspace:*",
     "supertokens-node": "24.0.3"
   },
   "devDependencies": {

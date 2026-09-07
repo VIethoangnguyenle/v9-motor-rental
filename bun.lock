@@ -5,6 +5,7 @@
     "": {
       "name": "v9-motor-rental",
       "dependencies": {
+        "@v9/shared": "workspace:*",
         "supertokens-node": "24.0.3",
       },
       "devDependencies": {

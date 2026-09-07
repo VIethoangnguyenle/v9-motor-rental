@@ -29,6 +29,12 @@
  *     `GET /collections/<tên>` → `meta === null` nghĩa là chưa nhận.
  */
 import { SQL } from "bun";
+import {
+  VEHICLE_MESSAGES,
+  VEHICLE_PATTERNS,
+  VEHICLE_STATUSES,
+  VEHICLE_STATUS_LABEL,
+} from "@v9/shared/domain/vehicle";
 
 // ── Env ───────────────────────────────────────────────────────────────────
 const directusUrl = (
@@ -161,6 +167,37 @@ for (const c of collections) {
   );
 }
 
+/**
+ * ── Luật hợp lệ: một nguồn, ba nơi thi hành ──────────────────────────────
+ *
+ * `validation` và `validation_message` dưới đây SINH TỪ `@v9/shared/domain/vehicle`,
+ * không gõ tay. Cùng module đó là thứ form của `apps/staff` dùng, nên hai cửa ghi
+ * vào bảng `vehicles` nói cùng một luật và cùng một câu.
+ *
+ * Đã đo trên Directus 11, 2026-09-07:
+ *
+ *  • `_regex` CÓ hiệu lực ở tầng API, không phải chỉ trang trí trong UI: `POST
+ *    /items/vehicles` với slug sai bị từ chối 400 `FAILED_VALIDATION`.
+ *  • Engine là JS, KHÔNG phải POSIX của Postgres — negative lookahead chạy được.
+ *    Đó là điều kiện để luật `alt` (một phủ định) diễn đạt được ở đây.
+ *  • KHÔNG có chỗ truyền cờ regex. Vì vậy field `alt` dùng
+ *    `VEHICLE_PATTERNS.photoAltValid`, bản tự gói tính không-phân-biệt-hoa-thường
+ *    vào trong regex. Bản `photoFilename` + cờ `i` sẽ để lọt `IMG_2481.JPG` —
+ *    đã đo, và nó rơi xuống CHECK của Postgres thành một câu SQL thô.
+ *  • `validation_message` được LƯU nhưng KHÔNG xuất hiện trong thân lỗi REST:
+ *    API trả câu mặc định ("Value doesn't have the correct format") kèm
+ *    `extensions.type = "regex"`. Suy luận, chưa mở trình duyệt kiểm: Data Studio
+ *    mới là nơi đọc `validation_message` và hiện nó cạnh ô nhập. Đó cũng là đối
+ *    tượng duy nhất của cấu hình này — `apps/staff` lấy câu thông báo thẳng từ
+ *    `VEHICLE_MESSAGES`, không đi qua Directus.
+ *
+ * ⚠️ Cả ba luật ở đây là LỜI GIẢI THÍCH, không phải hàng rào: chúng chạy ở tầng
+ * ứng dụng của Directus. Hàng rào là CHECK trong Postgres. Một ngoại lệ đã đo và
+ * đáng nhớ: với TIỀN, Postgres KHÔNG phải hàng rào — số lẻ không bị từ chối mà bị
+ * làm tròn im lặng (xem `apps/api/src/services/vehicle-rules-parity.test.ts`).
+ * Ở đó lớp domain là thứ duy nhất đứng giữa.
+ */
+
 // ── 3. Interface cho các cột đã có ────────────────────────────────────────
 const fields: { collection: string; field: string; meta: Meta }[] = [
   {
@@ -168,17 +205,21 @@ const fields: { collection: string; field: string; meta: Meta }[] = [
     field: "status",
     meta: {
       interface: "select-dropdown",
-      // Ba giá trị này PHẢI khớp CHECK `vehicles_status_valid` trong DB. Lệch một chữ
-      // thì nhân viên bấm Lưu và nhận một lỗi Postgres không giải thích gì.
+      // Danh sách giá trị SINH TỪ `VEHICLE_STATUSES`, không gõ tay. Bản trước chép
+      // ba chuỗi vào đây kèm một comment tự nhắc "PHẢI khớp CHECK trong DB" — tức
+      // luật được thi hành bằng trí nhớ người. Giờ thêm/bớt một trạng thái ở domain
+      // là chỗ này đi theo, và `drift()` phát hiện Directus còn giữ bản cũ.
+      //
+      // Nhãn cũng lấy từ domain: chủ shop đi qua lại giữa Data Studio và
+      // `apps/staff`, nên hai màn gọi cùng một trạng thái bằng hai từ là cách
+      // làm người dùng tưởng đó là hai thứ khác nhau.
       options: {
-        choices: [
-          { text: "Nháp", value: "draft" },
-          { text: "Đang đăng", value: "published" },
-          { text: "Lưu trữ", value: "archived" },
-        ],
+        choices: VEHICLE_STATUSES.map((value) => ({ text: VEHICLE_STATUS_LABEL[value], value })),
       },
       note: "Trạng thái DANH MỤC, không phải rảnh/bận. Chỉ `published` mới lên web. Xe bảo dưỡng dài ngày thì chuyển về `draft`.",
       width: "half",
+      validation: { status: { _in: [...VEHICLE_STATUSES] } },
+      validation_message: VEHICLE_MESSAGES.STATUS_INVALID,
     },
   },
   {
@@ -189,6 +230,8 @@ const fields: { collection: string; field: string; meta: Meta }[] = [
       options: { trim: true, placeholder: "honda-cb500x-01" },
       note: "chữ thường, số và dấu gạch ngang. Ví dụ: honda-cb500x-01",
       width: "half",
+      validation: { slug: { _regex: VEHICLE_PATTERNS.slug } },
+      validation_message: VEHICLE_MESSAGES.SLUG_FORMAT,
     },
   },
   {
@@ -225,6 +268,22 @@ const fields: { collection: string; field: string; meta: Meta }[] = [
       // và runbook đều ghi 471). Đây là câu dạy nhân viên viết alt trung thực — sai số
       // ngay trong ví dụ mẫu thì nó dạy đúng thói quen bịa thông số.
       note: "Mô tả CHIẾC XE trong ảnh: loại xe, phân khối, tình trạng. KHÔNG phải tên file. Ví dụ: Honda CB500X 471cc màu đỏ, nhìn nghiêng bên phải. (PRODUCT.md §Accessibility)",
+      // `photoAltValid` — dạng KHẲNG ĐỊNH (khớp = hợp lệ), không phải
+      // `photoFilename` + phủ định. Hai lý do, cả hai đã đo trên Directus 11
+      // ngày 2026-09-07:
+      //
+      //  1. `_regex` chỉ có nghĩa "phải khớp"; không có toán tử phủ định cho nó.
+      //  2. Directus KHÔNG có chỗ truyền cờ regex. Dùng `photoFilename` (vốn cần
+      //     cờ `i`) thì `IMG_2481.jpg` bị chặn đúng còn `IMG_2481.JPG` LỌT QUA
+      //     Directus rồi đâm vào CHECK `vehicle_photos_alt_meaningful`, hiện ra
+      //     dưới dạng một câu SQL thô — đúng thứ cơ chế này sinh ra để tránh.
+      //     `photoAltValid` gói tính không-phân-biệt-hoa-thường vào trong chính
+      //     regex nên không cần cờ.
+      //
+      // Engine của Directus là JS, không phải POSIX của Postgres — negative
+      // lookahead trong `photoAltValid` chạy được, đã đo.
+      validation: { alt: { _regex: VEHICLE_PATTERNS.photoAltValid } },
+      validation_message: `${VEHICLE_MESSAGES.ALT_EMPTY} · ${VEHICLE_MESSAGES.ALT_IS_FILENAME}`,
     },
   },
 ];
@@ -430,6 +489,172 @@ if (filePerm === undefined) {
   } else {
     await api("PATCH", `/permissions/${String(filePerm.id)}`, filePermShape);
     step(true, "quyền Public đọc directus_files", `sửa lại: ${permDrift.join(", ")}`);
+  }
+}
+
+// ── 5b. Tài khoản máy cho apps/api ────────────────────────────────────────
+/**
+ * `apps/api` cần ghi được file vào Directus, vì `apps/web` phục vụ ảnh xe qua
+ * `/assets/<fileId>?key=web` — một file không có hàng trong `directus_files` sẽ
+ * hiện ra là ảnh vỡ trên trang công khai. Ghi thẳng vào MinIO không phải đường
+ * lùi: khoá `API_S3_KEY` cố ý chỉ mở bucket `checkins`, và đã đo là `Access
+ * Denied` trên `vehicles`.
+ *
+ * Tài khoản này KHÔNG phải admin. Cùng lý lẽ đã đóng món nợ "Directus cầm
+ * credential ROOT của MinIO" (`docs/DEBT.md`): một service phơi ra internet
+ * không được cầm khoá mở mọi thứ. Policy dưới đây cấp đúng bốn hành động trên
+ * đúng một collection.
+ *
+ * Token đọc từ `DIRECTUS_API_TOKEN` chứ không sinh ngẫu nhiên: script phải chạy
+ * lại được bao nhiêu lần cũng ra cùng kết quả, mà một token sinh mới mỗi lần
+ * chạy sẽ làm `apps/api` mất quyền ngay sau lần chạy thứ hai.
+ */
+const apiToken = process.env.DIRECTUS_API_TOKEN;
+if (apiToken === undefined || apiToken.trim() === "") {
+  throw new Error(
+    "Thiếu DIRECTUS_API_TOKEN — apps/api dùng nó để đẩy ảnh xe lên Directus. Xem .env.example",
+  );
+}
+
+const API_POLICY = "api-files";
+const API_ROLE = "api";
+/**
+ * `example.com` chứ không phải một domain thật hay `.local`: RFC 2606 giữ
+ * `example.com` cho đúng mục đích này, và không ai gửi được mail tới nó. Đã thử
+ * `api@v9.local` trước — Directus từ chối bằng `FAILED_VALIDATION` vì `.local`
+ * không qua được bộ kiểm email của nó.
+ */
+const API_USER_EMAIL = "apps-api@example.com";
+
+interface Named {
+  id: string;
+  name: string;
+}
+
+const policies = await api<Named[]>(
+  "GET",
+  `/policies?filter%5Bname%5D%5B_eq%5D=${encodeURIComponent(API_POLICY)}&fields=id,name&limit=1`,
+);
+let apiPolicyId = policies[0]?.id;
+if (apiPolicyId === undefined) {
+  const created = await api<Named>("POST", "/policies", {
+    name: API_POLICY,
+    icon: "cloud_upload",
+    description: "Cho apps/api đẩy và xoá ảnh xe. KHÔNG cấp quyền nào ngoài directus_files.",
+    // Cả hai đều `false` CÓ CHỦ Ý: `admin_access` bỏ qua mọi permission bên dưới,
+    // `app_access` mở Data Studio cho tài khoản máy. Không thứ nào cần.
+    admin_access: false,
+    app_access: false,
+  });
+  apiPolicyId = created.id;
+  step(true, `policy ${API_POLICY}`, "tạo mới");
+} else {
+  step(false, `policy ${API_POLICY}`, "đã có");
+}
+
+/**
+ * Bốn hành động trên `directus_files`, không hơn.
+ *
+ * `fields: ["*"]` ở đây KHÁC với permission Public ở bước 5 và khác có lý do:
+ * đây là tài khoản NỘI BỘ ghi file, nó cần đặt được mọi cột Directus tự điền lúc
+ * upload. Permission Public thì phơi ra internet, nên ở đó `*` là lỗ hổng.
+ */
+for (const action of ["create", "read", "update", "delete"] as const) {
+  const found = await api<{ id: number }[]>(
+    "GET",
+    `/permissions?filter%5Bpolicy%5D%5B_eq%5D=${apiPolicyId}` +
+      `&filter%5Bcollection%5D%5B_eq%5D=directus_files` +
+      `&filter%5Baction%5D%5B_eq%5D=${action}&fields=id&limit=1`,
+  );
+  if (found[0] !== undefined) {
+    step(false, `quyền ${API_POLICY} ${action} directus_files`, "đã có");
+    continue;
+  }
+  await api("POST", "/permissions", {
+    policy: apiPolicyId,
+    collection: "directus_files",
+    action,
+    fields: ["*"],
+    permissions: {},
+    validation: {},
+  });
+  step(true, `quyền ${API_POLICY} ${action} directus_files`, "tạo permission");
+}
+
+const roles = await api<Named[]>(
+  "GET",
+  `/roles?filter%5Bname%5D%5B_eq%5D=${encodeURIComponent(API_ROLE)}&fields=id,name&limit=1`,
+);
+let apiRoleId = roles[0]?.id;
+if (apiRoleId === undefined) {
+  const created = await api<Named>("POST", "/roles", {
+    name: API_ROLE,
+    icon: "smart_toy",
+    description: "Tài khoản máy. Không dành cho người.",
+  });
+  apiRoleId = created.id;
+  step(true, `role ${API_ROLE}`, "tạo mới");
+} else {
+  step(false, `role ${API_ROLE}`, "đã có");
+}
+
+const access = await api<{ id: string }[]>(
+  "GET",
+  `/access?filter%5Brole%5D%5B_eq%5D=${apiRoleId}&filter%5Bpolicy%5D%5B_eq%5D=${apiPolicyId}&fields=id&limit=1`,
+);
+if (access[0] === undefined) {
+  await api("POST", "/access", { role: apiRoleId, policy: apiPolicyId });
+  step(true, `gắn ${API_POLICY} vào role ${API_ROLE}`, "chèn directus_access");
+} else {
+  step(false, `gắn ${API_POLICY} vào role ${API_ROLE}`, "đã gắn");
+}
+
+const users = await api<{ id: string; token: string | null; role: string | null }[]>(
+  "GET",
+  `/users?filter%5Bemail%5D%5B_eq%5D=${encodeURIComponent(API_USER_EMAIL)}&fields=id,token,role&limit=1`,
+);
+const apiUser = users[0];
+if (apiUser === undefined) {
+  await api("POST", "/users", {
+    email: API_USER_EMAIL,
+    role: apiRoleId,
+    status: "active",
+    token: apiToken,
+    first_name: "apps",
+    last_name: "api",
+  });
+  step(true, `tài khoản máy ${API_USER_EMAIL}`, "tạo mới, gắn token");
+} else {
+  /**
+   * Directus trả token dưới dạng đã che (`**********`) khi đọc, nên KHÔNG so
+   * được giá trị. Bản đầu của bước này vì thế cứ PATCH mỗi lần chạy — và nó phá
+   * hợp đồng ghi ở đầu file: lần chạy thứ hai phải không đổi gì.
+   *
+   * Cách kiểm đúng là THỬ DÙNG token: gọi `/users/me` bằng chính nó. Đây còn là
+   * phép kiểm mạnh hơn so giá trị — nó xác nhận token đang thật sự mở được cửa,
+   * chứ không chỉ xác nhận một chuỗi nằm đúng chỗ trong bảng.
+   */
+  const probe = await fetch(`${directusUrl}/users/me?fields=id,status`, {
+    headers: { Authorization: `Bearer ${apiToken}` },
+  });
+  const usable =
+    probe.status === 200 &&
+    (JSON.parse(await probe.text()) as { data: { id: string; status: string } }).data.id ===
+      apiUser.id;
+
+  if (usable && apiUser.role === apiRoleId) {
+    step(false, `tài khoản máy ${API_USER_EMAIL}`, "token dùng được, role đúng");
+  } else {
+    await api("PATCH", `/users/${apiUser.id}`, {
+      role: apiRoleId,
+      status: "active",
+      token: apiToken,
+    });
+    step(
+      true,
+      `tài khoản máy ${API_USER_EMAIL}`,
+      usable ? "sửa lại role" : "đặt lại token theo .env",
+    );
   }
 }
 
