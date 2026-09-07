@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { render, screen } from "@testing-library/react";
 import { RentalList, type RentalListItem } from "./rental-list";
+import { restoreViewport, stubViewport, VIEWPORT } from "../../hooks/use-layout-variant.testing";
 
 const NOW = new Date("2026-09-04T15:00:00+07:00");
 
@@ -59,28 +60,14 @@ describe("RentalList", () => {
   describe("hình dạng thẻ (màn hẹp)", () => {
     // `useLayoutVariant` đọc `window.matchMedia` trực tiếp (không qua React
     // context), nên stub là cách duy nhất ép hook trả "mobile" trong test — không
-    // có seam ở tầng React để tiêm qua. `window.matchMedia` là global THẬT ở
-    // happy-dom (không phải hàm thiếu cần polyfill — xem
-    // `use-layout-variant.test.ts`), và global đó DÙNG CHUNG cho cả tiến trình
-    // `bun test`, nên `afterEach` phải trả lại đúng bản gốc đã lưu — bỏ quên thì
-    // stub rò sang các file test khác chạy sau trong cùng tiến trình.
-    const originalMatchMedia = window.matchMedia.bind(window);
-
-    afterEach(() => {
-      window.matchMedia = originalMatchMedia;
-    });
+    // có seam ở tầng React để tiêm qua. Stub dùng chung ở
+    // `hooks/use-layout-variant.testing.ts`: nó đọc ngưỡng thẳng từ hook (không
+    // chép tay) và trả lời CẢ HAI ngưỡng — stub một query thì query kia rơi
+    // xuống happy-dom, vốn mặc định rộng 1024 và sẽ khớp.
+    afterEach(restoreViewport);
 
     it("render thẻ chứ không phải bảng khi viewport hẹp", () => {
-      window.matchMedia = (query: string) => ({
-        matches: false, // (min-width: 768px) không khớp → "mobile"
-        media: query,
-        onchange: null,
-        addEventListener: () => undefined,
-        removeEventListener: () => undefined,
-        addListener: () => undefined,
-        removeListener: () => undefined,
-        dispatchEvent: () => false,
-      }) as MediaQueryList;
+      stubViewport(VIEWPORT.mobile);
 
       render(<RentalList rows={[booked]} now={NOW} onOpen={() => undefined} />);
 

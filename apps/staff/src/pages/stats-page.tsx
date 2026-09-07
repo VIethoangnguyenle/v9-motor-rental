@@ -90,8 +90,14 @@ export function StatsPage() {
 
           Không bỏ hẳn: sidebar của màn rộng KHÔNG có ô hành động nào, nên đây
           vẫn là đường vào "Lên đơn" duy nhất ở đó.
+
+          `!== "mobile"`, KHÔNG `=== "desktop"`: ranh giới thật là "trang này
+          đang dùng sidebar hay bottom nav", mà `AppShell` đổi sang sidebar từ
+          `md` (768) — tức tablet cũng dùng sidebar. Viết `=== "desktop"` thì
+          lúc `useLayoutVariant` tách `"tablet"` ra khỏi `"desktop"`, tablet mất
+          đường vào "Lên đơn" duy nhất của nó và không có gì kêu.
         */}
-        {variant === "desktop" && (
+        {variant !== "mobile" && (
           <Button type="button" onClick={() => setFormOpen(true)}>
             <Icon name="plus" />
             Lên đơn

@@ -1,51 +1,45 @@
-import { describe, expect, it, beforeEach, afterEach } from "bun:test";
+import { describe, expect, it, afterEach } from "bun:test";
 import { renderHook } from "@testing-library/react";
 import { useLayoutVariant } from "./use-layout-variant";
-
-// Ngưỡng thật của hook, xem `use-layout-variant.ts` (không export, nên lặp lại
-// nguyên văn ở đây — đổi ngưỡng ở hook mà quên đổi ở đây thì test này SAI ÂM,
-// không phải điều tệ nhất nhưng đáng biết).
-const MD_QUERY = "(min-width: 768px)";
-
-// `window.matchMedia` là global CẢ TIẾN TRÌNH `bun test` (`preload` chỉ init
-// module một lần) — không lưu lại bản gốc và trả về thì stub của file chạy
-// SAU CÙNG còn nguyên cho mọi file test khác chạy sau nó, kể cả những test
-// không liên quan gì tới layout variant. `lib/theme.ts`, `rental-detail-sheet.tsx`
-// gọi `matchMedia` với query KHÁC — stub chỉ khớp đúng `MD_QUERY`, mọi query khác
-// rơi về bản gốc của happy-dom. Còn `app-nav.tsx` cũng dùng `"(min-width: 768px)"`
-// (line 276), nhưng vô hại ở đây vì `AppNav` không render trong test này.
-const originalMatchMedia = window.matchMedia.bind(window);
-
-function stubMatchMedia(matches: boolean) {
-  window.matchMedia = ((q: string) =>
-    q === MD_QUERY
-      ? {
-          matches,
-          media: q,
-          addEventListener() {},
-          removeEventListener() {},
-        }
-      : originalMatchMedia(q)) as unknown as typeof window.matchMedia;
-}
+import {
+  restoreViewport,
+  resizeViewport,
+  stubViewport,
+  VARIANT_AT,
+} from "./use-layout-variant.testing";
 
 describe("useLayoutVariant", () => {
-  beforeEach(() => stubMatchMedia(false));
-  afterEach(() => {
-    window.matchMedia = originalMatchMedia;
-  });
+  afterEach(restoreViewport);
 
-  it("dưới ngưỡng md → mobile", () => {
-    stubMatchMedia(false);
-    expect(renderHook(() => useLayoutVariant()).result.current).toBe("mobile");
-  });
+  for (const [px, expected] of VARIANT_AT) {
+    it(`${String(px)}px → ${expected}`, () => {
+      stubViewport(px);
+      expect(renderHook(() => useLayoutVariant()).result.current).toBe(expected);
+    });
+  }
 
-  it("từ ngưỡng md trở lên → desktop", () => {
-    stubMatchMedia(true);
-    expect(renderHook(() => useLayoutVariant()).result.current).toBe("desktop");
+  /**
+   * Ca này KHÔNG có ở bản một-ngưỡng, và nó là ca duy nhất bắt được lỗi rút
+   * `subscribe` về mỗi ngưỡng tablet: giữa 800px và 1200px thì
+   * `(min-width: 768px)` khớp ở CẢ HAI phía, nên nó không phát `change` — chỉ
+   * `(min-width: 1024px)` phát. Bỏ query thứ hai khỏi `subscribe` thì hook kẹt ở
+   * `"tablet"` cho tới lần render kế tiếp vì lý do khác, và mọi ca bảng ở trên
+   * vẫn xanh. Đã kiểm bằng đột biến: bỏ query đó → đúng ca này đỏ, một mình.
+   */
+  it("vượt ngưỡng desktop thì cập nhật, không kẹt ở tablet", () => {
+    stubViewport(800);
+    const { result } = renderHook(() => useLayoutVariant());
+    expect(result.current).toBe("tablet");
+
+    resizeViewport(1200);
+    expect(result.current).toBe("desktop");
+
+    resizeViewport(800);
+    expect(result.current).toBe("tablet");
   });
 
   it("lần vẽ ĐẦU đã đúng, không phải sửa ở lần vẽ sau", () => {
-    stubMatchMedia(true);
+    stubViewport(1440);
     const seen: string[] = [];
     renderHook(() => {
       const v = useLayoutVariant();

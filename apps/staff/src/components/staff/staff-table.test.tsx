@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, afterEach } from "bun:test";
 import { render, screen, within } from "@testing-library/react";
 import { StaffTable } from "./staff-table";
+import { restoreViewport, stubViewport, VIEWPORT } from "../../hooks/use-layout-variant.testing";
 
 const ROWS = [
   {
@@ -14,28 +15,6 @@ const ROWS = [
   },
 ] as const;
 
-// Ngưỡng thật mà `StaffTable` phụ thuộc, qua `useLayoutVariant` — xem chú
-// thích tương tự ở `use-layout-variant.test.ts`.
-const MD_QUERY = "(min-width: 768px)";
-
-// Không lưu lại bản gốc và trả về thì stub này còn nguyên cho MỌI file test
-// khác chạy sau nó trong cùng tiến trình `bun test` — kể cả test không liên
-// quan gì tới `StaffTable`. Chỉ khớp đúng `MD_QUERY`; mọi query khác (vd.
-// `prefers-color-scheme`, `prefers-reduced-motion`) rơi về bản gốc happy-dom.
-const originalMatchMedia = window.matchMedia.bind(window);
-
-function stub(matches: boolean) {
-  window.matchMedia = ((q: string) =>
-    q === MD_QUERY
-      ? {
-          matches,
-          media: q,
-          addEventListener() {},
-          removeEventListener() {},
-        }
-      : originalMatchMedia(q)) as unknown as typeof window.matchMedia;
-}
-
 const props = {
   rows: ROWS,
   me: null,
@@ -46,27 +25,25 @@ const props = {
 };
 
 describe("StaffTable", () => {
-  beforeEach(() => stub(true));
-  afterEach(() => {
-    window.matchMedia = originalMatchMedia;
-  });
+  beforeEach(() => stubViewport(VIEWPORT.desktop));
+  afterEach(restoreViewport);
 
   it("desktop: vẫn là <table> đủ sáu cột", () => {
-    stub(true);
+    stubViewport(VIEWPORT.desktop);
     render(<StaffTable {...props} />);
     expect(document.querySelector("table")).not.toBeNull();
     expect(document.querySelectorAll("thead th").length).toBe(6);
   });
 
   it("mobile: KHÔNG có <table>, và không sinh vùng cuộn ngang", () => {
-    stub(false);
+    stubViewport(VIEWPORT.mobile);
     render(<StaffTable {...props} />);
     expect(document.querySelector("table")).toBeNull();
     expect(document.querySelector(".overflow-x-auto")).toBeNull();
   });
 
   it("mobile: đủ vai trò, trạng thái và hai nút hành động — TRONG khối thẻ", () => {
-    stub(false);
+    stubViewport(VIEWPORT.mobile);
     render(<StaffTable {...props} />);
     // `within(getByRole("list"))`, không truy vấn toàn cục: một nút "Duyệt"
     // trôi nổi đâu đó trong DOM (kể cả sót lại từ một hình dạng bảng ẩn) vẫn
