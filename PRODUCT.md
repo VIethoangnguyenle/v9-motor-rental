@@ -13,7 +13,7 @@ web
 - **Dân chơi mô tô phân khối lớn người Việt tại TP.HCM.** Biết xe, biết mình muốn con nào. Thuê để đi tour, đi phượt cuối tuần, hoặc chạy thử trước khi mua. Đánh giá shop qua chất lượng và tình trạng xe.
 - **Khách du lịch nước ngoài.** Thường thuê ngắn ngày, không quen địa hình và luật giao thông Việt Nam, không đọc được tiếng Việt. Cần biết thủ tục giấy tờ trước khi tới nơi.
 
-**Nhân sự vận hành shop** (dùng `apps/staff` cho vận hành, Directus cho dữ liệu gốc): vai trò `OWNER` và `STAFF`. `SALES` đã đặt chỗ trong hệ thống nhưng **chưa dùng** — chưa quyết vai trò đó làm gì.
+**Nhân sự vận hành shop** (dùng `apps/staff` cho mọi việc hằng ngày; Directus là công cụ quản trị sâu, xem §Operating Context): vai trò `OWNER` và `STAFF`. `SALES` đã đặt chỗ trong hệ thống nhưng **chưa dùng** — chưa quyết vai trò đó làm gì.
 
 **Nhân viên tự đăng ký, chủ shop duyệt.** Không ai phát tài khoản sẵn: người mới tự tạo tài khoản, rồi nằm ở trạng thái _chờ duyệt_ cho tới khi chủ shop đồng ý. Trong lúc chờ, họ đăng nhập được nhưng không xem được gì ngoài chính màn hình báo đang chờ — điều đó có chủ ý, để một người lạ đăng ký được không có nghĩa là vào được. Chủ shop cũng là người khoá tài khoản khi có người nghỉ việc, và **khoá là có hiệu lực ngay**, không đợi phiên đăng nhập cũ hết hạn.
 
@@ -21,7 +21,7 @@ web
 
 ## Product Purpose
 
-Hệ quản lý cho một shop cho thuê mô tô phân khối lớn ở TP.HCM: API, app vận hành cho chủ và nhân viên, site công khai cho khách, và Directus cho dữ liệu gốc.
+Hệ quản lý cho một shop cho thuê mô tô phân khối lớn ở TP.HCM: API, app vận hành cho chủ và nhân viên, site công khai cho khách, và Directus làm back-office quản trị sâu.
 
 Site công khai cho khách **xem mẫu xe và gửi yêu cầu thuê**. Khách **không tự chốt đơn** — yêu cầu đi vào hệ thống, nhân viên tiếp nhận và chốt thành đơn thuê thật trong `apps/staff`.
 
@@ -44,8 +44,15 @@ _Lưu ý:_ web **không** hiển thị tình trạng còn trống theo thời gi
 
 **Phân vai công cụ nội bộ:**
 
-- **Directus** — chỉ dữ liệu gốc: danh mục xe, ảnh, bảng giá. **Không** làm vận hành.
-- **`apps/staff`** — vận hành hằng ngày: lịch đặt xe, thống kê, lên đơn và bàn giao xe (chụp ảnh giấy tờ, ký hợp đồng), quản lý khách hàng, tiếp nhận yêu cầu từ web.
+- **`apps/staff`** — mọi việc hằng ngày: lịch đặt xe, thống kê, lên đơn và bàn giao xe (chụp ảnh giấy tờ, ký hợp đồng), quản lý khách hàng, tiếp nhận yêu cầu từ web, và **quản lý đội xe** — chủ shop tạo, sửa, lưu kho xe và thêm ảnh ngay tại đây.
+- **Directus** — quản trị sâu: sửa cấu trúc dữ liệu, cứu dữ liệu, xem những bảng chưa có màn hình riêng. Nó **không** còn là nơi chủ shop phải vào để làm việc hằng ngày.
+
+  > _Sửa 2026-09-07:_ bản trước ghi Directus giữ danh mục xe, ảnh và bảng giá, còn `apps/staff` "không làm dữ liệu gốc". Người dùng đảo quyết định đó: `OWNER` có toàn quyền CRUD đội xe trong `apps/staff`. Lý do là chi phí lặp lại hằng ngày — sửa một con số mà phải rời công cụ vận hành và mở một công cụ khác. Xem [`docs/plans/2026-09-07-staff-fleet-surface-design.md`](docs/plans/2026-09-07-staff-fleet-surface-design.md) §3.
+  >
+  > Ảnh xe vẫn nằm trong hệ thống file của Directus. `apps/staff` gửi file lên `apps/api`, `apps/api` đẩy tiếp sang Directus Files API rồi mới ghi hàng. Đường vòng này bắt buộc vì `apps/web` phục vụ ảnh qua `/assets/<fileId>?key=web`, nên một file không có hàng trong `directus_files` sẽ hiện ra là ảnh vỡ trên trang công khai.
+  >
+  > Luật hợp lệ giống nhau ở cả hai cửa: cùng một module `@v9/shared/domain/vehicle` sinh ra phép kiểm cho form `apps/staff` và `validation` cho Directus, nên sửa xe ở đâu cũng gặp cùng một luật và cùng một câu thông báo.
+
 - Xác thực cho `apps/staff` dùng **SuperTokens** self-host. Khách trên `apps/web` **không cần tài khoản** — bắt đăng nhập chỉ làm giảm số yêu cầu nhận được, mà yêu cầu chính là thứ web sinh ra để tạo.
 
 **Bối cảnh kỹ thuật:** monorepo — `apps/api` (Bun + Elysia), `apps/web` (Next 16, SSG/ISR vì SEO quan trọng), `apps/staff` (Vite + TanStack, PWA). Chi tiết ở `docs/ARCHITECTURE.md`.

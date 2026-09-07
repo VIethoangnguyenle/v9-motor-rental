@@ -147,6 +147,24 @@ Hai việc đầu chờ **đúng một** thứ: **file logo thật của shop**.
   đăng. `PRODUCT.md` nguyên tắc #2 đặt toàn bộ khác biệt của shop lên đúng câu này, nên đây là
   asset chặn thật, không phải việc dọn dẹp.
 
+---
+
+**Đã xong — đợt màn Đội xe (`/fleet`) cho `apps/staff`, 2026-09-07.** Thiết kế ở
+[`plans/2026-09-07-staff-fleet-surface-design.md`](plans/2026-09-07-staff-fleet-surface-design.md).
+
+`OWNER` giờ tạo, sửa, lưu kho xe và quản lý ảnh ngay trong `apps/staff`; Directus lùi về vai quản
+trị sâu. `PRODUCT.md` §Operating Context đã sửa theo, và quyết định kèm ràng buộc nằm ở Serena
+memory `architecture/fleet-admin-in-staff`.
+
+Ba thứ đợt này thêm vào ngoài màn hình: một module luật dùng chung
+(`@v9/shared/domain/vehicle`) mà cả form staff lẫn `validation` của Directus đọc chung; một đường
+ảnh đi qua Directus Files API bằng tài khoản máy có policy hẹp; và `useLayoutVariant()` lên ba giá
+trị để tablet thôi ăn hình dạng desktop — món nợ mà brief của `field-page` đã treo sẵn.
+
+Nợ mới của đợt: `apps/staff` vẫn không có test component, nên ba hình dạng màn Đội xe chỉ được
+nghiệm thu bằng ảnh chụp qua Chrome CDP, không bằng hàng rào tự động. Cùng món nợ đã ghi ở đợt
+Thống kê.
+
 **Deploy:** đang gác. Secret SSH đã đặt; còn thiếu `ssh-copy-id` lên VPS, `ROOT_DOMAIN` +
 `CADDY_EMAIL`, bootstrap `~/v9-motor-rental`, và `docker login ghcr.io` trên VPS (repo private nên
 image cũng private). Chi tiết trong Agent Memory.
