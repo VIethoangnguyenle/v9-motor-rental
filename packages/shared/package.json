@@ -13,7 +13,8 @@
     "./domain/rental-request": "./src/domain/rental-request.ts",
     "./domain/rental-photo": "./src/domain/rental-photo.ts",
     "./domain/rental-evidence": "./src/domain/rental-evidence.ts",
-    "./domain/avatar": "./src/domain/avatar.ts"
+    "./domain/avatar": "./src/domain/avatar.ts",
+    "./domain/vehicle": "./src/domain/vehicle.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

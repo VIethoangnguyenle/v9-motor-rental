@@ -22,3 +22,18 @@ export {
   type TransitionResult,
 } from "./domain/rental";
 export { normalizePhone } from "./domain/phone";
+export {
+  VEHICLE_MESSAGES,
+  VEHICLE_PATTERNS,
+  VEHICLE_STATUSES,
+  VEHICLE_STATUS_LABEL,
+  checkPhotoAlt,
+  checkVehicle,
+  vehicleRuleMessage,
+  vehicleStatusLabel,
+  type PhotoAltRule,
+  type VehicleDraft,
+  type VehicleRule,
+  type VehicleStatus,
+} from "./domain/vehicle";
+export { PHOTO_CONTENT_TYPES } from "./domain/rental-photo";

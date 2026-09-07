@@ -44,6 +44,17 @@ const TYPE_EXTENSION: Readonly<Record<string, string>> = {
 };
 
 /**
+ * Danh sách `Content-Type` nhận được, SUY TỪ bảng trên.
+ *
+ * Tồn tại để route khai `t.File({ type: [...] })` mà không gõ tay lần thứ hai —
+ * cùng khuôn `AVATAR_CONTENT_TYPES` ở `domain/avatar`. `routes/handover.ts` từng
+ * chép ba chuỗi vào chính nó; chép được là lệch được, và lệch theo chiều MỞ thì
+ * file đi qua hàng rào đầu rồi chết ở hàng rào sau với một câu lỗi nói về
+ * chuyện khác.
+ */
+export const PHOTO_CONTENT_TYPES: readonly string[] = Object.keys(TYPE_EXTENSION);
+
+/**
  * Chuẩn hoá `Content-Type` trước khi tra bảng.
  *
  * Trình duyệt gửi kèm tham số (`image/jpeg; charset=binary`) và không đảm bảo

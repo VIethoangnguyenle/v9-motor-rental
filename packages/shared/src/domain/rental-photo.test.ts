@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
   MAX_PHOTO_BYTES,
+  PHOTO_CONTENT_TYPES,
   PHOTO_KINDS,
   extensionForPhotoType,
   isAllowedPhotoType,
@@ -122,5 +123,29 @@ describe("photoObjectKey", () => {
     const handover = photoObjectKey(RENTAL, "HANDOVER", PHOTO, "jpg");
     expect(doc).not.toBe(handover);
     expect(doc.startsWith(`rentals/${RENTAL}/DOCUMENT/`)).toBe(true);
+  });
+});
+
+describe("PHOTO_CONTENT_TYPES", () => {
+  /**
+   * Danh sách này tồn tại để route khai `t.File({ type: [...] })` mà không gõ
+   * tay lần thứ hai. `routes/handover.ts` từng chép ba chuỗi vào chính nó —
+   * chép được là lệch được, và lệch theo chiều MỞ (route nhận một kiểu mà
+   * `isAllowedPhotoType` từ chối) thì file đi qua hàng rào đầu rồi chết ở hàng
+   * rào sau, với một câu lỗi nói về chuyện khác.
+   */
+  it("khớp đúng tập mà isAllowedPhotoType chấp nhận", () => {
+    for (const type of PHOTO_CONTENT_TYPES) {
+      expect(isAllowedPhotoType(type)).toBe(true);
+    }
+    for (const type of ["image/gif", "image/svg+xml", "application/pdf", ""]) {
+      expect(PHOTO_CONTENT_TYPES.includes(type)).toBe(false);
+    }
+  });
+
+  it("mỗi kiểu đều tra được đuôi file", () => {
+    for (const type of PHOTO_CONTENT_TYPES) {
+      expect(extensionForPhotoType(type)).not.toBeNull();
+    }
   });
 });
