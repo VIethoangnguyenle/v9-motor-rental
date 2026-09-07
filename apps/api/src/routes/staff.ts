@@ -38,6 +38,7 @@ import {
 import type { RentalErrorCode } from "./rentals";
 import type { HandoverErrorCode } from "./handover";
 import type { RequestErrorCode } from "./requests";
+import type { FleetErrorCode } from "./fleet";
 
 /**
  * Route là tầng DUY NHẤT được phép chạm cả `services/` lẫn `supertokens-node`.
@@ -169,6 +170,7 @@ export type ApiErrorCode =
   | Reason
   | GuardErrorCode
   | RentalErrorCode
+  | FleetErrorCode
   | RequestErrorCode
   | HandoverErrorCode
   | "EMAIL_NOT_CONFIGURED"
@@ -296,20 +298,20 @@ export const staff = new Elysia({ name: "staff" })
       // chứ không gõ lại — hàng rào thứ hai (`setStaffAvatar`) đọc cùng bảng đó,
       // nên hai tầng không lệch nhau được.
       //
-      // ⚠️ Cả hai hàng rào thật ra đọc một giá trị do **Bun** quyết, không phải
-      // do người gửi khai: bộ phân tích multipart của Bun đặt `File.type` bằng
-      // cách đoán từ byte đầu file và bỏ qua `Content-Type` của part. Đo
-      // 2026-09-02 trên một app Elysia trần (`body.file.type` server đọc được):
-      // một PNG khai `image/webp` → `image/png`; một JPEG khai `text/plain` →
-      // `image/jpeg`; một PDF khai `image/png` → `""`. Hệ quả tốt: đuôi trong
-      // object key luôn khớp byte thật.
+      // ⚠️ Cả hai hàng rào đọc một giá trị do **Bun** quyết, không phải giá trị
+      // người gửi khai: bộ phân tích multipart bỏ qua `Content-Type` của part và
+      // suy `File.type` từ ĐUÔI TÊN FILE. Không có đuôi thì mới rơi xuống một
+      // bước đoán từ byte, và bước đó không biết WebP.
       //
-      // ⛔ Hệ quả xấu, phải biết trước khi sửa dòng dưới: bảng đoán của Bun
-      // KHÔNG có WebP, nên mọi file WebP về `""` và bị từ chối 422 — dù
-      // `"image/webp"` nằm trong `AVATAR_CONTENT_TYPES`. Đó là lý do
-      // `apps/staff` encode JPEG chứ không WebP (số đo đầy đủ ở
-      // `apps/staff/src/lib/avatar.ts`). Bỏ `"image/webp"` khỏi domain KHÔNG
-      // phải cách sửa: hạn chế nằm ở tầng dưới và sẽ tự hết khi Bun thêm WebP.
+      // ⛔ Bản trước của khối này kết luận "Bun đoán từ byte, bảng đoán không có
+      // WebP, nên WebP luôn bị từ chối 422". Quan sát có thật nhưng NGUYÊN NHÂN
+      // SAI — file thử lúc đó không có đuôi. `docs/DEBT.md` đã ghi lại phép đo
+      // đầy đủ; comment sai này còn sống thêm một đợt nữa và đã khiến màn Đội xe
+      // loại `image/webp` khỏi `accept` mà không có lý do.
+      //
+      // Hệ quả thật phải biết: kiểm đuôi tên file KHÔNG phải kiểm nội dung — byte
+      // bất kỳ dưới tên `x.png` đi qua được. Hàng rào này chống nhầm lẫn, không
+      // chống người cố tình.
       body: t.Object({
         file: t.File({ maxSize: MAX_AVATAR_BYTES, type: [...AVATAR_CONTENT_TYPES] }),
       }),

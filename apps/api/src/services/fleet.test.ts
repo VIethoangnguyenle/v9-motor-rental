@@ -5,6 +5,12 @@ import { db } from "../db";
 import { listFleet } from "./fleet";
 import { listPublishedVehicles } from "./vehicles";
 
+/**
+ * `listFleet` nhận `now` làm THAM SỐ (cùng lý lẽ `getStatsSummary`), nên test
+ * ghim một mốc cố định thay vì để `new Date()` trôi theo giờ chạy.
+ */
+const NOW = new Date("2026-09-07T12:00:00+07:00");
+
 const P = "ztest-fleet-";
 
 async function clean() {
@@ -53,18 +59,18 @@ afterAll(async () => {
 
 describe("listFleet", () => {
   it("có biển số — đây là shape NỘI BỘ, khác /vehicles", async () => {
-    const rows = await listFleet();
+    const rows = await listFleet(NOW);
     const v = rows.find((r) => r.slug === `${P}pub`);
     expect(v?.plate).toBe("59H1-234.56");
   });
 
   it("gồm cả xe draft — chưa lên web không có nghĩa là không cho thuê được", async () => {
-    const slugs = (await listFleet()).map((r) => r.slug);
+    const slugs = (await listFleet(NOW)).map((r) => r.slug);
     expect(slugs).toContain(`${P}draft`);
   });
 
   it("trả pricePerDay và deposit — kể cả cho xe draft, ca mà /vehicles công khai không phục vụ được", async () => {
-    const rows = await listFleet();
+    const rows = await listFleet(NOW);
     const pub = rows.find((r) => r.slug === `${P}pub`);
     const draft = rows.find((r) => r.slug === `${P}draft`);
     expect(pub?.pricePerDay).toBe(500_000);
@@ -74,7 +80,7 @@ describe("listFleet", () => {
   });
 
   it("loại xe archived", async () => {
-    const slugs = (await listFleet()).map((r) => r.slug);
+    const slugs = (await listFleet(NOW)).map((r) => r.slug);
     expect(slugs).not.toContain(`${P}arch`);
   });
 });

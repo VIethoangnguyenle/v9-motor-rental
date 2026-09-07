@@ -161,7 +161,16 @@ export default tseslint.config(
         // Verified via micromatch@4.0.8 directly (the version eslint-plugin-boundaries resolves):
         // matches db.ts, env.ts, db.test.ts, env.test.ts; does NOT match index.ts or files under
         // src/nowhere/ — confirmed again end-to-end via probes ①–③ below after this edit.
-        { type: "api-infra", pattern: "apps/api/src/{db,env,storage}{,.test}.ts", mode: "full" },
+        //
+        // `directus` nằm cùng nhóm này chứ không phải `api-services`: nó là ĐƯỜNG RA
+        // của một hệ thống bên ngoài, đúng vai `storage.ts` (MinIO) và `db.ts`
+        // (Postgres) — một file duy nhất biết giao thức đó tồn tại. Service import
+        // nó, nó không import service.
+        {
+          type: "api-infra",
+          pattern: "apps/api/src/{db,directus,env,storage}{,.test}.ts",
+          mode: "full",
+        },
         { type: "api-plugins", pattern: "apps/api/src/plugins/**" },
         // Nợ đóng ở docs/DEBT.md ("eslint-plugin-boundaries không phân lớp bên trong frontend"):
         // `ui/` không được biết domain (không import lib/api, không biết Me/StaffRole) từng chỉ là

@@ -154,6 +154,20 @@ services:
       ROOT_DOMAIN: ${ROOT_DOMAIN}
       SUPERTOKENS_CONNECTION_URI: http://supertokens:3567
       SUPERTOKENS_API_KEY: ${SUPERTOKENS_API_KEY}
+      # Đường ẢNH XE. `apps/api` đẩy file lên Directus thay vì ghi thẳng MinIO —
+      # `apps/web` phục vụ ảnh qua /assets/<fileId>?key=web, nên một file không có
+      # hàng trong `directus_files` là ảnh vỡ trên trang công khai. Khoá
+      # `API_S3_KEY` cũng cố ý không mở bucket `vehicles`.
+      #
+      # Tên host NỘI BỘ của compose, KHÔNG phải https://data.${ROOT_DOMAIN}: hai
+      # container nói chuyện thẳng với nhau trong mạng docker, không cần đi vòng
+      # ra Caddy rồi quay lại. Cùng khuôn `SUPERTOKENS_CONNECTION_URI` ngay trên.
+      DIRECTUS_URL: http://directus:8055
+      # Token của tài khoản máy `apps-api@example.com` (role `api`, policy
+      # `api-files`). KHÔNG dùng token admin — cùng lý lẽ đã đóng món nợ "Directus
+      # cầm credential ROOT của MinIO" ở docs/DEBT.md. `bun run directus:setup`
+      # đọc biến này và tạo tài khoản cho khớp; chạy nó SAU khi điền `.env`.
+      DIRECTUS_API_TOKEN: ${DIRECTUS_API_TOKEN}
       # Khối `environment:` này liệt kê TỪNG biến một, nên biến nào không có tên ở
       # đây thì không tới container — kể cả khi `.env` trên VPS đã điền đủ. Thiếu
       # `SMTP_HOST` làm `env.smtp` thành `null`, `emailDaCauHinh` thành false, và

@@ -158,3 +158,71 @@ export async function getStatsSummary(now: Date, filter?: StatsFilter): Promise<
     },
   };
 }
+
+/**
+ * Doanh thu và mức khai thác của TỪNG chiếc xe.
+ *
+ * ⚠️ Định nghĩa doanh thu ở đây KHÁC `getStatsSummary` ngay phía trên, và khác có
+ * chủ ý. Hai hàm đặt cạnh nhau để chênh lệch này nhìn thấy được thay vì phải phát
+ * hiện lại:
+ *
+ *   | | `getStatsSummary` | `getVehicleRevenue` |
+ *   |---|---|---|
+ *   | lọc | `handed_over_at IS NOT NULL` | `status = 'COMPLETED'` |
+ *   | gồm đơn đang chạy | **có** (`ONGOING` đã giao xe) | **không** |
+ *   | mốc thời gian | `handed_over_at` | `returned_at` |
+ *
+ * Hệ quả số học: cộng `revenue` của mọi xe LUÔN nhỏ hơn hoặc bằng con số tháng ở
+ * màn Thống kê, đúng bằng phần các đơn chưa trả xe. Chủ shop cộng tay một lần là
+ * thấy. Vì vậy màn Đội xe BẮT BUỘC gọi tên phạm vi trên nhãn ("Doanh thu — đơn đã
+ * hoàn tất") và hiện `ongoing*` bên cạnh, thay vì để người dùng tự kết luận rằng
+ * một trong hai màn bị sai. Xem `docs/plans/2026-09-07-staff-fleet-surface-design.md` §3.
+ *
+ * `days` tính theo khoảng ĐÃ ĐẶT (`ends_at - starts_at`), không theo
+ * `returned_at - handed_over_at`: đơn vị thuê là NGÀY và tiền tính theo ngày đã
+ * đặt, nên trả xe muộn hai tiếng không được biến thành một ngày khai thác nữa.
+ */
+export interface VehicleRevenue {
+  readonly vehicleId: string;
+  /** Tổng `total_amount` của đơn đã hoàn tất. */
+  readonly revenue: Vnd;
+  readonly orders: number;
+  /** Tổng số ngày đã đặt của các đơn đã hoàn tất, làm tròn về số nguyên. */
+  readonly days: number;
+  readonly ongoingRevenue: Vnd;
+  readonly ongoingOrders: number;
+}
+
+interface VehicleRevenueRow {
+  vehicle_id: string;
+  revenue: number;
+  orders: number;
+  days: number;
+  ongoing_revenue: number;
+  ongoing_orders: number;
+}
+
+export async function getVehicleRevenue(): Promise<VehicleRevenue[]> {
+  const rows: VehicleRevenueRow[] = await client`
+    SELECT
+      v.id AS vehicle_id,
+      COALESCE(SUM(r.total_amount) FILTER (WHERE r.status = 'COMPLETED'), 0)::int AS revenue,
+      COUNT(*) FILTER (WHERE r.status = 'COMPLETED')::int                        AS orders,
+      COALESCE(ROUND(SUM(
+        EXTRACT(EPOCH FROM (r.ends_at - r.starts_at)) / 86400
+      ) FILTER (WHERE r.status = 'COMPLETED')), 0)::int                          AS days,
+      COALESCE(SUM(r.total_amount) FILTER (WHERE r.status = 'ONGOING'), 0)::int  AS ongoing_revenue,
+      COUNT(*) FILTER (WHERE r.status = 'ONGOING')::int                          AS ongoing_orders
+    FROM vehicles v
+    LEFT JOIN rentals r ON r.vehicle_id = v.id
+    GROUP BY v.id`;
+
+  return rows.map((r) => ({
+    vehicleId: r.vehicle_id,
+    revenue: r.revenue,
+    orders: r.orders,
+    days: r.days,
+    ongoingRevenue: r.ongoing_revenue,
+    ongoingOrders: r.ongoing_orders,
+  }));
+}

@@ -59,6 +59,21 @@ export const env = {
     accessKey: required("API_S3_KEY"),
     secretKey: required("API_S3_SECRET"),
   },
+  /**
+   * Directus, cho đường ẢNH XE. `apps/api` đẩy file lên đây thay vì ghi thẳng
+   * MinIO — lý lẽ đầy đủ ở `directus.ts`.
+   *
+   * `required()` cho cả hai: thiếu thì API chết lúc khởi động với câu nói rõ
+   * thiếu gì. Fallback im lặng ở đây nghĩa là chủ shop bấm "Thêm ảnh", nhận một
+   * lỗi mơ hồ, và không có gì chỉ ra rằng nguyên nhân là một biến môi trường.
+   *
+   * Cắt dấu `/` cuối: `DIRECTUS_URL=http://x:8055/` cộng `/files` ra `//files`,
+   * mà Directus trả 404 cho đường dẫn đó — một cấu hình trông đúng, hỏng khó hiểu.
+   */
+  directus: {
+    url: required("DIRECTUS_URL").replace(/\/+$/, ""),
+    token: required("DIRECTUS_API_TOKEN"),
+  },
   apiDomain: process.env.API_DOMAIN ?? "http://localhost:3001",
   staffAppUrl: process.env.STAFF_APP_URL ?? "http://localhost:3003",
   /**

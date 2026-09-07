@@ -24,6 +24,12 @@ jobs:
       MINIO_ENDPOINT: http://localhost:9000
       MINIO_BUCKET_VEHICLES: vehicles
       MINIO_BUCKET_CHECKINS: checkins
+  # apps/api/src/env.ts khai hai biến này `required()`, nên THIẾU chúng là API
+  # không khởi động — và `bun test` import `env.ts` nên cả test cũng đỏ. Giá trị
+  # ở đây chỉ để qua được phép kiểm hình dạng: job này không dựng Directus, và
+  # không test nào gọi ra ngoài tới nó.
+  DIRECTUS_URL: http://localhost:8055
+  DIRECTUS_API_TOKEN: ci-token-khong-bi-mat-0123456789
       # `apps/api/src/env.ts` gọi `required()` cho cả hai biến này, và file đó
       # được import ở top-level của gần như mọi test của `apps/api`. Thiếu chúng
       # thì 59/61 test KHÔNG CHẠY — chúng chết lúc import với "Thiếu biến môi

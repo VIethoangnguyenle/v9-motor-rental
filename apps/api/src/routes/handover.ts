@@ -1,5 +1,9 @@
 import { Elysia, t, type Static } from "elysia";
-import { MAX_PHOTO_BYTES, type PhotoKind } from "@v9/shared/domain/rental-photo";
+import {
+  MAX_PHOTO_BYTES,
+  PHOTO_CONTENT_TYPES,
+  type PhotoKind,
+} from "@v9/shared/domain/rental-photo";
 import { staffGuard } from "../plugins/staff-guard";
 import {
   addRentalPhoto,
@@ -107,7 +111,7 @@ export const handover = new Elysia({ name: "handover" })
       // `isPhotoSizeValid` ở domain là hàng rào thứ hai, CHECK ở DB là thứ ba.
       body: t.Object({
         kind: kindSchema,
-        file: t.File({ maxSize: MAX_PHOTO_BYTES, type: ["image/jpeg", "image/png", "image/webp"] }),
+        file: t.File({ maxSize: MAX_PHOTO_BYTES, type: [...PHOTO_CONTENT_TYPES] }),
       }),
       response: { 201: photoSchema, 400: errorSchema, 401: errorSchema, 404: errorSchema },
     },
