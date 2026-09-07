@@ -25,6 +25,7 @@ import { ensureMe } from "./lib/me";
 import { validateCustomersSearch } from "./lib/customers-search";
 import { validateCalendarSearch } from "./lib/calendar-search";
 import { validateFieldSearch } from "./lib/field-search";
+import { validateFleetSearch } from "./lib/fleet-search";
 import { validateRentalsSearch } from "./lib/rentals-search";
 import { validateRequestsSearch } from "./lib/requests-search";
 import { PendingApprovalPage } from "./pages/pending-approval-page";
@@ -364,6 +365,25 @@ const fieldRoute = createRoute({
   component: lazy(() => import("./pages/field-page"), "FieldPage"),
 });
 
+/**
+ * Màn Đội xe. Chỉ OWNER — cùng khuôn `staffListRoute`: kiểm ở `beforeLoad` chứ
+ * KHÔNG trong component. Đây là hàng rào của TRẢI NGHIỆM; hàng rào của DỮ LIỆU
+ * nằm ở server (`requireRole` trên mọi đường GHI của `routes/fleet.ts`). Bỏ chỗ
+ * này thì STAFF thấy một trang đọc được nhưng mọi nút đều trả 403.
+ *
+ * `?q=`/`?group=`/`?id=` sống ở URL — cùng lý lẽ bốn route kia. `validateFleetSearch`
+ * lọc giá trị lạ thay vì throw: `?group=xyz` cho ra "tất cả", không cho ra màn lỗi.
+ */
+const fleetRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/fleet",
+  validateSearch: validateFleetSearch,
+  beforeLoad: ({ context }) => {
+    if (context.me.role !== "OWNER") throw redirect({ to: "/" });
+  },
+  component: lazy(() => import("./pages/fleet-page"), "FleetPage"),
+});
+
 const routeTree = rootRoute.addChildren([
   publicLayoutRoute.addChildren([
     loginRoute,
@@ -383,6 +403,7 @@ const routeTree = rootRoute.addChildren([
     requestsRoute,
     rentalsRoute,
     fieldRoute,
+    fleetRoute,
   ]),
 ]);
 

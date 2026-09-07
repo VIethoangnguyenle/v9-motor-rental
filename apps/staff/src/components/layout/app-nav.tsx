@@ -34,13 +34,14 @@ type NavItem =
        *  ĐỌC mới biết mình ở đâu; icon cho nhận ra bằng hình dạng. */
       readonly icon: IconName;
       readonly to:
-    | "/"
-    | "/staff"
-    | "/calendar"
-    | "/customers"
-    | "/requests"
-    | "/rentals"
-    | "/field";
+        | "/"
+        | "/staff"
+        | "/calendar"
+        | "/customers"
+        | "/requests"
+        | "/rentals"
+        | "/field"
+        | "/fleet";
       /** Hiện số việc đang chờ cạnh nhãn. Chỉ `/requests` dùng, xem `AppNav`. */
       readonly badge?: "newRequests";
       readonly ownerOnly?: true;
@@ -58,6 +59,9 @@ const NAV_ITEMS: readonly NavItem[] = [
   // liệu: `beforeLoad` của route `/staff` và `/staff/users*` ở server mới là
   // hàng rào thật (403 FORBIDDEN). Bỏ điều kiện ở đây thì STAFF thấy một link
   // dẫn tới trang trống toàn lỗi 403, không phải thấy dữ liệu.
+  // Hai mục OWNER đứng cạnh nhau ở CUỐI danh sách: chúng là việc quản trị, khác
+  // nhịp với sáu mục vận hành phía trên mà nhân viên dùng hằng ngày.
+  { kind: "link", label: "Đội xe", to: "/fleet", ownerOnly: true, icon: "nav-fleet" },
   { kind: "link", label: "Nhân viên", to: "/staff", ownerOnly: true, icon: "nav-staff" },
 ];
 

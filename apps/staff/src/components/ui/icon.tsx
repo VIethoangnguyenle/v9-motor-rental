@@ -24,6 +24,7 @@ import {
   TriangleAlert,
   UserCog,
   Users,
+  Warehouse,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -119,6 +120,15 @@ export const ICONS = {
   "nav-customers": Users,
   /** Bàn giao — chiếc xe rời shop rồi quay về; đây là màn việc VẬT LÝ. */
   "nav-handover": Bike,
+  /**
+   * Đội xe — KHO xe của shop, không phải một chiếc xe.
+   *
+   * CỐ Ý không dùng `Bike`: `nav-handover` đã cầm hình đó, và hai mục cùng nói
+   * về xe mà mang hình gần giống nhau là đúng thứ mà cả danh sách icon này sinh
+   * ra để tránh — mắt sẽ phải đọc chữ trở lại. `Warehouse` nói "chỗ cất giữ", tức
+   * cái danh mục, khác hẳn "chiếc xe đang rời shop".
+   */
+  "nav-fleet": Warehouse,
   /** Nhân viên — quản trị người, khác `users` của khách hàng. */
   "nav-staff": UserCog,
   /**

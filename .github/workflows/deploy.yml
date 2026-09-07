@@ -101,6 +101,16 @@ jobs:
             VITE_API_URL=https://api.${{ vars.ROOT_DOMAIN }}
             NEXT_PUBLIC_API_URL=https://api.${{ vars.ROOT_DOMAIN }}
             NEXT_PUBLIC_DIRECTUS_URL=https://data.${{ vars.ROOT_DOMAIN }}
+            # Màn Đội xe của apps/staff hiện ảnh xe bằng /assets/<fileId>?key=web.
+            # Đây là URL mà TRÌNH DUYỆT gọi, nên nó phải là host CÔNG KHAI
+            # (data.$ROOT_DOMAIN) — KHÁC `DIRECTUS_URL` mà apps/api dùng, vốn là
+            # tên host nội bộ `http://directus:8055` trong mạng docker.
+            #
+            # Vite nướng biến này thành hằng chuỗi LÚC BUILD (docs/workspaces/staff.md),
+            # nên nó phải ở đây chứ không ở `environment:` của compose. Đặt nó lúc
+            # chạy KHÔNG có tác dụng gì, và triệu chứng là mọi ảnh xe hỏng ở prod
+            # trong khi máy dev vẫn đúng nhờ fallback localhost.
+            VITE_DIRECTUS_URL=https://data.${{ vars.ROOT_DOMAIN }}
           tags: |
             ghcr.io/viethoangnguyenle/v9-motor-rental-${{ matrix.app }}:latest
             ghcr.io/viethoangnguyenle/v9-motor-rental-${{ matrix.app }}:${{ github.sha }}
